@@ -14,9 +14,9 @@ services:
         sync: false # Set a secure secret in Render UI
       - key: CLIENT_URL
         fromService:
-          type: static
+          type: web
           name: habit-tracker-ui
-          property: host
+          property: url
 
   # 2. Frontend UI (Static Site)
   - type: web
