@@ -1,17 +1,22 @@
+# Stage 1: Build Frontend
+FROM node:20-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Backend & Gateway
 FROM node:20-slim
-
-# Install Nginx
 RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
-
-# Install PM2 globally
 RUN npm install -g pm2
-
 WORKDIR /app
 
-# Copy all services
-COPY services ./services
+# Copy Frontend Build to Nginx
+COPY --from=frontend-build /app/frontend/dist /var/www/html
 
-# Install dependencies for each service
+# Copy all Backend services
+COPY services ./services
 RUN for dir in services/*; do \
       if [ -f "$dir/package.json" ]; then \
         echo "Installing dependencies for $dir..." && \
@@ -19,15 +24,12 @@ RUN for dir in services/*; do \
       fi \
     done
 
-# Copy configurations and the start script
+# Copy configurations
 COPY pm2.config.js .
 COPY nginx.render.conf /etc/nginx/nginx.conf
 COPY start.sh .
-
-# Ensure start.sh is executable
 RUN chmod +x start.sh
 
-# Render/Railway typically use the PORT env var
 ENV PORT 10000
 EXPOSE 10000
 

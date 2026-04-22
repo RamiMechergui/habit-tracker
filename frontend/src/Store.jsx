@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = ''; 
 
 const HabitContext = createContext();
 
