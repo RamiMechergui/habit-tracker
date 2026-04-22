@@ -16,7 +16,7 @@ services:
         fromService:
           type: web
           name: habit-tracker-ui
-          property: url
+          property: host
 
   # 2. Frontend UI (Static Site)
   - type: web
@@ -30,7 +30,7 @@ services:
         fromService:
           type: web
           name: habit-tracker-api
-          property: url
+          property: host
     routes:
       - type: rewrite
         source: /*
