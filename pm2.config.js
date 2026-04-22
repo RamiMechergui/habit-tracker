@@ -1,17 +1,32 @@
+const commonEnv = {
+  MONGO_URI: process.env.MONGO_URI || process.env.MONGODB_URL,
+  JWT_SECRET: process.env.JWT_SECRET,
+  NODE_ENV: process.env.NODE_ENV || 'production',
+  CLIENT_URL: process.env.CLIENT_URL
+};
+
 module.exports = {
   apps: [
-    { name: 'login', script: 'server.js', cwd: 'services/login', env: { PORT: 5101 } },
-    { name: 'register', script: 'server.js', cwd: 'services/register', env: { PORT: 5102 } },
-    { name: 'logout', script: 'server.js', cwd: 'services/logout', env: { PORT: 5103 } },
-    { name: 'verify', script: 'server.js', cwd: 'services/verify', env: { PORT: 5104 } },
-    { name: 'daily', script: 'server.js', cwd: 'services/daily', env: { PORT: 5105 } },
-    { name: 'scoring', script: 'server.js', cwd: 'services/scoring', env: { PORT: 5106 } },
-    { name: 'currentbook', script: 'server.js', cwd: 'services/currentbook', env: { PORT: 5107 } },
-    { name: 'archives', script: 'server.js', cwd: 'services/archives', env: { PORT: 5108 } },
-    { name: 'settings', script: 'server.js', cwd: 'services/settings', env: { PORT: 5109 } },
-    { name: 'categories', script: 'server.js', cwd: 'services/categories', env: { PORT: 5110 } },
-    { name: 'avatar', script: 'server.js', cwd: 'services/avatar', env: { PORT: 5111 } },
-    { name: 'profile', script: 'server.js', cwd: 'services/profile', env: { PORT: 5112 } },
-    { name: 'analytics', script: 'server.js', cwd: 'services/analytics', env: { PORT: 5113 } }
-  ]
+    { name: 'login', port: 5101, path: 'services/login' },
+    { name: 'register', port: 5102, path: 'services/register' },
+    { name: 'logout', port: 5103, path: 'services/logout' },
+    { name: 'verify', port: 5104, path: 'services/verify' },
+    { name: 'daily', port: 5105, path: 'services/daily' },
+    { name: 'scoring', port: 5106, path: 'services/scoring' },
+    { name: 'currentbook', port: 5107, path: 'services/currentbook' },
+    { name: 'archives', port: 5108, path: 'services/archives' },
+    { name: 'settings', port: 5109, path: 'services/settings' },
+    { name: 'categories', port: 5110, path: 'services/categories' },
+    { name: 'avatar', port: 5111, path: 'services/avatar' },
+    { name: 'profile', port: 5112, path: 'services/profile' },
+    { name: 'analytics', port: 5113, path: 'services/analytics' }
+  ].map(service => ({
+    name: service.name,
+    script: 'server.js',
+    cwd: service.path,
+    env: {
+      ...commonEnv,
+      PORT: service.port
+    }
+  }))
 };
