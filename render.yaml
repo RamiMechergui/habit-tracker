@@ -4,7 +4,7 @@ services:
     name: habit-tracker-api
     env: docker
     dockerContext: .
-    dockerfile: Dockerfile.render
+    dockerfilePath: Dockerfile.render
     plan: starter # Recommended for multiple Node processes
     healthCheckPath: /api/verify # Simple health check
     envVars:
