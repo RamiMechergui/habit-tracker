@@ -19,7 +19,7 @@ services:
           property: host
 
   # 2. Frontend UI (Static Site)
-  - type: static
+  - type: web
     name: habit-tracker-ui
     env: static
     rootDir: frontend
@@ -30,7 +30,7 @@ services:
         fromService:
           type: web
           name: habit-tracker-api
-          property: host
+          property: url
     routes:
       - type: rewrite
         source: /*
