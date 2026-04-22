@@ -1,0 +1,234 @@
+services:
+  nginx:
+    image: nginx:alpine
+    hostname: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - habit-network
+
+  login:
+    build: ./services/login
+    hostname: login
+    environment:
+      - PORT=5101
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=login-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  register:
+    build: ./services/register
+    hostname: register
+    environment:
+      - PORT=5102
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=register-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  logout:
+    build: ./services/logout
+    hostname: logout
+    environment:
+      - PORT=5103
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=logout-service
+    depends_on: [jaeger]
+    networks: [habit-network]
+
+  verify:
+    build: ./services/verify
+    hostname: verify
+    environment:
+      - PORT=5104
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=verify-service
+    depends_on: [jaeger]
+    networks: [habit-network]
+
+  daily:
+    build: ./services/daily
+    hostname: daily
+    environment:
+      - PORT=5105
+      - MONGO_URI=mongodb://mongo:27017/daily_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=daily-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  scoring:
+    build: ./services/scoring
+    hostname: scoring
+    environment:
+      - PORT=5106
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=scoring-service
+    depends_on: [jaeger]
+    networks: [habit-network]
+
+  currentbook:
+    build: ./services/currentbook
+    hostname: currentbook
+    environment:
+      - PORT=5107
+      - MONGO_URI=mongodb://mongo:27017/currentbook_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=currentbook-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  archives:
+    build: ./services/archives
+    hostname: archives
+    environment:
+      - PORT=5108
+      - MONGO_URI=mongodb://mongo:27017/archives_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=archives-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  settings:
+    build: ./services/settings
+    hostname: settings
+    environment:
+      - PORT=5109
+      - MONGO_URI=mongodb://mongo:27017/settings_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=settings-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  categories:
+    build: ./services/categories
+    hostname: categories
+    environment:
+      - PORT=5110
+      - MONGO_URI=mongodb://mongo:27017/categories_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=categories-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  avatar:
+    build: ./services/avatar
+    hostname: avatar
+    environment:
+      - PORT=5111
+      - MONGO_URI=mongodb://mongo:27017/avatar_db
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=avatar-service
+    volumes:
+      - avatar_uploads:/uploads
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  profile:
+    build: ./services/profile
+    hostname: profile
+    environment:
+      - PORT=5112
+      - MONGO_URI=mongodb://mongo:27017/profile_db
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://verify:5104
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=profile-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  analytics:
+    build: ./services/analytics
+    hostname: analytics
+    environment:
+      - PORT=5113
+      - MONGO_URI=mongodb://mongo:27017/analytics_db
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://verify:5104
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=analytics-service
+    depends_on: [mongo, jaeger]
+    networks: [habit-network]
+
+  frontend:
+    build: ./frontend
+    hostname: frontend
+    networks: [habit-network]
+
+  integration:
+    build: ./services/integration
+    hostname: integration
+    depends_on:
+      - nginx
+      - login
+      - register
+      - daily
+      - scoring
+      - currentbook
+      - archives
+      - settings
+      - categories
+      - avatar
+      - profile
+      - analytics
+  mongo:
+    image: mongo:6.0
+    hostname: mongo
+    volumes:
+      - mongo_data:/data/db
+    networks: [habit-network]
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    hostname: jaeger
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - habit-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    hostname: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - habit-network
+
+  grafana:
+    image: grafana/grafana:latest
+    hostname: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - habit-network
+
+networks:
+  habit-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  avatar_uploads:

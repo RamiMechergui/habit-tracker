@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'habit-tracker-services'
+    static_configs:
+      - targets:
+          - 'login:9464'
+          - 'register:9464'
+          - 'logout:9464'
+          - 'verify:9464'
+          - 'daily:9464'
+          - 'scoring:9464'
+          - 'currentbook:9464'
+          - 'archives:9464'
+          - 'settings:9464'
+          - 'categories:9464'
+          - 'avatar:9464'
+          - 'profile:9464'
+          - 'analytics:9464'

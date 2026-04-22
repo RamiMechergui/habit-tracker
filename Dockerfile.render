@@ -1,0 +1,35 @@
+FROM node:20-slim
+
+# Install Nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Install PM2 globally
+RUN npm install -g pm2
+
+WORKDIR /app
+
+# Copy all services
+COPY services ./services
+
+# Install dependencies for each service
+RUN for dir in services/*; do \
+      if [ -f "$dir/package.json" ]; then \
+        echo "Installing dependencies for $dir..." && \
+        cd "$dir" && npm install --production && cd ../..; \
+      fi \
+    done
+
+# Copy configurations
+COPY pm2.config.js .
+COPY nginx.render.conf /etc/nginx/nginx.conf
+
+# Render uses the PORT environment variable, usually 10000
+ENV PORT 10000
+
+# Start script
+RUN echo "#!/bin/sh\nnginx\npm2-runtime start pm2.config.js" > start.sh
+RUN chmod +x start.sh
+
+EXPOSE 10000
+
+CMD ["./start.sh"]

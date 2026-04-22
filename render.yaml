@@ -1,0 +1,37 @@
+services:
+  # 1. Backend API (The Micro-Monolith)
+  - type: web
+    name: habit-tracker-api
+    env: docker
+    dockerContext: .
+    dockerfile: Dockerfile.render
+    plan: starter # Recommended for multiple Node processes
+    healthCheckPath: /api/verify # Simple health check
+    envVars:
+      - key: MONGO_URI
+        sync: false # Set your MongoDB Atlas string in Render UI
+      - key: JWT_SECRET
+        sync: false # Set a secure secret in Render UI
+      - key: CLIENT_URL
+        fromService:
+          type: static
+          name: habit-tracker-ui
+          property: host
+
+  # 2. Frontend UI (Static Site)
+  - type: static
+    name: habit-tracker-ui
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: habit-tracker-api
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
