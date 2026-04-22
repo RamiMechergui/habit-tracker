@@ -19,17 +19,16 @@ RUN for dir in services/*; do \
       fi \
     done
 
-# Copy configurations
+# Copy configurations and the start script
 COPY pm2.config.js .
 COPY nginx.render.conf /etc/nginx/nginx.conf
+COPY start.sh .
 
-# Render uses the PORT environment variable, usually 10000
-ENV PORT 10000
-
-# Start script
-RUN echo "#!/bin/sh\nnginx\npm2-runtime start pm2.config.js" > start.sh
+# Ensure start.sh is executable
 RUN chmod +x start.sh
 
+# Render/Railway typically use the PORT env var
+ENV PORT 10000
 EXPOSE 10000
 
 CMD ["./start.sh"]
