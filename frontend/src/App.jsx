@@ -53,7 +53,10 @@ function App() {
             <h2 style={{ margin: 0, fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {displayName}
             </h2>
-            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>Evolvia</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <img src="/logo.png" alt="Logo" style={{ width: '18px', height: '18px', borderRadius: '4px' }} />
+              <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6, fontWeight: 600 }}>Evolvia</p>
+            </div>
           </div>
           <button
             className="theme-toggle-btn"
@@ -87,12 +90,19 @@ function App() {
 
       {/* ── Mobile top header (visible only on mobile via CSS) ── */}
       <header className="mobile-header" style={{ display: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <AvatarUploader />
-          <span style={{ fontWeight: 600, fontSize: '0.95rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {displayName}
-          </span>
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
+            <span style={{ fontWeight: 700, fontSize: '1rem', background: 'linear-gradient(45deg, #3b82f6, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Evolvia
+            </span>
+          </div>
+          <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 0.2rem' }}></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <AvatarUploader />
+            <span style={{ fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.firstName || 'User'}
+            </span>
+          </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button
             className="theme-toggle-btn"
