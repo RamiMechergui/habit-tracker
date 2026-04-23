@@ -55,7 +55,7 @@ export default function Auth() {
         {/* Logo / branding */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img
-            src="/logo.jpg"
+            src="/logo.png"
             alt="Evolvia Logo"
             style={{ width: '80px', height: '80px', borderRadius: '50%', marginBottom: '1rem',
                      objectFit: 'cover', border: '2px solid var(--border)' }}

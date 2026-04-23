@@ -9,7 +9,7 @@ async function makeCircularFavicon() {
       <circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="white" />
     </svg>`;
 
-    await sharp('./public/logo.jpg')
+    await sharp('./public/logo.png')
       .resize(size, size)
       // Composite the image with the circular mask in dest-in mode
       .composite([{
