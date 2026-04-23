@@ -136,8 +136,6 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=avatar-service
-    volumes:
-      - avatar_uploads:/uploads
     depends_on: [mongo, jaeger]
     networks: [habit-network]
 
@@ -231,4 +229,3 @@ networks:
 
 volumes:
   mongo_data:
-  avatar_uploads:

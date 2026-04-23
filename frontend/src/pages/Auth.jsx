@@ -42,8 +42,8 @@ export default function Auth() {
         </div>
         <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '1.2rem' }}>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
         
-        {error && <div style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>{error}</div>}
-        {success && <div style={{ background: 'rgba(16,185,129,0.2)', color: '#10b981', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>{success}</div>}
+        {error && <div style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+        {success && <div style={{ background: 'rgba(16,185,129,0.2)', color: '#10b981', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>{success}</div>}
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
