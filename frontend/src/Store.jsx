@@ -101,10 +101,24 @@ export const HabitProvider = ({ children }) => {
     
     setExpenseCategories(data.expenseCategories || []);
     
-    // Fetch logs after login
-    const logsRes = await fetch(`${API_URL}/api/daily`, {
-      credentials: 'include'
-    });
+    // Fetch logs and settings after login
+    const [logsRes, settingsRes, avatarRes] = await Promise.all([
+      fetch(`${API_URL}/api/daily`, { credentials: 'include' }),
+      fetch(`${API_URL}/api/settings`, { credentials: 'include' }),
+      fetch(`${API_URL}/api/avatar`, { credentials: 'include' })
+    ]);
+
+    let profileData = {};
+    if (settingsRes.ok) {
+      const s = await settingsRes.json();
+      profileData = { ...profileData, firstName: s.firstName, lastName: s.lastName };
+    }
+    if (avatarRes.ok) {
+      const a = await avatarRes.json();
+      profileData = { ...profileData, profilePicture: a.profilePicture };
+    }
+
+    setUser(prev => ({ ...prev, ...profileData }));
     if(logsRes.ok) setLogs(await logsRes.json());
   };
 

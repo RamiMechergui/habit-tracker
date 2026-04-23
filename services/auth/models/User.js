@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
   profilePicture: { type: String, default: '' },
   expenseCategories: { 
     type: [String], 
-    default: ['Transportation', 'Food & Dining', 'Clothes', 'Tech & Electronics', 'Groceries', 'Entertainment', 'Health', 'Other']
+    default: ['Food', 'Transportation', 'Entertainment']
   }
 }, { timestamps: true });
 

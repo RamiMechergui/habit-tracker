@@ -29,10 +29,11 @@ export default function Settings() {
   // Sync from user object when it changes
   useEffect(() => {
     if (user) {
-      setFirstName(user.firstName || '');
-      setLastName(user.lastName || '');
+      // If store has values and local state is empty, populate them
+      if (user.firstName && firstName === '') setFirstName(user.firstName);
+      if (user.lastName && lastName === '') setLastName(user.lastName);
     }
-  }, [user]);
+  }, [user, firstName, lastName]);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();

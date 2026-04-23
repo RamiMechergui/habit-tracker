@@ -96,13 +96,8 @@ export default function MonthlyReview() {
         </div>
       </div>
 
-      <div className="glass-card" style={{border: '2px solid #F5A623', overflow: 'hidden'}}>
-        <div style={{background: '#F5A623', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          MONTHLY FINANCIAL SUMMARY
-        </div>
-        <div className="p-6 text-center">
-          <h2 style={{ margin: 0 }}>TOTAL AMOUNT SPENT: <span style={{ borderBottom: '2px solid var(--accent-amber)', padding: '0 2rem' }}>{totalMonthlySpend}</span> TND</h2>
-        </div>
+      <div className="text-center mt-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
+        <h3>Total Monthly Expense: {totalMonthlySpend} TND</h3>
       </div>
       
     </div>

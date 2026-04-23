@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function DailyLog() {
-  const { getLog, saveLog, expenseCategories = [], currentBook, getBookProgress, logs } = useHabits();
+  const { getLog, saveLog, expenseCategories = ['Food', 'Transportation', 'Entertainment'], currentBook, getBookProgress, logs } = useHabits();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialDate = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
   const [date, setDate] = useState(initialDate);
@@ -426,7 +426,7 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: 'Other', amount: 0 }] }))}>
+            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: expenseCategories[0] || '', amount: 0 }] }))}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
