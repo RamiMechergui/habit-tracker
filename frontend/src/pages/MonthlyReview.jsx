@@ -82,7 +82,7 @@ export default function MonthlyReview() {
         <div style={{background: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
           1. DISCIPLINE INDEX EVOLUTION (0 - 100 PTS)
         </div>
-        <div className="p-4" style={{background: '#e2e8f0', position: 'relative', height: '350px', width: '100%', display: 'flex', justifyContent: 'center'}}>
+        <div className="p-4" style={{ position: 'relative', height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Line data={disciplineData} options={{...disciplineOptions, maintainAspectRatio: false}} />
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function MonthlyReview() {
         <div style={{background: '#F5A623', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
           2. FINANCIAL OUTFLOW (DAILY SPEND IN TND)
         </div>
-        <div className="p-4" style={{background: '#fff', position: 'relative', height: '350px', width: '100%', display: 'flex', justifyContent: 'center'}}>
+        <div className="p-4" style={{ position: 'relative', height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={expensesData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
         </div>
       </div>
@@ -100,8 +100,8 @@ export default function MonthlyReview() {
         <div style={{background: '#F5A623', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
           MONTHLY FINANCIAL SUMMARY
         </div>
-        <div className="p-6 text-center" style={{background: '#fff', color: '#000'}}>
-          <h2 style={{color: '#000'}}>TOTAL AMOUNT SPENT: <span style={{borderBottom: '2px solid #000', padding: '0 2rem'}}>{totalMonthlySpend}</span> TND</h2>
+        <div className="p-6 text-center">
+          <h2 style={{ margin: 0 }}>TOTAL AMOUNT SPENT: <span style={{ borderBottom: '2px solid var(--accent-amber)', padding: '0 2rem' }}>{totalMonthlySpend}</span> TND</h2>
         </div>
       </div>
       

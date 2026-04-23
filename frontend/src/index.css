@@ -5,6 +5,8 @@
   --bg: #0f1115;
   --bg-card: rgba(26, 29, 36, 0.7);
   --bg-card-hover: rgba(33, 37, 46, 0.8);
+  --accent-blue: #3b82f6;
+
   
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
@@ -760,3 +762,333 @@ label {
   color: var(--text-muted);
   margin-top: 4px;
 }
+
+/* ═══════════════════════════════════════════════════
+   MOBILE BOTTOM TAB BAR (hidden on desktop)
+   ═══════════════════════════════════════════════════ */
+
+.mobile-nav {
+  display: none; /* hidden by default on desktop */
+}
+
+/* ═══════════════════════════════════════════════════
+   PAGE / SECTION HELPERS
+   ═══════════════════════════════════════════════════ */
+
+.page-container {
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — TABLET  ≤ 1024px
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 200px;
+    padding: 1.5rem 1rem;
+  }
+
+  .main-content {
+    padding: 1.5rem 2rem;
+  }
+
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — MOBILE  ≤ 768px
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── Body / Root ── */
+  body {
+    overflow-x: hidden;
+  }
+
+  #root {
+    flex-direction: column;
+  }
+
+  /* ── Layout: sidebar → hidden, bottom nav → visible ── */
+  .layout {
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Bottom tab bar */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(15, 17, 21, 0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom));
+    gap: 0;
+    justify-content: space-around;
+    align-items: stretch;
+  }
+
+  [data-theme='light'] .mobile-nav {
+    background: rgba(248, 250, 252, 0.97);
+  }
+
+  .mobile-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0.4rem 0.5rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.62rem;
+    font-weight: 500;
+    font-family: var(--sans);
+    flex: 1;
+    min-height: 48px; /* touch-friendly */
+    border-radius: 8px;
+    transition: color 0.2s ease;
+  }
+
+  .mobile-nav-link.active,
+  .mobile-nav-link:hover {
+    color: var(--accent-amber);
+  }
+
+  /* Mobile header bar (shown instead of sidebar) */
+  .mobile-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(15, 17, 21, 0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+  }
+
+  [data-theme='light'] .mobile-header {
+    background: rgba(248, 250, 252, 0.97);
+  }
+
+  /* ── Main content ── */
+  .main-content {
+    padding: 1rem;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    max-width: 100%;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* ── Typography ── */
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1.05rem; }
+
+  /* ── Grids → single column ── */
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  .settings-field-group,
+  .auth-name-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* ── Cards ── */
+  .glass-card.p-6 {
+    padding: 1rem;
+  }
+
+  .settings-card {
+    padding: 1rem;
+  }
+
+  /* ── Stat card ── */
+  .stat-number {
+    font-size: 2.2rem;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    min-height: 44px; /* touch-friendly */
+    padding: 0.7rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  /* ── Inputs / selects ── */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select {
+    font-size: 1rem; /* prevents iOS zoom on focus */
+    min-height: 44px;
+  }
+
+  /* ── Flex rows that might overflow → wrap ── */
+  .flex {
+    flex-wrap: wrap;
+  }
+
+  /* Exception: items-center rows shouldn't all wrap */
+  .flex.items-center.gap-2 {
+    flex-wrap: nowrap;
+  }
+
+  /* ── Auth page ── */
+  .auth-container {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+    overflow-y: auto;
+  }
+
+  .auth-container .glass-card {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* ── Dashboard calendar → compact ── */
+  .dashboard-calendar {
+    gap: 4px;
+  }
+
+  .calendar-cell {
+    min-height: 52px;
+    padding: 4px;
+    border-radius: 6px;
+  }
+
+  .cal-date {
+    font-size: 0.8rem;
+  }
+
+  .cal-expense {
+    display: none; /* hide expense on tiny calendar cells */
+  }
+
+  .calendar-day-header {
+    font-size: 0.65rem;
+    padding-bottom: 4px;
+  }
+
+  /* ── Settings pw actions ── */
+  .settings-pw-actions {
+    flex-direction: column;
+  }
+
+  .settings-save-btn {
+    align-self: stretch;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── DailyLog sections ── */
+  .section-morning,
+  .section-bad,
+  .section-night {
+    padding: 0.75rem !important;
+  }
+
+  /* ── Prevent tables / wide content overflow ── */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── BookArchive grid ── */
+  [style*="grid-template-columns: repeat(auto-fill"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Weekly / Monthly page headings ── */
+  .page-container h1 {
+    font-size: 1.4rem;
+  }
+
+  /* ── ChartJS containers: reduce height on mobile ── */
+  [style*="height: '300px'"],
+  [style*='height: "300px"'],
+  [style*="height: '350px'"],
+  [style*='height: "350px"'] {
+    height: 200px !important;
+  }
+
+  /* ── Habit row labels: allow text wrap ── */
+  .flex.justify-between.items-center.mb-2 label {
+    font-size: 0.85rem;
+    line-height: 1.35;
+    flex: 1;
+    padding-right: 0.5rem;
+  }
+
+  /* ── Bad habits number input: don't shrink below usable size ── */
+  input[placeholder="Cigarettes"],
+  input[placeholder="Time (min)"] {
+    width: 70px !important;
+    min-width: 60px;
+  }
+
+  /* ── Hide full sidebar avatar on mobile (rendered in mobile-header) ── */
+  .sidebar .avatar-wrapper {
+    display: none;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — SMALL MOBILE  ≤ 400px
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 400px) {
+  h1 { font-size: 1.35rem; }
+
+  .main-content {
+    padding: 0.75rem;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .glass-card.p-6 {
+    padding: 0.75rem;
+  }
+
+  .btn {
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .stat-number {
+    font-size: 1.9rem;
+  }
+
+  /* Calendar even more compact */
+  .calendar-cell {
+    min-height: 40px;
+    padding: 3px;
+  }
+
+  .cal-date {
+    font-size: 0.7rem;
+  }
+}
+

@@ -130,19 +130,20 @@ export default function DailyLog() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      {/* ── Header row: wraps on mobile ── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <div>
-          <h2>Daily Journal</h2>
-          <p>Score: {dynamicTotalScore}/100 | Rank: <span className={`grade-pill grade-${dynamicRank.toLowerCase()}`}>{dynamicRank}</span></p>
+          <h2 style={{ marginBottom: '0.25rem' }}>Daily Journal</h2>
+          <p style={{ margin: 0 }}>Score: {dynamicTotalScore}/100 | Rank: <span className={`grade-pill grade-${dynamicRank.toLowerCase()}`}>{dynamicRank}</span></p>
         </div>
-        <div className="flex items-center gap-4">
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} />
-          <button className="btn" onClick={handleSubmit} disabled={isSubmitting}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: '140px' }} />
+          <button className="btn" onClick={handleSubmit} disabled={isSubmitting} style={{ minWidth: '90px' }}>
             {isSubmitting ? 'Saving...' : 'Submit'}
           </button>
         </div>
         {submitError && (
-          <p style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.9rem' }}>
+          <p style={{ width: '100%', marginTop: '0.25rem', color: '#dc2626', fontSize: '0.9rem' }}>
             {submitError}
           </p>
         )}
@@ -338,30 +339,25 @@ export default function DailyLog() {
               </div>
             )}
 
-            <div className="flex gap-2 mb-2">
-              <input 
-                className="flex-1" 
-                placeholder="Book Name" 
-                value={log.books.name} 
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <input
+                style={{ flex: '1 1 140px', minWidth: '120px' }}
+                placeholder="Book Name"
+                value={log.books.name}
                 onChange={e => updateSection('books', 'name', e.target.value)}
                 disabled={bookProgress ? true : false}
-                style={{ opacity: bookProgress ? 0.6 : 1 }}
+                style={{ flex: '1 1 140px', opacity: bookProgress ? 0.6 : 1 }}
                 title={bookProgress ? `Currently tracking: ${bookProgress.bookName}` : 'Enter book name'}
               />
-              <input 
-                className="flex-0" 
-                placeholder="Page" 
+              <input
+                placeholder="Page"
                 type="number"
-                value={log.books.page} 
+                value={log.books.page}
                 onChange={e => {
                   const pageVal = e.target.value;
-                  if (!pageVal) {
-                    updateSection('books', 'page', '');
-                    return;
-                  }
+                  if (!pageVal) { updateSection('books', 'page', ''); return; }
                   const pageNum = parseInt(pageVal);
                   if (bookProgress) {
-                    // Cap the value at the target pages
                     const cappedValue = Math.min(Math.max(0, pageNum), bookProgress.targetPages);
                     updateSection('books', 'page', cappedValue.toString());
                   } else {
@@ -369,8 +365,8 @@ export default function DailyLog() {
                   }
                 }}
                 max={bookProgress?.targetPages}
-                style={{ width: '100px' }}
-                title={bookProgress ? `Enter page number (max: ${bookProgress.targetPages})` : "Current page you read up to today"}
+                style={{ width: '90px', flexShrink: 0 }}
+                title={bookProgress ? `Enter page number (max: ${bookProgress.targetPages})` : 'Current page you read up to today'}
               />
             </div>
             {bookProgress && parseInt(log.books.page) > bookProgress.targetPages && (
@@ -392,28 +388,42 @@ export default function DailyLog() {
           <div className="glass-card p-6">
             <h3 className="mb-4">Expenses</h3>
             {log.expenses.map((exp, i) => (
-              <div key={i} className="flex gap-2 mb-2 items-center">
-                <span style={{width: '20px', flexShrink: 0}}>{i+1}.</span>
-                <input className="flex-1" placeholder="Desc" value={exp.desc} onChange={e=>updateExpense(i, 'desc', e.target.value)} />
-                <select 
-                  className="flex-1" 
-                  value={exp.category || 'Other'} 
-                  onChange={e=>updateExpense(i, 'category', e.target.value)}
-                  style={{ maxWidth: '140px', padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }}
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+                {/* Row 1: description (full width) */}
+                <input
+                  style={{ gridColumn: '1 / -1' }}
+                  placeholder={`Expense ${i + 1} description`}
+                  value={exp.desc}
+                  onChange={e => updateExpense(i, 'desc', e.target.value)}
+                />
+                {/* Row 2: category + amount + delete */}
+                <select
+                  value={exp.category || 'Other'}
+                  onChange={e => updateExpense(i, 'category', e.target.value)}
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem' }}
                 >
                   {expenseCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
-                <input style={{width: '80px'}} type="number" placeholder="TND" value={exp.amount || ''} onChange={e=>updateExpense(i, 'amount', e.target.value)} />
-                <button
-                  type="button"
-                  className="expense-delete-btn"
-                  onClick={() => deleteExpense(i)}
-                  title="Delete expense"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <input
+                    style={{ flex: 1 }}
+                    type="number"
+                    placeholder="TND"
+                    value={exp.amount || ''}
+                    onChange={e => updateExpense(i, 'amount', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="expense-delete-btn"
+                    onClick={() => deleteExpense(i)}
+                    title="Delete expense"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
             <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: 'Other', amount: 0 }] }))}>

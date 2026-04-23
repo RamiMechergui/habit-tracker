@@ -55,7 +55,7 @@ export default function BookArchive() {
                   </p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.9rem' }}>
+                <div className="grid-2" style={{ fontSize: '0.9rem' }}>
                   <div>
                     <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                       <Target size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Pages Read
@@ -85,7 +85,7 @@ export default function BookArchive() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                <div className="grid-2" style={{ fontSize: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                   <div>
                     <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                       <Calendar size={12} style={{ display: 'inline', marginRight: '0.25rem' }} /> Started

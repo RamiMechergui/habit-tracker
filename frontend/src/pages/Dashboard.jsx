@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useHabits } from '../Store';
-import { format, startOfMonth, getDay } from 'date-fns';
+import { format, startOfMonth, getDay, differenceInCalendarDays } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Trash2, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle } from 'lucide-react';
 
 export default function Dashboard() {
-  const { getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress } = useHabits();
+  const { getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks } = useHabits();
   const navigate = useNavigate();
   const [newCategory, setNewCategory] = useState('');
   const [bookName, setBookName] = useState('');
@@ -22,6 +22,37 @@ export default function Dashboard() {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const bookProgress = getBookProgress();
+
+  // ── Book Reading Status (synced with Book Progress Tracker) ──────────────
+  const mostRecentArchive =
+    archivedBooks && archivedBooks.length > 0
+      ? archivedBooks[archivedBooks.length - 1]
+      : null;
+
+  let bookReadingStatus, bookReadingColor, BookReadingIcon;
+  if (currentBook && currentBook.isActive) {
+    // Actively reading a book
+    bookReadingStatus = currentBook.bookName;
+    bookReadingColor  = '#3b82f6';
+    BookReadingIcon   = BookMarked;
+  } else if (mostRecentArchive && mostRecentArchive.completionDate) {
+    // A book was recently finished — calculate days since completion
+    const completedOn  = new Date(mostRecentArchive.completionDate + 'T00:00:00');
+    const daysSince    = differenceInCalendarDays(new Date(), completedOn);
+    const dayLabel     = daysSince === 0
+      ? 'today'
+      : daysSince === 1
+      ? '1 day ago'
+      : `${daysSince} days ago`;
+    bookReadingStatus = `Finished ${dayLabel}`;
+    bookReadingColor  = '#10b981';
+    BookReadingIcon   = CheckCircle;
+  } else {
+    // No active or completed book
+    bookReadingStatus = 'No book active';
+    bookReadingColor  = 'var(--text-muted)';
+    BookReadingIcon   = BookX;
+  }
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
@@ -80,10 +111,24 @@ export default function Dashboard() {
               {todayLog.hustle.achieved ? '✓ Completed' : 'Pending'}
             </strong>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between" style={{ alignItems: 'center' }}>
             <span>Book Reading</span>
-            <strong style={{ color: todayLog.books?.read ? '#10b981' : 'var(--text-muted)' }}>
-              {todayLog.books?.read ? '✓ Completed' : 'Pending'}
+            <strong
+              style={{
+                color: bookReadingColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.85rem',
+                maxWidth: '55%',
+                textAlign: 'right',
+              }}
+              title={bookReadingStatus}
+            >
+              <BookReadingIcon size={13} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {bookReadingStatus}
+              </span>
             </strong>
           </div>
         </div>
@@ -104,14 +149,14 @@ export default function Dashboard() {
                 {bookError}
               </div>
             )}
-            <div className="flex gap-2" style={{ marginBottom: '1rem' }}>
+            <div className="flex flex-wrap gap-2" style={{ marginBottom: '1rem' }}>
               <input
                 type="text"
                 placeholder="Book title"
                 value={bookName}
                 onChange={e => setBookName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSetBook()}
-                style={{ flex: 1 }}
+                style={{ flex: '1 1 200px' }}
               />
               <input
                 type="number"
@@ -119,7 +164,7 @@ export default function Dashboard() {
                 value={targetPages}
                 onChange={e => setTargetPages(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSetBook()}
-                style={{ width: '100px' }}
+                style={{ flex: '1 1 80px', maxWidth: '100%' }}
               />
             </div>
             <button className="btn btn-primary" onClick={handleSetBook} style={{ width: '100%' }}>
@@ -183,7 +228,7 @@ export default function Dashboard() {
               </div>
 
               {/* Stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
+              <div className="grid-2" style={{ fontSize: '0.85rem' }}>
                 <div style={{ background: 'var(--bg-card-hover)', padding: '8px', borderRadius: '6px' }}>
                   <p className="text-muted" style={{ margin: 0 }}>Started</p>
                   <p style={{ margin: 0, fontWeight: 'bold' }}>{format(new Date(bookProgress.startDate), 'MMM dd, yyyy')}</p>
@@ -238,16 +283,16 @@ export default function Dashboard() {
           ))}
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input 
             type="text" 
             placeholder="New classification (e.g., Software)" 
             value={newCategory} 
             onChange={e => setNewCategory(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
-            style={{ flex: 1 }}
+            style={{ flex: '1 1 240px' }}
           />
-          <button className="btn btn-primary" onClick={handleAddCategory}>Add Category</button>
+          <button className="btn btn-primary" style={{ flex: '1 1 120px' }} onClick={handleAddCategory}>Add Category</button>
         </div>
       </div>
 

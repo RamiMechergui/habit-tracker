@@ -81,7 +81,7 @@ export default function Auth() {
 
           {/* ── Sign-up only: name fields ── */}
           {!isLogin && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="auth-name-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div style={fieldStyle}>
                 <label style={labelStyle}>First Name</label>
                 <input
