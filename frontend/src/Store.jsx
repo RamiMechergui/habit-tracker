@@ -108,17 +108,33 @@ export const HabitProvider = ({ children }) => {
     if(logsRes.ok) setLogs(await logsRes.json());
   };
 
-  const register = async (email, password, confirmPassword) => {
+  const register = async (email, password, confirmPassword, firstName = '', lastName = '') => {
     const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
-      credentials: 'include', // Include cookies
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, confirmPassword })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
+
+    // Cookie is now set — immediately persist the name in the settings service
+    if (firstName || lastName) {
+      try {
+        await fetch(`${API_URL}/api/settings`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firstName, lastName })
+        });
+      } catch (e) {
+        console.error('Failed to save name during registration:', e);
+      }
+    }
+
     return data;
   };
+
 
   const updateProfile = async (firstName, lastName) => {
     if (!user) return;
