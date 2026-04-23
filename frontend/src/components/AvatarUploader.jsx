@@ -36,7 +36,9 @@ export default function AvatarUploader() {
   const [error, setError] = useState('');
 
   const avatarUrl = user?.profilePicture
-    ? `${user.profilePicture}?t=${Date.now()}`
+    ? (user.profilePicture.startsWith('data:')
+        ? user.profilePicture
+        : `${user.profilePicture}?t=${Date.now()}`)
     : null;
 
   const onFileChange = (e) => {
