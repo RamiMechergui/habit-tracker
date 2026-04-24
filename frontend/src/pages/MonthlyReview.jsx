@@ -89,6 +89,25 @@ export default function MonthlyReview() {
     }]
   };
 
+  // System Check Aggregation for the Month
+  let todoCount = 0;
+  let moneyCount = 0;
+  
+  monthlyData.forEach(d => {
+    if (d.log.system?.todo) todoCount++;
+    if (d.log.system?.money) moneyCount++;
+  });
+
+  const systemData = {
+    labels: ['ToDo App Updated', 'Money Tracker Updated'],
+    datasets: [{
+      label: 'Total Completions in Month',
+      data: [todoCount, moneyCount],
+      backgroundColor: '#3b82f6',
+      barPercentage: 0.5
+    }]
+  };
+
   return (
     <div>
       <h2 className="mb-6 text-center">MONTHLY REPORT</h2>
@@ -130,6 +149,15 @@ export default function MonthlyReview() {
         </div>
         <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />
+        </div>
+      </div>
+
+      <div className="glass-card mt-6" style={{border: '2px solid #3b82f6', overflow: 'hidden'}}>
+        <div style={{background: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
+          4. SYSTEM CHECK COMPLETION
+        </div>
+        <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Bar data={systemData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />
         </div>
       </div>
       

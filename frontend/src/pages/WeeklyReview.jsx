@@ -108,6 +108,23 @@ export default function WeeklyReview() {
     }]
   };
 
+  // System Check Data
+  const systemData = {
+    labels,
+    datasets: [
+      {
+        label: 'ToDo App',
+        data: weeklyData.map(d => d.log.system?.todo ? 1 : 0),
+        backgroundColor: '#3b82f6'
+      },
+      {
+        label: 'Money Tracker',
+        data: weeklyData.map(d => d.log.system?.money ? 1 : 0),
+        backgroundColor: '#10b981'
+      }
+    ]
+  };
+
   return (
     <div>
       <h2 className="mb-6 text-center">Weekly Discipline Report</h2>
@@ -167,6 +184,13 @@ export default function WeeklyReview() {
         <h3 className="mb-4 text-center" style={{color: '#10b981'}}>Weekend Duties Completion</h3>
         <div style={{ position: 'relative', height: '250px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { min: 0, max: 1, ticks: { stepSize: 1, callback: (v) => v === 1 ? 'Done' : 'Not Done' } } }, plugins: { legend: { display: false } } }} />
+        </div>
+      </div>
+
+      <div className="glass-card p-6 mb-6">
+        <h3 className="mb-4 text-center text-amber">System Check Completion</h3>
+        <div style={{ position: 'relative', height: '250px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Bar data={systemData} options={{ maintainAspectRatio: false, scales: { y: { min: 0, max: 1, ticks: { stepSize: 1, callback: (v) => v === 1 ? 'Done' : 'Not Done' } } } }} />
         </div>
       </div>
       

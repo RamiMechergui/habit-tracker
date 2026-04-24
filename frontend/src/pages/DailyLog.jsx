@@ -89,7 +89,7 @@ export default function DailyLog() {
   if(log.morning.meditate) mScore += 1;
   if(log.morning.bed) mScore += 1;
   if(log.morning.teeth) mScore += 2;
-  if(log.morning.shower) mScore += 10;
+  if(log.morning.shower) mScore += 8;
   if(log.morning.gel) mScore += 1;
   if(log.morning.perfume) mScore += 1;
 
@@ -114,6 +114,7 @@ export default function DailyLog() {
   const hScore = log.hustle.achieved ? 5 : 0;
   const vScore = log.video.achieved ? 5 : 0;
   const bkScore = log.books.read ? 10 : 0;
+  const sysScore = (log.system?.todo ? 1 : 0) + (log.system?.money ? 1 : 0);
 
   // Bad Habits — checked = avoided = GAIN points (positive scoring)
   let b = log.bad;
@@ -125,7 +126,7 @@ export default function DailyLog() {
   if(b.coffee.checked) dynamicBadScore += 2;
   if(b.eating.checked) dynamicBadScore += 2;
 
-  let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + hScore + vScore));
+  let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + sysScore + hScore + vScore));
   
   let dynamicRank = 'F';
   if(dynamicTotalScore >= 90) dynamicRank = 'S';
@@ -159,7 +160,7 @@ export default function DailyLog() {
           
           {/* Morning Habits */}
           <div className="glass-card p-6 section-morning">
-            <h3 className="mb-4">Morning Habits <span className="text-muted text-sm">{mScore}/30pts</span></h3>
+            <h3 className="mb-4">Morning Habits <span className="text-muted text-sm">{mScore}/28pts</span></h3>
             
             <div className="flex justify-between items-center mb-2">
               <label>1. Wake up time (14pts)</label>
@@ -179,7 +180,7 @@ export default function DailyLog() {
               <input type="checkbox" className="habit-checkbox" checked={log.morning.teeth} onChange={e => updateSection('morning', 'teeth', e.target.checked)} />
             </div>
             <div className="flex justify-between items-center mb-2">
-              <label>5. Scottish Shower (Hot-to-Cold) (10pts)</label>
+              <label>5. Scottish Shower (Hot-to-Cold) (8pts)</label>
               <input type="checkbox" className="habit-checkbox" checked={log.morning.shower} onChange={e => updateSection('morning', 'shower', e.target.checked)} />
             </div>
             <div className="flex justify-between items-center mb-2">
@@ -488,6 +489,28 @@ export default function DailyLog() {
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
               <strong>Total Spent:</strong>
               <strong className="text-amber">{log.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND</strong>
+            </div>
+          </div>
+          
+          <div className="glass-card p-6">
+            <h3 className="mb-4">System Check <span className="text-amber text-sm">{sysScore}/2pts</span></h3>
+            <div className="flex justify-between items-center mb-2">
+              <label>1. ToDo App Updated (1pt)</label>
+              <input 
+                type="checkbox" 
+                className="habit-checkbox" 
+                checked={log.system?.todo || false} 
+                onChange={e => updateSection('system', 'todo', e.target.checked)} 
+              />
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <label>2. Money Tracker Updated (1pt)</label>
+              <input 
+                type="checkbox" 
+                className="habit-checkbox" 
+                checked={log.system?.money || false} 
+                onChange={e => updateSection('system', 'money', e.target.checked)} 
+              />
             </div>
           </div>
           

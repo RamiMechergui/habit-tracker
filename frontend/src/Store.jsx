@@ -325,6 +325,7 @@ export const HabitProvider = ({ children }) => {
     books: { name: '', page: '', read: false },
     hustle: { task: '', time: '', achieved: false, lessons: '' },
     video: { task: '', time: '', achieved: false, progress: 'Same' },
+    system: { todo: false, money: false },
     expenses: Array(3).fill({ desc: '', category: 'Other', amount: 0 }),
     morningScore: 0,
     badScore: 0,
@@ -345,6 +346,9 @@ export const HabitProvider = ({ children }) => {
       const filledLog = { ...existingLog, books: { ...existingLog.books } };
       if (!filledLog.weekend) {
         filledLog.weekend = { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } };
+      }
+      if (!filledLog.system) {
+        filledLog.system = { todo: false, money: false };
       }
       if (isWithinCurrentBook && filledLog.books.name !== currentBook.bookName) {
         filledLog.books.name = currentBook.bookName;
@@ -391,7 +395,7 @@ export const HabitProvider = ({ children }) => {
     if(data.morning.meditate) mScore += 1;
     if(data.morning.bed) mScore += 1;
     if(data.morning.teeth) mScore += 2;
-    if(data.morning.shower) mScore += 10;
+    if(data.morning.shower) mScore += 8; // Reduced from 10 to 8
     if(data.morning.gel) mScore += 1;
     if(data.morning.perfume) mScore += 1;
 
@@ -422,16 +426,21 @@ export const HabitProvider = ({ children }) => {
     if(b.coffee.checked) bScore += 2;
     if(b.eating.checked) bScore += 2;
 
-    // Extra Tasks (10 pts)
+    // Extra Tasks (10 pts) + System Check (2 pts)
     let bkScore = 0;
     let hScore = 0;
     let vScore = 0;
+    let sysScore = 0;
+    
     if(data.books.read) bkScore += 10;
+    if(data.system?.todo) sysScore += 1;
+    if(data.system?.money) sysScore += 1;
+
     // Hustle and Video are bonus — not counted in the 100 base
     if(data.hustle.achieved) hScore += 5;
     if(data.video.achieved) vScore += 5;
 
-    let score = mScore + nScore + bScore + bkScore;
+    let score = mScore + nScore + bScore + bkScore + sysScore;
     score = Math.max(0, Math.min(100, score));
     
     let rank = 'F';
@@ -444,6 +453,7 @@ export const HabitProvider = ({ children }) => {
     data.nightScore = nScore;
     data.badScore = bScore;
     data.bookScore = bkScore;
+    data.sysScore = sysScore;
     data.hustleScore = hScore;
     data.videoScore = vScore;
     data.totalScore = score;
