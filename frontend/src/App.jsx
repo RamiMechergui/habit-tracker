@@ -1,8 +1,8 @@
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  Wifi, WifiOff
+  WifiOff
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -14,6 +14,8 @@ import Settings from './pages/Settings';
 import Splash from './pages/Splash';
 import Auth from './pages/Auth';
 import AvatarUploader from './components/AvatarUploader';
+import InstallPrompt from './components/InstallPrompt';
+import UpdateToast from './components/UpdateToast';
 import { useHabits } from './Store';
 
 const NAV_LINKS = [
@@ -28,6 +30,7 @@ const NAV_LINKS = [
 function App() {
   const { loading, user, logout, isOnline } = useHabits();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const location = useLocation();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -97,8 +100,8 @@ function App() {
             <span style={{ fontWeight: 700, fontSize: '1rem', background: 'linear-gradient(45deg, #3b82f6, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Evolvia
             </span>
+            <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block', transition: 'background 0.3s' }} />
           </div>
-          <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 0.2rem' }}></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <AvatarUploader />
             <span style={{ fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -124,17 +127,27 @@ function App() {
         </div>
       </header>
 
-      {/* ── Main content ── */}
+      {/* ── Offline Banner ── */}
+      {!isOnline && (
+        <div className="offline-banner">
+          <WifiOff size={14} />
+          <span>You're offline — changes will sync when reconnected</span>
+        </div>
+      )}
+
+      {/* ── Main content with page transition ── */}
       <main className="main-content">
-        <Routes>
-          <Route path="/"          element={<Navigate to="/dashboard" />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/daily"     element={<DailyLog />} />
-          <Route path="/weekly"    element={<WeeklyReview />} />
-          <Route path="/monthly"   element={<MonthlyReview />} />
-          <Route path="/archive"   element={<BookArchive />} />
-          <Route path="/settings"  element={<Settings />} />
-        </Routes>
+        <div key={location.pathname} className="page-transition">
+          <Routes>
+            <Route path="/"          element={<Navigate to="/dashboard" />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/daily"     element={<DailyLog />} />
+            <Route path="/weekly"    element={<WeeklyReview />} />
+            <Route path="/monthly"   element={<MonthlyReview />} />
+            <Route path="/archive"   element={<BookArchive />} />
+            <Route path="/settings"  element={<Settings />} />
+          </Routes>
+        </div>
       </main>
 
       {/* ── Mobile bottom tab bar (visible only on mobile via CSS) ── */}
@@ -150,6 +163,10 @@ function App() {
           </NavLink>
         ))}
       </nav>
+
+      {/* ── PWA Components ── */}
+      <InstallPrompt />
+      <UpdateToast />
 
     </div>
   );

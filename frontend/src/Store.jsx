@@ -271,7 +271,7 @@ export const HabitProvider = ({ children }) => {
 
   const changePassword = async (currentPassword, newPassword) => {
     if (!user) return;
-    const res = await fetch(`${API_URL}/api/auth/change-password`, {
+    const res = await fetch(`${API_URL}/api/login/change-password`, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

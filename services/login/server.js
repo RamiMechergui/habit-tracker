@@ -43,6 +43,18 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+const verifyToken = (req, res, next) => {
+  let token;
+  if (req.cookies.habitToken) token = req.cookies.habitToken;
+  else if (req.headers.authorization?.startsWith('Bearer')) token = req.headers.authorization.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Not authorized' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod');
+    req.user = { userId: decoded.id };
+    next();
+  } catch (error) { res.status(401).json({ message: 'Invalid token' }); }
+};
+
 /**
  * @swagger
  * /api/login:
@@ -93,6 +105,54 @@ app.post('/api/login', async (req, res) => {
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/login/change-password:
+ *   put:
+ *     summary: Change user password
+ *     tags: [Auth]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ *       400:
+ *         description: Incorrect password
+ *       401:
+ *         description: Not authorized
+ */
+app.put('/api/login/change-password', verifyToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    const user = await User.findOne({ userId: req.user.userId });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    if (!(await user.matchPassword(currentPassword))) {
+      return res.status(400).json({ message: 'Incorrect current password' });
+    }
+    
+    user.password = newPassword;
+    await user.save();
+    
+    res.json({ message: 'Password updated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

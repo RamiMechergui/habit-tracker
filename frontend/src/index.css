@@ -1092,3 +1092,323 @@ label {
   }
 }
 
+
+/* ═══════════════════════════════════════════════════
+   PAGE TRANSITIONS
+   ═══════════════════════════════════════════════════ */
+
+.page-transition {
+  animation: pageSlideIn 0.3s ease-out;
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   OFFLINE BANNER
+   ═══════════════════════════════════════════════════ */
+
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--sans);
+  animation: offlineBannerIn 0.3s ease;
+  box-shadow: 0 2px 12px rgba(220, 38, 38, 0.3);
+}
+
+@keyframes offlineBannerIn {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Push content down when offline banner is visible */
+.offline-banner ~ .main-content {
+  padding-top: calc(2rem + 36px);
+}
+
+@media (max-width: 768px) {
+  .offline-banner {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+
+  .offline-banner ~ .mobile-header {
+    top: 32px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   PWA INSTALL PROMPT
+   ═══════════════════════════════════════════════════ */
+
+.install-prompt {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  animation: installPromptIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 420px;
+  width: calc(100% - 32px);
+}
+
+@keyframes installPromptIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.install-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.install-prompt-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.install-prompt-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.install-prompt-text strong {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-family: var(--heading);
+}
+
+.install-prompt-text span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.install-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.install-prompt-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--heading);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.install-prompt-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.install-prompt-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.install-prompt-close:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 768px) {
+  .install-prompt {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   SW UPDATE TOAST
+   ═══════════════════════════════════════════════════ */
+
+.update-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.update-toast-icon {
+  color: #3b82f6;
+  flex-shrink: 0;
+  animation: spinSlow 2s linear infinite;
+}
+
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+
+.update-toast-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--heading);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.update-toast-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+@media (max-width: 768px) {
+  .update-toast {
+    left: 16px;
+    right: 16px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   IMPROVED NAV ACTIVE INDICATOR
+   ═══════════════════════════════════════════════════ */
+
+.nav-link.active {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  position: relative;
+}
+
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--accent-amber);
+  border-radius: 0 3px 3px 0;
+}
+
+/* Mobile active tab indicator */
+.mobile-nav-link.active {
+  position: relative;
+}
+
+.mobile-nav-link.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: var(--accent-amber);
+  border-radius: 0 0 3px 3px;
+}
+
+/* ═══════════════════════════════════════════════════
+   ENHANCED SPLASH SCREEN
+   ═══════════════════════════════════════════════════ */
+
+@keyframes pulse {
+  0%   { opacity: 0.8; transform: scale(0.98); }
+  50%  { opacity: 1;   transform: scale(1); }
+  100% { opacity: 0.8; transform: scale(0.98); }
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
