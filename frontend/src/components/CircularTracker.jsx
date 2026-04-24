@@ -5,36 +5,45 @@ const CircularTracker = ({ data }) => {
 
   const habits = [
     // Morning (6)
-    { name: 'Meditate', getValue: l => l.morning?.meditate },
-    { name: 'Make bed', getValue: l => l.morning?.bed },
-    { name: 'Brush (AM)', getValue: l => l.morning?.teeth },
-    { name: 'Shower', getValue: l => l.morning?.shower },
-    { name: 'Gel', getValue: l => l.morning?.gel },
-    { name: 'Perfume', getValue: l => l.morning?.perfume },
-    // Bad Habits (6) - checked = avoided (good)
-    { name: 'No Smoke', getValue: l => l.bad?.smoking?.checked },
-    { name: 'Sexual focus', getValue: l => l.bad?.sexual?.checked },
-    { name: 'No Socials', getValue: l => l.bad?.social?.checked },
-    { name: 'No Phone', getValue: l => l.bad?.phone?.checked },
-    { name: 'No Coffee', getValue: l => l.bad?.coffee?.checked },
-    { name: 'No Eat Out', getValue: l => l.bad?.eating?.checked },
-    // Night (13) — Read removed
-    { name: 'Gym', getValue: l => l.night?.gym },
-    { name: 'Clean Table', getValue: l => l.night?.cleanTable },
-    { name: 'Org Table', getValue: l => l.night?.orgTable },
-    { name: 'Brush (Night)', getValue: l => l.night?.teeth },
-    { name: 'Shave', getValue: l => l.night?.shave },
-    { name: 'Wash Face', getValue: l => l.night?.washFace },
-    { name: 'Hot Shower', getValue: l => l.night?.hotShower },
-    { name: 'Hygiene', getValue: l => l.night?.hygiene },
-    { name: 'Fingernails', getValue: l => l.night?.fingerNails },
-    { name: 'Toenails', getValue: l => l.night?.toeNails },
-    { name: 'Wise Spend', getValue: l => l.night?.wiseSpend },
-    { name: 'Savings', getValue: l => l.night?.saves },
-    { name: 'No Sugar', getValue: l => l.night?.noSugar },
+    { name: 'Meditate', getValue: (l) => l.morning?.meditate },
+    { name: 'Make bed', getValue: (l) => l.morning?.bed },
+    { name: 'Brush (AM)', getValue: (l) => l.morning?.teeth },
+    { name: 'Shower', getValue: (l) => l.morning?.shower },
+    { name: 'Gel', getValue: (l) => l.morning?.gel },
+    { name: 'Perfume', getValue: (l) => l.morning?.perfume },
+    // Bad Habits (7) - checked = avoided (good)
+    { name: 'No Smoke', getValue: (l) => l.bad?.smoking?.checked },
+    { name: 'Sexual focus', getValue: (l) => l.bad?.sexual?.checked },
+    { name: 'No Socials', getValue: (l) => l.bad?.social?.checked },
+    { name: 'No Phone', getValue: (l) => l.bad?.phone?.checked },
+    { name: 'No Coffee', getValue: (l) => l.bad?.coffee?.checked },
+    { name: 'No Eat Out', getValue: (l) => l.bad?.eating?.checked },
+    { name: 'No Sugar', getValue: (l) => l.bad?.noSugar?.checked },
+    // Night (13)
+    { name: 'Gym', getValue: (l) => l.night?.gym },
+    { name: 'Clean Table', getValue: (l) => l.night?.cleanTable },
+    { name: 'Org Table', getValue: (l) => l.night?.orgTable },
+    { name: 'Brush (Night)', getValue: (l) => l.night?.teeth },
+    { name: 'Shave', getValue: (l) => l.night?.shave },
+    { name: 'Wash Face', getValue: (l) => l.night?.washFace },
+    { name: 'Hot Shower', getValue: (l) => l.night?.hotShower },
+    { name: 'Hygiene', getValue: (l) => l.night?.hygiene },
+    { name: 'Fingernails', getValue: (l) => l.night?.fingerNails },
+    { name: 'Toenails', getValue: (l) => l.night?.toeNails },
+    { name: 'Wise Spend', getValue: (l) => l.night?.wiseSpend },
+    { name: 'Savings', getValue: (l) => l.night?.saves },
+    { name: 'Fill App', getValue: (l) => l.night?.fillApp },
     // Extra
-    { name: 'Side Hustle', getValue: l => l.hustle?.achieved },
-    { name: 'Video Edit', getValue: l => l.video?.achieved },
+    { name: 'Book Reading', getValue: (l) => l.books?.read },
+    { name: 'ToDo App', getValue: (l) => l.system?.todo },
+    { name: 'Money Tracker', getValue: (l) => l.system?.money },
+    { name: 'Side Hustle', getValue: (l) => l.hustle?.achieved },
+    { name: 'Video Edit', getValue: (l) => l.video?.achieved },
+    // Weekend
+    { name: 'Pre-laundry', getValue: (l, d) => (d.dayName === 'Sat' || d.dayName === 'Saturday') ? (l.weekend?.saturday?.preLaundry ?? false) : null },
+    { name: 'Clean Room', getValue: (l, d) => (d.dayName === 'Sun' || d.dayName === 'Sunday') ? (l.weekend?.sunday?.cleanRoom ?? false) : null },
+    { name: 'Reg Laundry', getValue: (l, d) => (d.dayName === 'Sun' || d.dayName === 'Sunday') ? (l.weekend?.sunday?.regularLaundry ?? false) : null },
+    { name: 'Share Bought', getValue: (l, d) => (d.dayName === 'Sun' || d.dayName === 'Sunday') ? (l.weekend?.sunday?.shareBought ?? false) : null },
   ];
 
   const numDays = data.length;
@@ -46,7 +55,7 @@ const CircularTracker = ({ data }) => {
   const cy = height / 2.2;
   
   const innerRadius = 90;
-  const ringWidth = 14;
+  const ringWidth = 10;
   const outerRadius = innerRadius + numHabits * ringWidth;
 
   const startRad = -Math.PI * 0.5;
@@ -100,9 +109,15 @@ const CircularTracker = ({ data }) => {
             const r2 = r1 + ringWidth;
             const path = getArcPath(r1, r2, a1, a2);
             
-            const isDone = habit.getValue(day.log);
+            const isDone = habit.getValue(day.log, day);
             const isSubmitted = day.log.isSubmitted;
-            const fill = !isSubmitted ? '#2d303a' : (isDone ? '#10b981' : '#ef4444');
+            
+            let fill = '#2d303a'; // grey default
+            if (isSubmitted) {
+              if (isDone === true) fill = '#10b981';
+              else if (isDone === false) fill = '#ef4444';
+              // if isDone is null (e.g. weekend duty on a weekday), it stays grey
+            }
 
             return (
               <path 
@@ -154,7 +169,7 @@ const CircularTracker = ({ data }) => {
               fill="var(--text-secondary)"
               textAnchor="end"
               alignmentBaseline="middle"
-              fontSize="9"
+              fontSize="7.5"
             >
               {habit.name}
             </text>
@@ -181,9 +196,9 @@ const CircularTracker = ({ data }) => {
           <span style={{
             fontSize: '0.75rem',
             fontWeight: 600,
-            color: !tooltip.submitted ? 'var(--text-muted)' : (tooltip.done ? '#10b981' : '#ef4444')
+            color: !tooltip.submitted || tooltip.done === null ? 'var(--text-muted)' : (tooltip.done ? '#10b981' : '#ef4444')
           }}>
-            {!tooltip.submitted ? 'No data' : (tooltip.done ? '✓ Done' : '✗ Missed')}
+            {!tooltip.submitted || tooltip.done === null ? 'N/A' : (tooltip.done ? '✓ Done' : '✗ Missed')}
           </span>
         </div>
       )}
