@@ -139,11 +139,11 @@ export default function MonthlyReview() {
         </div>
       </div>
 
-      <div className="text-center mt-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
+      <div className="text-center mb-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
         <h3>Total Monthly Expense: {totalMonthlySpend} TND</h3>
       </div>
 
-      <div className="glass-card mt-6" style={{border: '2px solid #10b981', overflow: 'hidden'}}>
+      <div className="glass-card mb-6" style={{border: '2px solid #10b981', overflow: 'hidden'}}>
         <div style={{background: '#10b981', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
           3. WEEKEND DUTIES COMPLETION
         </div>
@@ -152,7 +152,7 @@ export default function MonthlyReview() {
         </div>
       </div>
 
-      <div className="glass-card mt-6" style={{border: '2px solid #3b82f6', overflow: 'hidden'}}>
+      <div className="glass-card mb-6" style={{border: '2px solid #3b82f6', overflow: 'hidden'}}>
         <div style={{background: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
           4. SYSTEM CHECK COMPLETION
         </div>

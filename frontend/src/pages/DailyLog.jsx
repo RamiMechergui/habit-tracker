@@ -442,6 +442,28 @@ export default function DailyLog() {
           </div>
 
           <div className="glass-card p-6">
+            <h3 className="mb-4">System Check <span className="text-amber text-sm">{sysScore}/2pts</span></h3>
+            <div className="flex justify-between items-center mb-2">
+              <label>1. ToDo App Updated (1pt)</label>
+              <input 
+                type="checkbox" 
+                className="habit-checkbox" 
+                checked={log.system?.todo || false} 
+                onChange={e => updateSection('system', 'todo', e.target.checked)} 
+              />
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <label>2. Money Tracker Updated (1pt)</label>
+              <input 
+                type="checkbox" 
+                className="habit-checkbox" 
+                checked={log.system?.money || false} 
+                onChange={e => updateSection('system', 'money', e.target.checked)} 
+              />
+            </div>
+          </div>
+
+          <div className="glass-card p-6">
             <h3 className="mb-4">Expenses</h3>
             {log.expenses.map((exp, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
@@ -488,28 +510,6 @@ export default function DailyLog() {
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
               <strong>Total Spent:</strong>
               <strong className="text-amber">{log.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND</strong>
-            </div>
-          </div>
-          
-          <div className="glass-card p-6">
-            <h3 className="mb-4">System Check <span className="text-amber text-sm">{sysScore}/2pts</span></h3>
-            <div className="flex justify-between items-center mb-2">
-              <label>1. ToDo App Updated (1pt)</label>
-              <input 
-                type="checkbox" 
-                className="habit-checkbox" 
-                checked={log.system?.todo || false} 
-                onChange={e => updateSection('system', 'todo', e.target.checked)} 
-              />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>2. Money Tracker Updated (1pt)</label>
-              <input 
-                type="checkbox" 
-                className="habit-checkbox" 
-                checked={log.system?.money || false} 
-                onChange={e => updateSection('system', 'money', e.target.checked)} 
-              />
             </div>
           </div>
           
