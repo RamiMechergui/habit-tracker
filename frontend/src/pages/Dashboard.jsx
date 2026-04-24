@@ -11,6 +11,12 @@ export default function Dashboard() {
   const [bookName, setBookName] = useState('');
   const [targetPages, setTargetPages] = useState('');
   const [bookError, setBookError] = useState('');
+  const [categoryMessage, setCategoryMessage] = useState({ text: '', type: '' });
+
+  const showMessage = (text, type = 'success') => {
+    setCategoryMessage({ text, type });
+    setTimeout(() => setCategoryMessage({ text: '', type: '' }), 3000);
+  };
 
   const todayDate = new Date();
   const todayStr = format(todayDate, 'yyyy-MM-dd');
@@ -55,9 +61,20 @@ export default function Dashboard() {
   }
 
   const handleAddCategory = () => {
-    if (newCategory.trim()) {
-      addExpenseCategory(newCategory.trim());
-      setNewCategory('');
+    const cat = newCategory.trim();
+    if (cat) {
+      if (window.confirm(`Are you sure you want to add '${cat}' as a new expense category?`)) {
+        addExpenseCategory(cat);
+        setNewCategory('');
+        showMessage(`Category '${cat}' added successfully!`);
+      }
+    }
+  };
+
+  const handleDeleteCategory = (cat) => {
+    if (window.confirm(`Are you sure you want to delete the category '${cat}'?`)) {
+      deleteExpenseCategory(cat);
+      showMessage(`Category '${cat}' deleted successfully!`);
     }
   };
 
@@ -273,7 +290,7 @@ export default function Dashboard() {
               <span>{cat}</span>
               <button 
                 type="button" 
-                onClick={() => deleteExpenseCategory(cat)} 
+                onClick={() => handleDeleteCategory(cat)} 
                 title="Delete Category"
                 style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
@@ -282,6 +299,19 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+        
+        {categoryMessage.text && (
+          <div style={{ 
+            padding: '8px 12px', 
+            borderRadius: '6px', 
+            marginBottom: '1rem', 
+            fontSize: '0.85rem',
+            background: categoryMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+            color: categoryMessage.type === 'success' ? '#10b981' : '#ef4444'
+          }}>
+            {categoryMessage.text}
+          </div>
+        )}
         
         <div className="flex flex-wrap gap-2">
           <input 
