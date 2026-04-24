@@ -349,13 +349,13 @@ export default function Dashboard() {
       {/* Interactive Monthly Calendar */}
       <div className="glass-card p-6 mt-6">
         <div className="flex justify-between items-center mb-6">
-          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handlePrevMonth}>
+          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }} onClick={handlePrevMonth}>
             <ChevronLeft size={20} />
           </button>
           <h3 className="text-amber m-0" style={{ fontSize: '1.2rem' }}>
             {format(calendarDate, 'MMMM yyyy')}
           </h3>
-          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handleNextMonth}>
+          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }} onClick={handleNextMonth}>
             <ChevronRight size={20} />
           </button>
         </div>

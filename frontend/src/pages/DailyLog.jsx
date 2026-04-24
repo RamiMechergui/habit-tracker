@@ -248,11 +248,6 @@ export default function DailyLog() {
               </div>
             ))}
           </div>
-
-        </div>
-
-        <div className="flex-col gap-6">
-          
           {/* Weekend Habits (Conditional) */}
           {(isSaturday || isSunday) && (
             <div className="glass-card p-6 section-weekend">
@@ -303,6 +298,10 @@ export default function DailyLog() {
               )}
             </div>
           )}
+
+        </div>
+
+        <div className="flex-col gap-6">
 
           <div className="glass-card p-6">
             <h3 className="mb-4">Side Hustle <span className="text-amber text-sm">{hScore}/5pts</span></h3>

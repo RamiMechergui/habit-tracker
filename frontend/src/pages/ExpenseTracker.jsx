@@ -152,11 +152,11 @@ export default function ExpenseTracker() {
 
         {/* Date Navigation */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', maxWidth: '400px' }}>
-          <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handlePrev}>
+          <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }} onClick={handlePrev}>
             <ChevronLeft size={20} />
           </button>
           <h3 style={{ margin: 0, textAlign: 'center', flex: 1, fontSize: '1.1rem' }}>{dateTitle}</h3>
-          <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handleNext}>
+          <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }} onClick={handleNext}>
             <ChevronRight size={20} />
           </button>
         </div>
