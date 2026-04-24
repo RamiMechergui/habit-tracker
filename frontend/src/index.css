@@ -950,8 +950,9 @@ label {
   }
 
   /* Exception: items-center rows shouldn't all wrap */
-  .flex.items-center.gap-2 {
-    flex-wrap: nowrap;
+  .flex.items-center.gap-2,
+  .flex.justify-between.items-center {
+    flex-wrap: nowrap !important;
   }
 
   /* ── Auth page ── */

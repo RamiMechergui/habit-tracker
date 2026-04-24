@@ -388,41 +388,41 @@ export default function DailyLog() {
           <div className="glass-card p-6">
             <h3 className="mb-4">Expenses</h3>
             {log.expenses.map((exp, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-                {/* Row 1: description (full width) */}
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <input
-                  style={{ gridColumn: '1 / -1' }}
+                  className="w-full"
                   placeholder={`Expense ${i + 1} description`}
                   value={exp.desc}
                   onChange={e => updateExpense(i, 'desc', e.target.value)}
                 />
-                {/* Row 2: category + amount + delete */}
-                <select
-                  value={exp.category || 'Other'}
-                  onChange={e => updateExpense(i, 'category', e.target.value)}
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem' }}
-                >
-                  {expenseCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <input
-                    style={{ flex: 1 }}
-                    type="number"
-                    placeholder="TND"
-                    value={exp.amount || ''}
-                    onChange={e => updateExpense(i, 'amount', e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="expense-delete-btn"
-                    onClick={() => deleteExpense(i)}
-                    title="Delete expense"
-                    style={{ flexShrink: 0 }}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    style={{ flex: '1 1 120px', minWidth: '120px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem' }}
+                    value={exp.category || 'Other'}
+                    onChange={e => updateExpense(i, 'category', e.target.value)}
                   >
-                    <Trash2 size={14} />
-                  </button>
+                    {expenseCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', gap: '0.5rem', flex: '1 1 100px', minWidth: '100px', alignItems: 'center' }}>
+                    <input
+                      style={{ flex: 1, minWidth: '60px' }}
+                      type="number"
+                      placeholder="TND"
+                      value={exp.amount || ''}
+                      onChange={e => updateExpense(i, 'amount', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="expense-delete-btn"
+                      onClick={() => deleteExpense(i)}
+                      title="Delete expense"
+                      style={{ flexShrink: 0, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
