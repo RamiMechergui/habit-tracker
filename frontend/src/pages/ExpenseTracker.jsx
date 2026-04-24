@@ -123,23 +123,25 @@ export default function ExpenseTracker() {
       </div>
 
       {/* Controls */}
-      <div className="glass-card p-6 mb-6" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+      <div className="glass-card p-4 mb-6" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
         
         {/* Tabs */}
-        <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: '8px', padding: '4px' }}>
+        <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: '8px', padding: '4px', width: '100%', maxWidth: '400px' }}>
           {['daily', 'monthly', 'yearly'].map(mode => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               style={{
+                flex: 1,
                 background: viewMode === mode ? 'var(--bg-card-hover)' : 'transparent',
                 color: viewMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
                 border: 'none',
-                padding: '6px 16px',
+                padding: '8px 4px',
                 borderRadius: '6px',
                 cursor: 'pointer',
                 textTransform: 'capitalize',
                 fontWeight: viewMode === mode ? 600 : 400,
+                fontSize: '0.9rem',
                 transition: 'all 0.2s'
               }}
             >
@@ -149,12 +151,12 @@ export default function ExpenseTracker() {
         </div>
 
         {/* Date Navigation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handlePrev}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', maxWidth: '400px' }}>
+          <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handlePrev}>
             <ChevronLeft size={20} />
           </button>
-          <h3 style={{ margin: 0, minWidth: '130px', textAlign: 'center' }}>{dateTitle}</h3>
-          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handleNext}>
+          <h3 style={{ margin: 0, textAlign: 'center', flex: 1, fontSize: '1.1rem' }}>{dateTitle}</h3>
+          <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handleNext}>
             <ChevronRight size={20} />
           </button>
         </div>
