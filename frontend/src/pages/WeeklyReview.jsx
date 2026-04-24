@@ -85,6 +85,29 @@ export default function WeeklyReview() {
     }
   };
 
+  // Weekend Duties Data
+  const satDuty = weeklyData.find(d => d.dayName === 'Sat')?.log?.weekend?.saturday;
+  const sunDuty = weeklyData.find(d => d.dayName === 'Sun')?.log?.weekend?.sunday;
+  
+  const weekendData = {
+    labels: ['Pre-laundry (Sat)', 'Cleaning Room (Sun)', 'Regular Laundry (Sun)', '1 Share Bought (Sun)'],
+    datasets: [{
+      label: 'Completion Status (1 = Done)',
+      data: [
+        satDuty?.preLaundry ? 1 : 0,
+        sunDuty?.cleanRoom ? 1 : 0,
+        sunDuty?.regularLaundry ? 1 : 0,
+        sunDuty?.shareBought ? 1 : 0
+      ],
+      backgroundColor: [
+        satDuty?.preLaundry ? '#10b981' : '#ef4444',
+        sunDuty?.cleanRoom ? '#10b981' : '#ef4444',
+        sunDuty?.regularLaundry ? '#10b981' : '#ef4444',
+        sunDuty?.shareBought ? '#10b981' : '#ef4444'
+      ]
+    }]
+  };
+
   return (
     <div>
       <h2 className="mb-6 text-center">Weekly Discipline Report</h2>
@@ -137,6 +160,13 @@ export default function WeeklyReview() {
         </div>
         <div className="text-center mt-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
           <h3>Total Weekly Expense: {weeklyData.reduce((t, d) => t + d.log.expenses.reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3)} TND</h3>
+        </div>
+      </div>
+
+      <div className="glass-card p-6 mb-6">
+        <h3 className="mb-4 text-center" style={{color: '#10b981'}}>Weekend Duties Completion</h3>
+        <div style={{ position: 'relative', height: '250px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { min: 0, max: 1, ticks: { stepSize: 1, callback: (v) => v === 1 ? 'Done' : 'Not Done' } } }, plugins: { legend: { display: false } } }} />
         </div>
       </div>
       

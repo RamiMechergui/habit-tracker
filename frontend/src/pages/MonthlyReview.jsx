@@ -65,6 +65,30 @@ export default function MonthlyReview() {
 
   const totalMonthlySpend = monthlyData.reduce((t, d) => t + d.log.expenses.reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3);
 
+  // Weekend Duties Aggregation for the Month
+  let preLaundryCount = 0;
+  let cleanRoomCount = 0;
+  let regularLaundryCount = 0;
+  let shareBoughtCount = 0;
+
+  monthlyData.forEach(d => {
+    const w = d.log.weekend;
+    if (w?.saturday?.preLaundry) preLaundryCount++;
+    if (w?.sunday?.cleanRoom) cleanRoomCount++;
+    if (w?.sunday?.regularLaundry) regularLaundryCount++;
+    if (w?.sunday?.shareBought) shareBoughtCount++;
+  });
+
+  const weekendData = {
+    labels: ['Pre-laundry (Sat)', 'Cleaning Room (Sun)', 'Regular Laundry (Sun)', '1 Share Bought (Sun)'],
+    datasets: [{
+      label: 'Total Completions in Month',
+      data: [preLaundryCount, cleanRoomCount, regularLaundryCount, shareBoughtCount],
+      backgroundColor: '#10b981',
+      barPercentage: 0.5
+    }]
+  };
+
   return (
     <div>
       <h2 className="mb-6 text-center">MONTHLY REPORT</h2>
@@ -98,6 +122,15 @@ export default function MonthlyReview() {
 
       <div className="text-center mt-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
         <h3>Total Monthly Expense: {totalMonthlySpend} TND</h3>
+      </div>
+
+      <div className="glass-card mt-6" style={{border: '2px solid #10b981', overflow: 'hidden'}}>
+        <div style={{background: '#10b981', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
+          3. WEEKEND DUTIES COMPLETION
+        </div>
+        <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />
+        </div>
       </div>
       
     </div>
