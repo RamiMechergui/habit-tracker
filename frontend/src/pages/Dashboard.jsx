@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useHabits } from '../Store';
-import { format, startOfMonth, getDay, differenceInCalendarDays } from 'date-fns';
+import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle } from 'lucide-react';
+import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks } = useHabits();
@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [targetPages, setTargetPages] = useState('');
   const [bookError, setBookError] = useState('');
   const [categoryMessage, setCategoryMessage] = useState({ text: '', type: '' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: '', category: '' });
+  const [calendarDate, setCalendarDate] = useState(new Date());
 
   const showMessage = (text, type = 'success') => {
     setCategoryMessage({ text, type });
@@ -22,10 +24,18 @@ export default function Dashboard() {
   const todayStr = format(todayDate, 'yyyy-MM-dd');
   const todayLog = getLog(todayStr);
   
-  const monthData = getMonthlyData(todayDate);
-  const firstDay = startOfMonth(todayDate);
+  const monthData = getMonthlyData(calendarDate);
+  const firstDay = startOfMonth(calendarDate);
   const emptyCells = getDay(firstDay);
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const handlePrevMonth = () => {
+    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1));
+  };
 
   const bookProgress = getBookProgress();
 
@@ -60,22 +70,32 @@ export default function Dashboard() {
     BookReadingIcon   = BookX;
   }
 
-  const handleAddCategory = () => {
+  const handleAddCategoryClick = () => {
     const cat = newCategory.trim();
     if (cat) {
-      if (window.confirm(`Are you sure you want to add '${cat}' as a new expense category?`)) {
-        addExpenseCategory(cat);
-        setNewCategory('');
-        showMessage(`Category '${cat}' added successfully!`);
-      }
+      setConfirmModal({ isOpen: true, action: 'add', category: cat });
     }
   };
 
-  const handleDeleteCategory = (cat) => {
-    if (window.confirm(`Are you sure you want to delete the category '${cat}'?`)) {
-      deleteExpenseCategory(cat);
-      showMessage(`Category '${cat}' deleted successfully!`);
+  const handleDeleteCategoryClick = (cat) => {
+    setConfirmModal({ isOpen: true, action: 'delete', category: cat });
+  };
+
+  const confirmAction = () => {
+    const { action, category } = confirmModal;
+    if (action === 'add') {
+      addExpenseCategory(category);
+      setNewCategory('');
+      showMessage(`Category '${category}' added successfully!`);
+    } else if (action === 'delete') {
+      deleteExpenseCategory(category);
+      showMessage(`Category '${category}' deleted successfully!`);
     }
+    setConfirmModal({ isOpen: false, action: '', category: '' });
+  };
+
+  const cancelAction = () => {
+    setConfirmModal({ isOpen: false, action: '', category: '' });
   };
 
   const handleSetBook = async () => {
@@ -290,7 +310,7 @@ export default function Dashboard() {
               <span>{cat}</span>
               <button 
                 type="button" 
-                onClick={() => handleDeleteCategory(cat)} 
+                onClick={() => handleDeleteCategoryClick(cat)} 
                 title="Delete Category"
                 style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
@@ -319,18 +339,26 @@ export default function Dashboard() {
             placeholder="New classification (e.g., Software)" 
             value={newCategory} 
             onChange={e => setNewCategory(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+            onKeyDown={e => e.key === 'Enter' && handleAddCategoryClick()}
             style={{ flex: '1 1 240px' }}
           />
-          <button className="btn btn-primary" style={{ flex: '1 1 120px' }} onClick={handleAddCategory}>Add Category</button>
+          <button className="btn btn-primary" style={{ flex: '1 1 120px' }} onClick={handleAddCategoryClick}>Add Category</button>
         </div>
       </div>
 
       {/* Interactive Monthly Calendar */}
       <div className="glass-card p-6 mt-6">
-        <h3 className="mb-6 text-center text-amber">
-          {format(todayDate, 'MMMM yyyy')} Calendar
-        </h3>
+        <div className="flex justify-between items-center mb-6">
+          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handlePrevMonth}>
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="text-amber m-0" style={{ fontSize: '1.2rem' }}>
+            {format(calendarDate, 'MMMM yyyy')}
+          </h3>
+          <button className="btn" style={{ padding: '6px', background: 'transparent', border: '1px solid var(--border)' }} onClick={handleNextMonth}>
+            <ChevronRight size={20} />
+          </button>
+        </div>
         
         <div className="dashboard-calendar">
           {daysOfWeek.map(day => (
@@ -343,18 +371,19 @@ export default function Dashboard() {
           
           {monthData.map((d, i) => {
             const isToday = d.date === todayStr;
+            const isCurrentMonthView = isSameMonth(calendarDate, todayDate);
             const logData = d.log;
             const expenseStr = logData.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3) + ' TND';
             
             return (
               <div 
                 key={d.date} 
-                className={`calendar-cell ${isToday ? 'is-today' : ''}`}
+                className={`calendar-cell ${(isToday && isCurrentMonthView) ? 'is-today' : ''}`}
                 onClick={() => navigate(`/daily?date=${d.date}`)}
                 title={`Click to view logs for ${d.date}`}
               >
                 <div className="flex justify-between">
-                  <span className="cal-date" style={{ color: isToday ? 'var(--accent-blue)' : 'var(--text-primary)'}}>
+                  <span className="cal-date" style={{ color: (isToday && isCurrentMonthView) ? 'var(--accent-blue)' : 'var(--text-primary)'}}>
                     {d.dayNum}
                   </span>
                   {logData.isSubmitted && (
@@ -373,6 +402,42 @@ export default function Dashboard() {
         <p className="text-center text-muted text-sm mt-4">Select any date to view or edit its daily log.</p>
       </div>
       
+      {/* Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div className="glass-card p-6" style={{ width: '90%', maxWidth: '380px', animation: 'pageSlideIn 0.2s ease-out' }}>
+            <h3 className="mb-3" style={{ fontSize: '1.2rem' }}>Confirm Action</h3>
+            <p className="mb-6 text-muted" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
+              Are you sure you want to <strong style={{ color: confirmModal.action === 'delete' ? '#ef4444' : '#10b981' }}>{confirmModal.action}</strong> the category <strong style={{ color: 'var(--text-primary)' }}>'{confirmModal.category}'</strong>?
+            </p>
+            <div className="flex gap-3">
+              <button 
+                className="btn" 
+                style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }} 
+                onClick={cancelAction}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn" 
+                style={{ 
+                  flex: 1, 
+                  background: confirmModal.action === 'delete' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #10b981, #059669)',
+                  color: '#fff', border: 'none'
+                }} 
+                onClick={confirmAction}
+              >
+                {confirmModal.action === 'delete' ? 'Yes, Delete' : 'Yes, Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
