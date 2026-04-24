@@ -319,8 +319,8 @@ export const HabitProvider = ({ children }) => {
   const createEmptyDay = (dateStr) => ({
     date: dateStr,
     morning: { wakeTime: '', meditate: false, bed: false, teeth: false, shower: false, gel: false, perfume: false },
-    bad: { smoking: { checked: false, a: false, s: false, count: 0 }, sexual: { checked: false, a: false, s: false }, social: { checked: false, a: false, s: false, min: 0 }, phone: { checked: false, a: false, s: false, min: 0 }, coffee: { checked: false, a: false, s: false }, eating: { checked: false, a: false, s: false } },
-    night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, read: false, noSugar: false },
+    bad: { smoking: { checked: false, a: false, s: false, count: 0 }, sexual: { checked: false, a: false, s: false }, social: { checked: false, a: false, s: false, min: 0 }, phone: { checked: false, a: false, s: false, min: 0 }, coffee: { checked: false, a: false, s: false }, eating: { checked: false, a: false, s: false }, noSugar: { checked: false, a: false, s: false } },
+    night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, fillApp: false },
     weekend: { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } },
     books: { name: '', page: '', read: false },
     hustle: { task: '', time: '', achieved: false, lessons: '' },
@@ -349,6 +349,9 @@ export const HabitProvider = ({ children }) => {
       }
       if (!filledLog.system) {
         filledLog.system = { todo: false, money: false };
+      }
+      if (!filledLog.bad.noSugar) {
+        filledLog.bad.noSugar = { checked: filledLog.night?.noSugar || false, a: false, s: false };
       }
       if (isWithinCurrentBook && filledLog.books.name !== currentBook.bookName) {
         filledLog.books.name = currentBook.bookName;
@@ -393,20 +396,20 @@ export const HabitProvider = ({ children }) => {
       else if(time <= 700) mScore += 5;
     }
     if(data.morning.meditate) mScore += 1;
-    if(data.morning.bed) mScore += 1;
+    if(data.morning.bed) mScore += 2;
     if(data.morning.teeth) mScore += 2;
-    if(data.morning.shower) mScore += 8; // Reduced from 10 to 8
+    if(data.morning.shower) mScore += 8;
     if(data.morning.gel) mScore += 1;
-    if(data.morning.perfume) mScore += 1;
+    if(data.morning.perfume) mScore += 2;
 
-    // Night (30 pts) — Read removed, Hot Shower now 4pts, noSugar now 8pts
+    // Night (30 pts)
     let nScore = 0;
     const n = data.night;
-    if(n.gym) nScore += 6;
+    if(n.gym) nScore += 10;
     if(n.cleanTable) nScore += 1;
     if(n.orgTable) nScore += 1;
     if(n.teeth) nScore += 2;
-    if(n.shave) nScore += 1;
+    if(n.shave) nScore += 2;
     if(n.washFace) nScore += 1;
     if(n.hotShower) nScore += 4;
     if(n.hygiene) nScore += 2;
@@ -414,17 +417,18 @@ export const HabitProvider = ({ children }) => {
     if(n.toeNails) nScore += 1;
     if(n.wiseSpend) nScore += 1;
     if(n.saves) nScore += 1;
-    if(n.noSugar) nScore += 8;
+    if(n.fillApp) nScore += 3;
 
-    // Bad Habits (30 pts) — checked = avoided = GAIN points
+    // Bad Habits (28 pts)
     let bScore = 0;
     const b = data.bad;
-    if(b.smoking.checked) bScore += 12;
+    if(b.smoking.checked) bScore += 10;
     if(b.sexual.checked) bScore += 4;
     if(b.social.checked) bScore += 2;
-    if(b.phone.checked) bScore += 8;
+    if(b.phone.checked) bScore += 6;
     if(b.coffee.checked) bScore += 2;
     if(b.eating.checked) bScore += 2;
+    if(b.noSugar?.checked) bScore += 2;
 
     // Extra Tasks (10 pts) + System Check (2 pts)
     let bkScore = 0;

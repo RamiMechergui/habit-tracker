@@ -87,20 +87,20 @@ export default function DailyLog() {
     else if(time <= 700) mScore += 5;
   }
   if(log.morning.meditate) mScore += 1;
-  if(log.morning.bed) mScore += 1;
+  if(log.morning.bed) mScore += 2;
   if(log.morning.teeth) mScore += 2;
   if(log.morning.shower) mScore += 8;
   if(log.morning.gel) mScore += 1;
-  if(log.morning.perfume) mScore += 1;
+  if(log.morning.perfume) mScore += 2;
 
-  // Night (30 pts) — "Read 10 pages" removed, Hot Shower now 4pts
+  // Night (30 pts)
   let nScore = 0;
   const n = log.night;
-  if(n.gym) nScore += 6;
+  if(n.gym) nScore += 10;
   if(n.cleanTable) nScore += 1;
   if(n.orgTable) nScore += 1;
   if(n.teeth) nScore += 2;
-  if(n.shave) nScore += 1;
+  if(n.shave) nScore += 2;
   if(n.washFace) nScore += 1;
   if(n.hotShower) nScore += 4;
   if(n.hygiene) nScore += 2;
@@ -108,7 +108,7 @@ export default function DailyLog() {
   if(n.toeNails) nScore += 1;
   if(n.wiseSpend) nScore += 1;
   if(n.saves) nScore += 1;
-  if(n.noSugar) nScore += 8;
+  if(n.fillApp) nScore += 3;
 
 
   const hScore = log.hustle.achieved ? 5 : 0;
@@ -119,12 +119,13 @@ export default function DailyLog() {
   // Bad Habits — checked = avoided = GAIN points (positive scoring)
   let b = log.bad;
   let dynamicBadScore = 0;
-  if(b.smoking.checked) dynamicBadScore += 12;
+  if(b.smoking.checked) dynamicBadScore += 10;
   if(b.sexual.checked) dynamicBadScore += 4;
   if(b.social.checked) dynamicBadScore += 2;
-  if(b.phone.checked) dynamicBadScore += 8;
+  if(b.phone.checked) dynamicBadScore += 6;
   if(b.coffee.checked) dynamicBadScore += 2;
   if(b.eating.checked) dynamicBadScore += 2;
+  if(b.noSugar?.checked) dynamicBadScore += 2;
 
   let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + sysScore + hScore + vScore));
   
@@ -160,7 +161,7 @@ export default function DailyLog() {
           
           {/* Morning Habits */}
           <div className="glass-card p-6 section-morning">
-            <h3 className="mb-4">Morning Habits <span className="text-muted text-sm">{mScore}/28pts</span></h3>
+            <h3 className="mb-4">Morning Habits <span className="text-muted text-sm">{mScore}/30pts</span></h3>
             
             <div className="flex justify-between items-center mb-2">
               <label>1. Wake up time (14pts)</label>
@@ -172,7 +173,7 @@ export default function DailyLog() {
               <input type="checkbox" className="habit-checkbox" checked={log.morning.meditate} onChange={e => updateSection('morning', 'meditate', e.target.checked)} />
             </div>
             <div className="flex justify-between items-center mb-2">
-              <label>3. Make bed (1pt)</label>
+              <label>3. Make bed (2pts)</label>
               <input type="checkbox" className="habit-checkbox" checked={log.morning.bed} onChange={e => updateSection('morning', 'bed', e.target.checked)} />
             </div>
             <div className="flex justify-between items-center mb-2">
@@ -188,14 +189,14 @@ export default function DailyLog() {
               <input type="checkbox" className="habit-checkbox" checked={log.morning.gel} onChange={e => updateSection('morning', 'gel', e.target.checked)} />
             </div>
             <div className="flex justify-between items-center mb-2">
-              <label>7. Put on perfume (1pt)</label>
+              <label>7. Put on perfume (2pts)</label>
               <input type="checkbox" className="habit-checkbox" checked={log.morning.perfume} onChange={e => updateSection('morning', 'perfume', e.target.checked)} />
             </div>
           </div>
 
           {/* Bad Habits — checked = avoided = positive points */}
           <div className="glass-card p-6 section-bad">
-            <h3 className="mb-1">Bad Habits <span className="text-muted text-sm">{dynamicBadScore}/30pts</span></h3>
+            <h3 className="mb-1">Bad Habits <span className="text-muted text-sm">{dynamicBadScore}/28pts</span></h3>
             <div className="flex items-center gap-2 mb-4 p-2" style={{ background: 'rgba(16, 185, 129, 0.1)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
               <span style={{ fontSize: '1.2rem' }}>🛡️</span>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -204,12 +205,13 @@ export default function DailyLog() {
             </div>
             
             {[
-              { id: 'smoking', label: '1. Smoking (12pts)', extra: 'count', placeholder: 'Cigarettes' },
+              { id: 'smoking', label: '1. Smoking (10pts)', extra: 'count', placeholder: 'Cigarettes' },
               { id: 'sexual', label: '2. Sexual discipline (4pts)' },
               { id: 'social', label: '3. Social Media (2pts)', extra: 'min', placeholder: 'Time (min)' },
-              { id: 'phone', label: '4. Phone Usage (8pts)', extra: 'min', placeholder: 'Time (min)' },
+              { id: 'phone', label: '4. Phone Usage (6pts)', extra: 'min', placeholder: 'Time (min)' },
               { id: 'coffee', label: '5. Coffee (2pts)' },
               { id: 'eating', label: '6. Eating out (2pts)' },
+              { id: 'noSugar', label: '7. No sugar the whole day (2pts)' },
             ].map(item => (
               <div key={item.id} className="flex justify-between items-center mb-2">
                 <label className="flex-1">{item.label}</label>
@@ -224,15 +226,15 @@ export default function DailyLog() {
             ))}
           </div>
           
-          {/* Night Habits — Read 10 pages removed, Hot Shower now 4pts */}
+          {/* Night Habits */}
           <div className="glass-card p-6 section-night">
             <h3 className="mb-4">Night Habits <span className="text-muted text-sm">{nScore}/30pts</span></h3>
             {[
-              { id: 'gym', label: '1. Gym and clothes laundry (6pts)' },
+              { id: 'gym', label: '1. Gym and clothes laundry (10pts)' },
               { id: 'cleanTable', label: '2. Clean small table (1pt)' },
               { id: 'orgTable', label: '3. Organize computer table (1pt)' },
               { id: 'teeth', label: '4. Brush teeth & tongue (2pts)' },
-              { id: 'shave', label: '5. Shave beard (1pt)' },
+              { id: 'shave', label: '5. Shave beard (2pts)' },
               { id: 'washFace', label: '6. Wash face (green soap) (1pt)' },
               { id: 'hotShower', label: '7. Take Hot shower (4pts)' },
               { id: 'hygiene', label: '8. Hygiene of sensitive areas (2pts)' },
@@ -240,7 +242,7 @@ export default function DailyLog() {
               { id: 'toeNails', label: '10. Trimming toenails (1pt)' },
               { id: 'wiseSpend', label: '11. Wise spending (1pt)' },
               { id: 'saves', label: '12. 1 TND in Savings (1pt)' },
-              { id: 'noSugar', label: '13. No sugar whole day (8pts)' },
+              { id: 'fillApp', label: '13. Fill out the web app (3pts)' },
             ].map(item => (
               <div key={item.id} className="flex justify-between items-center mb-2">
                 <label>{item.label}</label>
