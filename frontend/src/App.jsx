@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff
+  WifiOff, Wallet
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -13,6 +13,7 @@ import BookArchive from './pages/BookArchive';
 import Settings from './pages/Settings';
 import Splash from './pages/Splash';
 import Auth from './pages/Auth';
+import ExpenseTracker from './pages/ExpenseTracker';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
@@ -24,6 +25,7 @@ const NAV_LINKS = [
   { to: '/weekly',    icon: CalendarDays,    label: 'Weekly' },
   { to: '/monthly',   icon: CalendarRange,   label: 'Monthly' },
   { to: '/archive',   icon: BookOpen,        label: 'Archive' },
+  { to: '/expenses',  icon: Wallet,          label: 'Expenses' },
   { to: '/settings',  icon: SettingsIcon,    label: 'Settings' },
 ];
 
@@ -145,6 +147,7 @@ function App() {
             <Route path="/weekly"    element={<WeeklyReview />} />
             <Route path="/monthly"   element={<MonthlyReview />} />
             <Route path="/archive"   element={<BookArchive />} />
+            <Route path="/expenses"  element={<ExpenseTracker />} />
             <Route path="/settings"  element={<Settings />} />
           </Routes>
         </div>
