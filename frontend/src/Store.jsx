@@ -323,7 +323,7 @@ export const HabitProvider = ({ children }) => {
     night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, fillApp: false },
     weekend: { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } },
     books: { name: '', page: '', read: false },
-    hustle: { task: '', time: '', achieved: false, lessons: '' },
+    hustle: { task: '', time: '', achieved: false, lessons: [] },
     video: { task: '', time: '', achieved: false, progress: 'Same' },
     system: { todo: false, money: false },
     expenses: Array(3).fill({ desc: '', category: 'Other', amount: 0 }),
@@ -352,6 +352,9 @@ export const HabitProvider = ({ children }) => {
       }
       if (!filledLog.bad.noSugar) {
         filledLog.bad.noSugar = { checked: filledLog.night?.noSugar || false, a: false, s: false };
+      }
+      if (filledLog.hustle && typeof filledLog.hustle.lessons === 'string') {
+        filledLog.hustle.lessons = filledLog.hustle.lessons.trim() ? [filledLog.hustle.lessons] : [];
       }
       if (isWithinCurrentBook && filledLog.books.name !== currentBook.bookName) {
         filledLog.books.name = currentBook.bookName;

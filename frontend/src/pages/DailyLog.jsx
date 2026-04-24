@@ -16,6 +16,40 @@ export default function DailyLog() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  // Side Hustle Lessons State
+  const [newLesson, setNewLesson] = useState('');
+  const [editingLessonIdx, setEditingLessonIdx] = useState(null);
+  const [editingLessonText, setEditingLessonText] = useState('');
+  const [lessonMsg, setLessonMsg] = useState('');
+
+  const showLessonMessage = (msg) => {
+    setLessonMsg(msg);
+    setTimeout(() => setLessonMsg(''), 3000);
+  };
+
+  const handleAddLesson = () => {
+    if (!newLesson.trim()) return;
+    const updatedLessons = [...(log.hustle.lessons || []), newLesson.trim()];
+    updateSection('hustle', 'lessons', updatedLessons);
+    setNewLesson('');
+  };
+
+  const handleSaveEditLesson = (idx) => {
+    if (!editingLessonText.trim()) return;
+    const updatedLessons = [...(log.hustle.lessons || [])];
+    updatedLessons[idx] = editingLessonText.trim();
+    updateSection('hustle', 'lessons', updatedLessons);
+    setEditingLessonIdx(null);
+    setEditingLessonText('');
+    showLessonMessage('Key lesson edited successfully');
+  };
+
+  const handleDeleteLesson = (idx) => {
+    const updatedLessons = (log.hustle.lessons || []).filter((_, i) => i !== idx);
+    updateSection('hustle', 'lessons', updatedLessons);
+    showLessonMessage('Key lesson deleted successfully');
+  };
+
   const bookProgress = getBookProgress();
   
   const dateObj = new Date(date + 'T00:00:00');
@@ -339,7 +373,42 @@ export default function DailyLog() {
               /> 
               Task Achieved
             </label>
-            <input className="w-full" placeholder="Key Lessons" value={log.hustle.lessons} onChange={e=>updateSection('hustle', 'lessons', e.target.value)} />
+            <div className="mt-4 pt-4" style={{borderTop: '1px solid var(--border)'}}>
+              <h4 className="mb-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Key Lessons</h4>
+              
+              {lessonMsg && (
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '8px', animation: 'pageSlideIn 0.2s ease-out' }}>
+                  {lessonMsg}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 mb-3">
+                {(log.hustle.lessons || []).map((lesson, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--bg-card-hover)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                    {editingLessonIdx === idx ? (
+                      <div className="flex w-full gap-2">
+                        <input className="flex-1" style={{padding: '4px 8px'}} value={editingLessonText} onChange={e => setEditingLessonText(e.target.value)} autoFocus />
+                        <button className="btn btn-primary" style={{padding: '4px 8px'}} onClick={() => handleSaveEditLesson(idx)}>Save</button>
+                        <button className="btn" style={{padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)'}} onClick={() => setEditingLessonIdx(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ flex: 1, fontSize: '0.85rem' }}>• {lesson}</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingLessonIdx(idx); setEditingLessonText(lesson); }}>Edit</button>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteLesson(idx)}>Delete</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <input className="flex-1" placeholder="Add a key lesson..." value={newLesson} onChange={e => setNewLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddLesson()} />
+                <button className="btn btn-secondary" onClick={handleAddLesson}>Add</button>
+              </div>
+            </div>
           </div>
 
           <div className="glass-card p-6">
