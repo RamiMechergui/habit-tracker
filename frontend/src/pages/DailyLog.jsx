@@ -17,6 +17,11 @@ export default function DailyLog() {
   const [submitError, setSubmitError] = useState('');
 
   const bookProgress = getBookProgress();
+  
+  const dateObj = new Date(date + 'T00:00:00');
+  const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+  const isSaturday = dayOfWeek === 6;
+  const isSunday = dayOfWeek === 0;
 
   useEffect(() => {
     const newLog = getLog(date);
@@ -247,6 +252,57 @@ export default function DailyLog() {
 
         <div className="flex-col gap-6">
           
+          {/* Weekend Habits (Conditional) */}
+          {(isSaturday || isSunday) && (
+            <div className="glass-card p-6 section-weekend">
+              <h3 className="mb-4">Weekend Duties <span className="text-amber text-sm">{isSaturday ? 'Saturday' : 'Sunday'}</span></h3>
+              
+              {isSaturday && (
+                <div className="flex justify-between items-center mb-2">
+                  <label>1. Pre-laundry arrangement</label>
+                  <input 
+                    type="checkbox" 
+                    className="habit-checkbox" 
+                    checked={log.weekend?.saturday?.preLaundry || false} 
+                    onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })} 
+                  />
+                </div>
+              )}
+
+              {isSunday && (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <label>1. Cleaning Room</label>
+                    <input 
+                      type="checkbox" 
+                      className="habit-checkbox" 
+                      checked={log.weekend?.sunday?.cleanRoom || false} 
+                      onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, cleanRoom: e.target.checked })} 
+                    />
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label>2. Regular laundry</label>
+                    <input 
+                      type="checkbox" 
+                      className="habit-checkbox" 
+                      checked={log.weekend?.sunday?.regularLaundry || false} 
+                      onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, regularLaundry: e.target.checked })} 
+                    />
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label>3. 1 share bought</label>
+                    <input 
+                      type="checkbox" 
+                      className="habit-checkbox" 
+                      checked={log.weekend?.sunday?.shareBought || false} 
+                      onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, shareBought: e.target.checked })} 
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="glass-card p-6">
             <h3 className="mb-4">Side Hustle <span className="text-amber text-sm">{hScore}/5pts</span></h3>
             <input className="w-full mb-2" placeholder="Planned Task" value={log.hustle.task} onChange={e=>updateSection('hustle', 'task', e.target.value)} />
