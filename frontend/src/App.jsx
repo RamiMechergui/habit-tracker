@@ -1,7 +1,8 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
-  LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen
+  LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
+  Wifi, WifiOff
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -25,7 +26,7 @@ const NAV_LINKS = [
 ];
 
 function App() {
-  const { loading, user, logout } = useHabits();
+  const { loading, user, logout, isOnline } = useHabits();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
   useEffect(() => {
@@ -56,6 +57,7 @@ function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <img src="/logo.png" alt="Logo" style={{ width: '18px', height: '18px', borderRadius: '4px' }} />
               <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6, fontWeight: 600 }}>Evolvia</p>
+              <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block', marginLeft: '2px', transition: 'background 0.3s' }} />
             </div>
           </div>
           <button

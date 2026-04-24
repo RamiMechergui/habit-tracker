@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import * as db from './offlineDb.js';
+import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
 
 const API_URL = ''; 
 
@@ -11,64 +13,130 @@ export const HabitProvider = ({ children }) => {
   const [logs, setLogs] = useState({});
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
 
-  // Initialize Auth & Fetch Logs on app mount
+  // ── Online / Offline state tracking ──────────────────────────
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  // ── Refresh state from server (called after sync completes) ──
+  const refreshFromServer = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const [catRes, bookRes, archiveRes, logsRes, settingsRes, avatarRes] = await Promise.all([
+        fetch(`${API_URL}/api/categories`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/currentbook`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/archives`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/daily`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/settings`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/avatar`, { credentials: 'include' })
+      ]);
+
+      if (catRes.ok) {
+        const cats = (await catRes.json()).expenseCategories;
+        setExpenseCategories(cats);
+        db.saveCategories(cats);
+      }
+      if (bookRes.ok) {
+        const book = await bookRes.json();
+        setCurrentBookState(book);
+        db.saveCurrentBook(book);
+      }
+      if (archiveRes.ok) {
+        const arch = (await archiveRes.json()).archivedBooks || [];
+        setArchivedBooks(arch);
+        db.saveArchives(arch);
+      }
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        setLogs(logsData);
+        db.saveLogs(logsData);
+      }
+
+      let profileData = {};
+      if (settingsRes.ok) {
+        const s = await settingsRes.json();
+        profileData = { ...profileData, firstName: s.firstName, lastName: s.lastName };
+      }
+      if (avatarRes.ok) {
+        const a = await avatarRes.json();
+        profileData = { ...profileData, profilePicture: a.profilePicture };
+      }
+      if (Object.keys(profileData).length > 0) {
+        setUser(prev => {
+          const updated = { ...prev, ...profileData };
+          db.saveUser(updated);
+          return updated;
+        });
+      }
+    } catch (e) {
+      console.error('[Store] refreshFromServer error:', e);
+    }
+  }, []);
+
+  // ── Register sync callback ──────────────────────────────────
+  useEffect(() => {
+    onSyncDone(refreshFromServer);
+  }, [refreshFromServer]);
+
+  // ── Initialize app: try server first, fall back to IndexedDB ─
   useEffect(() => {
     const initApp = async () => {
       const startTime = Date.now();
       try {
-        // Try to verify session with backend (check if user is authenticated)
-        const res = await fetch(`${API_URL}/api/verify`, {
-          credentials: 'include', // Include cookies
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (res.ok) {
-          const userData = await res.json();
-          const mockUser = {
-            _id: userData.userId || userData._id,
-            email: userData.email,
-            firstName: null,
-            lastName: null,
-            profilePicture: null
-          };
-          setUser(mockUser);
+        if (navigator.onLine) {
+          // Try to verify session with backend
+          const res = await fetch(`${API_URL}/api/verify`, {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
 
-          // Parallel fetch for remaining details
-          const [catRes, bookRes, archiveRes, logsRes, settingsRes, avatarRes] = await Promise.all([
-            fetch(`${API_URL}/api/categories`, { credentials: 'include' }),
-            fetch(`${API_URL}/api/currentbook`, { credentials: 'include' }),
-            fetch(`${API_URL}/api/archives`, { credentials: 'include' }),
-            fetch(`${API_URL}/api/daily`, { credentials: 'include' }),
-            fetch(`${API_URL}/api/settings`, { credentials: 'include' }),
-            fetch(`${API_URL}/api/avatar`, { credentials: 'include' })
-          ]);
-          
-          if (catRes.ok) setExpenseCategories((await catRes.json()).expenseCategories);
-          if (bookRes.ok) setCurrentBookState(await bookRes.json());
-          if (archiveRes.ok) setArchivedBooks((await archiveRes.json()).archivedBooks || []);
-          if (logsRes.ok) setLogs(await logsRes.json());
-          
-          let profileData = {};
-          if (settingsRes.ok) {
-            const s = await settingsRes.json();
-            profileData = { ...profileData, firstName: s.firstName, lastName: s.lastName };
+          if (res.ok) {
+            const userData = await res.json();
+            const mockUser = {
+              _id: userData.userId || userData._id,
+              email: userData.email,
+              firstName: null,
+              lastName: null,
+              profilePicture: null
+            };
+            setUser(mockUser);
+            db.saveUser(mockUser);
+
+            // Fetch everything from server in parallel
+            await refreshFromServer();
+
+            // Start background sync listener
+            startSyncListener();
+          } else {
+            // Not authenticated — try loading offline user
+            await loadOfflineData();
           }
-          if (avatarRes.ok) {
-            const a = await avatarRes.json();
-            profileData = { ...profileData, profilePicture: a.profilePicture };
-          }
-          
-          setUser(prev => ({ ...prev, ...profileData }));
+        } else {
+          // Offline — load from IndexedDB
+          console.log('[Store] Offline boot — loading from IndexedDB');
+          await loadOfflineData();
+          startSyncListener();
         }
       } catch (e) {
         console.error('App initialization error:', e);
+        // Network error — fall back to IndexedDB
+        await loadOfflineData();
+        startSyncListener();
       }
 
-      // Ensure splash screen shows for minimum 1.5 seconds for better UX
+      // Ensure splash screen shows for minimum 1.5 seconds
       const elapsed = Date.now() - startTime;
       const minSplashTime = 1500;
       if (elapsed < minSplashTime) {
@@ -77,29 +145,53 @@ export const HabitProvider = ({ children }) => {
         setLoading(false);
       }
     };
-    
+
     initApp();
   }, []);
+
+  // Load all state from IndexedDB
+  const loadOfflineData = async () => {
+    try {
+      const [offUser, offLogs, offCats, offBook, offArchives] = await Promise.all([
+        db.loadUser(),
+        db.loadLogs(),
+        db.loadCategories(),
+        db.loadCurrentBook(),
+        db.loadArchives()
+      ]);
+
+      if (offUser) setUser(offUser);
+      if (offLogs && Object.keys(offLogs).length > 0) setLogs(offLogs);
+      if (offCats.length > 0) setExpenseCategories(offCats);
+      if (offBook) setCurrentBookState(offBook);
+      if (offArchives.length > 0) setArchivedBooks(offArchives);
+    } catch (e) {
+      console.error('[Store] loadOfflineData error:', e);
+    }
+  };
 
   const login = async (email, password) => {
     const res = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
-      credentials: 'include', // Include cookies
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     
-    setUser({
+    const userData = {
       _id: data._id,
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
       profilePicture: data.profilePicture
-    });
+    };
+    setUser(userData);
+    db.saveUser(userData);
     
     setExpenseCategories(data.expenseCategories || []);
+    db.saveCategories(data.expenseCategories || []);
     
     // Fetch logs and settings after login
     const [logsRes, settingsRes, avatarRes] = await Promise.all([
@@ -118,8 +210,20 @@ export const HabitProvider = ({ children }) => {
       profileData = { ...profileData, profilePicture: a.profilePicture };
     }
 
-    setUser(prev => ({ ...prev, ...profileData }));
-    if(logsRes.ok) setLogs(await logsRes.json());
+    setUser(prev => {
+      const updated = { ...prev, ...profileData };
+      db.saveUser(updated);
+      return updated;
+    });
+
+    if (logsRes.ok) {
+      const logsData = await logsRes.json();
+      setLogs(logsData);
+      db.saveLogs(logsData);
+    }
+
+    // Start sync listener after login
+    startSyncListener();
   };
 
   const register = async (email, password, confirmPassword, firstName = '', lastName = '') => {
@@ -162,6 +266,7 @@ export const HabitProvider = ({ children }) => {
     if (!res.ok) throw new Error(data.message);
     const updated = { ...user, firstName: data.firstName, lastName: data.lastName };
     setUser(updated);
+    db.saveUser(updated);
   };
 
   const changePassword = async (currentPassword, newPassword) => {
@@ -191,6 +296,7 @@ export const HabitProvider = ({ children }) => {
     setExpenseCategories([]);
     setCurrentBookState(null);
     setArchivedBooks([]);
+    db.clearAllOfflineData();
   };
 
   const updateProfilePicture = async (croppedBlob) => {
@@ -206,6 +312,7 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     const updated = { ...user, profilePicture: data.profilePicture };
     setUser(updated);
+    db.saveUser(updated);
   };
 
   // Daily Defaults
@@ -339,57 +446,117 @@ export const HabitProvider = ({ children }) => {
     data.rank = rank;
     data.isSubmitted = true;
 
-    // Optimistic Update
+    // Optimistic Update — save to state + IndexedDB immediately
     setLogs(prev => ({ ...prev, [dateStr]: data }));
+    db.saveLog(dateStr, data);
 
-// API Post
-    if(user) {
+    // API Post — queue for sync if offline
+    if (user) {
+      if (navigator.onLine) {
         try {
-           await fetch(`${API_URL}/api/daily/${dateStr}`, {
-               method: 'POST',
-               credentials: 'include',
-               headers: { 
-                   'Content-Type': 'application/json'
-               },
-               body: JSON.stringify(data)
-            });
+          await fetch(`${API_URL}/api/daily/${dateStr}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
         } catch(e) {
-           console.error("Failed to save to backend", e);
+          console.warn('[Store] Failed to save to backend, queuing for sync:', e.message);
+          db.enqueueSync({
+            type: 'SAVE_LOG',
+            url: `/api/daily/${dateStr}`,
+            method: 'POST',
+            body: data
+          });
+          requestBackgroundSync();
         }
+      } else {
+        // Offline — queue for later sync
+        db.enqueueSync({
+          type: 'SAVE_LOG',
+          url: `/api/daily/${dateStr}`,
+          method: 'POST',
+          body: data
+        });
+      }
     }
   };
 
   const addExpenseCategory = async (category) => {
     if (!category.trim() || expenseCategories.includes(category)) return;
     
-    try {
-      const res = await fetch(`${API_URL}/api/categories`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setExpenseCategories(data.expenseCategories);
+    // Optimistic update
+    const newCats = [...expenseCategories, category.trim()];
+    setExpenseCategories(newCats);
+    db.saveCategories(newCats);
+
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`${API_URL}/api/categories`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setExpenseCategories(data.expenseCategories);
+          db.saveCategories(data.expenseCategories);
+        }
+      } catch (e) {
+        console.warn('[Store] Queuing addCategory for sync');
+        db.enqueueSync({
+          type: 'ADD_CATEGORY',
+          url: '/api/categories',
+          method: 'POST',
+          body: { category }
+        });
+        requestBackgroundSync();
       }
-    } catch (e) {
-      console.error('Error adding category:', e);
+    } else {
+      db.enqueueSync({
+        type: 'ADD_CATEGORY',
+        url: '/api/categories',
+        method: 'POST',
+        body: { category }
+      });
     }
   };
 
   const deleteExpenseCategory = async (category) => {
-    try {
-      const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(category)}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setExpenseCategories(data.expenseCategories);
+    // Optimistic update
+    const newCats = expenseCategories.filter(c => c !== category);
+    setExpenseCategories(newCats);
+    db.saveCategories(newCats);
+
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(category)}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setExpenseCategories(data.expenseCategories);
+          db.saveCategories(data.expenseCategories);
+        }
+      } catch (e) {
+        console.warn('[Store] Queuing deleteCategory for sync');
+        db.enqueueSync({
+          type: 'DELETE_CATEGORY',
+          url: `/api/categories/${encodeURIComponent(category)}`,
+          method: 'DELETE',
+          body: null
+        });
+        requestBackgroundSync();
       }
-    } catch (e) {
-      console.error('Error deleting category:', e);
+    } else {
+      db.enqueueSync({
+        type: 'DELETE_CATEGORY',
+        url: `/api/categories/${encodeURIComponent(category)}`,
+        method: 'DELETE',
+        body: null
+      });
     }
   };
 
@@ -404,6 +571,7 @@ export const HabitProvider = ({ children }) => {
       const data = await res.json();
       if (res.ok) {
         setCurrentBookState(data);
+        db.saveCurrentBook(data);
       } else {
         throw new Error(data.message);
       }
@@ -439,6 +607,7 @@ export const HabitProvider = ({ children }) => {
       const data = await res.json();
       if (res.ok) {
         setCurrentBookState(data);
+        db.saveCurrentBook(data);
         // Archive the book in archives service
         try {
           await fetch(`${API_URL}/api/archives`, {
@@ -457,6 +626,7 @@ export const HabitProvider = ({ children }) => {
           if (archiveRes.ok) {
             const archiveData = await archiveRes.json();
             setArchivedBooks(archiveData.archivedBooks || []);
+            db.saveArchives(archiveData.archivedBooks || []);
           }
         } catch (e) { console.error('Error archiving:', e); }
       }
@@ -529,7 +699,8 @@ export const HabitProvider = ({ children }) => {
       logs, getLog, saveLog, getWeeklyData, getMonthlyData, 
       user, login, register, logout, updateProfilePicture, updateProfile, changePassword, loading,
       expenseCategories, addExpenseCategory, deleteExpenseCategory,
-      currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks
+      currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
+      isOnline
     }}>
       {children}
     </HabitContext.Provider>

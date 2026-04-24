@@ -19,3 +19,24 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </HabitProvider>
   </React.StrictMode>,
 )
+
+// ── Service Worker Registration ──────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      });
+      console.log('[App] Service Worker registered:', registration.scope);
+
+      // Listen for SW messages (e.g., background sync triggers)
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'SYNC_REPLAY') {
+          import('./syncManager.js').then(({ replayQueue }) => replayQueue());
+        }
+      });
+    } catch (err) {
+      console.warn('[App] Service Worker registration failed:', err);
+    }
+  });
+}

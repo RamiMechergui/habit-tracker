@@ -1,0 +1,25 @@
+{
+  "name": "Evolvia",
+  "short_name": "Evolvia",
+  "description": "Track your habits. Transform your life.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo_circle.png",
+      "sizes": "120x120",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "lifestyle", "health"]
+}
