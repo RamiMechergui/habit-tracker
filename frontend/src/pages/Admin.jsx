@@ -75,7 +75,7 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight:'100vh', background:'#080a0e', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+    <div style={{ height:'100vh', width:'100vw', background:'#080a0e', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
       {/* cursor glow */}
       <div style={{ position:'absolute', width:700, height:700, borderRadius:'50%', pointerEvents:'none', left:mouse.x-350, top:mouse.y-350, background:'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', transition:'left 0.1s ease, top 0.1s ease' }} />
       {/* grid */}
