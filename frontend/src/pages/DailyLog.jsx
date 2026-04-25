@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, CheckCircle2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function DailyLog() {
