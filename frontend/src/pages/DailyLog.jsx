@@ -201,8 +201,22 @@ export default function DailyLog() {
   else if(dynamicTotalScore >= 60) dynamicRank = 'B';
   else if(dynamicTotalScore >= 50) dynamicRank = 'C';
 
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isFuture = date > todayStr;
+
   return (
     <div>
+      {/* Future Date Warning */}
+      {isFuture && (
+        <div style={{ background: 'rgba(245, 166, 35, 0.1)', border: '1px solid rgba(245, 166, 35, 0.3)', color: '#F5A623', padding: '12px 16px', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '12px', animation: 'pageSlideIn 0.3s ease-out' }}>
+          <span style={{ fontSize: '1.5rem' }}>⏳</span>
+          <div>
+            <h4 style={{ margin: 0, color: '#F5A623' }}>Future Date (Read-Only)</h4>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(245, 166, 35, 0.8)' }}>You cannot record or edit habits for future dates. Please select today or a past date.</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Header row: wraps on mobile ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <div>
@@ -233,32 +247,32 @@ export default function DailyLog() {
             
             <div className="flex justify-between items-center mb-2">
               <label>1. Wake up time (14pts)</label>
-              <input type="time" value={log.morning.wakeTime} onChange={e => updateSection('morning', 'wakeTime', e.target.value)} />
+              <input type="time" value={log.morning.wakeTime} onChange={e => updateSection('morning', 'wakeTime', e.target.value)} disabled={isFuture} />
             </div>
             
             <div className="flex justify-between items-center mb-2">
               <label>2. Meditate 3 mins (1pt)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.meditate} onChange={e => updateSection('morning', 'meditate', e.target.checked)} />
+              <input type="checkbox" className="habit-checkbox" checked={log.morning.meditate} onChange={e => updateSection('morning', 'meditate', e.target.checked)} disabled={isFuture} />
             </div>
             <div className="flex justify-between items-center mb-2">
               <label>3. Make bed (2pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.bed} onChange={e => updateSection('morning', 'bed', e.target.checked)} />
+              <input type="checkbox" className="habit-checkbox" checked={log.morning.bed} onChange={e => updateSection('morning', 'bed', e.target.checked)} disabled={isFuture} />
             </div>
             <div className="flex justify-between items-center mb-2">
               <label>4. Brush teeth & clean tongue (2pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.teeth} onChange={e => updateSection('morning', 'teeth', e.target.checked)} />
+              <input type="checkbox" className="habit-checkbox" checked={log.morning.teeth} onChange={e => updateSection('morning', 'teeth', e.target.checked)} disabled={isFuture} />
             </div>
             <div className="flex justify-between items-center mb-2">
               <label>5. Scottish Shower (Hot-to-Cold) (8pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.shower} onChange={e => updateSection('morning', 'shower', e.target.checked)} />
+              <input type="checkbox" className="habit-checkbox" checked={log.morning.shower} onChange={e => updateSection('morning', 'shower', e.target.checked)} disabled={isFuture} />
             </div>
             <div className="flex justify-between items-center mb-2">
               <label>6. Apply gel to hair (1pt)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.gel} onChange={e => updateSection('morning', 'gel', e.target.checked)} />
+              <input type="checkbox" className="habit-checkbox" checked={log.morning.gel} onChange={e => updateSection('morning', 'gel', e.target.checked)} disabled={isFuture} />
             </div>
             <div className="flex justify-between items-center mb-2">
               <label>7. Put on perfume (2pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.perfume} onChange={e => updateSection('morning', 'perfume', e.target.checked)} />
+              <input type="checkbox" className="habit-checkbox" checked={log.morning.perfume} onChange={e => updateSection('morning', 'perfume', e.target.checked)} disabled={isFuture} />
             </div>
           </div>
 
@@ -286,9 +300,9 @@ export default function DailyLog() {
                 <div className="flex items-center justify-end">
                   {item.extra && (
                     <input type="number" placeholder={item.placeholder} style={{width: '80px', padding: '0.2rem', marginRight: '0.5rem'}}
-                      value={log.bad[item.id][item.extra] || ''} onChange={e => updateBad(item.id, item.extra, e.target.value)} />
+                      value={log.bad[item.id][item.extra] || ''} onChange={e => updateBad(item.id, item.extra, e.target.value)} disabled={isFuture} />
                   )}
-                  <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} />
+                  <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
                 </div>
               </div>
             ))}
@@ -314,7 +328,7 @@ export default function DailyLog() {
             ].map(item => (
               <div key={item.id} className="flex justify-between items-center mb-2">
                 <label>{item.label}</label>
-                <input type="checkbox" className="habit-checkbox" checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} />
+                <input type="checkbox" className="habit-checkbox" checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} disabled={isFuture} />
               </div>
             ))}
           </div>
@@ -331,6 +345,7 @@ export default function DailyLog() {
                     className="habit-checkbox" 
                     checked={log.weekend?.saturday?.preLaundry || false} 
                     onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })} 
+                    disabled={isFuture}
                   />
                 </div>
               )}
@@ -344,6 +359,7 @@ export default function DailyLog() {
                       className="habit-checkbox" 
                       checked={log.weekend?.sunday?.cleanRoom || false} 
                       onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, cleanRoom: e.target.checked })} 
+                      disabled={isFuture}
                     />
                   </div>
                   <div className="flex justify-between items-center mb-2">
@@ -353,6 +369,7 @@ export default function DailyLog() {
                       className="habit-checkbox" 
                       checked={log.weekend?.sunday?.regularLaundry || false} 
                       onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, regularLaundry: e.target.checked })} 
+                      disabled={isFuture}
                     />
                   </div>
                   <div className="flex justify-between items-center mb-2">
@@ -362,6 +379,7 @@ export default function DailyLog() {
                       className="habit-checkbox" 
                       checked={log.weekend?.sunday?.shareBought || false} 
                       onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, shareBought: e.target.checked })} 
+                      disabled={isFuture}
                     />
                   </div>
                 </>
@@ -375,8 +393,8 @@ export default function DailyLog() {
 
           <div className="glass-card p-6">
             <h3 className="mb-4">Side Hustle <span className="text-amber text-sm">{hScore}/5pts</span></h3>
-            <input className="w-full mb-2" placeholder="Planned Task" value={log.hustle.task} onChange={e=>updateSection('hustle', 'task', e.target.value)} />
-            <input className="w-full mb-2" placeholder="Time Spent" value={log.hustle.time} onChange={e=>updateSection('hustle', 'time', e.target.value)} />
+            <input className="w-full mb-2" placeholder="Planned Task" value={log.hustle.task} onChange={e=>updateSection('hustle', 'task', e.target.value)} disabled={isFuture} />
+            <input className="w-full mb-2" placeholder="Time Spent" value={log.hustle.time} onChange={e=>updateSection('hustle', 'time', e.target.value)} disabled={isFuture} />
             
             {hustleWarning && (
               <span style={{color: '#ef4444', fontSize: '0.75rem', marginBottom: '8px', display: 'block'}}>
@@ -404,6 +422,7 @@ export default function DailyLog() {
                   setHustleWarning(false);
                   updateSection('hustle', 'achieved', e.target.checked)
                 }}
+                disabled={isFuture}
               /> 
               Task Achieved
             </label>
@@ -429,8 +448,8 @@ export default function DailyLog() {
                       <>
                         <span style={{ flex: 1, fontSize: '0.85rem' }}>• {lesson}</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingLessonIdx(idx); setEditingLessonText(lesson); }}>Edit</button>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteLesson(idx)}>Delete</button>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingLessonIdx(idx); setEditingLessonText(lesson); }} disabled={isFuture}>Edit</button>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteLesson(idx)} disabled={isFuture}>Delete</button>
                         </div>
                       </>
                     )}
@@ -439,16 +458,16 @@ export default function DailyLog() {
               </div>
 
               <div className="flex gap-2">
-                <input className="flex-1" placeholder="Add a key lesson..." value={newLesson} onChange={e => setNewLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddLesson()} />
-                <button className="btn btn-secondary" onClick={handleAddLesson}>Add</button>
+                <input className="flex-1" placeholder="Add a key lesson..." value={newLesson} onChange={e => setNewLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddLesson()} disabled={isFuture} />
+                <button className="btn btn-secondary" onClick={handleAddLesson} disabled={isFuture}>Add</button>
               </div>
             </div>
           </div>
 
           <div className="glass-card p-6">
             <h3 className="mb-4">Video Editing <span className="text-amber text-sm">{vScore}/5pts</span></h3>
-            <input className="w-full mb-2" placeholder="Planned Task" value={log.video.task} onChange={e=>updateSection('video', 'task', e.target.value)} />
-            <input className="w-full mb-2" placeholder="Time Spent" value={log.video.time} onChange={e=>updateSection('video', 'time', e.target.value)} />
+            <input className="w-full mb-2" placeholder="Planned Task" value={log.video.task} onChange={e=>updateSection('video', 'task', e.target.value)} disabled={isFuture} />
+            <input className="w-full mb-2" placeholder="Time Spent" value={log.video.time} onChange={e=>updateSection('video', 'time', e.target.value)} disabled={isFuture} />
             
             {videoWarning && (
               <span style={{color: '#ef4444', fontSize: '0.75rem', marginBottom: '8px', display: 'block'}}>
@@ -476,10 +495,11 @@ export default function DailyLog() {
                   setVideoWarning(false);
                   updateSection('video', 'achieved', e.target.checked)
                 }}
+                disabled={isFuture}
               /> 
               Task Achieved
             </label>
-            <select className="w-full" value={log.video.progress} onChange={e=>updateSection('video', 'progress', e.target.value)}>
+            <select className="w-full" value={log.video.progress} onChange={e=>updateSection('video', 'progress', e.target.value)} disabled={isFuture}>
               <option>Better</option>
               <option>Same</option>
               <option>Worse</option>
@@ -507,8 +527,8 @@ export default function DailyLog() {
                       <>
                         <span style={{ flex: 1, fontSize: '0.85rem' }}>• {lesson}</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingVideoLessonIdx(idx); setEditingVideoLessonText(lesson); }}>Edit</button>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteVideoLesson(idx)}>Delete</button>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingVideoLessonIdx(idx); setEditingVideoLessonText(lesson); }} disabled={isFuture}>Edit</button>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteVideoLesson(idx)} disabled={isFuture}>Delete</button>
                         </div>
                       </>
                     )}
@@ -517,8 +537,8 @@ export default function DailyLog() {
               </div>
 
               <div className="flex gap-2">
-                <input className="flex-1" placeholder="Add a key lesson..." value={newVideoLesson} onChange={e => setNewVideoLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddVideoLesson()} />
-                <button className="btn btn-secondary" onClick={handleAddVideoLesson}>Add</button>
+                <input className="flex-1" placeholder="Add a key lesson..." value={newVideoLesson} onChange={e => setNewVideoLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddVideoLesson()} disabled={isFuture} />
+                <button className="btn btn-secondary" onClick={handleAddVideoLesson} disabled={isFuture}>Add</button>
               </div>
             </div>
           </div>
@@ -539,12 +559,11 @@ export default function DailyLog() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <input
-                style={{ flex: '1 1 140px', minWidth: '120px' }}
+                style={{ flex: '1 1 140px', minWidth: '120px', opacity: bookProgress ? 0.6 : 1 }}
                 placeholder="Book Name"
                 value={log.books.name}
                 onChange={e => updateSection('books', 'name', e.target.value)}
-                disabled={bookProgress ? true : false}
-                style={{ flex: '1 1 140px', opacity: bookProgress ? 0.6 : 1 }}
+                disabled={bookProgress ? true : isFuture}
                 title={bookProgress ? `Currently tracking: ${bookProgress.bookName}` : 'Enter book name'}
               />
               <input
@@ -564,6 +583,7 @@ export default function DailyLog() {
                 }}
                 max={bookProgress?.targetPages}
                 style={{ width: '90px', flexShrink: 0 }}
+                disabled={isFuture}
                 title={bookProgress ? `Enter page number (max: ${bookProgress.targetPages})` : 'Current page you read up to today'}
               />
             </div>
@@ -573,7 +593,7 @@ export default function DailyLog() {
               </div>
             )}
             <label className="flex items-center gap-2">
-              <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e=>updateSection('books', 'read', e.target.checked)}/> 
+              <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e=>updateSection('books', 'read', e.target.checked)} disabled={isFuture}/> 
               Reading Finished (10pts)
             </label>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
@@ -592,6 +612,7 @@ export default function DailyLog() {
                 className="habit-checkbox" 
                 checked={log.system?.todo || false} 
                 onChange={e => updateSection('system', 'todo', e.target.checked)} 
+                disabled={isFuture}
               />
             </div>
             <div className="flex justify-between items-center mb-2">
@@ -601,6 +622,7 @@ export default function DailyLog() {
                 className="habit-checkbox" 
                 checked={log.system?.money || false} 
                 onChange={e => updateSection('system', 'money', e.target.checked)} 
+                disabled={isFuture}
               />
             </div>
           </div>
@@ -614,12 +636,14 @@ export default function DailyLog() {
                   placeholder={`Expense ${i + 1} description`}
                   value={exp.desc}
                   onChange={e => updateExpense(i, 'desc', e.target.value)}
+                  disabled={isFuture}
                 />
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <select
                     style={{ flex: '1 1 120px', minWidth: '120px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem' }}
                     value={exp.category || 'Other'}
                     onChange={e => updateExpense(i, 'category', e.target.value)}
+                    disabled={isFuture}
                   >
                     {expenseCategories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -632,6 +656,7 @@ export default function DailyLog() {
                       placeholder="TND"
                       value={exp.amount || ''}
                       onChange={e => updateExpense(i, 'amount', e.target.value)}
+                      disabled={isFuture}
                     />
                     <button
                       type="button"
@@ -639,6 +664,7 @@ export default function DailyLog() {
                       onClick={() => deleteExpense(i)}
                       title="Delete expense"
                       style={{ flexShrink: 0, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      disabled={isFuture}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -646,7 +672,7 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: expenseCategories[0] || '', amount: 0 }] }))}>
+            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: expenseCategories[0] || '', amount: 0 }] }))} disabled={isFuture}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
