@@ -565,11 +565,11 @@ function DevelopmentView() {
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 <label style={{ fontSize:12, fontWeight:700, color:'#475569', textTransform:'uppercase' }}>Status</label>
-                <select value={newStatus} onChange={e=>setNewStatus(e.target.value)} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'12px', color:'#fff', outline:'none' }}>
-                  <option value="Idea">Idea / Backlog</option>
-                  <option value="Development">In Development</option>
-                  <option value="Testing">Testing / Review</option>
-                  <option value="Implemented">Implemented</option>
+                <select value={newStatus} onChange={e=>setNewStatus(e.target.value)} style={{ background:'#1a1d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'12px', color:'#fff', outline:'none', cursor:'pointer' }}>
+                  <option value="Idea" style={{ background: '#1a1d24' }}>Idea / Backlog</option>
+                  <option value="Development" style={{ background: '#1a1d24' }}>In Development</option>
+                  <option value="Testing" style={{ background: '#1a1d24' }}>Testing / Review</option>
+                  <option value="Implemented" style={{ background: '#1a1d24' }}>Implemented</option>
                 </select>
               </div>
               <button onClick={editingIdea ? handleEdit : handleAdd} style={{ marginTop:10, padding:'14px', borderRadius:12, border:'none', background:'#F5A623', color:'#000', fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
