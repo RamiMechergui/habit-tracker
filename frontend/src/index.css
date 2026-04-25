@@ -849,6 +849,9 @@ label {
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 0.5rem;
   }
 
   .mobile-nav::-webkit-scrollbar {
@@ -871,8 +874,8 @@ label {
     font-size: 0.6rem;
     font-weight: 500;
     font-family: var(--sans);
-    flex: 0 0 62px;
-    scroll-snap-align: start;
+    flex: 0 0 68px;
+    scroll-snap-align: center;
     min-height: 50px;
     border-radius: 8px;
     transition: all 0.2s ease;
