@@ -838,10 +838,18 @@ label {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--border);
-    padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom));
-    gap: 0;
-    justify-content: space-around;
+    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+    gap: 8px;
+    justify-content: flex-start;
     align-items: stretch;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none; /* Hide scrollbar for Chrome/Firefox */
+    -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+  }
+
+  .mobile-nav::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari/Opera */
   }
 
   [data-theme='light'] .mobile-nav {
@@ -860,7 +868,8 @@ label {
     font-size: 0.62rem;
     font-weight: 500;
     font-family: var(--sans);
-    flex: 1;
+    flex: 0 0 70px;
+    scroll-snap-align: center;
     min-height: 48px; /* touch-friendly */
     border-radius: 8px;
     transition: color 0.2s ease;
