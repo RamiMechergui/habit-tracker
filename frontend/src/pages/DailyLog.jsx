@@ -13,7 +13,7 @@ export default function DailyLog() {
   
   const [hustleWarning, setHustleWarning] = useState(false);
   const [videoWarning, setVideoWarning] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('Saved'); // 'Saved', 'Saving...', 'Error'
   const [submitError, setSubmitError] = useState('');
 
   // Side Hustle Lessons State
@@ -70,23 +70,22 @@ export default function DailyLog() {
     setSearchParams({ date });
   }, [date, currentBook, logs]);
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setSubmitError('');
-    const startTime = Date.now();
-    try {
-      await saveLog(date, log);
-    } catch (error) {
-      setSubmitError(error?.message || 'Unable to save. Please try again.');
-    } finally {
-      const elapsed = Date.now() - startTime;
-      const remaining = 3000 - elapsed;
-      if (remaining > 0) {
-        await new Promise(resolve => setTimeout(resolve, remaining));
+  useEffect(() => {
+    // Auto-save logic with debounce
+    setSaveStatus('Saving...');
+    const timeoutId = setTimeout(async () => {
+      try {
+        await saveLog(date, log);
+        setSaveStatus('Saved');
+        setSubmitError('');
+      } catch (error) {
+        setSaveStatus('Error');
+        setSubmitError(error?.message || 'Unable to save. Please try again.');
       }
-      setIsSubmitting(false);
-    }
-  };
+    }, 800); // 800ms debounce
+    
+    return () => clearTimeout(timeoutId);
+  }, [log, date, saveLog]);
 
   const updateSection = (section, key, val) => {
     setLog(prev => ({ ...prev, [section]: { ...prev[section], [key]: val } }));
@@ -179,9 +178,11 @@ export default function DailyLog() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: '140px' }} />
-          <button className="btn" onClick={handleSubmit} disabled={isSubmitting} style={{ minWidth: '90px' }}>
-            {isSubmitting ? 'Saving...' : 'Submit'}
-          </button>
+          <div style={{ minWidth: '90px', textAlign: 'right', fontSize: '0.9rem', color: saveStatus === 'Error' ? '#ef4444' : saveStatus === 'Saved' ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+            {saveStatus === 'Saved' && <CheckCircle2 size={16} />}
+            {saveStatus === 'Saving...' && <div style={{ width: 14, height: 14, border: '2px solid #94a3b8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'adm-spin 1s linear infinite' }} />}
+            {saveStatus}
+          </div>
         </div>
         {submitError && (
           <p style={{ width: '100%', marginTop: '0.25rem', color: '#dc2626', fontSize: '0.9rem' }}>
