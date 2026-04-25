@@ -4,7 +4,8 @@ import {
   Activity, Database, Server, Users, Lock,
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
   LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft,
-  X, Calendar, Mail, User, Trash2
+  X, Calendar, Mail, User, Trash2, Lightbulb, Hammer, Plus,
+  MoreVertical, CheckCircle, Clock, Save
 } from 'lucide-react';
 
 /* ── CSS injected once ─────────────────────────────────────── */
@@ -134,6 +135,7 @@ function Sidebar({ active, onSelect, onLogout }) {
   const navigate = useNavigate();
   const nav = [
     { id:'overview', label:'Overview', Icon:LayoutDashboard, color:'#94a3b8' },
+    { id:'dev',      label:'Development', Icon:Hammer, color:'#F5A623' },
     ...TOOLS.map(t => ({ id:t.id, label:t.label, Icon:t.Icon, color:t.color })),
   ];
 
@@ -427,6 +429,160 @@ function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
   );
 }
 
+/* ── App Development Section ────────────────────────────────── */
+function DevelopmentView() {
+  const [ideas, setIdeas] = useState(() => {
+    const saved = localStorage.getItem('evolvia_dev_ideas');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, title: 'Multi-user Admin Support', desc: 'Allow multiple admins with different permissions.', status: 'Idea', date: new Date().toISOString() },
+      { id: 2, title: 'Dark Mode persistence', desc: 'Ensure theme is saved across sessions without flash.', status: 'Implemented', date: new Date().toISOString() }
+    ];
+  });
+  const [showModal, setShowModal] = useState(false);
+  const [editingIdea, setEditingIdea] = useState(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newStatus, setNewStatus] = useState('Idea');
+
+  useEffect(() => {
+    localStorage.setItem('evolvia_dev_ideas', JSON.stringify(ideas));
+  }, [ideas]);
+
+  const handleAdd = () => {
+    if (!newTitle.trim()) return;
+    const idea = {
+      id: Date.now(),
+      title: newTitle,
+      desc: newDesc,
+      status: newStatus,
+      date: new Date().toISOString()
+    };
+    setIdeas([idea, ...ideas]);
+    reset();
+  };
+
+  const handleEdit = () => {
+    if (!newTitle.trim()) return;
+    setIdeas(ideas.map(i => i.id === editingIdea.id ? { ...i, title: newTitle, desc: newDesc, status: newStatus, date: new Date().toISOString() } : i));
+    reset();
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm('Delete this idea?')) {
+      setIdeas(ideas.filter(i => i.id !== id));
+    }
+  };
+
+  const reset = () => {
+    setShowModal(false);
+    setEditingIdea(null);
+    setNewTitle('');
+    setNewDesc('');
+    setNewStatus('Idea');
+  };
+
+  const openEdit = (idea) => {
+    setEditingIdea(idea);
+    setNewTitle(idea.title);
+    setNewDesc(idea.desc);
+    setNewStatus(idea.status);
+    setShowModal(true);
+  };
+
+  const getStatusColor = (s) => {
+    switch(s) {
+      case 'Implemented': return '#10b981';
+      case 'Development': return '#3b82f6';
+      case 'Idea': return '#F5A623';
+      case 'Testing': return '#8b5cf6';
+      default: return '#94a3b8';
+    }
+  };
+
+  const getStatusIcon = (s) => {
+    switch(s) {
+      case 'Implemented': return <CheckCircle size={14} />;
+      case 'Development': return <Loader2 size={14} style={{animation:'adm-spin 2s linear infinite'}} />;
+      case 'Idea': return <Lightbulb size={14} />;
+      default: return <Clock size={14} />;
+    }
+  };
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:'40px', animation:'adm-up 0.35s ease' }} className="adm-scrollbar">
+      <div style={{ maxWidth:1000, margin:'0 auto' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:40 }}>
+          <div>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'5px 14px', borderRadius:999, background:'rgba(245,166,35,0.08)', border:'1px solid rgba(245,166,35,0.28)', color:'#F5A623', fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:20 }}>
+              <Hammer size={13} /> Roadmap & Planning
+            </div>
+            <h1 style={{ fontSize:42, fontWeight:900, margin:0, letterSpacing:'-1.5px' }}>App Development</h1>
+            <p style={{ color:'#64748b', marginTop:8, fontSize:15 }}>Track features, fixes, and architectural evolutions.</p>
+          </div>
+          <button onClick={() => setShowModal(true)} className="adm-submit" style={{ padding:'12px 24px', borderRadius:12, border:'none', background:'#F5A623', color:'#000', fontWeight:700, fontSize:14, display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+            <Plus size={18} /> New Idea
+          </button>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:20 }}>
+          {ideas.map(idea => (
+            <div key={idea.id} className="glass-card" style={{ padding:24, border:`1px solid ${hex18(getStatusColor(idea.status))}`, background:'rgba(255,255,255,0.01)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 10px', borderRadius:8, background:hex18(getStatusColor(idea.status)), color:getStatusColor(idea.status), fontSize:11, fontWeight:700, textTransform:'uppercase' }}>
+                  {getStatusIcon(idea.status)} {idea.status}
+                </div>
+                <div style={{ display:'flex', gap:4 }}>
+                  <button onClick={() => openEdit(idea)} style={{ background:'transparent', border:'none', color:'#475569', cursor:'pointer', padding:4 }}><MoreVertical size={16} /></button>
+                  <button onClick={() => handleDelete(idea.id)} style={{ background:'transparent', border:'none', color:'#ef444433', cursor:'pointer', padding:4 }} onMouseOver={e=>e.currentTarget.style.color='#ef4444'} onMouseOut={e=>e.currentTarget.style.color='#ef444433'}><Trash2 size={16} /></button>
+                </div>
+              </div>
+              <h3 style={{ fontSize:18, fontWeight:700, marginBottom:10, color:'#f8fafc' }}>{idea.title}</h3>
+              <p style={{ fontSize:14, color:'#94a3b8', lineHeight:1.6, marginBottom:20, minHeight:60 }}>{idea.desc}</p>
+              <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ fontSize:11, color:'#334155' }}>ID: {idea.id.toString().slice(-6)}</span>
+                <span style={{ fontSize:11, color:'#334155' }}>{new Date(idea.date).toLocaleDateString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {showModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(10px)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ width:'100%', maxWidth:500, background:'#0d0f14', border:'1px solid rgba(255,255,255,0.1)', borderRadius:20, overflow:'hidden', animation:'adm-slide-up 0.3s ease' }}>
+            <div style={{ padding:24, borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h2 style={{ fontSize:20, fontWeight:800 }}>{editingIdea ? 'Edit Idea' : 'New Feature Idea'}</h2>
+              <button onClick={reset} style={{ background:'transparent', border:'none', color:'#475569', cursor:'pointer' }}><X size={20} /></button>
+            </div>
+            <div style={{ padding:24, display:'flex', flexDirection:'column', gap:20 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <label style={{ fontSize:12, fontWeight:700, color:'#475569', textTransform:'uppercase' }}>Title</label>
+                <input value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="What's the idea?" style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'12px', color:'#fff', outline:'none' }} />
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <label style={{ fontSize:12, fontWeight:700, color:'#475569', textTransform:'uppercase' }}>Description</label>
+                <textarea value={newDesc} onChange={e=>setNewDesc(e.target.value)} rows={4} placeholder="Describe the implementation details..." style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'12px', color:'#fff', outline:'none', resize:'none' }} />
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <label style={{ fontSize:12, fontWeight:700, color:'#475569', textTransform:'uppercase' }}>Status</label>
+                <select value={newStatus} onChange={e=>setNewStatus(e.target.value)} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'12px', color:'#fff', outline:'none' }}>
+                  <option value="Idea">Idea / Backlog</option>
+                  <option value="Development">In Development</option>
+                  <option value="Testing">Testing / Review</option>
+                  <option value="Implemented">Implemented</option>
+                </select>
+              </div>
+              <button onClick={editingIdea ? handleEdit : handleAdd} style={{ marginTop:10, padding:'14px', borderRadius:12, border:'none', background:'#F5A623', color:'#000', fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <Save size={18} /> {editingIdea ? 'Update Idea' : 'Save Idea'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Tool iframe view ───────────────────────────────────────── */
 function ToolView({ tool, onBack }) {
   const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -498,7 +654,9 @@ function Dashboard({ onLogout }) {
       <Sidebar active={active} onSelect={setActive} onLogout={onLogout} />
 
       <main style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', zIndex:10 }}>
-        {tool ? (
+        {active === 'dev' ? (
+          <DevelopmentView />
+        ) : tool ? (
           <ToolView tool={tool} onBack={()=>setActive('overview')} />
         ) : (
           <Overview userCount={userCount} loading={loading} onFetch={fetchUsers} onOpen={setActive} onOpenUsers={() => setShowUsersModal(true)} />
