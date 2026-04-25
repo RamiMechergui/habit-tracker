@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket
+  WifiOff, Wallet, Rocket, Video
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -15,6 +15,7 @@ import Splash from './pages/Splash';
 import Auth from './pages/Auth';
 import ExpenseTracker from './pages/ExpenseTracker';
 import SideHustle from './pages/SideHustle';
+import VideoEditing from './pages/VideoEditing';
 import Admin from './pages/Admin';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
@@ -29,6 +30,7 @@ const NAV_LINKS = [
   { to: '/archive',   icon: BookOpen,        label: 'Archive' },
   { to: '/expenses',  icon: Wallet,          label: 'Expenses' },
   { to: '/sidehustle',icon: Rocket,          label: 'Side Hustle' },
+  { to: '/video-editing', icon: Video,       label: 'Video Editing' },
   { to: '/settings',  icon: SettingsIcon,    label: 'Settings' },
 ];
 
@@ -156,6 +158,7 @@ function App() {
             <Route path="/archive"   element={<BookArchive />} />
             <Route path="/expenses"  element={<ExpenseTracker />} />
             <Route path="/sidehustle" element={<SideHustle />} />
+            <Route path="/video-editing" element={<VideoEditing />} />
             <Route path="/settings"  element={<Settings />} />
           </Routes>
         </div>

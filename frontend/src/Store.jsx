@@ -325,7 +325,7 @@ export const HabitProvider = ({ children }) => {
     weekend: { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } },
     books: { name: '', page: '', read: false },
     hustle: { task: '', time: '', achieved: false, lessons: [] },
-    video: { task: '', time: '', achieved: false, progress: 'Same' },
+    video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
     system: { todo: false, money: false },
     expenses: Array(3).fill({ desc: '', category: 'Other', amount: 0 }),
     morningScore: 0,
@@ -361,6 +361,9 @@ export const HabitProvider = ({ children }) => {
         filledLog.books.name = currentBook.bookName;
         filledLog.books.page = '';
         filledLog.books.read = false;
+      }
+      if (filledLog.video && !filledLog.video.lessons) {
+        filledLog.video.lessons = [];
       }
       return filledLog;
     }

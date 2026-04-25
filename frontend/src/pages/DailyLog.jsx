@@ -21,10 +21,20 @@ export default function DailyLog() {
   const [editingLessonIdx, setEditingLessonIdx] = useState(null);
   const [editingLessonText, setEditingLessonText] = useState('');
   const [lessonMsg, setLessonMsg] = useState('');
+  const [videoLessonMsg, setVideoLessonMsg] = useState('');
+
+  const [newVideoLesson, setNewVideoLesson] = useState('');
+  const [editingVideoLessonIdx, setEditingVideoLessonIdx] = useState(null);
+  const [editingVideoLessonText, setEditingVideoLessonText] = useState('');
 
   const showLessonMessage = (msg) => {
     setLessonMsg(msg);
     setTimeout(() => setLessonMsg(''), 3000);
+  };
+
+  const showVideoLessonMessage = (msg) => {
+    setVideoLessonMsg(msg);
+    setTimeout(() => setVideoLessonMsg(''), 3000);
   };
 
   const handleAddLesson = () => {
@@ -48,6 +58,29 @@ export default function DailyLog() {
     const updatedLessons = (log.hustle.lessons || []).filter((_, i) => i !== idx);
     updateSection('hustle', 'lessons', updatedLessons);
     showLessonMessage('Key lesson deleted successfully');
+  };
+
+  const handleAddVideoLesson = () => {
+    if (!newVideoLesson.trim()) return;
+    const updatedLessons = [...(log.video.lessons || []), newVideoLesson.trim()];
+    updateSection('video', 'lessons', updatedLessons);
+    setNewVideoLesson('');
+  };
+
+  const handleSaveEditVideoLesson = (idx) => {
+    if (!editingVideoLessonText.trim()) return;
+    const updatedLessons = [...(log.video.lessons || [])];
+    updatedLessons[idx] = editingVideoLessonText.trim();
+    updateSection('video', 'lessons', updatedLessons);
+    setEditingVideoLessonIdx(null);
+    setEditingVideoLessonText('');
+    showVideoLessonMessage('Key lesson edited successfully');
+  };
+
+  const handleDeleteVideoLesson = (idx) => {
+    const updatedLessons = (log.video.lessons || []).filter((_, i) => i !== idx);
+    updateSection('video', 'lessons', updatedLessons);
+    showVideoLessonMessage('Key lesson deleted successfully');
   };
 
   const bookProgress = getBookProgress();
@@ -451,6 +484,43 @@ export default function DailyLog() {
               <option>Same</option>
               <option>Worse</option>
             </select>
+
+            <div className="mt-4 pt-4" style={{borderTop: '1px solid var(--border)'}}>
+              <h4 className="mb-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Key Lessons</h4>
+              
+              {videoLessonMsg && (
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '8px', animation: 'pageSlideIn 0.2s ease-out' }}>
+                  {videoLessonMsg}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 mb-3">
+                {(log.video.lessons || []).map((lesson, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--bg-card-hover)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                    {editingVideoLessonIdx === idx ? (
+                      <div className="flex w-full gap-2">
+                        <input className="flex-1" style={{padding: '4px 8px'}} value={editingVideoLessonText} onChange={e => setEditingVideoLessonText(e.target.value)} autoFocus />
+                        <button className="btn btn-primary" style={{padding: '4px 8px'}} onClick={() => handleSaveEditVideoLesson(idx)}>Save</button>
+                        <button className="btn" style={{padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)'}} onClick={() => setEditingVideoLessonIdx(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ flex: 1, fontSize: '0.85rem' }}>• {lesson}</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingVideoLessonIdx(idx); setEditingVideoLessonText(lesson); }}>Edit</button>
+                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteVideoLesson(idx)}>Delete</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <input className="flex-1" placeholder="Add a key lesson..." value={newVideoLesson} onChange={e => setNewVideoLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddVideoLesson()} />
+                <button className="btn btn-secondary" onClick={handleAddVideoLesson}>Add</button>
+              </div>
+            </div>
           </div>
 
           <div className="glass-card p-6">
