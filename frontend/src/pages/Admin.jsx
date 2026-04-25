@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity, Database, Server, Users, Lock,
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
@@ -130,6 +131,7 @@ function LoginScreen({ onLogin }) {
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 function Sidebar({ active, onSelect, onLogout }) {
+  const navigate = useNavigate();
   const nav = [
     { id:'overview', label:'Overview', Icon:LayoutDashboard, color:'#94a3b8' },
     ...TOOLS.map(t => ({ id:t.id, label:t.label, Icon:t.Icon, color:t.color })),
@@ -174,8 +176,11 @@ function Sidebar({ active, onSelect, onLogout }) {
         })}
       </nav>
 
-      {/* logout */}
-      <div style={{ padding:'12px', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+      {/* actions */}
+      <div style={{ padding:'12px', borderTop:'1px solid rgba(255,255,255,0.05)', display:'flex', flexDirection:'column', gap:4 }}>
+        <button onClick={() => navigate('/dashboard')} className="adm-nav-btn" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', color:'#94a3b8', fontSize:14, fontWeight:500, border:'1px solid transparent' }}>
+          <LayoutDashboard size={17} /> Return to App
+        </button>
         <button onClick={onLogout} className="adm-nav-btn adm-end" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', color:'#64748b', fontSize:14, fontWeight:500, border:'1px solid transparent' }}>
           <LogOut size={17} /> End Session
         </button>
