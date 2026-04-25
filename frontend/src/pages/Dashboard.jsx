@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useHabits } from '../Store';
 import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X } from 'lucide-react';
 
 export default function Dashboard() {
-  const { getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  const { getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
   const navigate = useNavigate();
   const [newCategory, setNewCategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editCategoryValue, setEditCategoryValue] = useState('');
   const [bookName, setBookName] = useState('');
   const [targetPages, setTargetPages] = useState('');
   const [bookError, setBookError] = useState('');
@@ -96,6 +98,28 @@ export default function Dashboard() {
 
   const cancelAction = () => {
     setConfirmModal({ isOpen: false, action: '', category: '' });
+  };
+
+  const handleEditCategoryClick = (cat) => {
+    setEditingCategory(cat);
+    setEditCategoryValue(cat);
+  };
+
+  const handleSaveCategory = (oldCat) => {
+    const newCat = editCategoryValue.trim();
+    if (newCat && newCat !== oldCat) {
+      if (expenseCategories.includes(newCat)) {
+        showMessage('Category already exists.', 'error');
+      } else {
+        editExpenseCategory(oldCat, newCat);
+        showMessage(`Category updated to '${newCat}' successfully!`);
+      }
+    }
+    setEditingCategory(null);
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategory(null);
   };
 
   const handleSetBook = async () => {
@@ -307,15 +331,44 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-2 mb-4">
           {expenseCategories.map(cat => (
             <div key={cat} className="flex items-center gap-2" style={{ background: 'var(--bg-card-hover)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
-              <span>{cat}</span>
-              <button 
-                type="button" 
-                onClick={() => handleDeleteCategoryClick(cat)} 
-                title="Delete Category"
-                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-              >
-                <Trash2 size={12} />
-              </button>
+              {editingCategory === cat ? (
+                <>
+                  <input 
+                    type="text" 
+                    value={editCategoryValue} 
+                    onChange={(e) => setEditCategoryValue(e.target.value)} 
+                    onKeyDown={(e) => { if(e.key === 'Enter') handleSaveCategory(cat); else if(e.key === 'Escape') cancelEditCategory(); }}
+                    style={{ padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--accent-blue)', background: 'transparent', color: 'var(--text-primary)', outline: 'none', width: '120px' }}
+                    autoFocus
+                  />
+                  <button type="button" onClick={() => handleSaveCategory(cat)} title="Save" style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex' }}>
+                    <Check size={14} />
+                  </button>
+                  <button type="button" onClick={cancelEditCategory} title="Cancel" style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>{cat}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => handleEditCategoryClick(cat)} 
+                    title="Edit Category"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => handleDeleteCategoryClick(cat)} 
+                    title="Delete Category"
+                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </>
+              )}
             </div>
           ))}
         </div>

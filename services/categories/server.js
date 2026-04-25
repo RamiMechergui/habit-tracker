@@ -127,6 +127,55 @@ app.delete('/api/categories/:category', verifyToken, async (req, res) => {
   } catch (error) { res.status(500).json({ message: error.message }); }
 });
 
+/**
+ * @swagger
+ * /api/categories/{category}:
+ *   put:
+ *     summary: Update category
+ *     tags: [Profile]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: category
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               newCategory: { type: string }
+ *     responses:
+ *       200:
+ *         description: Category updated
+ */
+app.put('/api/categories/:category', verifyToken, async (req, res) => {
+  try {
+    const oldCategory = decodeURIComponent(req.params.category);
+    const { newCategory } = req.body;
+    
+    if (!newCategory?.trim()) return res.status(400).json({ message: 'New category name is required' });
+
+    let categoryDoc = await Category.findOne({ userId: req.user._id });
+    if (!categoryDoc) return res.status(404).json({ message: 'Category not found' });
+    
+    if (categoryDoc.expenseCategories.includes(newCategory.trim())) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+
+    const idx = categoryDoc.expenseCategories.indexOf(oldCategory);
+    if (idx !== -1) {
+      categoryDoc.expenseCategories[idx] = newCategory.trim();
+      await categoryDoc.save();
+    }
+
+    res.json({ expenseCategories: categoryDoc.expenseCategories });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+});
+
 const PORT = process.env.PORT || 5110;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/categories_db';
 

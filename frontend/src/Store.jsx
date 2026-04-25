@@ -582,6 +582,48 @@ export const HabitProvider = ({ children }) => {
     }
   };
 
+  const editExpenseCategory = async (oldCategory, newCategory) => {
+    const trimmedNew = newCategory.trim();
+    if (!trimmedNew || expenseCategories.includes(trimmedNew)) return;
+
+    // Optimistic update
+    const newCats = expenseCategories.map(c => c === oldCategory ? trimmedNew : c);
+    setExpenseCategories(newCats);
+    db.saveCategories(newCats);
+
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(oldCategory)}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newCategory: trimmedNew })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setExpenseCategories(data.expenseCategories);
+          db.saveCategories(data.expenseCategories);
+        }
+      } catch (e) {
+        console.warn('[Store] Queuing editCategory for sync');
+        db.enqueueSync({
+          type: 'EDIT_CATEGORY',
+          url: `/api/categories/${encodeURIComponent(oldCategory)}`,
+          method: 'PUT',
+          body: { newCategory: trimmedNew }
+        });
+        requestBackgroundSync();
+      }
+    } else {
+      db.enqueueSync({
+        type: 'EDIT_CATEGORY',
+        url: `/api/categories/${encodeURIComponent(oldCategory)}`,
+        method: 'PUT',
+        body: { newCategory: trimmedNew }
+      });
+    }
+  };
+
   const setCurrentBook = async (bookName, targetPages) => {
     try {
       const res = await fetch(`${API_URL}/api/currentbook`, {
@@ -720,7 +762,7 @@ export const HabitProvider = ({ children }) => {
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData, 
       user, login, register, logout, updateProfilePicture, updateProfile, changePassword, loading,
-      expenseCategories, addExpenseCategory, deleteExpenseCategory,
+      expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory,
       currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
       isOnline
     }}>
