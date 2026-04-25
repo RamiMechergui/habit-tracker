@@ -834,18 +834,21 @@ label {
     left: 0;
     right: 0;
     z-index: 100;
-    background: rgba(15, 17, 21, 0.97);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(15, 17, 21, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--border);
-    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
-    gap: 8px;
+    padding: 0.25rem 0.25rem calc(0.25rem + env(safe-area-inset-bottom));
+    gap: 4px;
     justify-content: flex-start;
-    align-items: stretch;
+    align-items: center;
     overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
     scroll-snap-type: x mandatory;
-    scrollbar-width: none; /* Hide scrollbar for Chrome/Firefox */
-    -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-nav::-webkit-scrollbar {
@@ -861,18 +864,18 @@ label {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 0.4rem 0.5rem;
+    gap: 2px;
+    padding: 0.4rem 0;
     color: var(--text-muted);
     text-decoration: none;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 500;
     font-family: var(--sans);
-    flex: 0 0 70px;
-    scroll-snap-align: center;
-    min-height: 48px; /* touch-friendly */
+    flex: 0 0 62px;
+    scroll-snap-align: start;
+    min-height: 50px;
     border-radius: 8px;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
   }
 
   .mobile-nav-link.active,
