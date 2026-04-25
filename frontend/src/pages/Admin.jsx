@@ -194,6 +194,8 @@ function UsersModal({ onClose }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     const fetchList = async () => {
@@ -211,15 +213,18 @@ function UsersModal({ onClose }) {
     fetchList();
   }, []);
 
-  const handleDeleteUser = async (userId, userEmail) => {
-    if (!window.confirm(`CRITICAL WARNING: Are you absolutely sure you want to delete ${userEmail}? This action cannot be undone.`)) return;
-    
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
     try {
-      const res = await fetch(`/api/login/admin/users/${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/login/admin/users/${userToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete user');
-      setUsers(users.filter(u => u.userId !== userId));
+      setUsers(users.filter(u => u.userId !== userToDelete.id));
+      setSuccessMsg(`User ${userToDelete.email} was successfully deleted.`);
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       alert(`Error: ${err.message}`);
+    } finally {
+      setUserToDelete(null);
     }
   };
 
@@ -293,7 +298,7 @@ function UsersModal({ onClose }) {
                     </td>
                     <td style={{ padding:'16px 0', textAlign:'right' }}>
                       <button 
-                        onClick={() => handleDeleteUser(u.userId, u.email)}
+                        onClick={() => setUserToDelete({ id: u.userId, email: u.email })}
                         style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', padding:6, borderRadius:6, opacity:0.6, transition:'opacity 0.2s, background 0.2s' }}
                         onMouseOver={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
                         onMouseOut={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'transparent'; }}
@@ -308,6 +313,31 @@ function UsersModal({ onClose }) {
             </table>
           )}
         </div>
+        
+        {successMsg && (
+          <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', padding:'10px 20px', borderRadius:100, color:'#10b981', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, animation:'adm-up 0.3s ease', backdropFilter:'blur(8px)', zIndex:10 }}>
+            <ShieldCheck size={16} /> {successMsg}
+          </div>
+        )}
+
+        {/* Custom Confirm Modal Overlay */}
+        {userToDelete && (
+          <div style={{ position:'absolute', inset:0, background:'rgba(8,10,14,0.85)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:24, zIndex:20, animation:'adm-fade-in 0.2s ease' }}>
+            <div style={{ background:'rgba(15,17,21,0.95)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:20, padding:32, width:'100%', maxWidth:400, textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(239,68,68,0.1)', animation:'adm-slide-up 0.25s cubic-bezier(0.16,1,0.3,1)' }}>
+              <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(239,68,68,0.1)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', border:'1px solid rgba(239,68,68,0.2)' }}>
+                <Trash2 size={28} color="#ef4444" />
+              </div>
+              <h3 style={{ margin:'0 0 12px', color:'#f8fafc', fontSize:20, fontWeight:700 }}>Confirm Deletion</h3>
+              <p style={{ margin:'0 0 24px', color:'#94a3b8', fontSize:14, lineHeight:1.5 }}>
+                Are you absolutely sure you want to permanently delete <strong style={{ color:'#f8fafc' }}>{userToDelete.email}</strong>? This action cannot be undone.
+              </p>
+              <div style={{ display:'flex', gap:12 }}>
+                <button onClick={() => setUserToDelete(null)} style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, color:'#f8fafc', fontWeight:600, cursor:'pointer', transition:'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.background='rgba(255,255,255,0.08)'} onMouseOut={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'}>Cancel</button>
+                <button onClick={confirmDelete} style={{ flex:1, padding:'12px', background:'linear-gradient(135deg, #ef4444, #dc2626)', border:'none', borderRadius:12, color:'#fff', fontWeight:600, cursor:'pointer', boxShadow:'0 8px 16px rgba(239,68,68,0.25)', transition:'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.transform='translateY(-1px)'} onMouseOut={e=>e.currentTarget.style.transform='none'}>Yes, Delete User</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
