@@ -3,9 +3,9 @@
   "short_name": "Evolvia",
   "description": "Track your habits. Transform your life.",
   "start_url": "/dashboard",
-  "display": "standalone",
-  "background_color": "#0f1115",
-  "theme_color": "#3b82f6",
+  "display": "fullscreen",
+  "background_color": "#080a0e",
+  "theme_color": "#080a0e",
   "orientation": "any",
   "icons": [
     {
