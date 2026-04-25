@@ -158,11 +158,21 @@ app.put('/api/login/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// Admin Endpoint for Dashboard
+// Admin Endpoint for Dashboard: User Count
 app.get('/api/login/admin/users', async (req, res) => {
   try {
     const count = await User.countDocuments();
     res.json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin Endpoint for Dashboard: User List
+app.get('/api/login/admin/users/list', async (req, res) => {
+  try {
+    const users = await User.find({}, '-password').sort({ createdAt: -1 });
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Activity, Database, Server, Users, Lock,
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
-  LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft
+  LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft,
+  X, Calendar, Mail, User
 } from 'lucide-react';
 
 /* ── CSS injected once ─────────────────────────────────────── */
@@ -25,6 +26,17 @@ const CSS = `
   .adm-submit { transition: transform 0.15s, box-shadow 0.15s; }
   .adm-back:hover { background: rgba(255,255,255,0.07)!important; color: #f8fafc!important; }
   .adm-end:hover  { background: rgba(239,68,68,0.1)!important; color: #ef4444!important; }
+
+  /* Modal Animations & Styles */
+  @keyframes adm-fade-in { from{opacity:0} to{opacity:1} }
+  @keyframes adm-slide-up { from{opacity:0; transform:translateY(30px) scale(0.95)} to{opacity:1; transform:translateY(0) scale(1)} }
+  .adm-table-row:hover { background: rgba(255,255,255,0.03); }
+  
+  /* Scrollbar for table */
+  .adm-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+  .adm-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+  .adm-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  .adm-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 `;
 
 /* ── constants ─────────────────────────────────────────────── */
@@ -172,8 +184,108 @@ function Sidebar({ active, onSelect, onLogout }) {
   );
 }
 
+/* ── Users Modal ────────────────────────────────────────────── */
+function UsersModal({ onClose }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchList = async () => {
+      try {
+        const res = await fetch('/api/login/admin/users/list');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        setUsers(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchList();
+  }, []);
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'adm-fade-in 0.2s ease' }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)' }} onClick={onClose} />
+      
+      <div style={{ position:'relative', width:'100%', maxWidth:800, maxHeight:'85vh', background:'rgba(12,14,18,0.95)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:24, boxShadow:'0 40px 80px rgba(0,0,0,0.6)', display:'flex', flexDirection:'column', animation:'adm-slide-up 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        {/* Header */}
+        <div style={{ padding:'24px 30px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:12, background:'rgba(16,185,129,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Users size={20} color="#10b981" />
+            </div>
+            <div>
+              <h2 style={{ margin:0, color:'#f8fafc', fontSize:20, fontWeight:800, letterSpacing:'-0.5px' }}>User Directory</h2>
+              <p style={{ margin:0, color:'#64748b', fontSize:13 }}>Complete list of registered accounts</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'#64748b', cursor:'pointer', padding:8, borderRadius:8, display:'flex' }} className="adm-back">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="adm-scrollbar" style={{ flex:1, overflowY:'auto', padding:'20px 30px' }}>
+          {loading ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'60px 0', gap:16 }}>
+              <Loader2 size={32} color="#10b981" style={{ animation:'adm-spin 1s linear infinite' }} />
+              <div style={{ color:'#64748b', fontSize:14 }}>Retrieving secure user records...</div>
+            </div>
+          ) : error ? (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px', color:'#ef4444', gap:8, background:'rgba(239,68,68,0.05)', borderRadius:16, border:'1px dashed rgba(239,68,68,0.2)' }}>
+              <AlertCircle size={20} /> Failed to load users: {error}
+            </div>
+          ) : users.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'60px 0', color:'#64748b' }}>No users found in the database.</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left' }}>
+              <thead>
+                <tr>
+                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>User</th>
+                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Email Address</th>
+                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Joined Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => (
+                  <tr key={u._id || i} className="adm-table-row" style={{ borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
+                    <td style={{ padding:'16px 0' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                        <div style={{ width:36, height:36, borderRadius:20, background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}>
+                          <User size={16} />
+                        </div>
+                        <span style={{ color:'#f1f5f9', fontWeight:600, fontSize:14 }}>
+                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : 'Anonymous User'}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding:'16px 0', color:'#cbd5e1', fontSize:14 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <Mail size={14} color="#64748b" /> {u.email}
+                      </div>
+                    </td>
+                    <td style={{ padding:'16px 0', color:'#94a3b8', fontSize:13 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <Calendar size={14} color="#64748b" /> 
+                        {new Date(u.createdAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Overview ───────────────────────────────────────────────── */
-function Overview({ userCount, loading, onFetch, onOpen }) {
+function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
   return (
     <div style={{ flex:1, overflowY:'auto' }}>
       <div style={{ maxWidth:900, margin:'0 auto', padding:'44px 40px', animation:'adm-up 0.35s ease' }}>
@@ -193,7 +305,7 @@ function Overview({ userCount, loading, onFetch, onOpen }) {
         {/* KPI strip */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:40 }}>
           {/* user count */}
-          <div className="adm-kpi" onClick={onFetch} style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:16, padding:'26px 24px', position:'relative', overflow:'hidden' }}>
+          <div className="adm-kpi" onClick={() => { onFetch(); onOpenUsers(); }} style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:16, padding:'26px 24px', position:'relative', overflow:'hidden' }}>
             <Users size={80} color="#10b981" style={{ position:'absolute', right:-8, top:-8, opacity:0.05 }} />
             <div style={{ width:42, height:42, borderRadius:12, background:'rgba(16,185,129,0.14)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
               <Users size={20} color="#10b981" />
@@ -206,11 +318,11 @@ function Overview({ userCount, loading, onFetch, onOpen }) {
             ) : userCount !== null ? (
               <div style={{ display:'flex', alignItems:'baseline', gap:8, animation:'adm-up 0.3s ease' }}>
                 <span style={{ fontSize:44, fontWeight:900, color:'#10b981', lineHeight:1 }}>{userCount}</span>
-                <span style={{ color:'#64748b', fontSize:13 }}>total</span>
+                <span style={{ color:'#64748b', fontSize:13 }}>total — <span style={{ color:'#10b981', textDecoration:'underline' }}>View Directory</span></span>
               </div>
             ) : (
               <div style={{ color:'#10b981', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
-                <Zap size={14} /> Click to fetch live count
+                <Zap size={14} /> Click to view user directory
               </div>
             )}
           </div>
@@ -305,6 +417,7 @@ function Dashboard({ onLogout }) {
   const [active, setActive]       = useState('overview');
   const [userCount, setUserCount] = useState(null);
   const [loading, setLoading]     = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -329,9 +442,11 @@ function Dashboard({ onLogout }) {
         {tool ? (
           <ToolView tool={tool} onBack={()=>setActive('overview')} />
         ) : (
-          <Overview userCount={userCount} loading={loading} onFetch={fetchUsers} onOpen={setActive} />
+          <Overview userCount={userCount} loading={loading} onFetch={fetchUsers} onOpen={setActive} onOpenUsers={() => setShowUsersModal(true)} />
         )}
       </main>
+
+      {showUsersModal && <UsersModal onClose={() => setShowUsersModal(false)} />}
     </div>
   );
 }
