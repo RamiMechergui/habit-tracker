@@ -8,8 +8,19 @@ RUN npm run build
 
 # Stage 2: Backend & Gateway
 FROM node:20-slim
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y nginx curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pm2
+
+# Download Prometheus binary
+RUN curl -fsSL https://github.com/prometheus/prometheus/releases/download/v2.49.1/prometheus-2.49.1.linux-amd64.tar.gz \
+    | tar xz --strip-components=1 -C /usr/local/bin \
+        prometheus-2.49.1.linux-amd64/prometheus \
+        prometheus-2.49.1.linux-amd64/promtool
+
+# Download Jaeger all-in-one binary
+RUN curl -fsSL https://github.com/jaegertracing/jaeger/releases/download/v1.54.0/jaeger-1.54.0-linux-amd64.tar.gz \
+    | tar xz --strip-components=1 -C /usr/local/bin \
+        jaeger-1.54.0-linux-amd64/jaeger-all-in-one
 WORKDIR /app
 
 # Copy Frontend Build to Nginx
@@ -27,9 +38,11 @@ RUN for dir in services/*; do \
 
 # Copy configurations
 COPY pm2.config.js .
+COPY prometheus.yml .
 COPY nginx.render.conf /etc/nginx/nginx.conf
 COPY start.sh .
 RUN chmod +x start.sh
+RUN mkdir -p /app/prometheus-data
 
 ENV PORT 10000
 EXPOSE 10000

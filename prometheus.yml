@@ -3,19 +3,26 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Habit Tracker microservices (OpenTelemetry Prometheus exporter)
   - job_name: 'habit-tracker-services'
+    metrics_path: '/metrics'
     static_configs:
       - targets:
-          - 'login:9464'
-          - 'register:9464'
-          - 'logout:9464'
-          - 'verify:9464'
-          - 'daily:9464'
-          - 'scoring:9464'
-          - 'currentbook:9464'
-          - 'archives:9464'
-          - 'settings:9464'
-          - 'categories:9464'
-          - 'avatar:9464'
-          - 'profile:9464'
-          - 'analytics:9464'
+          - 'localhost:5101'   # login
+          - 'localhost:5102'   # register
+          - 'localhost:5103'   # logout
+          - 'localhost:5104'   # verify
+          - 'localhost:5105'   # daily
+          - 'localhost:5106'   # scoring
+          - 'localhost:5107'   # currentbook
+          - 'localhost:5108'   # archives
+          - 'localhost:5109'   # settings
+          - 'localhost:5110'   # categories
+          - 'localhost:5111'   # avatar
+          - 'localhost:5112'   # profile
+          - 'localhost:5113'   # analytics
