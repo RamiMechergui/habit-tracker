@@ -42,6 +42,10 @@ function App() {
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
+  if (location.pathname.startsWith('/admin')) {
+    return <Admin />;
+  }
+
   if (loading) return <Splash />;
   if (!user)   return <Auth />;
 
@@ -150,7 +154,6 @@ function App() {
             <Route path="/archive"   element={<BookArchive />} />
             <Route path="/expenses"  element={<ExpenseTracker />} />
             <Route path="/settings"  element={<Settings />} />
-            <Route path="/admin"     element={<Admin />} />
           </Routes>
         </div>
       </main>
