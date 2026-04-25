@@ -2,7 +2,7 @@
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm install --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
@@ -20,9 +20,10 @@ COPY services ./services
 RUN for dir in services/*; do \
       if [ -f "$dir/package.json" ]; then \
         echo "Installing dependencies for $dir..." && \
-        cd "$dir" && npm install --production && cd ../..; \
+        (cd "$dir" && npm install --omit=dev --no-audit --no-fund) & \
       fi \
-    done
+    done; \
+    wait
 
 # Copy configurations
 COPY pm2.config.js .
