@@ -13,7 +13,7 @@ const CSS = `
   @keyframes adm-spin { to{transform:rotate(360deg)} }
   @keyframes adm-ping { 75%,100%{transform:scale(2);opacity:0} }
   .adm-root * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-  .adm-root { background: #080a0e; min-height: 100vh; color: #f8fafc; }
+  .adm-root { background: #080a0e; min-height: 100vh; width: 100vw; max-width: 100%; flex: 1; color: #f8fafc; }
   .adm-iframe { width:100%; height:100%; border:none; display:block; }
   .adm-nav-btn { background:transparent; border:none; cursor:pointer; width:100%; text-align:left; transition:all 0.15s; border-radius:10px; }
   .adm-nav-btn:hover { background: rgba(255,255,255,0.04); }
