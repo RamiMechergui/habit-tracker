@@ -4,6 +4,7 @@
   "description": "Track your habits. Transform your life.",
   "start_url": "/dashboard",
   "display": "fullscreen",
+  "display_override": ["fullscreen", "minimal-ui", "standalone"],
   "background_color": "#080a0e",
   "theme_color": "#080a0e",
   "orientation": "any",
