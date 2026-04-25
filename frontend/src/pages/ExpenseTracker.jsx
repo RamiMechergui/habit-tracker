@@ -100,8 +100,7 @@ export default function ExpenseTracker() {
     cutout: '75%',
     plugins: {
       legend: {
-        position: 'right',
-        labels: { color: '#94a3b8', font: { family: "'Inter', sans-serif" } }
+        display: false
       },
       tooltip: {
         callbacks: {
@@ -112,7 +111,8 @@ export default function ExpenseTracker() {
           }
         }
       }
-    }
+    },
+    maintainAspectRatio: false
   };
 
   return (
@@ -167,19 +167,43 @@ export default function ExpenseTracker() {
         {/* Chart Card */}
         <div className="glass-card p-6" style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 className="mb-4">Spending Breakdown</h3>
-          <div style={{ position: 'relative', height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', flex: 1 }}>
             {aggregatedData.totalSpent > 0 ? (
-              <>
-                <Doughnut data={chartData} options={chartOptions} />
-                <div style={{ position: 'absolute', textAlign: 'center', pointerEvents: 'none' }}>
-                  <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>Total Spent</p>
-                  <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                    {aggregatedData.totalSpent.toFixed(3)}
-                  </p>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '2rem',
+                width: '100%'
+              }}>
+                {/* Chart Container */}
+                <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                  <Doughnut data={chartData} options={chartOptions} />
+                  <div style={{ position: 'absolute', textAlign: 'center', pointerEvents: 'none', width: '100%' }}>
+                    <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Spent</p>
+                    <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                      {aggregatedData.totalSpent.toFixed(3)}
+                      <span style={{ fontSize: '0.7rem', display: 'block', opacity: 0.6 }}>TND</span>
+                    </p>
+                  </div>
                 </div>
-              </>
+
+                {/* Custom Legend */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '140px' }}>
+                  {aggregatedData.activeCategories.map(([category, amount], index) => (
+                    <div key={category} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: chartColors[index % chartColors.length] }} />
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{category}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({((amount / aggregatedData.totalSpent) * 100).toFixed(0)}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
-              <p className="text-muted">No expenses recorded for this period.</p>
+              <div style={{ padding: '3rem 0', textAlign: 'center' }}>
+                <p className="text-muted">No expenses recorded for this period.</p>
+              </div>
             )}
           </div>
         </div>
