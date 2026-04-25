@@ -23,10 +23,6 @@ export default function Dashboard() {
   const todayDate = new Date();
   const todayStr = format(todayDate, 'yyyy-MM-dd');
   const todayLog = getLog(todayStr);
-
-  const hustleHistory = Object.values(logs || {})
-    .filter(log => log.hustle && (log.hustle.task?.trim() || (log.hustle.lessons && log.hustle.lessons.length > 0)))
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
   
   const monthData = getMonthlyData(calendarDate);
   const firstDay = startOfMonth(calendarDate);
@@ -406,39 +402,7 @@ export default function Dashboard() {
         <p className="text-center text-muted text-sm mt-4">Select any date to view or edit its daily log.</p>
       </div>
 
-      {/* Side Hustle History */}
-      <div className="glass-card p-6 mb-6">
-        <h2 className="mb-6 flex items-center gap-2"><CheckCircle2 className="text-amber" /> Side Hustle Notes & History</h2>
-        {hustleHistory.length === 0 ? (
-          <p className="text-muted text-center py-4">No side hustle history recorded yet. Start grinding!</p>
-        ) : (
-          <div className="flex-col gap-4">
-            {hustleHistory.map(log => (
-              <div key={log.date} className="glass-card p-4" style={{ background: 'var(--bg-card-hover)', borderLeft: log.hustle.achieved ? '4px solid #10b981' : '4px solid #ef4444' }}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-accent-blue">{log.date}</span>
-                  <span className="text-xs" style={{ color: log.hustle.achieved ? '#10b981' : '#ef4444' }}>
-                    {log.hustle.achieved ? '✓ Achieved' : '✗ Not Achieved'}
-                  </span>
-                </div>
-                {log.hustle.task && (
-                  <p className="text-sm mb-2"><strong className="text-muted">Task:</strong> {log.hustle.task} {log.hustle.time && `(${log.hustle.time})`}</p>
-                )}
-                {log.hustle.lessons && log.hustle.lessons.length > 0 && (
-                  <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-                    <strong className="text-muted text-sm block mb-1">Key Lessons:</strong>
-                    <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem' }}>
-                      {log.hustle.lessons.map((lesson, idx) => (
-                        <li key={idx} className="mb-1" style={{ listStyleType: 'circle' }}>{lesson}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+
       
       {/* Custom Confirmation Modal */}
       {confirmModal.isOpen && (
