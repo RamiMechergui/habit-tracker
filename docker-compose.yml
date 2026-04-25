@@ -196,6 +196,8 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     hostname: jaeger
+    environment:
+      - QUERY_BASE_PATH=/admin/jaeger
     ports:
       - "16686:16686" # UI
       - "4317:4317"   # OTLP gRPC
@@ -206,6 +208,10 @@ services:
   prometheus:
     image: prom/prometheus:latest
     hostname: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.external-url=/admin/prometheus/'
+      - '--storage.tsdb.path=/prometheus'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
@@ -220,6 +226,8 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/admin/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     networks:
       - habit-network
 

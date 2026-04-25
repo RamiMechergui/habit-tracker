@@ -158,6 +158,16 @@ app.put('/api/login/change-password', verifyToken, async (req, res) => {
   }
 });
 
+// Admin Endpoint for Dashboard
+app.get('/api/login/admin/users', async (req, res) => {
+  try {
+    const count = await User.countDocuments();
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5101;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/auth_db';
 

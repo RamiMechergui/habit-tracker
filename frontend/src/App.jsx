@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Splash from './pages/Splash';
 import Auth from './pages/Auth';
 import ExpenseTracker from './pages/ExpenseTracker';
+import Admin from './pages/Admin';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
@@ -149,6 +150,7 @@ function App() {
             <Route path="/archive"   element={<BookArchive />} />
             <Route path="/expenses"  element={<ExpenseTracker />} />
             <Route path="/settings"  element={<Settings />} />
+            <Route path="/admin"     element={<Admin />} />
           </Routes>
         </div>
       </main>
