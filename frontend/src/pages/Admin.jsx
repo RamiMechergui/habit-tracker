@@ -3,7 +3,7 @@ import {
   Activity, Database, Server, Users, Lock,
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
   LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft,
-  X, Calendar, Mail, User
+  X, Calendar, Mail, User, Trash2
 } from 'lucide-react';
 
 /* ── CSS injected once ─────────────────────────────────────── */
@@ -206,6 +206,18 @@ function UsersModal({ onClose }) {
     fetchList();
   }, []);
 
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (!window.confirm(`CRITICAL WARNING: Are you absolutely sure you want to delete ${userEmail}? This action cannot be undone.`)) return;
+    
+    try {
+      const res = await fetch(`/api/login/admin/users/${userId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete user');
+      setUsers(users.filter(u => u.userId !== userId));
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'adm-fade-in 0.2s ease' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)' }} onClick={onClose} />
@@ -247,6 +259,7 @@ function UsersModal({ onClose }) {
                   <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>User</th>
                   <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Email Address</th>
                   <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Joined Date</th>
+                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)', textAlign:'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -272,6 +285,17 @@ function UsersModal({ onClose }) {
                         <Calendar size={14} color="#64748b" /> 
                         {new Date(u.createdAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })}
                       </div>
+                    </td>
+                    <td style={{ padding:'16px 0', textAlign:'right' }}>
+                      <button 
+                        onClick={() => handleDeleteUser(u.userId, u.email)}
+                        style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', padding:6, borderRadius:6, opacity:0.6, transition:'opacity 0.2s, background 0.2s' }}
+                        onMouseOver={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                        onMouseOut={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'transparent'; }}
+                        title="Delete User"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}

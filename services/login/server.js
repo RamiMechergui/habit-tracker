@@ -178,6 +178,18 @@ app.get('/api/login/admin/users/list', async (req, res) => {
   }
 });
 
+// Admin Endpoint for Dashboard: Delete User
+app.delete('/api/login/admin/users/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const deletedUser = await User.findOneAndDelete({ userId });
+    if (!deletedUser) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5101;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/auth_db';
 
