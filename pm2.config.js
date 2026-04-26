@@ -7,13 +7,14 @@ const commonEnv = {
 
 module.exports = {
   apps: [
-    // --- GATEWAY (Nginx) ---
+    // --- GATEWAY (Replaces Nginx) ---
     {
-      name: 'nginx',
-      script: 'nginx',
-      args: '-g "daemon off;"',
-      exec_mode: 'fork',
-      autorestart: true
+      name: 'gateway',
+      script: 'backend/gateway.js',
+      cwd: '.',
+      env: {
+        PORT: process.env.PORT || 10000
+      }
     },
 
     // --- CORE SERVICES ---

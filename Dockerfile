@@ -6,14 +6,14 @@ RUN npm install --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: backend & Gateway
+# Stage 2: Backend & Gateway (Pure Node.js)
 FROM node:20-alpine
-RUN apk add --no-cache nginx && mkdir -p /run/nginx
+
 RUN npm install -g pm2
 WORKDIR /app
 
-# Copy Frontend Build to Nginx
-COPY --from=frontend-build /app/frontend/dist /var/www/html
+# Copy Frontend Build
+COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 
 # Copy backend folder
 COPY backend ./backend
@@ -25,11 +25,9 @@ RUN cd backend && \
 
 # Copy configurations
 COPY pm2.config.js .
-COPY nginx.render.conf /etc/nginx/http.d/default.conf
-COPY start.sh .
-RUN chmod +x start.sh
 
 ENV PORT=10000
 EXPOSE 10000
 
-CMD ["./start.sh"]
+# Start PM2 directly
+CMD ["pm2-runtime", "start", "pm2.config.js"]
