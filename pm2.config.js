@@ -9,45 +9,45 @@ module.exports = {
   apps: [
     // --- USER SIDE ---
     // Identity
-    { name: 'login', port: 5101, path: 'Backend/User/Identity/login' },
-    { name: 'register', port: 5102, path: 'Backend/User/Identity/register' },
-    { name: 'logout', port: 5103, path: 'Backend/User/Identity/logout' },
-    { name: 'verify', port: 5104, path: 'Backend/User/Identity/verify' },
+    { name: 'login', port: 5101, path: 'backend/User/Identity/login' },
+    { name: 'register', port: 5102, path: 'backend/User/Identity/register' },
+    { name: 'logout', port: 5103, path: 'backend/User/Identity/logout' },
+    { name: 'verify', port: 5104, path: 'backend/User/Identity/verify' },
 
     // Habits
-    { name: 'morning-habits', port: 5118, path: 'Backend/User/Habits/morning-habits' },
-    { name: 'bad-habits', port: 5119, path: 'Backend/User/Habits/bad-habits' },
-    { name: 'night-habits', port: 5120, path: 'Backend/User/Habits/night-habits' },
-    { name: 'weekend-duties', port: 5121, path: 'Backend/User/Habits/weekend-duties' },
-    { name: 'side-hustle', port: 5122, path: 'Backend/User/Habits/side-hustle' },
-    { name: 'video-editing', port: 5123, path: 'Backend/User/Habits/video-editing' },
-    { name: 'book-reading', port: 5124, path: 'Backend/User/Habits/book-reading' },
-    { name: 'system-check', port: 5125, path: 'Backend/User/Habits/system-check' },
+    { name: 'morning-habits', port: 5118, path: 'backend/User/Habits/morning-habits' },
+    { name: 'bad-habits', port: 5119, path: 'backend/User/Habits/bad-habits' },
+    { name: 'night-habits', port: 5120, path: 'backend/User/Habits/night-habits' },
+    { name: 'weekend-duties', port: 5121, path: 'backend/User/Habits/weekend-duties' },
+    { name: 'side-hustle', port: 5122, path: 'backend/User/Habits/side-hustle' },
+    { name: 'video-editing', port: 5123, path: 'backend/User/Habits/video-editing' },
+    { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
+    { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
 
     // Finances
-    { name: 'expenses', port: 5126, path: 'Backend/User/Finances/expenses' },
+    { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
 
     // Profile
-    { name: 'settings', port: 5109, path: 'Backend/User/Profile/settings' },
-    { name: 'avatar', port: 5111, path: 'Backend/User/Profile/avatar' },
-    { name: 'profile', port: 5112, path: 'Backend/User/Profile/profile' },
+    { name: 'settings', port: 5109, path: 'backend/User/Profile/settings' },
+    { name: 'avatar', port: 5111, path: 'backend/User/Profile/avatar' },
+    { name: 'profile', port: 5112, path: 'backend/User/Profile/profile' },
 
     // Aggregator
-    { name: 'daily', port: 5105, path: 'Backend/User/Aggregator/daily' },
+    { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
 
     // --- ADMIN SIDE ---
     // Analytics
-    { name: 'scoring', port: 5106, path: 'Backend/Admin/Analytics/scoring' },
-    { name: 'analytics', port: 5113, path: 'Backend/Admin/Analytics/analytics' },
+    { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
+    { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' },
 
     // Management
-    { name: 'categories', port: 5110, path: 'Backend/Admin/Management/categories' },
-    { name: 'currentbook', port: 5107, path: 'Backend/Admin/Management/currentbook' },
-    { name: 'archives', port: 5108, path: 'Backend/Admin/Management/archives' },
-    { name: 'integration', port: 5127, path: 'Backend/Admin/Management/integration' }, // Integration as management tool
+    { name: 'categories', port: 5110, path: 'backend/Admin/Management/categories' },
+    { name: 'currentbook', port: 5107, path: 'backend/Admin/Management/currentbook' },
+    { name: 'archives', port: 5108, path: 'backend/Admin/Management/archives' },
+    { name: 'integration', port: 5127, path: 'backend/Admin/Management/integration' }, // Integration as management tool
 
     // Planning
-    { name: 'ideas', port: 5128, path: 'Backend/Admin/Planning/ideas' }
+    { name: 'ideas', port: 5128, path: 'backend/Admin/Planning/ideas' }
   ].map(service => ({
     name: service.name,
     script: 'server.js',

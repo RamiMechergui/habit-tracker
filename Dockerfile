@@ -15,10 +15,10 @@ WORKDIR /app
 # Copy Frontend Build to Nginx
 COPY --from=frontend-build /app/frontend/dist /var/www/html
 
-# Copy all Backend services and install dependencies in parallel
-COPY Backend ./Backend
+# Copy all backend services and install dependencies in parallel
+COPY backend ./backend
 RUN for side in User Admin; do \
-      for domain in Backend/$side/*; do \
+      for domain in backend/$side/*; do \
         for service in "$domain"/*; do \
           if [ -d "$service" ] && [ -f "$service/package.json" ]; then \
             (cd "$service" && npm install --omit=dev --no-audit --no-fund) & \
