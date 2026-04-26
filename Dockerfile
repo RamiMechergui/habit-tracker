@@ -6,7 +6,7 @@ RUN npm install --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Backend & Gateway
+# Stage 2: backend & Gateway
 FROM node:20-alpine
 RUN apk add --no-cache nginx && mkdir -p /run/nginx
 RUN npm install -g pm2
@@ -15,12 +15,12 @@ WORKDIR /app
 # Copy Frontend Build to Nginx
 COPY --from=frontend-build /app/frontend/dist /var/www/html
 
-# Copy Backend folder
-COPY Backend ./Backend
+# Copy backend folder
+COPY backend ./backend
 
 # Install dependencies for all microservices
 RUN for side in User Admin; do \
-      for domain in Backend/$side/*; do \
+      for domain in backend/$side/*; do \
         for service in "$domain"/*; do \
           if [ -d "$service" ] && [ -f "$service/package.json" ]; then \
             echo "Installing dependencies for $service..." && \
