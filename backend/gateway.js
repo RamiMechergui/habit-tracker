@@ -48,6 +48,7 @@ app.use('/api/analytics', createProxy(5113));
 
 // --- Serve Static Frontend Files ---
 const frontendDistPath = path.join(__dirname, '../frontend/dist');
+console.log(`[Gateway] Mapping frontend static files to: ${frontendDistPath}`);
 app.use(express.static(frontendDistPath));
 
 // --- SPA Fallback ---
@@ -56,6 +57,10 @@ app.get('*', (req, res) => {
 });
 
 // Bind explicitly to 0.0.0.0 for external access
+console.log(`[Gateway] Attempting to bind to 0.0.0.0:${PORT}...`);
 app.listen(PORT, '0.0.0.0', () => {
+    console.log(`====================================================`);
     console.log(`🚀 Node.js Gateway running successfully on 0.0.0.0:${PORT}`);
+    console.log(`====================================================`);
 });
+

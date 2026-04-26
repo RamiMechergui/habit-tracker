@@ -25,9 +25,12 @@ RUN cd backend && \
 
 # Copy configurations
 COPY pm2.config.js .
+COPY start.sh .
+RUN chmod +x start.sh
 
 ENV PORT=10000
 EXPOSE 10000
 
-# Start PM2 directly
-CMD ["pm2-runtime", "start", "pm2.config.js"]
+# Start Native Setup
+CMD ["./start.sh"]
+

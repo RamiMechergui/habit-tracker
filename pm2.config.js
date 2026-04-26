@@ -7,16 +7,6 @@ const commonEnv = {
 
 module.exports = {
   apps: [
-    // --- GATEWAY (Replaces Nginx) ---
-    {
-      name: 'gateway',
-      script: 'backend/gateway.js',
-      cwd: '.',
-      env: {
-        PORT: process.env.PORT || 10000
-      }
-    },
-
     // --- CORE SERVICES ---
     { name: 'login', port: 5101, path: 'backend/User/Identity/login' },
     { name: 'verify', port: 5104, path: 'backend/User/Identity/verify' },
@@ -37,7 +27,6 @@ module.exports = {
     // { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
     // { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
   ].map(service => {
-    if (service.name === 'gateway') return service;
     return {
       name: service.name,
       script: 'server.js',
