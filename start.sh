@@ -1,31 +1,47 @@
 #!/bin/sh
+# Fail on any error
 set -e
 
-echo "🚀 Starting Evolvia All-in-One Container..."
+echo "🚀 --- EVOLVIA STARTUP SEQUENCE ---"
 
-# Redirect Nginx logs to stdout/stderr for Railway logging
-ln -sf /dev/stdout /var/log/nginx/access.log
-ln -sf /dev/stderr /var/log/nginx/error.log
+# 1. Prepare Nginx Environment
+echo "📂 Preparing Nginx directories..."
+mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp
+chmod -R 777 /var/lib/nginx/tmp || true
 
-# Substitute $PORT in nginx config (Railway assigns dynamic ports)
-export LISTEN_PORT=${PORT:-10000}
-echo "📡 Configuring Nginx to listen on port $LISTEN_PORT"
-sed -i "s/listen 10000;/listen $LISTEN_PORT;/g" /etc/nginx/nginx.conf
+# 2. Redirect Logs to Stdout/Stderr for Railway visibility
+echo "📝 Redirecting logs..."
+ln -sf /dev/stdout /var/log/nginx/access.log || true
+ln -sf /dev/stderr /var/log/nginx/error.log || true
 
-# Test Nginx Config
-echo "🔍 Testing Nginx configuration..."
+# 3. Dynamic Port Injection (Infallible version)
+# We search for any line starting with 'listen' and replace it with the Railway PORT
+export TARGET_PORT=${PORT:-10000}
+echo "📡 Injecting Railway Port: $TARGET_PORT"
+sed -i "s/listen[[:space:]]*[0-9]*;/listen $TARGET_PORT;/g" /etc/nginx/nginx.conf
+
+# 4. Verify Config
+echo "🔍 Verifying Nginx Configuration..."
+grep -i "listen" /etc/nginx/nginx.conf
 nginx -t
 
-# Start Nginx in the background
-echo "🌐 Starting Nginx..."
-nginx
-
-# Verify frontend build
-if [ ! -d "/var/www/html" ] || [ ! -f "/var/www/html/index.html" ]; then
-    echo "❌ Error: Frontend build missing in /var/www/html"
+# 5. Check Frontend Build
+echo "🖼️ Checking Frontend Build..."
+if [ -d "/var/www/html" ]; then
+    echo "✅ /var/www/html exists. Content count: $(ls /var/www/html | wc -l)"
+    # Fix permissions for Nginx
+    chown -R root:root /var/www/html
+    chmod -R 755 /var/www/html
+else
+    echo "❌ /var/www/html MISSING!"
     exit 1
 fi
 
-# Start all microservices using PM2 in the foreground
-echo "⚙️ Starting Microservices via PM2 (Memory-Optimized)..."
+# 6. Start Nginx
+echo "🌐 Launching Nginx..."
+nginx
+
+# 7. Start Microservices
+echo "⚙️ Launching Microservices via PM2..."
+# We use --no-daemon to keep the container alive and stream logs
 pm2-runtime start pm2.config.js
