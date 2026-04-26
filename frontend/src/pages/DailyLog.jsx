@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function DailyLog() {
@@ -369,25 +369,34 @@ export default function DailyLog() {
           {/* Weekend Habits (Conditional) */}
           {(isSaturday || isSunday) && (
             <div className="glass-card p-6 section-weekend">
-              <h3 className="mb-4">Weekend Duties <span className="text-amber text-sm">{isSaturday ? 'Saturday' : 'Sunday'}</span></h3>
+              <h3 className="mb-4 flex items-center gap-2"><Calendar size={20} className="text-amber" /> Weekend Duties <span className="text-amber text-sm">{isSaturday ? 'Saturday' : 'Sunday'}</span></h3>
               
               {isSaturday && (
-                <div className="flex justify-between items-center mb-2">
-                  <label>1. Pre-laundry arrangement</label>
-                  <input 
-                    type="checkbox" 
-                    className="habit-checkbox" 
-                    checked={log.weekend?.saturday?.preLaundry || false} 
-                    onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })} 
-                    disabled={isFuture}
-                  />
+                <div className="flex-col gap-3">
+                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                    background: log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.saturday?.preLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Pre-laundry arrangement</span>
+                    <input 
+                      type="checkbox" 
+                      className="habit-checkbox" 
+                      checked={log.weekend?.saturday?.preLaundry || false} 
+                      onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })} 
+                      disabled={isFuture}
+                    />
+                  </div>
                 </div>
               )}
 
               {isSunday && (
                 <>
-                  <div className="flex justify-between items-center mb-2">
-                    <label>1. Cleaning Room</label>
+                <div className="flex-col gap-3">
+                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                    background: log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Cleaning Room</span>
                     <input 
                       type="checkbox" 
                       className="habit-checkbox" 
@@ -396,8 +405,11 @@ export default function DailyLog() {
                       disabled={isFuture}
                     />
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label>2. Regular laundry</label>
+                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                    background: log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Regular laundry</span>
                     <input 
                       type="checkbox" 
                       className="habit-checkbox" 
@@ -406,8 +418,11 @@ export default function DailyLog() {
                       disabled={isFuture}
                     />
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label>3. 1 share bought</label>
+                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                    background: log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)' }}>3. 1 share bought</span>
                     <input 
                       type="checkbox" 
                       className="habit-checkbox" 
@@ -416,6 +431,7 @@ export default function DailyLog() {
                       disabled={isFuture}
                     />
                   </div>
+                </div>
                 </>
               )}
             </div>
@@ -682,7 +698,7 @@ export default function DailyLog() {
           </div>
 
           <div className="glass-card p-6">
-            <h3 className="mb-4">Book Reading <span className="text-amber text-sm">{(log.books.read ? 10 : 0)}/10pts</span></h3>
+            <h3 className="mb-4 flex items-center gap-2"><BookOpen size={20} className="text-amber" /> Book Reading <span className="text-amber text-sm">{(log.books.read ? 10 : 0)}/10pts</span></h3>
             
             {bookProgress && (
               <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '8px', borderRadius: '6px', marginBottom: '1rem' }}>
@@ -742,26 +758,40 @@ export default function DailyLog() {
           </div>
 
           <div className="glass-card p-6">
-            <h3 className="mb-4">System Check <span className="text-amber text-sm">{sysScore}/2pts</span></h3>
-            <div className="flex justify-between items-center mb-2">
-              <label>1. ToDo App Updated (1pt)</label>
-              <input 
-                type="checkbox" 
-                className="habit-checkbox" 
-                checked={log.system?.todo || false} 
-                onChange={e => updateSection('system', 'todo', e.target.checked)} 
-                disabled={isFuture}
-              />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>2. Money Tracker Updated (1pt)</label>
-              <input 
-                type="checkbox" 
-                className="habit-checkbox" 
-                checked={log.system?.money || false} 
-                onChange={e => updateSection('system', 'money', e.target.checked)} 
-                disabled={isFuture}
-              />
+            <h3 className="mb-4 flex items-center gap-2"><ShieldCheck size={20} className="text-amber" /> System Check <span className="text-amber text-sm">{sysScore}/2pts</span></h3>
+            <div className="flex-col gap-3">
+              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                background: log.system?.todo ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${log.system?.todo ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+              }}>
+                <div className="flex flex-col">
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. ToDo App Updated</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="habit-checkbox" 
+                  checked={log.system?.todo || false} 
+                  onChange={e => updateSection('system', 'todo', e.target.checked)} 
+                  disabled={isFuture}
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                background: log.system?.money ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${log.system?.money ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+              }}>
+                <div className="flex flex-col">
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Money Tracker Updated</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="habit-checkbox" 
+                  checked={log.system?.money || false} 
+                  onChange={e => updateSection('system', 'money', e.target.checked)} 
+                  disabled={isFuture}
+                />
+              </div>
             </div>
           </div>
 
