@@ -9,8 +9,16 @@ module.exports = {
   apps: [
     // --- CORE SERVICES ---
     { name: 'login', port: 5101, path: 'backend/User/Identity/login' },
+    { name: 'register', port: 5102, path: 'backend/User/Identity/register' },
+    { name: 'logout', port: 5103, path: 'backend/User/Identity/logout' },
     { name: 'verify', port: 5104, path: 'backend/User/Identity/verify' },
     { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
+
+    // --- PROFILE SERVICES ---
+    { name: 'settings', port: 5109, path: 'backend/User/Profile/settings' },
+    { name: 'categories', port: 5110, path: 'backend/Admin/Management/categories' },
+    { name: 'avatar', port: 5111, path: 'backend/User/Profile/avatar' },
+    { name: 'profile', port: 5112, path: 'backend/User/Profile/profile' },
 
     // --- HABIT SERVICES (Minimally Required) ---
     { name: 'side-hustle', port: 5122, path: 'backend/User/Habits/side-hustle' },
