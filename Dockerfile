@@ -29,6 +29,8 @@ COPY pm2.config.js .
 COPY start.sh .
 RUN chmod +x start.sh
 
+EXPOSE 8080
+
 # Start Native Setup
 CMD ["./start.sh"]
 
