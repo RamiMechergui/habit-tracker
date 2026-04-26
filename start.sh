@@ -11,7 +11,7 @@ mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp
 chmod -R 777 /var/log/nginx /var/lib/nginx/tmp || true
 
 # 3. Generate Nginx Config Dynamically
-TARGET_PORT=8080
+TARGET_PORT=${PORT:-8080}
 echo "📡 Generating Nginx config for port: $TARGET_PORT (IPv4 & IPv6)"
 
 cat <<EOF > /etc/nginx/http.d/default.conf
