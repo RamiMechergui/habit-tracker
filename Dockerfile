@@ -6,14 +6,15 @@ RUN npm install --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Backend & Gateway (Pure Node.js)
+# Stage 2: Backend & Nginx Gateway
 FROM node:20-alpine
 
+RUN apk add --no-cache nginx && mkdir -p /run/nginx
 RUN npm install -g pm2
 WORKDIR /app
 
 # Copy Frontend Build
-COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
+COPY --from=frontend-build /app/frontend/dist /var/www/html
 
 # Copy backend folder
 COPY backend ./backend
