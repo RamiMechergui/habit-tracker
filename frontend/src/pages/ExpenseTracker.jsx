@@ -259,7 +259,6 @@ export default function ExpenseTracker() {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

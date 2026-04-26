@@ -454,7 +454,7 @@ export default function DailyLog() {
               <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
             </label>
 
-            <div className="mt-6 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
+            <div className="mt-10 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
               <div className="flex justify-between items-center mb-3">
                 <h4 className="m-0 flex items-center gap-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
                   <Sparkles size={14} className="text-amber" /> Key Lessons
@@ -494,7 +494,7 @@ export default function DailyLog() {
                       </div>
                     ) : (
                       <div className="flex items-start justify-between gap-3 group">
-                        <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.9)' }}>
+                        <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
                           <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>
                           {lesson}
                         </span>
@@ -600,7 +600,7 @@ export default function DailyLog() {
               </div>
             </div>
 
-            <div className="mt-6 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
+            <div className="mt-10 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
               <h4 className="mb-3 flex items-center gap-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
                 <Sparkles size={14} className="text-amber" /> Key Lessons
               </h4>
@@ -638,7 +638,7 @@ export default function DailyLog() {
                       </div>
                     ) : (
                       <div className="flex items-start justify-between gap-3 group">
-                        <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.9)' }}>
+                        <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
                           <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>
                           {lesson}
                         </span>
