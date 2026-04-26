@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video } from 'lucide-react';
+import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function DailyLog() {
@@ -139,7 +139,7 @@ export default function DailyLog() {
 
   const deleteExpense = (idx) => {
     const newEx = log.expenses.filter((_, i) => i !== idx);
-    setLog(prev => ({ ...prev, expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0 }] }));
+    setLog(prev => ({ ...prev, expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0], time: format(new Date(), 'HH:mm') }] }));
   };
 
   // --- Live Score Calculations ---
@@ -544,8 +544,8 @@ export default function DailyLog() {
               </span>
             )}
 
-            <div className="flex gap-3 mt-4">
-              <label className="flex flex-1 items-center gap-3 p-3 rounded-xl transition-all" style={{ 
+            <div className="flex flex-col gap-3 mt-4">
+              <label className="flex items-center gap-3 p-3 rounded-xl transition-all" style={{ 
                 background: log.video.achieved ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
                 border: `1px solid ${log.video.achieved ? 'rgba(16, 185, 129, 0.2)' : 'var(--border)'}`,
                 cursor: isFuture ? 'default' : 'pointer'
@@ -564,14 +564,40 @@ export default function DailyLog() {
                   }}
                   disabled={isFuture}
                 /> 
-                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Achieved</span>
+                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
               </label>
               
-              <select className="flex-1" style={{ height: 48 }} value={log.video.progress} onChange={e=>updateSection('video', 'progress', e.target.value)} disabled={isFuture}>
-                <option>Better</option>
-                <option>Same</option>
-                <option>Worse</option>
-              </select>
+              <div className="flex gap-2 p-1 bg-[rgba(0,0,0,0.2)] rounded-xl border border-[var(--border)]">
+                {[
+                  { val: 'Better', icon: TrendingUp, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+                  { val: 'Same', icon: Minus, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' },
+                  { val: 'Worse', icon: TrendingDown, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
+                ].map(item => (
+                  <button
+                    key={item.val}
+                    disabled={isFuture}
+                    onClick={() => updateSection('video', 'progress', item.val)}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '8px 4px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: log.video.progress === item.val ? item.bg : 'transparent',
+                      color: log.video.progress === item.val ? item.color : 'var(--text-muted)',
+                      cursor: isFuture ? 'default' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: log.video.progress === item.val ? 1 : 0.6
+                    }}
+                  >
+                    <item.icon size={16} />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{item.val}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="mt-6 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
@@ -729,13 +755,23 @@ export default function DailyLog() {
             </div>
             {log.expenses.map((exp, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <input
-                  className="w-full"
-                  placeholder={`Expense ${i + 1} description`}
-                  value={exp.desc}
-                  onChange={e => updateExpense(i, 'desc', e.target.value)}
-                  disabled={isFuture}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1"
+                    placeholder={`Expense ${i + 1} description`}
+                    value={exp.desc}
+                    onChange={e => updateExpense(i, 'desc', e.target.value)}
+                    disabled={isFuture}
+                  />
+                  <input
+                    type="time"
+                    style={{ width: '100px', flexShrink: 0 }}
+                    value={exp.time || ''}
+                    onChange={e => updateExpense(i, 'time', e.target.value)}
+                    disabled={isFuture}
+                    title="Exact time of expense"
+                  />
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <select
                     style={{ flex: '1 1 120px', minWidth: '120px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem' }}
@@ -770,7 +806,7 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: expenseCategories[0] || '', amount: 0 }] }))} disabled={isFuture}>
+            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: expenseCategories[0] || '', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>

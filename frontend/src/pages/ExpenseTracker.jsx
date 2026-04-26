@@ -209,38 +209,55 @@ export default function ExpenseTracker() {
         </div>
 
         {/* Detailed List Card */}
-        <div className="glass-card p-6">
-          <h3 className="mb-4">Top Categories</h3>
-          {aggregatedData.activeCategories.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {aggregatedData.activeCategories.map(([category, amount], index) => {
-                const percentage = ((amount / aggregatedData.totalSpent) * 100).toFixed(1);
-                const color = chartColors[index % chartColors.length];
-                
-                return (
-                  <div key={category} style={{ background: 'var(--bg-card-hover)', padding: '12px', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: color }} />
-                        <span style={{ fontWeight: 500 }}>{category}</span>
-                      </div>
-                      <span style={{ fontWeight: 600, color: 'var(--accent-amber)' }}>{amount.toFixed(3)} TND</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ flex: 1, height: '6px', background: 'var(--bg)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${percentage}%`, height: '100%', background: color }} />
-                      </div>
-                      <span className="text-muted" style={{ fontSize: '0.8rem', minWidth: '40px', textAlign: 'right' }}>{percentage}%</span>
-                    </div>
+        </div>
+
+        {/* Transaction History Card */}
+        <div className="glass-card p-6" style={{ gridColumn: '1 / -1' }}>
+          <h3 className="mb-4 flex items-center gap-2">📑 Transaction History</h3>
+          <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
+            {Object.entries(logs)
+              .filter(([_, log]) => log.expenses && log.expenses.some(e => parseFloat(e.amount) > 0))
+              .sort((a, b) => new Date(b[0]) - new Date(a[0])) // Sort by date descending
+              .map(([dateStr, log]) => (
+                <div key={dateStr} className="mb-6">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <span className="grade-pill" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.8rem', padding: '4px 12px' }}>
+                      {format(new Date(dateStr + 'T00:00:00'), 'EEEE, MMM dd, yyyy')}
+                    </span>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No categories to display.
-            </div>
-          )}
+                  
+                  <div className="flex-col gap-2">
+                    {log.expenses
+                      .filter(exp => parseFloat(exp.amount) > 0)
+                      .map((exp, i) => (
+                        <div key={i} className="glass-card" style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-blue)' }}>{exp.time || '--:--'}</p>
+                              <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Time</p>
+                            </div>
+                            <div style={{ height: '24px', width: '1px', background: 'var(--border)' }} />
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 500, fontSize: '0.95rem' }}>{exp.desc || 'No description'}</p>
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{exp.category}</p>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: 'var(--accent-amber)', fontSize: '1.05rem' }}>{parseFloat(exp.amount).toFixed(3)} TND</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            
+            {Object.keys(logs).every(date => !logs[date].expenses || !logs[date].expenses.some(e => parseFloat(e.amount) > 0)) && (
+              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
+                <p>No transactions found in your history.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
