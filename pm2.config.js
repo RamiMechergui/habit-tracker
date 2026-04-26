@@ -22,20 +22,20 @@ module.exports = {
     { name: 'verify', port: 5104, path: 'backend/User/Identity/verify' },
     { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
 
-    // --- HABIT SERVICES ---
-    { name: 'morning-habits', port: 5118, path: 'backend/User/Habits/morning-habits' },
-    { name: 'bad-habits', port: 5119, path: 'backend/User/Habits/bad-habits' },
-    { name: 'night-habits', port: 5120, path: 'backend/User/Habits/night-habits' },
-    { name: 'weekend-duties', port: 5121, path: 'backend/User/Habits/weekend-duties' },
+    // --- HABIT SERVICES (Minimally Required) ---
     { name: 'side-hustle', port: 5122, path: 'backend/User/Habits/side-hustle' },
-    { name: 'video-editing', port: 5123, path: 'backend/User/Habits/video-editing' },
-    { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
-    { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
+    { name: 'video-editing', port: 5123, path: 'backend/User/Habits/video-editing' }
 
-    // --- ESSENTIAL DATA ---
-    { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
-    { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
-    { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
+    // --- DISABLED SERVICES (Temporarily disabled to ensure stable boot on Railway) ---
+    // { name: 'morning-habits', port: 5118, path: 'backend/User/Habits/morning-habits' },
+    // { name: 'bad-habits', port: 5119, path: 'backend/User/Habits/bad-habits' },
+    // { name: 'night-habits', port: 5120, path: 'backend/User/Habits/night-habits' },
+    // { name: 'weekend-duties', port: 5121, path: 'backend/User/Habits/weekend-duties' },
+    // { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
+    // { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
+    // { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
+    // { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
+    // { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
   ].map(service => {
     if (service.name === 'gateway') return service;
     return {
