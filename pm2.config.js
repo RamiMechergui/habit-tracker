@@ -13,6 +13,8 @@ module.exports = {
     { name: 'logout', port: 5103, path: 'backend/User/Identity/logout' },
     { name: 'verify', port: 5104, path: 'backend/User/Identity/verify' },
     { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
+    { name: 'currentbook', port: 5107, path: 'backend/Admin/Management/currentbook' },
+    { name: 'archives', port: 5108, path: 'backend/Admin/Management/archives' },
 
     // --- PROFILE SERVICES ---
     { name: 'settings', port: 5109, path: 'backend/User/Profile/settings' },

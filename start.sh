@@ -1,11 +1,7 @@
 #!/bin/sh
-echo "🚀 --- EVOLVIA FINAL NGINX DUAL-STACK STARTUP ---"
+echo "🚀 --- EVOLVIA NATIVE STARTUP ---"
 
-# 1. Start PM2 Microservices in the background
-echo "⚙️ Starting Microservices via PM2..."
-pm2 start pm2.config.js
-
-# 2. Prepare Nginx Environment
+# 1. Prepare Nginx Environment
 echo "📂 Preparing Nginx directories..."
 mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp
 chmod -R 777 /var/log/nginx /var/lib/nginx/tmp || true

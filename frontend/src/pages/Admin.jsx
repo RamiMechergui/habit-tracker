@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, Database, Server, Users, Lock,
+  Users, Lock,
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
   LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft,
   X, Calendar, Mail, User, Trash2, Lightbulb, Hammer, Plus,
@@ -567,50 +567,6 @@ function DevelopmentView() {
   );
 }
 
-/* ── Tool iframe view ───────────────────────────────────────── */
-function ToolView({ tool, onBack }) {
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', animation:'adm-up 0.3s ease' }}>
-      {/* toolbar */}
-      <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', background:'rgba(8,10,14,0.92)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <button onClick={onBack} className="adm-back" style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.04)', color:'#94a3b8', fontSize:13, cursor:'pointer' }}>
-            <ArrowLeft size={14} /> Back
-          </button>
-          <div style={{ width:1, height:20, background:'rgba(255,255,255,0.07)' }} />
-          <tool.Icon size={16} color={tool.color} />
-          <span style={{ color:'#f8fafc', fontWeight:700, fontSize:14 }}>{tool.label}</span>
-          <Pill label="Live" color={tool.color} />
-        </div>
-        <a href={tool.src} target="_blank" rel="noopener noreferrer"
-          style={{ display:'flex', alignItems:'center', gap:5, color:'#475569', fontSize:12, textDecoration:'none', padding:'5px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.05)' }}>
-          <ExternalLink size={13} /> Full page
-        </a>
-      </div>
-
-      {/* iframe area */}
-      <div style={{ flex:1, position:'relative', background:'#0d0f14' }}>
-        {!iframeLoaded && (
-          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, zIndex:5, background:'#080a0e' }}>
-            <Loader2 size={38} color={tool.color} style={{ animation:'adm-spin 1s linear infinite' }} />
-            <div style={{ color:'#475569', fontSize:15 }}>Loading {tool.label}…</div>
-          </div>
-        )}
-        <iframe
-          key={tool.id}
-          src={tool.src}
-          className="adm-iframe"
-          title={tool.label}
-          onLoad={() => setIframeLoaded(true)}
-          style={{ width:'100%', height:'100%', border:'none' }}
-        />
-      </div>
-    </div>
-  );
-}
-
 /* ── Dashboard shell ────────────────────────────────────────── */
 function Dashboard({ onLogout }) {
   const [active, setActive]       = useState('overview');
@@ -628,8 +584,6 @@ function Dashboard({ onLogout }) {
     finally  { setLoading(false); }
   };
 
-  const tool = TOOLS.find(t => t.id === active);
-
   return (
     <div style={{ display:'flex', height:'100vh', width:'100%', background:'#080a0e', overflow:'hidden' }}>
       {/* bg grid */}
@@ -640,8 +594,6 @@ function Dashboard({ onLogout }) {
       <main style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', zIndex:10 }}>
         {active === 'dev' ? (
           <DevelopmentView />
-        ) : tool ? (
-          <ToolView tool={tool} onBack={()=>setActive('overview')} />
         ) : (
           <Overview userCount={userCount} loading={loading} onFetch={fetchUsers} onOpen={setActive} onOpenUsers={() => setShowUsersModal(true)} />
         )}
