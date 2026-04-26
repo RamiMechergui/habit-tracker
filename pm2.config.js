@@ -2,7 +2,8 @@ const commonEnv = {
   MONGO_URI: process.env.MONGO_URI || process.env.MONGO_URL || process.env.MONGODB_URL,
   JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod',
   NODE_ENV: 'production',
-  CLIENT_URL: process.env.CLIENT_URL
+  CLIENT_URL: process.env.CLIENT_URL,
+  OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318'
 };
 
 module.exports = {
@@ -20,20 +21,20 @@ module.exports = {
     { name: 'avatar', port: 5111, path: 'backend/User/Profile/avatar' },
     { name: 'profile', port: 5112, path: 'backend/User/Profile/profile' },
 
-    // --- HABIT SERVICES (Minimally Required) ---
+    // --- HABIT SERVICES ---
+    { name: 'morning-habits', port: 5118, path: 'backend/User/Habits/morning-habits' },
+    { name: 'bad-habits', port: 5119, path: 'backend/User/Habits/bad-habits' },
+    { name: 'night-habits', port: 5120, path: 'backend/User/Habits/night-habits' },
+    { name: 'weekend-duties', port: 5121, path: 'backend/User/Habits/weekend-duties' },
     { name: 'side-hustle', port: 5122, path: 'backend/User/Habits/side-hustle' },
-    { name: 'video-editing', port: 5123, path: 'backend/User/Habits/video-editing' }
+    { name: 'video-editing', port: 5123, path: 'backend/User/Habits/video-editing' },
+    { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
+    { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
 
-    // --- DISABLED SERVICES (Temporarily disabled to ensure stable boot on Railway) ---
-    // { name: 'morning-habits', port: 5118, path: 'backend/User/Habits/morning-habits' },
-    // { name: 'bad-habits', port: 5119, path: 'backend/User/Habits/bad-habits' },
-    // { name: 'night-habits', port: 5120, path: 'backend/User/Habits/night-habits' },
-    // { name: 'weekend-duties', port: 5121, path: 'backend/User/Habits/weekend-duties' },
-    // { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
-    // { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
-    // { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
-    // { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
-    // { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
+    // --- FINANCES & ANALYTICS ---
+    { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
+    { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
+    { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
   ].map(service => {
     return {
       name: service.name,
