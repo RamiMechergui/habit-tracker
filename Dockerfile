@@ -7,8 +7,8 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Backend & Gateway
-FROM node:20-slim
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+FROM node:20-alpine
+RUN apk add --no-cache nginx && mkdir -p /run/nginx
 RUN npm install -g pm2
 WORKDIR /app
 
