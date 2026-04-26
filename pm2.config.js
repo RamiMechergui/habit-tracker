@@ -1,14 +1,13 @@
 const commonEnv = {
   MONGO_URI: process.env.MONGO_URI || process.env.MONGODB_URL,
-  JWT_SECRET: process.env.JWT_SECRET,
-  NODE_ENV: process.env.NODE_ENV || 'production',
+  JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod',
+  NODE_ENV: 'production',
   CLIENT_URL: process.env.CLIENT_URL
 };
 
 module.exports = {
   apps: [
     // --- USER SIDE ---
-    // Identity
     { name: 'login', port: 5101, path: 'backend/User/Identity/login' },
     { name: 'register', port: 5102, path: 'backend/User/Identity/register' },
     { name: 'logout', port: 5103, path: 'backend/User/Identity/logout' },
@@ -36,35 +35,32 @@ module.exports = {
     { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
 
     // --- ADMIN SIDE ---
-    // Analytics
     { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
     { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' },
-
-    // Management
     { name: 'categories', port: 5110, path: 'backend/Admin/Management/categories' },
     { name: 'currentbook', port: 5107, path: 'backend/Admin/Management/currentbook' },
     { name: 'archives', port: 5108, path: 'backend/Admin/Management/archives' },
-    { name: 'integration', port: 5127, path: 'backend/Admin/Management/integration' }, // Integration as management tool
-
-    // Planning
+    { name: 'integration', port: 5127, path: 'backend/Admin/Management/integration' },
     { name: 'ideas', port: 5128, path: 'backend/Admin/Planning/ideas' }
   ].map(service => ({
     name: service.name,
     script: 'server.js',
     cwd: service.path,
+    // Add memory limit to prevent OOM in a shared container
+    node_args: '--max-old-space-size=128',
     env: {
       ...commonEnv,
       PORT: service.port,
-      MORNING_SERVICE_URL: 'http://localhost:5118',
-      BAD_SERVICE_URL: 'http://localhost:5119',
-      NIGHT_SERVICE_URL: 'http://localhost:5120',
-      WEEKEND_SERVICE_URL: 'http://localhost:5121',
-      HUSTLE_SERVICE_URL: 'http://localhost:5122',
-      VIDEO_SERVICE_URL: 'http://localhost:5123',
-      BOOK_LOG_SERVICE_URL: 'http://localhost:5124',
-      SYSTEM_SERVICE_URL: 'http://localhost:5125',
-      EXPENSES_SERVICE_URL: 'http://localhost:5126',
-      ANALYTICS_SERVICE_URL: 'http://localhost:5113'
+      MORNING_SERVICE_URL: 'http://127.0.0.1:5118',
+      BAD_SERVICE_URL: 'http://127.0.0.1:5119',
+      NIGHT_SERVICE_URL: 'http://127.0.0.1:5120',
+      WEEKEND_SERVICE_URL: 'http://127.0.0.1:5121',
+      HUSTLE_SERVICE_URL: 'http://127.0.0.1:5122',
+      VIDEO_SERVICE_URL: 'http://127.0.0.1:5123',
+      BOOK_LOG_SERVICE_URL: 'http://127.0.0.1:5124',
+      SYSTEM_SERVICE_URL: 'http://127.0.0.1:5125',
+      EXPENSES_SERVICE_URL: 'http://127.0.0.1:5126',
+      ANALYTICS_SERVICE_URL: 'http://127.0.0.1:5113'
     }
   }))
 };
