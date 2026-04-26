@@ -755,7 +755,7 @@ export default function DailyLog() {
             </div>
             {log.expenses.map((exp, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <input
                     className="flex-1"
                     placeholder={`Expense ${i + 1} description`}
@@ -763,14 +763,23 @@ export default function DailyLog() {
                     onChange={e => updateExpense(i, 'desc', e.target.value)}
                     disabled={isFuture}
                   />
-                  <input
-                    type="time"
-                    style={{ width: '100px', flexShrink: 0 }}
-                    value={exp.time || ''}
-                    onChange={e => updateExpense(i, 'time', e.target.value)}
-                    disabled={isFuture}
-                    title="Exact time of expense"
-                  />
+                  <div style={{ 
+                    fontSize: '0.8rem', 
+                    fontWeight: 600, 
+                    color: 'var(--text-muted)', 
+                    background: 'rgba(255,255,255,0.03)', 
+                    padding: '8px 12px', 
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    minWidth: '85px',
+                    justifyContent: 'center'
+                  }}>
+                    <Clock size={12} className="text-blue" />
+                    {exp.time || '--:--'}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <select
