@@ -69,17 +69,36 @@ server {
         proxy_pass http://127.0.0.1:3000; 
         proxy_set_header Host \$host;
     }
-    location /admin/jaeger/ { proxy_pass http://127.0.0.1:16686; }
+    
+    # Dynamic Jaeger Proxy
+    location /admin/jaeger/ { 
+        if (\$jaeger_external = "true") {
+            proxy_pass http://jaeger.railway.internal:16686;
+        }
+        if (\$jaeger_external = "false") {
+            proxy_pass http://127.0.0.1:16686;
+        }
+    }
 
     # Enable large uploads
     client_max_body_size 10M;
 }
 EOF
 
-# 4. Verify Nginx Config
+# 4. Detect Jaeger Mode
+JAEGER_EXTERNAL="false"
+if [ ! -z "$OTEL_EXPORTER_OTLP_ENDPOINT" ] && [ "$OTEL_EXPORTER_OTLP_ENDPOINT" != "http://127.0.0.1:4318" ]; then
+    echo "🌐 Using external Jaeger service..."
+    JAEGER_EXTERNAL="true"
+fi
+
+# Inject the variable into Nginx map
+sed -i "s/server {/map \$host \$jaeger_external { default $JAEGER_EXTERNAL; }\nserver {/" /etc/nginx/http.d/default.conf
+
+# 5. Verify Nginx Config
 nginx -t
 
-# 5. Start Observability Stack (Background)
+# 6. Start Observability Stack (Background)
 echo "📈 Starting Prometheus..."
 prometheus --config.file=/app/prometheus.yml --storage.tsdb.path=/var/lib/prometheus --web.external-url=/admin/prometheus/ > /dev/null 2>&1 &
 
@@ -89,10 +108,14 @@ export GF_SERVER_SERVE_FROM_SUB_PATH=true
 export GF_SECURITY_ALLOW_EMBEDDING=true
 grafana-server --homepath /usr/share/grafana --packaging=apk cfg:default.paths.data=/var/lib/grafana > /dev/null 2>&1 &
 
-echo "🔍 Starting Jaeger..."
-QUERY_BASE_PATH=/admin/jaeger jaeger-all-in-one > /dev/null 2>&1 &
+if [ "$JAEGER_EXTERNAL" = "false" ]; then
+    echo "🔍 Starting Local Jaeger..."
+    QUERY_BASE_PATH=/admin/jaeger jaeger-all-in-one > /dev/null 2>&1 &
+else
+    echo "⏭️ Skipping Local Jaeger (External Service Active)"
+fi
 
-# 6. Fix permissions for Nginx User
+# 7. Fix permissions for Nginx User
 chown -R nginx:nginx /var/www/html || chown -R root:root /var/www/html
 chmod -R 755 /var/www/html
 

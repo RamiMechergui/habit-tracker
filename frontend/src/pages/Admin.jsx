@@ -223,8 +223,8 @@ function UsersModal({ onClose }) {
       setUsers(users.filter(u => u.userId !== userToDelete.id));
       setSuccessMsg(`User ${userToDelete.email} was successfully deleted.`);
       setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err) {
-      alert(`Error: ${err.message}`);
+      setError(`Error: ${err.message}`);
+      setTimeout(() => setError(null), 4000);
     } finally {
       setUserToDelete(null);
     }
@@ -443,6 +443,7 @@ function DevelopmentView() {
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newStatus, setNewStatus] = useState('Idea');
+  const [ideaToDelete, setIdeaToDelete] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('evolvia_dev_ideas', JSON.stringify(ideas));
@@ -468,8 +469,13 @@ function DevelopmentView() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('Delete this idea?')) {
-      setIdeas(ideas.filter(i => i.id !== id));
+    setIdeaToDelete(ideas.find(i => i.id === id));
+  };
+
+  const confirmDelete = () => {
+    if (ideaToDelete) {
+      setIdeas(ideas.filter(i => i.id !== ideaToDelete.id));
+      setIdeaToDelete(null);
     }
   };
 
@@ -575,6 +581,24 @@ function DevelopmentView() {
               <button onClick={editingIdea ? handleEdit : handleAdd} style={{ marginTop:10, padding:'14px', borderRadius:12, border:'none', background:'#F5A623', color:'#000', fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <Save size={18} /> {editingIdea ? 'Update Idea' : 'Save Idea'}
               </button>
+            </div>
+          </div>
+        </div>
+      {/* Custom Confirm Modal for Deleting Ideas */}
+      {ideaToDelete && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(10px)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'adm-fade-in 0.2s ease' }}>
+          <div style={{ position:'absolute', inset:0 }} onClick={() => setIdeaToDelete(null)} />
+          <div style={{ position:'relative', width:'100%', maxWidth:400, background:'#0d0f14', border:'1px solid rgba(239,68,68,0.2)', borderRadius:20, padding:32, textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(239,68,68,0.1)', animation:'adm-slide-up 0.25s cubic-bezier(0.16,1,0.3,1)' }}>
+            <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(239,68,68,0.1)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', border:'1px solid rgba(239,68,68,0.2)' }}>
+              <Trash2 size={28} color="#ef4444" />
+            </div>
+            <h3 style={{ margin:'0 0 12px', color:'#f8fafc', fontSize:20, fontWeight:700 }}>Delete Idea?</h3>
+            <p style={{ margin:'0 0 24px', color:'#94a3b8', fontSize:14, lineHeight:1.5 }}>
+              Are you sure you want to remove <strong style={{ color:'#f8fafc' }}>"{ideaToDelete.title}"</strong>? This will permanently delete the entry.
+            </p>
+            <div style={{ display:'flex', gap:12 }}>
+              <button onClick={() => setIdeaToDelete(null)} style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, color:'#f8fafc', fontWeight:600, cursor:'pointer', transition:'all 0.2s' }}>Cancel</button>
+              <button onClick={confirmDelete} style={{ flex:1, padding:'12px', background:'linear-gradient(135deg, #ef4444, #dc2626)', border:'none', borderRadius:12, color:'#fff', fontWeight:600, cursor:'pointer', boxShadow:'0 8px 16px rgba(239,68,68,0.25)', transition:'all 0.2s' }}>Delete</button>
             </div>
           </div>
         </div>

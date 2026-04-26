@@ -3,7 +3,7 @@ const commonEnv = {
   JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod',
   NODE_ENV: 'production',
   CLIENT_URL: process.env.CLIENT_URL,
-  OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318'
+  OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://127.0.0.1:4318'
 };
 
 module.exports = {
