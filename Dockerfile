@@ -17,11 +17,13 @@ COPY --from=frontend-build /app/frontend/dist /var/www/html
 
 # Copy all Backend services and install dependencies in parallel
 COPY Backend ./Backend
-RUN for d1 in Backend/services/*; do \
-      for d2 in "$d1"/*; do \
-        if [ -d "$d2" ] && [ -f "$d2/package.json" ]; then \
-          (cd "$d2" && npm install --omit=dev --no-audit --no-fund) & \
-        fi \
+RUN for side in User Admin; do \
+      for domain in Backend/$side/*; do \
+        for service in "$domain"/*; do \
+          if [ -d "$service" ] && [ -f "$service/package.json" ]; then \
+            (cd "$service" && npm install --omit=dev --no-audit --no-fund) & \
+          fi \
+        done \
       done \
     done; \
     wait

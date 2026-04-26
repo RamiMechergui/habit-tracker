@@ -12,11 +12,11 @@ services:
       - habit-network
 
   login:
-    build: ./Backend/services/Identity/login
+    build: ./Backend/User/Identity/login
     hostname: login
     environment:
       - PORT=5101
-      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - MONGO_URI=mongodb://mongo:27017/identity_db
       - JWT_SECRET=${JWT_SECRET}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=login-service
@@ -24,11 +24,11 @@ services:
     networks: [habit-network]
 
   register:
-    build: ./Backend/services/Identity/register
+    build: ./Backend/User/Identity/register
     hostname: register
     environment:
       - PORT=5102
-      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - MONGO_URI=mongodb://mongo:27017/identity_db
       - JWT_SECRET=${JWT_SECRET}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=register-service
@@ -36,7 +36,7 @@ services:
     networks: [habit-network]
 
   logout:
-    build: ./Backend/services/Identity/logout
+    build: ./Backend/User/Identity/logout
     hostname: logout
     environment:
       - PORT=5103
@@ -46,7 +46,7 @@ services:
     networks: [habit-network]
 
   verify:
-    build: ./Backend/services/Identity/verify
+    build: ./Backend/User/Identity/verify
     hostname: verify
     environment:
       - PORT=5104
@@ -57,11 +57,10 @@ services:
     networks: [habit-network]
 
   daily:
-    build: ./Backend/services/DailyLog/daily
+    build: ./Backend/User/Aggregator/daily
     hostname: daily
     environment:
       - PORT=5105
-      - MONGO_URI=mongodb://mongo:27017/daily_db
       - JWT_SECRET=${JWT_SECRET}
       - MORNING_SERVICE_URL=http://morning-habits:5118
       - BAD_SERVICE_URL=http://bad-habits:5119
@@ -77,7 +76,7 @@ services:
     networks: [habit-network]
 
   scoring:
-    build: ./Backend/services/Analytics/scoring
+    build: ./Backend/Admin/Analytics/scoring
     hostname: scoring
     environment:
       - PORT=5106
@@ -88,7 +87,7 @@ services:
     networks: [habit-network]
 
   currentbook:
-    build: ./Backend/services/Books/currentbook
+    build: ./Backend/Admin/Management/currentbook
     hostname: currentbook
     environment:
       - PORT=5107
@@ -100,7 +99,7 @@ services:
     networks: [habit-network]
 
   archives:
-    build: ./Backend/services/Books/archives
+    build: ./Backend/Admin/Management/archives
     hostname: archives
     environment:
       - PORT=5108
@@ -112,7 +111,7 @@ services:
     networks: [habit-network]
 
   settings:
-    build: ./Backend/services/Account/settings
+    build: ./Backend/User/Profile/settings
     hostname: settings
     environment:
       - PORT=5109
@@ -124,7 +123,7 @@ services:
     networks: [habit-network]
 
   categories:
-    build: ./Backend/services/Finances/categories
+    build: ./Backend/Admin/Management/categories
     hostname: categories
     environment:
       - PORT=5110
@@ -136,7 +135,7 @@ services:
     networks: [habit-network]
 
   avatar:
-    build: ./Backend/services/Account/avatar
+    build: ./Backend/User/Profile/avatar
     hostname: avatar
     environment:
       - PORT=5111
@@ -148,7 +147,7 @@ services:
     networks: [habit-network]
 
   profile:
-    build: ./Backend/services/Account/profile
+    build: ./Backend/User/Profile/profile
     hostname: profile
     environment:
       - PORT=5112
@@ -161,7 +160,7 @@ services:
     networks: [habit-network]
 
   analytics:
-    build: ./Backend/services/Analytics/analytics
+    build: ./Backend/Admin/Analytics/analytics
     hostname: analytics
     environment:
       - PORT=5113
@@ -174,7 +173,7 @@ services:
     networks: [habit-network]
 
   morning-habits:
-    build: ./Backend/services/DailyLog/morning-habits
+    build: ./Backend/User/Habits/morning-habits
     hostname: morning-habits
     environment:
       - PORT=5118
@@ -184,7 +183,7 @@ services:
     networks: [habit-network]
 
   bad-habits:
-    build: ./Backend/services/DailyLog/bad-habits
+    build: ./Backend/User/Habits/bad-habits
     hostname: bad-habits
     environment:
       - PORT=5119
@@ -194,7 +193,7 @@ services:
     networks: [habit-network]
 
   night-habits:
-    build: ./Backend/services/DailyLog/night-habits
+    build: ./Backend/User/Habits/night-habits
     hostname: night-habits
     environment:
       - PORT=5120
@@ -204,7 +203,7 @@ services:
     networks: [habit-network]
 
   weekend-duties:
-    build: ./Backend/services/DailyLog/weekend-duties
+    build: ./Backend/User/Habits/weekend-duties
     hostname: weekend-duties
     environment:
       - PORT=5121
@@ -214,7 +213,7 @@ services:
     networks: [habit-network]
 
   side-hustle:
-    build: ./Backend/services/Career/side-hustle
+    build: ./Backend/User/Habits/side-hustle
     hostname: side-hustle
     environment:
       - PORT=5122
@@ -224,7 +223,7 @@ services:
     networks: [habit-network]
 
   video-editing:
-    build: ./Backend/services/Career/video-editing
+    build: ./Backend/User/Habits/video-editing
     hostname: video-editing
     environment:
       - PORT=5123
@@ -234,7 +233,7 @@ services:
     networks: [habit-network]
 
   book-reading:
-    build: ./Backend/services/Books/book-reading
+    build: ./Backend/User/Habits/book-reading
     hostname: book-reading
     environment:
       - PORT=5124
@@ -244,7 +243,7 @@ services:
     networks: [habit-network]
 
   system-check:
-    build: ./Backend/services/DailyLog/system-check
+    build: ./Backend/User/Habits/system-check
     hostname: system-check
     environment:
       - PORT=5125
@@ -254,11 +253,21 @@ services:
     networks: [habit-network]
 
   expenses:
-    build: ./Backend/services/Finances/expenses
+    build: ./Backend/User/Finances/expenses
     hostname: expenses
     environment:
       - PORT=5126
       - MONGO_URI=mongodb://mongo:27017/expenses_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  ideas:
+    build: ./Backend/Admin/Planning/ideas
+    hostname: ideas
+    environment:
+      - PORT=5128
+      - MONGO_URI=mongodb://mongo:27017/ideas_db
       - JWT_SECRET=${JWT_SECRET}
     depends_on: [mongo]
     networks: [habit-network]
@@ -269,7 +278,7 @@ services:
     networks: [habit-network]
 
   integration:
-    build: ./Backend/services/Core/integration
+    build: ./Backend/Admin/Management/integration
     hostname: integration
     depends_on:
       - nginx
