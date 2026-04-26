@@ -7,13 +7,12 @@ const commonEnv = {
 
 module.exports = {
   apps: [
-    // --- USER SIDE ---
+    // --- CORE SERVICES (Required for App to work) ---
     { name: 'login', port: 5101, path: 'backend/User/Identity/login' },
-    { name: 'register', port: 5102, path: 'backend/User/Identity/register' },
-    { name: 'logout', port: 5103, path: 'backend/User/Identity/logout' },
     { name: 'verify', port: 5104, path: 'backend/User/Identity/verify' },
+    { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
 
-    // Habits
+    // --- HABIT SERVICES (Required for Daily Log & Sidebars) ---
     { name: 'morning-habits', port: 5118, path: 'backend/User/Habits/morning-habits' },
     { name: 'bad-habits', port: 5119, path: 'backend/User/Habits/bad-habits' },
     { name: 'night-habits', port: 5120, path: 'backend/User/Habits/night-habits' },
@@ -23,31 +22,27 @@ module.exports = {
     { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
     { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
 
-    // Finances
+    // --- ESSENTIAL DATA ---
     { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
-
-    // Profile
-    { name: 'settings', port: 5109, path: 'backend/User/Profile/settings' },
-    { name: 'avatar', port: 5111, path: 'backend/User/Profile/avatar' },
-    { name: 'profile', port: 5112, path: 'backend/User/Profile/profile' },
-
-    // Aggregator
-    { name: 'daily', port: 5105, path: 'backend/User/Aggregator/daily' },
-
-    // --- ADMIN SIDE ---
     { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
-    { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' },
-    { name: 'categories', port: 5110, path: 'backend/Admin/Management/categories' },
-    { name: 'currentbook', port: 5107, path: 'backend/Admin/Management/currentbook' },
-    { name: 'archives', port: 5108, path: 'backend/Admin/Management/archives' },
-    { name: 'integration', port: 5127, path: 'backend/Admin/Management/integration' },
-    { name: 'ideas', port: 5128, path: 'backend/Admin/Planning/ideas' }
+    { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
+
+    // (Disabled non-critical services to save memory in production)
+    // { name: 'register', port: 5102, path: 'backend/User/Identity/register' },
+    // { name: 'logout', port: 5103, path: 'backend/User/Identity/logout' },
+    // { name: 'settings', port: 5109, path: 'backend/User/Profile/settings' },
+    // { name: 'avatar', port: 5111, path: 'backend/User/Profile/avatar' },
+    // { name: 'profile', port: 5112, path: 'backend/User/Profile/profile' },
+    // { name: 'categories', port: 5110, path: 'backend/Admin/Management/categories' },
+    // { name: 'currentbook', port: 5107, path: 'backend/Admin/Management/currentbook' },
+    // { name: 'archives', port: 5108, path: 'backend/Admin/Management/archives' },
+    // { name: 'ideas', port: 5128, path: 'backend/Admin/Planning/ideas' }
   ].map(service => ({
     name: service.name,
     script: 'server.js',
     cwd: service.path,
-    // Add memory limit to prevent OOM in a shared container
-    node_args: '--max-old-space-size=128',
+    // Aggressive memory limit for small microservices
+    node_args: '--max-old-space-size=64',
     env: {
       ...commonEnv,
       PORT: service.port,
