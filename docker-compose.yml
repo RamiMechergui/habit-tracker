@@ -12,7 +12,7 @@ services:
       - habit-network
 
   login:
-    build: ./backend/User/Identity/login
+    build: ./Backend/User/Identity/login
     hostname: login
     environment:
       - PORT=5101
@@ -24,7 +24,7 @@ services:
     networks: [habit-network]
 
   register:
-    build: ./backend/User/Identity/register
+    build: ./Backend/User/Identity/register
     hostname: register
     environment:
       - PORT=5102
@@ -36,7 +36,7 @@ services:
     networks: [habit-network]
 
   logout:
-    build: ./backend/User/Identity/logout
+    build: ./Backend/User/Identity/logout
     hostname: logout
     environment:
       - PORT=5103
@@ -46,7 +46,7 @@ services:
     networks: [habit-network]
 
   verify:
-    build: ./backend/User/Identity/verify
+    build: ./Backend/User/Identity/verify
     hostname: verify
     environment:
       - PORT=5104
@@ -57,7 +57,7 @@ services:
     networks: [habit-network]
 
   daily:
-    build: ./backend/User/Aggregator/daily
+    build: ./Backend/User/Aggregator/daily
     hostname: daily
     environment:
       - PORT=5105
@@ -76,7 +76,7 @@ services:
     networks: [habit-network]
 
   scoring:
-    build: ./backend/Admin/Analytics/scoring
+    build: ./Backend/Admin/Analytics/scoring
     hostname: scoring
     environment:
       - PORT=5106
@@ -87,7 +87,7 @@ services:
     networks: [habit-network]
 
   currentbook:
-    build: ./backend/Admin/Management/currentbook
+    build: ./Backend/Admin/Management/currentbook
     hostname: currentbook
     environment:
       - PORT=5107
@@ -99,7 +99,7 @@ services:
     networks: [habit-network]
 
   archives:
-    build: ./backend/Admin/Management/archives
+    build: ./Backend/Admin/Management/archives
     hostname: archives
     environment:
       - PORT=5108
@@ -111,7 +111,7 @@ services:
     networks: [habit-network]
 
   settings:
-    build: ./backend/User/Profile/settings
+    build: ./Backend/User/Profile/settings
     hostname: settings
     environment:
       - PORT=5109
@@ -123,7 +123,7 @@ services:
     networks: [habit-network]
 
   categories:
-    build: ./backend/Admin/Management/categories
+    build: ./Backend/Admin/Management/categories
     hostname: categories
     environment:
       - PORT=5110
@@ -135,7 +135,7 @@ services:
     networks: [habit-network]
 
   avatar:
-    build: ./backend/User/Profile/avatar
+    build: ./Backend/User/Profile/avatar
     hostname: avatar
     environment:
       - PORT=5111
@@ -147,7 +147,7 @@ services:
     networks: [habit-network]
 
   profile:
-    build: ./backend/User/Profile/profile
+    build: ./Backend/User/Profile/profile
     hostname: profile
     environment:
       - PORT=5112
@@ -160,7 +160,7 @@ services:
     networks: [habit-network]
 
   analytics:
-    build: ./backend/Admin/Analytics/analytics
+    build: ./Backend/Admin/Analytics/analytics
     hostname: analytics
     environment:
       - PORT=5113
@@ -173,7 +173,7 @@ services:
     networks: [habit-network]
 
   morning-habits:
-    build: ./backend/User/Habits/morning-habits
+    build: ./Backend/User/Habits/morning-habits
     hostname: morning-habits
     environment:
       - PORT=5118
@@ -183,7 +183,7 @@ services:
     networks: [habit-network]
 
   bad-habits:
-    build: ./backend/User/Habits/bad-habits
+    build: ./Backend/User/Habits/bad-habits
     hostname: bad-habits
     environment:
       - PORT=5119
@@ -193,7 +193,7 @@ services:
     networks: [habit-network]
 
   night-habits:
-    build: ./backend/User/Habits/night-habits
+    build: ./Backend/User/Habits/night-habits
     hostname: night-habits
     environment:
       - PORT=5120
@@ -203,7 +203,7 @@ services:
     networks: [habit-network]
 
   weekend-duties:
-    build: ./backend/User/Habits/weekend-duties
+    build: ./Backend/User/Habits/weekend-duties
     hostname: weekend-duties
     environment:
       - PORT=5121
@@ -213,7 +213,7 @@ services:
     networks: [habit-network]
 
   side-hustle:
-    build: ./backend/User/Habits/side-hustle
+    build: ./Backend/User/Habits/side-hustle
     hostname: side-hustle
     environment:
       - PORT=5122
@@ -223,7 +223,7 @@ services:
     networks: [habit-network]
 
   video-editing:
-    build: ./backend/User/Habits/video-editing
+    build: ./Backend/User/Habits/video-editing
     hostname: video-editing
     environment:
       - PORT=5123
@@ -233,7 +233,7 @@ services:
     networks: [habit-network]
 
   book-reading:
-    build: ./backend/User/Habits/book-reading
+    build: ./Backend/User/Habits/book-reading
     hostname: book-reading
     environment:
       - PORT=5124
@@ -243,7 +243,7 @@ services:
     networks: [habit-network]
 
   system-check:
-    build: ./backend/User/Habits/system-check
+    build: ./Backend/User/Habits/system-check
     hostname: system-check
     environment:
       - PORT=5125
@@ -253,7 +253,7 @@ services:
     networks: [habit-network]
 
   expenses:
-    build: ./backend/User/Finances/expenses
+    build: ./Backend/User/Finances/expenses
     hostname: expenses
     environment:
       - PORT=5126
@@ -263,7 +263,7 @@ services:
     networks: [habit-network]
 
   ideas:
-    build: ./backend/Admin/Planning/ideas
+    build: ./Backend/Admin/Planning/ideas
     hostname: ideas
     environment:
       - PORT=5128
@@ -278,7 +278,7 @@ services:
     networks: [habit-network]
 
   integration:
-    build: ./backend/Admin/Management/integration
+    build: ./Backend/Admin/Management/integration
     hostname: integration
     depends_on:
       - nginx
