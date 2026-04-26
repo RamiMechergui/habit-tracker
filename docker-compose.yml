@@ -12,7 +12,7 @@ services:
       - habit-network
 
   login:
-    build: ./services/login
+    build: ./Backend/services/Identity/login
     hostname: login
     environment:
       - PORT=5101
@@ -24,7 +24,7 @@ services:
     networks: [habit-network]
 
   register:
-    build: ./services/register
+    build: ./Backend/services/Identity/register
     hostname: register
     environment:
       - PORT=5102
@@ -36,7 +36,7 @@ services:
     networks: [habit-network]
 
   logout:
-    build: ./services/logout
+    build: ./Backend/services/Identity/logout
     hostname: logout
     environment:
       - PORT=5103
@@ -46,7 +46,7 @@ services:
     networks: [habit-network]
 
   verify:
-    build: ./services/verify
+    build: ./Backend/services/Identity/verify
     hostname: verify
     environment:
       - PORT=5104
@@ -57,19 +57,27 @@ services:
     networks: [habit-network]
 
   daily:
-    build: ./services/daily
+    build: ./Backend/services/DailyLog/daily
     hostname: daily
     environment:
       - PORT=5105
       - MONGO_URI=mongodb://mongo:27017/daily_db
       - JWT_SECRET=${JWT_SECRET}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-      - OTEL_SERVICE_NAME=daily-service
-    depends_on: [mongo, jaeger]
+      - MORNING_SERVICE_URL=http://morning-habits:5118
+      - BAD_SERVICE_URL=http://bad-habits:5119
+      - NIGHT_SERVICE_URL=http://night-habits:5120
+      - WEEKEND_SERVICE_URL=http://weekend-duties:5121
+      - HUSTLE_SERVICE_URL=http://side-hustle:5122
+      - VIDEO_SERVICE_URL=http://video-editing:5123
+      - BOOK_LOG_SERVICE_URL=http://book-reading:5124
+      - SYSTEM_SERVICE_URL=http://system-check:5125
+      - EXPENSES_SERVICE_URL=http://expenses:5126
+      - ANALYTICS_SERVICE_URL=http://analytics:5113
+    depends_on: [mongo, morning-habits, bad-habits, night-habits, weekend-duties, side-hustle, video-editing, book-reading, system-check, expenses]
     networks: [habit-network]
 
   scoring:
-    build: ./services/scoring
+    build: ./Backend/services/Analytics/scoring
     hostname: scoring
     environment:
       - PORT=5106
@@ -80,7 +88,7 @@ services:
     networks: [habit-network]
 
   currentbook:
-    build: ./services/currentbook
+    build: ./Backend/services/Books/currentbook
     hostname: currentbook
     environment:
       - PORT=5107
@@ -92,7 +100,7 @@ services:
     networks: [habit-network]
 
   archives:
-    build: ./services/archives
+    build: ./Backend/services/Books/archives
     hostname: archives
     environment:
       - PORT=5108
@@ -104,7 +112,7 @@ services:
     networks: [habit-network]
 
   settings:
-    build: ./services/settings
+    build: ./Backend/services/Account/settings
     hostname: settings
     environment:
       - PORT=5109
@@ -116,7 +124,7 @@ services:
     networks: [habit-network]
 
   categories:
-    build: ./services/categories
+    build: ./Backend/services/Finances/categories
     hostname: categories
     environment:
       - PORT=5110
@@ -128,7 +136,7 @@ services:
     networks: [habit-network]
 
   avatar:
-    build: ./services/avatar
+    build: ./Backend/services/Account/avatar
     hostname: avatar
     environment:
       - PORT=5111
@@ -140,7 +148,7 @@ services:
     networks: [habit-network]
 
   profile:
-    build: ./services/profile
+    build: ./Backend/services/Account/profile
     hostname: profile
     environment:
       - PORT=5112
@@ -153,7 +161,7 @@ services:
     networks: [habit-network]
 
   analytics:
-    build: ./services/analytics
+    build: ./Backend/services/Analytics/analytics
     hostname: analytics
     environment:
       - PORT=5113
@@ -165,13 +173,103 @@ services:
     depends_on: [mongo, jaeger]
     networks: [habit-network]
 
+  morning-habits:
+    build: ./Backend/services/DailyLog/morning-habits
+    hostname: morning-habits
+    environment:
+      - PORT=5118
+      - MONGO_URI=mongodb://mongo:27017/morning_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  bad-habits:
+    build: ./Backend/services/DailyLog/bad-habits
+    hostname: bad-habits
+    environment:
+      - PORT=5119
+      - MONGO_URI=mongodb://mongo:27017/bad_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  night-habits:
+    build: ./Backend/services/DailyLog/night-habits
+    hostname: night-habits
+    environment:
+      - PORT=5120
+      - MONGO_URI=mongodb://mongo:27017/night_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  weekend-duties:
+    build: ./Backend/services/DailyLog/weekend-duties
+    hostname: weekend-duties
+    environment:
+      - PORT=5121
+      - MONGO_URI=mongodb://mongo:27017/weekend_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  side-hustle:
+    build: ./Backend/services/Career/side-hustle
+    hostname: side-hustle
+    environment:
+      - PORT=5122
+      - MONGO_URI=mongodb://mongo:27017/hustle_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  video-editing:
+    build: ./Backend/services/Career/video-editing
+    hostname: video-editing
+    environment:
+      - PORT=5123
+      - MONGO_URI=mongodb://mongo:27017/video_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  book-reading:
+    build: ./Backend/services/Books/book-reading
+    hostname: book-reading
+    environment:
+      - PORT=5124
+      - MONGO_URI=mongodb://mongo:27017/book_reading_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  system-check:
+    build: ./Backend/services/DailyLog/system-check
+    hostname: system-check
+    environment:
+      - PORT=5125
+      - MONGO_URI=mongodb://mongo:27017/system_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
+  expenses:
+    build: ./Backend/services/Finances/expenses
+    hostname: expenses
+    environment:
+      - PORT=5126
+      - MONGO_URI=mongodb://mongo:27017/expenses_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
   frontend:
     build: ./frontend
     hostname: frontend
     networks: [habit-network]
 
   integration:
-    build: ./services/integration
+    build: ./Backend/services/Core/integration
     hostname: integration
     depends_on:
       - nginx
