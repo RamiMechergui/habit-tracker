@@ -28,9 +28,6 @@ COPY pm2.config.js .
 COPY start.sh .
 RUN chmod +x start.sh
 
-ENV PORT=10000
-EXPOSE 10000
-
 # Start Native Setup
 CMD ["./start.sh"]
 
