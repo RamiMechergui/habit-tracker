@@ -9,12 +9,7 @@ RUN npm run build
 # Stage 2: Backend & Nginx Gateway
 FROM node:20-alpine
 
-RUN apk add --no-cache nginx prometheus grafana && mkdir -p /run/nginx /var/lib/prometheus /var/lib/grafana
-RUN wget -q https://github.com/jaegertracing/jaeger/releases/download/v1.62.0/jaeger-1.62.0-linux-amd64.tar.gz && \
-    tar -xzf jaeger-1.62.0-linux-amd64.tar.gz && \
-    mv jaeger-1.62.0-linux-amd64/jaeger-all-in-one /usr/local/bin/ && \
-    rm -rf jaeger-1.62.0-linux-amd64*
-
+RUN apk add --no-cache nginx && mkdir -p /run/nginx
 RUN npm install -g pm2
 WORKDIR /app
 
@@ -31,7 +26,6 @@ RUN cd backend && \
 
 # Copy configurations
 COPY pm2.config.js .
-COPY prometheus.yml .
 COPY start.sh .
 RUN chmod +x start.sh
 
