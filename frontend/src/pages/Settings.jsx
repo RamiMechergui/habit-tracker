@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
-import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut } from 'lucide-react';
 
 export default function Settings() {
   const { user, updateProfile, changePassword } = useHabits();
@@ -289,6 +289,26 @@ export default function Settings() {
             </div>
           </form>
         )}
+      </div>
+      
+      {/* ─── Logout Section ─── */}
+      <div className="glass-card settings-card" style={{ border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}>
+        <div className="settings-card-header" style={{ borderBottomColor: 'rgba(239, 68, 68, 0.1)' }}>
+          <div className="settings-icon-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+            <LogOut size={22} />
+          </div>
+          <div>
+            <h3>Sign Out</h3>
+            <p className="settings-subtitle">End your current session</p>
+          </div>
+        </div>
+        <button 
+          className="btn" 
+          style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', border: 'none' }}
+          onClick={logout}
+        >
+          <LogOut size={16} /> Logout from Evolvia
+        </button>
       </div>
     </div>
   );

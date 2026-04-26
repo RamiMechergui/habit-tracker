@@ -83,7 +83,7 @@ function App() {
           </button>
         </div>
 
-        <nav className="flex-col gap-2" style={{ flex: 1 }}>
+        <nav className="flex-col gap-2" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
           {NAV_LINKS.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <Icon size={20} /> {label}

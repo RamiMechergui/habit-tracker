@@ -179,7 +179,7 @@ function Sidebar({ active, onSelect, onLogout }) {
           <LayoutDashboard size={17} /> Return to App
         </button>
         <button onClick={onLogout} className="adm-nav-btn adm-end" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', color:'#64748b', fontSize:14, fontWeight:500, border:'1px solid transparent' }}>
-          <LogOut size={17} /> End Session
+          <LogOut size={17} /> Logout & Exit
         </button>
       </div>
     </aside>
