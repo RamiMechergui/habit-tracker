@@ -216,13 +216,13 @@ function UsersModal({ onClose }) {
   }, []);
 
   const confirmDelete = async () => {
-    if (!userToDelete) return;
     try {
       const res = await fetch(`/api/login/admin/users/${userToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete user');
       setUsers(users.filter(u => u.userId !== userToDelete.id));
       setSuccessMsg(`User ${userToDelete.email} was successfully deleted.`);
       setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
       setError(`Error: ${err.message}`);
       setTimeout(() => setError(null), 4000);
     } finally {
@@ -584,6 +584,7 @@ function DevelopmentView() {
             </div>
           </div>
         </div>
+      )}
       {/* Custom Confirm Modal for Deleting Ideas */}
       {ideaToDelete && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(10px)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'adm-fade-in 0.2s ease' }}>
