@@ -11,6 +11,7 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const switchMode = (toLogin) => {
     setIsLogin(toLogin);
@@ -26,14 +27,17 @@ export default function Auth() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setLoading(true);
     try {
       if (isLogin) {
         await login(email, password);
       } else {
         if (!firstName.trim() || !lastName.trim()) {
+          setLoading(false);
           return setError('Please enter your first and last name.');
         }
         if (password !== confirmPassword) {
+          setLoading(false);
           return setError('Passwords do not match!');
         }
         await register(email, password, confirmPassword, firstName.trim(), lastName.trim());
@@ -42,6 +46,8 @@ export default function Auth() {
       }
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,8 +148,28 @@ export default function Auth() {
             </div>
           )}
 
-          <button type="submit" className="btn mt-4 w-full" style={{ padding: '0.75rem' }}>
-            {isLogin ? 'Log In' : 'Sign Up'}
+          <button 
+            type="submit" 
+            className="btn mt-4 w-full" 
+            style={{ 
+              padding: '0.75rem', 
+              opacity: loading ? 0.8 : 1, 
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'adm-spin 0.8s linear infinite' }} />
+                {isLogin ? 'Logging In.........' : 'Signing Up.........'}
+              </>
+            ) : (
+              isLogin ? 'Log In' : 'Sign Up'
+            )}
           </button>
         </form>
 
