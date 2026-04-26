@@ -25,7 +25,7 @@ RUN cd backend && \
 
 # Copy configurations
 COPY pm2.config.js .
-COPY nginx.render.conf /etc/nginx/nginx.conf
+COPY nginx.render.conf /etc/nginx/http.d/default.conf
 COPY start.sh .
 RUN chmod +x start.sh
 

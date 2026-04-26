@@ -17,7 +17,7 @@ ln -sf /dev/stderr /var/log/nginx/error.log || true
 # We search for any line starting with 'listen' and replace it with the Railway PORT
 export TARGET_PORT=${PORT:-10000}
 echo "📡 Injecting Railway Port: $TARGET_PORT"
-sed -i "s/listen[[:space:]]*[0-9]*;/listen $TARGET_PORT;/g" /etc/nginx/nginx.conf
+sed -i "s/listen[[:space:]]*[0-9]*;/listen $TARGET_PORT;/g" /etc/nginx/http.d/default.conf
 
 # 4. Verify Config
 nginx -t
