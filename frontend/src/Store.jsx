@@ -343,32 +343,46 @@ export const HabitProvider = ({ children }) => {
     const currentBookActive = currentBook && currentBook.isActive && currentBook.bookName;
     const isWithinCurrentBook = currentBookActive && dateStr >= currentBook.startDate;
 
+    const emptyLog = createEmptyDay(dateStr);
+
     if (existingLog) {
-      const filledLog = { ...existingLog, books: { ...existingLog.books } };
-      if (!filledLog.weekend) {
-        filledLog.weekend = { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } };
-      }
-      if (!filledLog.system) {
-        filledLog.system = { todo: false, money: false };
-      }
-      if (!filledLog.bad.noSugar) {
-        filledLog.bad.noSugar = { checked: filledLog.night?.noSugar || false, a: false, s: false };
-      }
+      // Deep merge existingLog into emptyLog to ensure all keys are present
+      const filledLog = {
+        ...emptyLog,
+        ...existingLog,
+        morning: { ...emptyLog.morning, ...(existingLog.morning || {}) },
+        bad: { 
+          ...emptyLog.bad, 
+          ...(existingLog.bad || {}) 
+        },
+        night: { ...emptyLog.night, ...(existingLog.night || {}) },
+        weekend: { 
+          ...emptyLog.weekend, 
+          ...(existingLog.weekend || {}),
+          saturday: { ...emptyLog.weekend.saturday, ...(existingLog.weekend?.saturday || {}) },
+          sunday: { ...emptyLog.weekend.sunday, ...(existingLog.weekend?.sunday || {}) }
+        },
+        books: { ...emptyLog.books, ...(existingLog.books || {}) },
+        hustle: { ...emptyLog.hustle, ...(existingLog.hustle || {}) },
+        video: { ...emptyLog.video, ...(existingLog.video || {}) },
+        system: { ...emptyLog.system, ...(existingLog.system || {}) },
+        expenses: existingLog.expenses && existingLog.expenses.length > 0 ? existingLog.expenses : emptyLog.expenses
+      };
+
+      // Fix lessons if they are strings (legacy support)
       if (filledLog.hustle && typeof filledLog.hustle.lessons === 'string') {
         filledLog.hustle.lessons = filledLog.hustle.lessons.trim() ? [filledLog.hustle.lessons] : [];
       }
+      
+      // Sync book name if tracking is active
       if (isWithinCurrentBook && filledLog.books.name !== currentBook.bookName) {
         filledLog.books.name = currentBook.bookName;
         filledLog.books.page = '';
         filledLog.books.read = false;
       }
-      if (filledLog.video && !filledLog.video.lessons) {
-        filledLog.video.lessons = [];
-      }
+      
       return filledLog;
     }
-
-    const emptyLog = createEmptyDay(dateStr);
 
     if (isWithinCurrentBook) {
       emptyLog.books.name = currentBook.bookName;

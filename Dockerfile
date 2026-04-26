@@ -18,9 +18,10 @@ COPY --from=frontend-build /app/frontend/dist /var/www/html
 # Copy backend folder
 COPY backend ./backend
 
-# Install dependencies for all microservices in parallel (limit parallelism to avoid memory crash)
-RUN find backend -name "package.json" -not -path "*/node_modules/*" | \
-    xargs -I {} -P 4 sh -c 'echo "Installing: $(dirname {})" && cd $(dirname {}) && npm install --omit=dev --no-audit --no-fund'
+# Install consolidated dependencies for all services at once
+RUN cd backend && \
+    npm install --omit=dev --no-audit --no-fund && \
+    npm cache clean --force
 
 # Copy configurations
 COPY pm2.config.js .
