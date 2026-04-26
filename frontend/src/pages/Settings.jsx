@@ -3,7 +3,7 @@ import { useHabits } from '../Store';
 import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut } from 'lucide-react';
 
 export default function Settings() {
-  const { user, updateProfile, changePassword } = useHabits();
+  const { user, updateProfile, changePassword, logout } = useHabits();
 
   // Profile fields
   const [firstName, setFirstName] = useState(user?.firstName || '');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2, CheckCircle2 } from 'lucide-react';
+import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function DailyLog() {
@@ -219,9 +219,18 @@ export default function DailyLog() {
 
       {/* ── Header row: wraps on mobile ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div>
-          <h2 style={{ marginBottom: '0.25rem' }}>Daily Journal</h2>
-          <p style={{ margin: 0 }}>Score: {dynamicTotalScore}/100 | Rank: <span className={`grade-pill grade-${dynamicRank.toLowerCase()}`}>{dynamicRank}</span></p>
+        <div className="flex-col">
+          <h2 className="m-0 text-2xl font-bold">Daily Journal</h2>
+          <div className="flex items-center gap-3 mt-1">
+            <div className="glass-card" style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={14} className="text-amber" />
+              <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Score: <span className="text-amber">{dynamicTotalScore}</span>/100</span>
+            </div>
+            <div className="glass-card" style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Rank:</span>
+              <span className={`grade-pill grade-${dynamicRank.toLowerCase()}`} style={{ padding: '2px 8px', fontSize: '0.75rem' }}>{dynamicRank}</span>
+            </div>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: '140px' }} />
@@ -242,8 +251,11 @@ export default function DailyLog() {
         <div className="flex-col gap-6">
           
           {/* Morning Habits */}
-          <div className="glass-card p-6 section-morning">
-            <h3 className="mb-4">Morning Habits <span className="text-muted text-sm">{mScore}/30pts</span></h3>
+          <div className="glass-card p-6 section-morning" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(245, 158, 11, 0.03))' }}>
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="m-0 flex items-center gap-2">☀️ Morning Habits</h3>
+              <span className="grade-pill" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--accent-amber)', fontSize: '0.8rem' }}>{mScore}/30pts</span>
+            </div>
             
             <div className="flex justify-between items-center mb-2">
               <label>1. Wake up time (14pts)</label>
@@ -277,8 +289,11 @@ export default function DailyLog() {
           </div>
 
           {/* Bad Habits — checked = avoided = positive points */}
-          <div className="glass-card p-6 section-bad">
-            <h3 className="mb-1">Bad Habits <span className="text-muted text-sm">{dynamicBadScore}/28pts</span></h3>
+          <div className="glass-card p-6 section-bad" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(16, 185, 129, 0.03))' }}>
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="m-0 flex items-center gap-2">🛡️ Bad Habits</h3>
+              <span className="grade-pill" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem' }}>{dynamicBadScore}/28pts</span>
+            </div>
             <div className="flex items-center gap-2 mb-4 p-2" style={{ background: 'rgba(16, 185, 129, 0.1)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
               <span style={{ fontSize: '1.2rem' }}>🛡️</span>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -309,8 +324,11 @@ export default function DailyLog() {
           </div>
           
           {/* Night Habits */}
-          <div className="glass-card p-6 section-night">
-            <h3 className="mb-4">Night Habits <span className="text-muted text-sm">{nScore}/30pts</span></h3>
+          <div className="glass-card p-6 section-night" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(99, 102, 241, 0.03))' }}>
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="m-0 flex items-center gap-2">🌙 Night Habits</h3>
+              <span className="grade-pill" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', fontSize: '0.8rem' }}>{nScore}/30pts</span>
+            </div>
             {[
               { id: 'gym', label: '1. Gym and clothes laundry (10pts)' },
               { id: 'cleanTable', label: '2. Clean small table (1pt)' },
@@ -391,28 +409,37 @@ export default function DailyLog() {
 
         <div className="flex-col gap-6">
 
-          <div className="glass-card p-6">
-            <h3 className="mb-4">Side Hustle <span className="text-amber text-sm">{hScore}/5pts</span></h3>
-            <input className="w-full mb-2" placeholder="Planned Task" value={log.hustle.task} onChange={e=>updateSection('hustle', 'task', e.target.value)} disabled={isFuture} />
-            <input className="w-full mb-2" placeholder="Time Spent" value={log.hustle.time} onChange={e=>updateSection('hustle', 'time', e.target.value)} disabled={isFuture} />
+          <div className="glass-card p-6" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(59, 130, 246, 0.05))' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="m-0 flex items-center gap-2"><Target size={20} className="text-amber" /> Side Hustle</h3>
+              <span className="grade-pill" style={{ background: 'rgba(245, 166, 35, 0.1)', color: 'var(--accent-amber)', fontSize: '0.8rem' }}>{hScore}/5pts</span>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div style={{ position: 'relative' }}>
+                <Target size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Planned Task" value={log.hustle.task} onChange={e=>updateSection('hustle', 'task', e.target.value)} disabled={isFuture} />
+              </div>
+              <div style={{ position: 'relative' }}>
+                <Clock size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Time Spent (e.g. 2h 30m)" value={log.hustle.time} onChange={e=>updateSection('hustle', 'time', e.target.value)} disabled={isFuture} />
+              </div>
+            </div>
             
             {hustleWarning && (
-              <span style={{color: '#ef4444', fontSize: '0.75rem', marginBottom: '8px', display: 'block'}}>
-                ⚠️ Action Required: Fill Planned Task and Time Spent to enable checking this box.
+              <span style={{color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'adm-shake 0.4s ease' }}>
+                ⚠️ Fill Task & Time to check this box.
               </span>
             )}
             
-            <label className="flex items-center gap-2 mb-2" style={{ 
-              opacity: hustleWarning ? 0.7 : 1,
-              color: hustleWarning ? '#ef4444' : 'inherit'
+            <label className="flex items-center gap-3 mt-4 p-3 rounded-xl transition-all" style={{ 
+              background: log.hustle.achieved ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${log.hustle.achieved ? 'rgba(16, 185, 129, 0.2)' : 'var(--border)'}`,
+              cursor: isFuture ? 'default' : 'pointer'
             }}>
               <input 
                 type="checkbox" 
                 className="habit-checkbox"
-                style={{ 
-                   borderColor: hustleWarning ? '#ef4444' : 'var(--border)',
-                   accentColor: hustleWarning ? '#ef4444' : 'var(--accent-blue)'
-                }}
                 checked={log.hustle.achieved} 
                 onChange={e => {
                   if (e.target.checked && (!log.hustle.task.trim() || !log.hustle.time.trim())) {
@@ -424,121 +451,190 @@ export default function DailyLog() {
                 }}
                 disabled={isFuture}
               /> 
-              Task Achieved
+              <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
             </label>
-            <div className="mt-4 pt-4" style={{borderTop: '1px solid var(--border)'}}>
-              <h4 className="mb-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Key Lessons</h4>
+
+            <div className="mt-6 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="m-0 flex items-center gap-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
+                  <Sparkles size={14} className="text-amber" /> Key Lessons
+                </h4>
+              </div>
               
               {lessonMsg && (
-                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '8px', animation: 'pageSlideIn 0.2s ease-out' }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '12px', border: '1px solid rgba(16,185,129,0.2)' }}>
                   {lessonMsg}
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 mb-3">
+              <div className="flex flex-col gap-2 mb-4">
                 {(log.hustle.lessons || []).map((lesson, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--bg-card-hover)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                  <div key={idx} className="glass-card" style={{ 
+                    padding: '10px 12px', 
+                    background: 'rgba(255,255,255,0.02)', 
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: 8
+                  }}>
                     {editingLessonIdx === idx ? (
-                      <div className="flex w-full gap-2">
-                        <input className="flex-1" style={{padding: '4px 8px'}} value={editingLessonText} onChange={e => setEditingLessonText(e.target.value)} autoFocus />
-                        <button className="btn btn-primary" style={{padding: '4px 8px'}} onClick={() => handleSaveEditLesson(idx)}>Save</button>
-                        <button className="btn" style={{padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)'}} onClick={() => setEditingLessonIdx(null)}>Cancel</button>
+                      <div className="flex flex-col gap-2">
+                        <textarea 
+                          className="w-full" 
+                          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-blue)', borderRadius: 8, padding: '8px', fontSize: '0.85rem', color: '#fff', resize: 'none' }} 
+                          rows={2}
+                          value={editingLessonText} 
+                          onChange={e => setEditingLessonText(e.target.value)} 
+                          autoFocus 
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => setEditingLessonIdx(null)}>Cancel</button>
+                          <button className="btn" style={{ padding: '4px 12px', fontSize: '0.8rem', background: 'var(--accent-blue)', color: '#fff' }} onClick={() => handleSaveEditLesson(idx)}>Save</button>
+                        </div>
                       </div>
                     ) : (
-                      <>
-                        <span style={{ flex: 1, fontSize: '0.85rem' }}>• {lesson}</span>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingLessonIdx(idx); setEditingLessonText(lesson); }} disabled={isFuture}>Edit</button>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteLesson(idx)} disabled={isFuture}>Delete</button>
+                      <div className="flex items-start justify-between gap-3 group">
+                        <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.9)' }}>
+                          <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>
+                          {lesson}
+                        </span>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditingLessonIdx(idx); setEditingLessonText(lesson); }} disabled={isFuture} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', padding: 5, borderRadius: 6, cursor: 'pointer' }}>
+                            <Edit2 size={13} />
+                          </button>
+                          <button onClick={() => handleDeleteLesson(idx)} disabled={isFuture} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', padding: 5, borderRadius: 6, cursor: 'pointer' }}>
+                            <Trash2 size={13} />
+                          </button>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
 
               <div className="flex gap-2">
-                <input className="flex-1" placeholder="Add a key lesson..." value={newLesson} onChange={e => setNewLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddLesson()} disabled={isFuture} />
-                <button className="btn btn-secondary" onClick={handleAddLesson} disabled={isFuture}>Add</button>
+                <input className="flex-1" style={{ fontSize: '0.9rem' }} placeholder="Add a key lesson..." value={newLesson} onChange={e => setNewLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddLesson()} disabled={isFuture} />
+                <button className="btn" style={{ width: 42, height: 42, padding: 0 }} onClick={handleAddLesson} disabled={isFuture}>
+                  <Plus size={20} />
+                </button>
               </div>
             </div>
           </div>
 
-          <div className="glass-card p-6">
-            <h3 className="mb-4">Video Editing <span className="text-amber text-sm">{vScore}/5pts</span></h3>
-            <input className="w-full mb-2" placeholder="Planned Task" value={log.video.task} onChange={e=>updateSection('video', 'task', e.target.value)} disabled={isFuture} />
-            <input className="w-full mb-2" placeholder="Time Spent" value={log.video.time} onChange={e=>updateSection('video', 'time', e.target.value)} disabled={isFuture} />
+          <div className="glass-card p-6" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(99, 102, 241, 0.05))' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="m-0 flex items-center gap-2"><Video size={20} className="text-amber" /> Video Editing</h3>
+              <span className="grade-pill" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', fontSize: '0.8rem' }}>{vScore}/5pts</span>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div style={{ position: 'relative' }}>
+                <Edit2 size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Planned Task" value={log.video.task} onChange={e=>updateSection('video', 'task', e.target.value)} disabled={isFuture} />
+              </div>
+              <div style={{ position: 'relative' }}>
+                <Clock size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Time Spent" value={log.video.time} onChange={e=>updateSection('video', 'time', e.target.value)} disabled={isFuture} />
+              </div>
+            </div>
             
             {videoWarning && (
-              <span style={{color: '#ef4444', fontSize: '0.75rem', marginBottom: '8px', display: 'block'}}>
-                ⚠️ Action Required: Fill Planned Task and Time Spent to enable checking this box.
+              <span style={{color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'adm-shake 0.4s ease'}}>
+                ⚠️ Fill Task & Time to check this box.
               </span>
             )}
 
-            <label className="flex items-center gap-2 mb-2" style={{ 
-              opacity: videoWarning ? 0.7 : 1,
-              color: videoWarning ? '#ef4444' : 'inherit'
-            }}>
-              <input 
-                type="checkbox" 
-                className="habit-checkbox" 
-                style={{ 
-                   borderColor: videoWarning ? '#ef4444' : 'var(--border)',
-                   accentColor: videoWarning ? '#ef4444' : 'var(--accent-blue)'
-                }}
-                checked={log.video.achieved} 
-                onChange={e => {
-                  if (e.target.checked && (!log.video.task.trim() || !log.video.time.trim())) {
-                    setVideoWarning(true);
-                    return;
-                  }
-                  setVideoWarning(false);
-                  updateSection('video', 'achieved', e.target.checked)
-                }}
-                disabled={isFuture}
-              /> 
-              Task Achieved
-            </label>
-            <select className="w-full" value={log.video.progress} onChange={e=>updateSection('video', 'progress', e.target.value)} disabled={isFuture}>
-              <option>Better</option>
-              <option>Same</option>
-              <option>Worse</option>
-            </select>
+            <div className="flex gap-3 mt-4">
+              <label className="flex flex-1 items-center gap-3 p-3 rounded-xl transition-all" style={{ 
+                background: log.video.achieved ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${log.video.achieved ? 'rgba(16, 185, 129, 0.2)' : 'var(--border)'}`,
+                cursor: isFuture ? 'default' : 'pointer'
+              }}>
+                <input 
+                  type="checkbox" 
+                  className="habit-checkbox" 
+                  checked={log.video.achieved} 
+                  onChange={e => {
+                    if (e.target.checked && (!log.video.task.trim() || !log.video.time.trim())) {
+                      setVideoWarning(true);
+                      return;
+                    }
+                    setVideoWarning(false);
+                    updateSection('video', 'achieved', e.target.checked)
+                  }}
+                  disabled={isFuture}
+                /> 
+                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Achieved</span>
+              </label>
+              
+              <select className="flex-1" style={{ height: 48 }} value={log.video.progress} onChange={e=>updateSection('video', 'progress', e.target.value)} disabled={isFuture}>
+                <option>Better</option>
+                <option>Same</option>
+                <option>Worse</option>
+              </select>
+            </div>
 
-            <div className="mt-4 pt-4" style={{borderTop: '1px solid var(--border)'}}>
-              <h4 className="mb-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Key Lessons</h4>
+            <div className="mt-6 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
+              <h4 className="mb-3 flex items-center gap-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
+                <Sparkles size={14} className="text-amber" /> Key Lessons
+              </h4>
               
               {videoLessonMsg && (
-                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '8px', animation: 'pageSlideIn 0.2s ease-out' }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '12px', border: '1px solid rgba(16,185,129,0.2)' }}>
                   {videoLessonMsg}
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 mb-3">
+              <div className="flex flex-col gap-2 mb-4">
                 {(log.video.lessons || []).map((lesson, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--bg-card-hover)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                  <div key={idx} className="glass-card" style={{ 
+                    padding: '10px 12px', 
+                    background: 'rgba(255,255,255,0.02)', 
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: 8
+                  }}>
                     {editingVideoLessonIdx === idx ? (
-                      <div className="flex w-full gap-2">
-                        <input className="flex-1" style={{padding: '4px 8px'}} value={editingVideoLessonText} onChange={e => setEditingVideoLessonText(e.target.value)} autoFocus />
-                        <button className="btn btn-primary" style={{padding: '4px 8px'}} onClick={() => handleSaveEditVideoLesson(idx)}>Save</button>
-                        <button className="btn" style={{padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)'}} onClick={() => setEditingVideoLessonIdx(null)}>Cancel</button>
+                      <div className="flex flex-col gap-2">
+                        <textarea 
+                          className="w-full" 
+                          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-blue)', borderRadius: 8, padding: '8px', fontSize: '0.85rem', color: '#fff', resize: 'none' }} 
+                          rows={2}
+                          value={editingVideoLessonText} 
+                          onChange={e => setEditingVideoLessonText(e.target.value)} 
+                          autoFocus 
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => setEditingVideoLessonIdx(null)}>Cancel</button>
+                          <button className="btn" style={{ padding: '4px 12px', fontSize: '0.8rem', background: 'var(--accent-blue)', color: '#fff' }} onClick={() => handleSaveEditVideoLesson(idx)}>Save</button>
+                        </div>
                       </div>
                     ) : (
-                      <>
-                        <span style={{ flex: 1, fontSize: '0.85rem' }}>• {lesson}</span>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--accent-blue)', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => { setEditingVideoLessonIdx(idx); setEditingVideoLessonText(lesson); }} disabled={isFuture}>Edit</button>
-                          <button className="btn" style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#ef4444', background: 'transparent', border: '1px solid var(--border)' }} onClick={() => handleDeleteVideoLesson(idx)} disabled={isFuture}>Delete</button>
+                      <div className="flex items-start justify-between gap-3 group">
+                        <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.9)' }}>
+                          <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>
+                          {lesson}
+                        </span>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditingVideoLessonIdx(idx); setEditingVideoLessonText(lesson); }} disabled={isFuture} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', padding: 5, borderRadius: 6, cursor: 'pointer' }}>
+                            <Edit2 size={13} />
+                          </button>
+                          <button onClick={() => handleDeleteVideoLesson(idx)} disabled={isFuture} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', padding: 5, borderRadius: 6, cursor: 'pointer' }}>
+                            <Trash2 size={13} />
+                          </button>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
 
               <div className="flex gap-2">
-                <input className="flex-1" placeholder="Add a key lesson..." value={newVideoLesson} onChange={e => setNewVideoLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddVideoLesson()} disabled={isFuture} />
-                <button className="btn btn-secondary" onClick={handleAddVideoLesson} disabled={isFuture}>Add</button>
+                <input className="flex-1" style={{ fontSize: '0.9rem' }} placeholder="Add a key lesson..." value={newVideoLesson} onChange={e => setNewVideoLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddVideoLesson()} disabled={isFuture} />
+                <button className="btn" style={{ width: 42, height: 42, padding: 0 }} onClick={handleAddVideoLesson} disabled={isFuture}>
+                  <Plus size={20} />
+                </button>
               </div>
             </div>
           </div>
@@ -627,8 +723,10 @@ export default function DailyLog() {
             </div>
           </div>
 
-          <div className="glass-card p-6">
-            <h3 className="mb-4">Expenses</h3>
+          <div className="glass-card p-6" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(239, 68, 68, 0.03))' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="m-0 flex items-center gap-2">💰 Expenses</h3>
+            </div>
             {log.expenses.map((exp, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <input
