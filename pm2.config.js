@@ -37,7 +37,7 @@ module.exports = {
     { name: 'scoring', port: 5106, path: 'backend/Admin/Analytics/scoring' },
     { name: 'analytics', port: 5113, path: 'backend/Admin/Analytics/analytics' }
   ].map(service => {
-    if (service.name === 'nginx') return service;
+    if (service.name === 'gateway') return service;
     return {
       name: service.name,
       script: 'server.js',
