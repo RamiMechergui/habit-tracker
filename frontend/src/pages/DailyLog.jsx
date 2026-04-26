@@ -257,34 +257,32 @@ export default function DailyLog() {
               <span className="grade-pill" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--accent-amber)', fontSize: '0.8rem' }}>{mScore}/30pts</span>
             </div>
             
-            <div className="flex justify-between items-center mb-2">
-              <label>1. Wake up time (14pts)</label>
-              <input type="time" value={log.morning.wakeTime} onChange={e => updateSection('morning', 'wakeTime', e.target.value)} disabled={isFuture} />
-            </div>
-            
-            <div className="flex justify-between items-center mb-2">
-              <label>2. Meditate 3 mins (1pt)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.meditate} onChange={e => updateSection('morning', 'meditate', e.target.checked)} disabled={isFuture} />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>3. Make bed (2pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.bed} onChange={e => updateSection('morning', 'bed', e.target.checked)} disabled={isFuture} />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>4. Brush teeth & clean tongue (2pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.teeth} onChange={e => updateSection('morning', 'teeth', e.target.checked)} disabled={isFuture} />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>5. Scottish Shower (Hot-to-Cold) (8pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.shower} onChange={e => updateSection('morning', 'shower', e.target.checked)} disabled={isFuture} />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>6. Apply gel to hair (1pt)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.gel} onChange={e => updateSection('morning', 'gel', e.target.checked)} disabled={isFuture} />
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <label>7. Put on perfume (2pts)</label>
-              <input type="checkbox" className="habit-checkbox" checked={log.morning.perfume} onChange={e => updateSection('morning', 'perfume', e.target.checked)} disabled={isFuture} />
+            <div className="flex-col gap-3">
+              {[
+                { id: 'wakeTime', label: 'Wake up time', pts: '14pts', type: 'time' },
+                { id: 'meditate', label: 'Meditate 3 mins', pts: '1pt' },
+                { id: 'bed', label: 'Make bed', pts: '2pts' },
+                { id: 'teeth', label: 'Brush teeth & tongue', pts: '2pts' },
+                { id: 'shower', label: 'Scottish Shower', pts: '8pts' },
+                { id: 'gel', label: 'Apply hair gel', pts: '1pt' },
+                { id: 'perfume', label: 'Put on perfume', pts: '2pts' }
+              ].map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                  background: log.morning[item.id] ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${log.morning[item.id] ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  opacity: isFuture ? 0.6 : 1
+                }}>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.morning[item.id] ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{item.label}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
+                  </div>
+                  {item.type === 'time' ? (
+                    <input type="time" value={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.value)} disabled={isFuture} />
+                  ) : (
+                    <input type="checkbox" className="habit-checkbox" checked={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.checked)} disabled={isFuture} />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -301,26 +299,35 @@ export default function DailyLog() {
               </p>
             </div>
             
-            {[
-              { id: 'smoking', label: '1. Smoking (10pts)', extra: 'count', placeholder: 'Cigarettes' },
-              { id: 'sexual', label: '2. Sexual discipline (4pts)' },
-              { id: 'social', label: '3. Social Media (2pts)', extra: 'min', placeholder: 'Time (min)' },
-              { id: 'phone', label: '4. Phone Usage (6pts)', extra: 'min', placeholder: 'Time (min)' },
-              { id: 'coffee', label: '5. Coffee (2pts)' },
-              { id: 'eating', label: '6. Eating out (2pts)' },
-              { id: 'noSugar', label: '7. No sugar the whole day (2pts)' },
-            ].map(item => (
-              <div key={item.id} className="flex justify-between items-center mb-2">
-                <label className="flex-1">{item.label}</label>
-                <div className="flex items-center justify-end">
-                  {item.extra && (
-                    <input type="number" placeholder={item.placeholder} style={{width: '80px', padding: '0.2rem', marginRight: '0.5rem'}}
-                      value={log.bad[item.id][item.extra] || ''} onChange={e => updateBad(item.id, item.extra, e.target.value)} disabled={isFuture} />
-                  )}
-                  <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
+            <div className="flex-col gap-3">
+              {[
+                { id: 'smoking', label: '1. Smoking', pts: '10pts', extra: 'count', placeholder: 'Qty' },
+                { id: 'sexual', label: '2. Sexual discipline', pts: '4pts' },
+                { id: 'social', label: '3. Social Media', pts: '2pts', extra: 'min', placeholder: 'Min' },
+                { id: 'phone', label: '4. Phone Usage', pts: '6pts', extra: 'min', placeholder: 'Min' },
+                { id: 'coffee', label: '5. Coffee', pts: '2pts' },
+                { id: 'eating', label: '6. Eating out', pts: '2pts' },
+                { id: 'noSugar', label: '7. No sugar', pts: '2pts' },
+              ].map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                  background: log.bad[item.id].checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${log.bad[item.id].checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  opacity: isFuture ? 0.6 : 1
+                }}>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.bad[item.id].checked ? '#10b981' : 'var(--text-primary)' }}>{item.label}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {item.extra && (
+                      <input type="number" placeholder={item.placeholder} style={{width: '65px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff'}}
+                        value={log.bad[item.id][item.extra] || ''} onChange={e => updateBad(item.id, item.extra, e.target.value)} disabled={isFuture} />
+                    )}
+                    <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           
           {/* Night Habits */}
@@ -329,26 +336,35 @@ export default function DailyLog() {
               <h3 className="m-0 flex items-center gap-2">🌙 Night Habits</h3>
               <span className="grade-pill" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', fontSize: '0.8rem' }}>{nScore}/30pts</span>
             </div>
-            {[
-              { id: 'gym', label: '1. Gym and clothes laundry (10pts)' },
-              { id: 'cleanTable', label: '2. Clean small table (1pt)' },
-              { id: 'orgTable', label: '3. Organize computer table (1pt)' },
-              { id: 'teeth', label: '4. Brush teeth & tongue (2pts)' },
-              { id: 'shave', label: '5. Shave beard (2pts)' },
-              { id: 'washFace', label: '6. Wash face (green soap) (1pt)' },
-              { id: 'hotShower', label: '7. Take Hot shower (4pts)' },
-              { id: 'hygiene', label: '8. Hygiene of sensitive areas (2pts)' },
-              { id: 'fingerNails', label: '9. Trimming fingernails (1pt)' },
-              { id: 'toeNails', label: '10. Trimming toenails (1pt)' },
-              { id: 'wiseSpend', label: '11. Wise spending (1pt)' },
-              { id: 'saves', label: '12. 1 TND in Savings (1pt)' },
-              { id: 'fillApp', label: '13. Fill out the web app (3pts)' },
-            ].map(item => (
-              <div key={item.id} className="flex justify-between items-center mb-2">
-                <label>{item.label}</label>
-                <input type="checkbox" className="habit-checkbox" checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} disabled={isFuture} />
-              </div>
-            ))}
+            <div className="flex-col gap-3">
+              {[
+                { id: 'gym', label: '1. Gym & Laundry', pts: '10pts' },
+                { id: 'cleanTable', label: '2. Clean small table', pts: '1pt' },
+                { id: 'orgTable', label: '3. Organize PC table', pts: '1pt' },
+                { id: 'teeth', label: '4. Brush teeth & tongue', pts: '2pts' },
+                { id: 'shave', label: '5. Shave beard', pts: '2pts' },
+                { id: 'washFace', label: '6. Wash face', pts: '1pt' },
+                { id: 'hotShower', label: '7. Hot shower', pts: '4pts' },
+                { id: 'hygiene', label: '8. Hygiene areas', pts: '2pts' },
+                { id: 'fingerNails', label: '9. Trim fingernails', pts: '1pt' },
+                { id: 'toeNails', label: '10. Trim toenails', pts: '1pt' },
+                { id: 'wiseSpend', label: '11. Wise spending', pts: '1pt' },
+                { id: 'saves', label: '12. 1 TND Saved', pts: '1pt' },
+                { id: 'fillApp', label: '13. Fill web app', pts: '3pts' },
+              ].map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                  background: log.night[item.id] ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${log.night[item.id] ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  opacity: isFuture ? 0.6 : 1
+                }}>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.night[item.id] ? '#818cf8' : 'var(--text-primary)' }}>{item.label}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
+                  </div>
+                  <input type="checkbox" className="habit-checkbox" checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} disabled={isFuture} />
+                </div>
+              ))}
+            </div>
           </div>
           {/* Weekend Habits (Conditional) */}
           {(isSaturday || isSunday) && (

@@ -18,6 +18,7 @@ export const HabitProvider = ({ children }) => {
   const [expenseCategories, setExpenseCategories] = useState(['Food', 'Transportation', 'Entertainment']);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
+  const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
 
   // ── Online / Offline state tracking ──────────────────────────
   useEffect(() => {
@@ -327,7 +328,7 @@ export const HabitProvider = ({ children }) => {
     hustle: { task: '', time: '', achieved: false, lessons: [] },
     video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
     system: { todo: false, money: false },
-    expenses: Array(3).fill({ desc: '', category: 'Other', amount: 0 }),
+    expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime }],
     morningScore: 0,
     badScore: 0,
     nightScore: 0,
