@@ -5,7 +5,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X } from 'lucide-react';
 
 export default function Dashboard() {
-  const { getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  const { user, getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  
+  const displayName = user?.firstName || user?.lastName
+    ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+    : (user?.email?.split('@')[0] || 'User');
   const navigate = useNavigate();
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
