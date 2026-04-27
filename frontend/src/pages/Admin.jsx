@@ -62,7 +62,7 @@ const CSS = `
   .adm-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
   .adm-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
   .adm-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-`;`;
+`;
 
 /* ── constants ─────────────────────────────────────────────── */
 const TOOLS = [];
@@ -374,6 +374,8 @@ function UsersModal({ onClose }) {
 }
 
 /* ── Overview ───────────────────────────────────────────────── */
+function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
+  return (
     <div style={{ flex:1, overflowY:'auto' }}>
       <div className="adm-main-content" style={{ maxWidth:900, margin:'0 auto', padding:'44px 40px', animation:'adm-up 0.35s ease' }}>
         {/* hero */}
