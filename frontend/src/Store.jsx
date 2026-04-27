@@ -339,7 +339,7 @@ export const HabitProvider = ({ children }) => {
     rank: 'F'
   });
 
-  const getLog = (dateStr) => {
+  const getLog = useCallback((dateStr) => {
     const existingLog = logs[dateStr];
     const currentBookActive = currentBook && currentBook.isActive && currentBook.bookName;
     const isWithinCurrentBook = currentBookActive && dateStr >= currentBook.startDate;
@@ -404,9 +404,10 @@ export const HabitProvider = ({ children }) => {
     }
 
     return emptyLog;
-  };
+  }, [logs, currentBook, createEmptyDay]);
 
-  const saveLog = async (dateStr, data) => {
+  const saveLog = useCallback(async (dateStr, logData) => {
+    const data = JSON.parse(JSON.stringify(logData));
     // Scoring Logic Calculation
     let mScore = 0;
     
@@ -520,7 +521,7 @@ export const HabitProvider = ({ children }) => {
         });
       }
     }
-  };
+  }, [user, API_URL]);
 
   const addExpenseCategory = async (category) => {
     if (!category.trim() || expenseCategories.includes(category)) return;

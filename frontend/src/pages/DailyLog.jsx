@@ -39,47 +39,59 @@ export default function DailyLog() {
 
   const handleAddLesson = () => {
     if (!newLesson.trim()) return;
-    const updatedLessons = [...(log.hustle.lessons || []), newLesson.trim()];
-    updateSection('hustle', 'lessons', updatedLessons);
+    setLog(prev => {
+      const lessons = [...(prev.hustle?.lessons || []), newLesson.trim()];
+      return { ...prev, hustle: { ...prev.hustle, lessons } };
+    });
     setNewLesson('');
   };
 
   const handleSaveEditLesson = (idx) => {
     if (!editingLessonText.trim()) return;
-    const updatedLessons = [...(log.hustle.lessons || [])];
-    updatedLessons[idx] = editingLessonText.trim();
-    updateSection('hustle', 'lessons', updatedLessons);
+    setLog(prev => {
+      const lessons = [...(prev.hustle?.lessons || [])];
+      lessons[idx] = editingLessonText.trim();
+      return { ...prev, hustle: { ...prev.hustle, lessons } };
+    });
     setEditingLessonIdx(null);
     setEditingLessonText('');
     showLessonMessage('Key lesson edited successfully');
   };
 
   const handleDeleteLesson = (idx) => {
-    const updatedLessons = (log.hustle.lessons || []).filter((_, i) => i !== idx);
-    updateSection('hustle', 'lessons', updatedLessons);
+    setLog(prev => {
+      const lessons = (prev.hustle?.lessons || []).filter((_, i) => i !== idx);
+      return { ...prev, hustle: { ...prev.hustle, lessons } };
+    });
     showLessonMessage('Key lesson deleted successfully');
   };
 
   const handleAddVideoLesson = () => {
     if (!newVideoLesson.trim()) return;
-    const updatedLessons = [...(log.video.lessons || []), newVideoLesson.trim()];
-    updateSection('video', 'lessons', updatedLessons);
+    setLog(prev => {
+      const lessons = [...(prev.video?.lessons || []), newVideoLesson.trim()];
+      return { ...prev, video: { ...prev.video, lessons } };
+    });
     setNewVideoLesson('');
   };
 
   const handleSaveEditVideoLesson = (idx) => {
     if (!editingVideoLessonText.trim()) return;
-    const updatedLessons = [...(log.video.lessons || [])];
-    updatedLessons[idx] = editingVideoLessonText.trim();
-    updateSection('video', 'lessons', updatedLessons);
+    setLog(prev => {
+      const lessons = [...(prev.video?.lessons || [])];
+      lessons[idx] = editingVideoLessonText.trim();
+      return { ...prev, video: { ...prev.video, lessons } };
+    });
     setEditingVideoLessonIdx(null);
     setEditingVideoLessonText('');
     showVideoLessonMessage('Key lesson edited successfully');
   };
 
   const handleDeleteVideoLesson = (idx) => {
-    const updatedLessons = (log.video.lessons || []).filter((_, i) => i !== idx);
-    updateSection('video', 'lessons', updatedLessons);
+    setLog(prev => {
+      const lessons = (prev.video?.lessons || []).filter((_, i) => i !== idx);
+      return { ...prev, video: { ...prev.video, lessons } };
+    });
     showVideoLessonMessage('Key lesson deleted successfully');
   };
 
@@ -96,12 +108,19 @@ export default function DailyLog() {
     if (bookProgress && bookProgress.bookName && !newLog.books.name) {
       newLog.books.name = bookProgress.bookName;
     }
-    setLog(newLog);
+    
+    // Only update state if the date changed or we don't have a log yet
+    // This prevents overwriting local edits when logs (plural) updates due to saving
+    setLog(prev => {
+      if (prev && prev.date === date) return prev;
+      return newLog;
+    });
+    
     setHustleWarning(false);
     setVideoWarning(false);
     // Keep URL in sync
     setSearchParams({ date });
-  }, [date, currentBook, logs]);
+  }, [date, currentBook, logs]); // Keep logs here to handle background syncs or external changes
 
   useEffect(() => {
     // Auto-save logic with debounce
@@ -127,19 +146,32 @@ export default function DailyLog() {
   const updateBad = (key, field, val) => {
     setLog(prev => ({ 
       ...prev, 
-      bad: { ...prev.bad, [key]: { ...prev.bad[key], [field]: val } }
+      bad: { 
+        ...prev.bad, 
+        [key]: { ...(prev.bad?.[key] || {}), [field]: val } 
+      }
     }));
   };
 
   const updateExpense = (idx, field, val) => {
-    const newEx = [...(Array.isArray(log.expenses) ? log.expenses : [])];
-    newEx[idx] = { ...newEx[idx], [field]: val };
-    setLog(prev => ({ ...prev, expenses: newEx }));
+    setLog(prev => {
+      const expenses = Array.isArray(prev.expenses) ? [...prev.expenses] : [];
+      if (expenses[idx]) {
+        expenses[idx] = { ...expenses[idx], [field]: val };
+      }
+      return { ...prev, expenses };
+    });
   };
 
   const deleteExpense = (idx) => {
-    const newEx = (Array.isArray(log.expenses) ? log.expenses : []).filter((_, i) => i !== idx);
-    setLog(prev => ({ ...prev, expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0], time: format(new Date(), 'HH:mm') }] }));
+    setLog(prev => {
+      const expenses = Array.isArray(prev.expenses) ? prev.expenses : [];
+      const newEx = expenses.filter((_, i) => i !== idx);
+      return { 
+        ...prev, 
+        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm') }] 
+      };
+    });
   };
 
   // --- Live Score Calculations ---
@@ -861,7 +893,7 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || '', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
+            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || 'Other', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
