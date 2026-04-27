@@ -496,9 +496,7 @@ export default function DailyLog() {
               </span>
             )}
             
-            <label className="flex items-center gap-3 mt-4 p-3 rounded-xl transition-all" style={{ 
-              background: log.hustle.achieved ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${log.hustle.achieved ? 'rgba(16, 185, 129, 0.2)' : 'var(--border)'}`,
+            <label className="flex items-center gap-3 mt-4" style={{ 
               cursor: isFuture ? 'default' : 'pointer'
             }}>
               <input 
@@ -609,9 +607,7 @@ export default function DailyLog() {
             )}
 
             <div className="flex flex-col gap-3 mt-4">
-              <label className="flex items-center gap-3 p-3 rounded-xl transition-all" style={{ 
-                background: log.video.achieved ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${log.video.achieved ? 'rgba(16, 185, 129, 0.2)' : 'var(--border)'}`,
+              <label className="flex items-center gap-3" style={{ 
                 cursor: isFuture ? 'default' : 'pointer'
               }}>
                 <input 
