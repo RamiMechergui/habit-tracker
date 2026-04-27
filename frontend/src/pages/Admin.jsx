@@ -5,7 +5,7 @@ import {
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
   LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft,
   X, Calendar, Mail, User, Trash2, Lightbulb, Hammer, Plus,
-  MoreVertical, CheckCircle, Clock, Save
+  MoreVertical, CheckCircle, Clock, Save, Menu
 } from 'lucide-react';
 
 /* ── CSS injected once ─────────────────────────────────────── */
@@ -29,6 +29,29 @@ const CSS = `
   .adm-back:hover { background: rgba(255,255,255,0.07)!important; color: #f8fafc!important; }
   .adm-end:hover  { background: rgba(239,68,68,0.1)!important; color: #ef4444!important; }
 
+  /* Responsive Sidebar */
+  @media (max-width: 768px) {
+    .adm-sidebar {
+      position: fixed!important;
+      left: -240px;
+      top: 0;
+      bottom: 0;
+      transition: left 0.3s ease!important;
+    }
+    .adm-sidebar.open {
+      left: 0!important;
+    }
+    .adm-main-content {
+      padding: 20px!important;
+    }
+    .adm-hero-title {
+      font-size: 32px!important;
+    }
+    .adm-grid {
+      grid-template-columns: 1fr!important;
+    }
+  }
+
   /* Modal Animations & Styles */
   @keyframes adm-fade-in { from{opacity:0} to{opacity:1} }
   @keyframes adm-slide-up { from{opacity:0; transform:translateY(30px) scale(0.95)} to{opacity:1; transform:translateY(0) scale(1)} }
@@ -39,7 +62,7 @@ const CSS = `
   .adm-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
   .adm-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
   .adm-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-`;
+`;`;
 
 /* ── constants ─────────────────────────────────────────────── */
 const TOOLS = [];
@@ -127,7 +150,7 @@ function LoginScreen({ onLogin }) {
 }
 
 /* ── Sidebar ────────────────────────────────────────────────── */
-function Sidebar({ active, onSelect, onLogout }) {
+function Sidebar({ active, onSelect, onLogout, isOpen, onClose }) {
   const navigate = useNavigate();
   const nav = [
     { id:'overview', label:'Overview', Icon:LayoutDashboard, color:'#94a3b8' },
@@ -135,7 +158,15 @@ function Sidebar({ active, onSelect, onLogout }) {
   ];
 
   return (
-    <aside style={{ width:240, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(8,10,14,0.97)', backdropFilter:'blur(16px)', borderRight:'1px solid rgba(255,255,255,0.05)', zIndex:20 }}>
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div 
+          onClick={onClose}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', zIndex:19 }}
+        />
+      )}
+      <aside className={`adm-sidebar ${isOpen ? 'open' : ''}`} style={{ width:240, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(8,10,14,0.97)', backdropFilter:'blur(16px)', borderRight:'1px solid rgba(255,255,255,0.05)', zIndex:20 }}>
       {/* brand */}
       <div style={{ padding:'22px 20px 18px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
@@ -183,6 +214,7 @@ function Sidebar({ active, onSelect, onLogout }) {
         </button>
       </div>
     </aside>
+    </>
   );
 }
 
@@ -260,55 +292,56 @@ function UsersModal({ onClose }) {
           ) : users.length === 0 ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#64748b' }}>No users found in the database.</div>
           ) : (
-            <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left' }}>
-              <thead>
-                <tr>
-                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>User</th>
-                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Email Address</th>
-                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Joined Date</th>
-                  <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)', textAlign:'right' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u, i) => (
-                  <tr key={u._id || i} className="adm-table-row" style={{ borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
-                    <td style={{ padding:'16px 0' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                        <div style={{ width:36, height:36, borderRadius:20, background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}>
-                          <User size={16} />
-                        </div>
-                        <span style={{ color:'#f1f5f9', fontWeight:600, fontSize:14 }}>
-                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : 'Anonymous User'}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding:'16px 0', color:'#cbd5e1', fontSize:14 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <Mail size={14} color="#64748b" /> {u.email}
-                      </div>
-                    </td>
-                    <td style={{ padding:'16px 0', color:'#94a3b8', fontSize:13 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <Calendar size={14} color="#64748b" /> 
-                        {new Date(u.createdAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })}
-                      </div>
-                    </td>
-                    <td style={{ padding:'16px 0', textAlign:'right' }}>
-                      <button 
-                        onClick={() => setUserToDelete({ id: u.userId, email: u.email })}
-                        style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', padding:6, borderRadius:6, opacity:0.6, transition:'opacity 0.2s, background 0.2s' }}
-                        onMouseOver={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-                        onMouseOut={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'transparent'; }}
-                        title="Delete User"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+            <div className="adm-scrollbar" style={{ overflowX: 'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth: '600px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>User</th>
+                    <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Email Address</th>
+                    <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>Joined Date</th>
+                    <th style={{ paddingBottom:16, color:'#94a3b8', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(255,255,255,0.05)', textAlign:'right' }}>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {users.map((u, i) => (
+                    <tr key={u._id || i} className="adm-table-row" style={{ borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
+                      <td style={{ padding:'16px 0' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <div style={{ width:36, height:36, borderRadius:20, background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}>
+                            <User size={16} />
+                          </div>
+                          <span style={{ color:'#f1f5f9', fontWeight:600, fontSize:14 }}>
+                            {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : 'Anonymous User'}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding:'16px 0', color:'#cbd5e1', fontSize:14 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <Mail size={14} color="#64748b" /> {u.email}
+                        </div>
+                      </td>
+                      <td style={{ padding:'16px 0', color:'#94a3b8', fontSize:13 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <Calendar size={14} color="#64748b" /> 
+                          {new Date(u.createdAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })}
+                        </div>
+                      </td>
+                      <td style={{ padding:'16px 0', textAlign:'right' }}>
+                        <button 
+                          onClick={() => setUserToDelete({ id: u.userId, email: u.email })}
+                          style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', padding:6, borderRadius:6, opacity:0.6, transition:'opacity 0.2s, background 0.2s' }}
+                          onMouseOver={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                          onMouseOut={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'transparent'; }}
+                          title="Delete User"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>          )}
         </div>
         
         {successMsg && (
@@ -341,16 +374,14 @@ function UsersModal({ onClose }) {
 }
 
 /* ── Overview ───────────────────────────────────────────────── */
-function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
-  return (
     <div style={{ flex:1, overflowY:'auto' }}>
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'44px 40px', animation:'adm-up 0.35s ease' }}>
+      <div className="adm-main-content" style={{ maxWidth:900, margin:'0 auto', padding:'44px 40px', animation:'adm-up 0.35s ease' }}>
         {/* hero */}
         <div style={{ marginBottom:52 }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'5px 14px', borderRadius:999, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.28)', color:'#10b981', fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:20 }}>
             <ShieldCheck size={13} /> Authenticated Session
           </div>
-          <h1 style={{ fontSize:'clamp(34px,5vw,56px)', fontWeight:900, letterSpacing:'-2px', background:'linear-gradient(135deg,#60a5fa 0%,#a78bfa 50%,#ec4899 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', margin:'0 0 12px', lineHeight:1.05 }}>
+          <h1 className="adm-hero-title" style={{ fontSize:'clamp(34px,5vw,56px)', fontWeight:900, letterSpacing:'-2px', background:'linear-gradient(135deg,#60a5fa 0%,#a78bfa 50%,#ec4899 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', margin:'0 0 12px', lineHeight:1.05 }}>
             Mission Control
           </h1>
           <p style={{ color:'#64748b', fontSize:16, margin:0, maxWidth:500, lineHeight:1.6 }}>
@@ -359,7 +390,7 @@ function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
         </div>
 
         {/* KPI strip */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:40 }}>
+        <div className="adm-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:40 }}>
           {/* user count */}
           <div className="adm-kpi" onClick={() => { onFetch(); onOpenUsers(); }} style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:16, padding:'26px 24px', position:'relative', overflow:'hidden' }}>
             <Users size={80} color="#10b981" style={{ position:'absolute', right:-8, top:-8, opacity:0.05 }} />
@@ -474,9 +505,9 @@ function DevelopmentView() {
   };
 
   return (
-    <div style={{ flex:1, overflowY:'auto', padding:'40px', animation:'adm-up 0.35s ease' }} className="adm-scrollbar">
+    <div style={{ flex:1, overflowY:'auto', padding:'20px', animation:'adm-up 0.35s ease' }} className="adm-scrollbar">
       <div style={{ maxWidth:1000, margin:'0 auto' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:40 }}>
+        <div className="adm-grid" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:40, gap:20, flexWrap:'wrap' }}>
           <div>
             <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'5px 14px', borderRadius:999, background:'rgba(245,166,35,0.08)', border:'1px solid rgba(245,166,35,0.28)', color:'#F5A623', fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:20 }}>
               <Hammer size={13} /> Roadmap & Planning
@@ -489,7 +520,7 @@ function DevelopmentView() {
           </button>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:20 }}>
+        <div className="adm-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:20 }}>
           {ideas.map(idea => (
             <div key={idea.id} className="glass-card" style={{ padding:24, border:`1px solid ${hex18(getStatusColor(idea.status))}`, background:'rgba(255,255,255,0.01)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
@@ -584,12 +615,30 @@ function Dashboard({ onLogout }) {
     finally  { setLoading(false); }
   };
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
-    <div style={{ display:'flex', height:'100vh', width:'100%', background:'#080a0e', overflow:'hidden' }}>
+    <div style={{ display:'flex', height:'100vh', width:'100%', background:'#080a0e', overflow:'hidden', position:'relative' }}>
       {/* bg grid */}
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', opacity:0.025, backgroundImage:'linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)', backgroundSize:'44px 44px' }} />
 
-      <Sidebar active={active} onSelect={setActive} onLogout={onLogout} />
+      {/* Mobile Top Bar */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:60, padding:'0 20px', display:'none', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid rgba(255,255,255,0.05)', zIndex:15, background:'rgba(8,10,14,0.8)', backdropFilter:'blur(12px)' }} className="adm-mobile-header">
+        <button onClick={() => setIsSidebarOpen(true)} style={{ background:'transparent', border:'none', color:'#f8fafc', cursor:'pointer' }}>
+          <Menu size={24} />
+        </button>
+        <div style={{ color:'#f8fafc', fontWeight:800, fontSize:16 }}>Admin</div>
+        <div style={{ width:24 }} /> {/* placeholder for balance */}
+      </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .adm-mobile-header { display: flex!important; }
+          main { padding-top: 60px!important; }
+        }
+      `}</style>
+
+      <Sidebar active={active} onSelect={(id) => { setActive(id); setIsSidebarOpen(false); }} onLogout={onLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <main style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', zIndex:10 }}>
         {active === 'dev' ? (
