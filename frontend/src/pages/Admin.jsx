@@ -11,9 +11,6 @@ import {
 /* ── CSS injected once ─────────────────────────────────────── */
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  @keyframes adm-up   { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes adm-shake{ 0%,100%{transform:translateX(0)} 25%,75%{transform:translateX(-7px)} 50%{transform:translateX(7px)} }
-  @keyframes adm-spin { to{transform:rotate(360deg)} }
   @keyframes adm-ping { 75%,100%{transform:scale(2);opacity:0} }
   .adm-root * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
   .adm-root { background: #080a0e; min-height: 100vh; width: 100vw; max-width: 100%; flex: 1; color: #f8fafc; }
@@ -54,14 +51,7 @@ const CSS = `
 
   /* Modal Animations & Styles */
   @keyframes adm-fade-in { from{opacity:0} to{opacity:1} }
-  @keyframes adm-slide-up { from{opacity:0; transform:translateY(30px) scale(0.95)} to{opacity:1; transform:translateY(0) scale(1)} }
   .adm-table-row:hover { background: rgba(255,255,255,0.03); }
-  
-  /* Scrollbar for table */
-  .adm-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-  .adm-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
-  .adm-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-  .adm-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 `;
 
 /* ── constants ─────────────────────────────────────────────── */
@@ -114,7 +104,7 @@ function LoginScreen({ onLogin }) {
       {/* grid */}
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', opacity:0.035, backgroundImage:'linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)', backgroundSize:'48px 48px' }} />
 
-      <div style={{ position:'relative', zIndex:10, width:'100%', maxWidth:420, margin:'0 16px', animation:'adm-up 0.45s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ position:'relative', zIndex:10, width:'100%', maxWidth:420, margin:'0 16px', animation:'evolvia-up 0.45s cubic-bezier(0.16,1,0.3,1)' }}>
         {/* gradient top bar */}
         <div style={{ height:3, borderRadius:'18px 18px 0 0', background:'linear-gradient(90deg,#3b82f6,#8b5cf6,#ec4899)' }} />
         <div style={{ background:'rgba(12,14,18,0.9)', backdropFilter:'blur(24px)', border:'1px solid rgba(59,130,246,0.18)', borderTop:'none', borderRadius:'0 0 18px 18px', boxShadow:'0 40px 80px rgba(0,0,0,0.55), 0 0 60px rgba(59,130,246,0.07)', padding:'40px 36px 36px' }}>
@@ -126,7 +116,7 @@ function LoginScreen({ onLogin }) {
             <p style={{ color:'#64748b', fontSize:14, margin:0 }}>Secure access to the system control plane</p>
           </div>
 
-          <form onSubmit={submit} style={{ display:'flex', flexDirection:'column', gap:14, animation: shake ? 'adm-shake 0.5s ease' : 'none' }}>
+          <form onSubmit={submit} style={{ display:'flex', flexDirection:'column', gap:14, animation: shake ? 'evolvia-shake 0.5s ease' : 'none' }}>
             <div style={{ position:'relative' }}>
               <Lock size={15} color="#475569" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)' }} />
               <input type="password" placeholder="Enter admin password" value={pwd}
@@ -279,10 +269,10 @@ function UsersModal({ onClose }) {
         </div>
 
         {/* Content */}
-        <div className="adm-scrollbar" style={{ flex:1, overflowY:'auto', padding:'20px 30px' }}>
+        <div className="evolvia-scrollbar" style={{ flex:1, overflowY:'auto', padding:'20px 30px' }}>
           {loading ? (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'60px 0', gap:16 }}>
-              <Loader2 size={32} color="#10b981" style={{ animation:'adm-spin 1s linear infinite' }} />
+              <Loader2 size={32} color="#10b981" style={{ animation:'evolvia-spin 1s linear infinite' }} />
               <div style={{ color:'#64748b', fontSize:14 }}>Retrieving secure user records...</div>
             </div>
           ) : error ? (
@@ -292,7 +282,7 @@ function UsersModal({ onClose }) {
           ) : users.length === 0 ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#64748b' }}>No users found in the database.</div>
           ) : (
-            <div className="adm-scrollbar" style={{ overflowX: 'auto' }}>
+            <div className="evolvia-scrollbar" style={{ overflowX: 'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth: '600px' }}>
                 <thead>
                   <tr>
@@ -345,7 +335,7 @@ function UsersModal({ onClose }) {
         </div>
         
         {successMsg && (
-          <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', padding:'10px 20px', borderRadius:100, color:'#10b981', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, animation:'adm-up 0.3s ease', backdropFilter:'blur(8px)', zIndex:10 }}>
+          <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', padding:'10px 20px', borderRadius:100, color:'#10b981', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, animation:'evolvia-up 0.3s ease', backdropFilter:'blur(8px)', zIndex:10 }}>
             <ShieldCheck size={16} /> {successMsg}
           </div>
         )}
@@ -377,7 +367,7 @@ function UsersModal({ onClose }) {
 function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
   return (
     <div style={{ flex:1, overflowY:'auto' }}>
-      <div className="adm-main-content" style={{ maxWidth:900, margin:'0 auto', padding:'44px 40px', animation:'adm-up 0.35s ease' }}>
+      <div className="adm-main-content" style={{ maxWidth:900, margin:'0 auto', padding:'44px 40px', animation:'evolvia-up 0.35s ease' }}>
         {/* hero */}
         <div style={{ marginBottom:52 }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'5px 14px', borderRadius:999, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.28)', color:'#10b981', fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:20 }}>
@@ -402,10 +392,10 @@ function Overview({ userCount, loading, onFetch, onOpen, onOpenUsers }) {
             <div style={{ color:'#94a3b8', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Registered Users</div>
             {loading ? (
               <div style={{ display:'flex', alignItems:'center', gap:8, color:'#475569', fontSize:14 }}>
-                <Loader2 size={16} style={{ animation:'adm-spin 1s linear infinite' }} /> Fetching…
+                <Loader2 size={16} style={{ animation:'evolvia-spin 1s linear infinite' }} /> Fetching…
               </div>
             ) : userCount !== null ? (
-              <div style={{ display:'flex', alignItems:'baseline', gap:8, animation:'adm-up 0.3s ease' }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:8, animation:'evolvia-up 0.3s ease' }}>
                 <span style={{ fontSize:44, fontWeight:900, color:'#10b981', lineHeight:1 }}>{userCount}</span>
                 <span style={{ color:'#64748b', fontSize:13 }}>total — <span style={{ color:'#10b981', textDecoration:'underline' }}>View Directory</span></span>
               </div>
@@ -507,7 +497,7 @@ function DevelopmentView() {
   };
 
   return (
-    <div style={{ flex:1, overflowY:'auto', padding:'20px', animation:'adm-up 0.35s ease' }} className="adm-scrollbar">
+    <div style={{ flex:1, overflowY:'auto', padding:'20px', animation:'evolvia-up 0.35s ease' }} className="evolvia-scrollbar">
       <div style={{ maxWidth:1000, margin:'0 auto' }}>
         <div className="adm-grid" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:40, gap:20, flexWrap:'wrap' }}>
           <div>

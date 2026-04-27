@@ -601,7 +601,7 @@ export default function DailyLog() {
             </div>
             
             {videoWarning && (
-              <span style={{color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'adm-shake 0.4s ease'}}>
+              <span style={{color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'evolvia-shake 0.4s ease'}}>
                 ⚠️ Fill Task & Time to check this box.
               </span>
             )}
