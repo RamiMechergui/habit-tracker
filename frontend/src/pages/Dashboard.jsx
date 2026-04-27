@@ -142,6 +142,7 @@ export default function Dashboard() {
   };
 
   return (
+    <>
       <div className="dashboard-welcome mb-8" style={{ animation: 'evolvia-up 0.5s ease-out' }}>
         <h1 style={{ 
           fontSize: '2.5rem', 
@@ -521,6 +522,6 @@ export default function Dashboard() {
         </div>
       )}
 
-    </div>
-  );
+      </>
+    );
 }
