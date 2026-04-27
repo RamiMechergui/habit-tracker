@@ -61,6 +61,19 @@ body {
     radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.03), transparent 25%);
 }
 
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 #root {
   min-height: 100vh;
   display: flex;

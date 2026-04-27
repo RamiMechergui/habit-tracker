@@ -158,14 +158,15 @@ export default function Auth() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px'
+              gap: '12px',
+              minHeight: '48px'
             }}
             disabled={loading}
           >
             {loading ? (
               <>
-                <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'adm-spin 0.8s linear infinite' }} />
-                {isLogin ? 'Logging In.........' : 'Signing Up.........'}
+                <div className="spinner" />
+                <span>{isLogin ? 'Logging in...' : 'Signing up...'}</span>
               </>
             ) : (
               isLogin ? 'Log In' : 'Sign Up'
