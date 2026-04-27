@@ -130,24 +130,21 @@ function App() {
 
         <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
           <button
-            className="btn btn-secondary w-full"
+            className="btn sidebar-logout-btn w-full"
             style={{ 
               justifyContent: 'center', 
               gap: '10px', 
               padding: '0.75rem',
               borderRadius: 'var(--radius-sm)',
-              fontSize: '0.9rem',
-              background: 'rgba(239, 68, 68, 0.05)',
-              color: '#fca5a5',
-              border: '1px solid rgba(239, 68, 68, 0.1)'
+              fontSize: '0.9rem'
             }}
             onClick={logout}
           >
             <LogOut size={16} /> Sign Out
           </button>
           
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', opacity: 0.4 }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px', filter: 'grayscale(1)' }} />
+          <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
             <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>EVOLVIA</span>
           </div>
         </div>
