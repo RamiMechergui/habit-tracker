@@ -232,7 +232,7 @@ export default function ExpenseTracker() {
         </div>
 
         {/* Transaction History Card */}
-        <div className="glass-card p-6 mt-8" style={{ gridColumn: '1 / -1' }}>
+        <div className="glass-card p-6 mt-12" style={{ gridColumn: '1 / -1' }}>
           <h3 className="mb-4 flex items-center gap-2">📑 Transaction History</h3>
           <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }} className="evolvia-scrollbar">
             {filteredHistoryLogs.length > 0 ? (
