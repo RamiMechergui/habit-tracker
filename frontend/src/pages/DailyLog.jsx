@@ -10,7 +10,7 @@ export default function DailyLog() {
   const initialDate = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
   const [date, setDate] = useState(initialDate);
   const [log, setLog] = useState(() => getLog(initialDate));
-  
+
   const [hustleWarning, setHustleWarning] = useState(false);
   const [videoWarning, setVideoWarning] = useState(false);
   const [saveStatus, setSaveStatus] = useState('Saved'); // 'Saved', 'Saving...', 'Error'
@@ -96,7 +96,7 @@ export default function DailyLog() {
   };
 
   const bookProgress = getBookProgress();
-  
+
   const dateObj = new Date(date + 'T00:00:00');
   const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
   const isSaturday = dayOfWeek === 6;
@@ -108,14 +108,14 @@ export default function DailyLog() {
     if (bookProgress && bookProgress.bookName && !newLog.books.name) {
       newLog.books.name = bookProgress.bookName;
     }
-    
+
     // Only update state if the date changed or we don't have a log yet
     // This prevents overwriting local edits when logs (plural) updates due to saving
     setLog(prev => {
       if (prev && prev.date === date) return prev;
       return newLog;
     });
-    
+
     setHustleWarning(false);
     setVideoWarning(false);
     // Keep URL in sync
@@ -135,7 +135,7 @@ export default function DailyLog() {
         setSubmitError(error?.message || 'Unable to save. Please try again.');
       }
     }, 800); // 800ms debounce
-    
+
     return () => clearTimeout(timeoutId);
   }, [log, date, saveLog]);
 
@@ -144,11 +144,11 @@ export default function DailyLog() {
   };
 
   const updateBad = (key, field, val) => {
-    setLog(prev => ({ 
-      ...prev, 
-      bad: { 
-        ...prev.bad, 
-        [key]: { ...(prev.bad?.[key] || {}), [field]: val } 
+    setLog(prev => ({
+      ...prev,
+      bad: {
+        ...prev.bad,
+        [key]: { ...(prev.bad?.[key] || {}), [field]: val }
       }
     }));
   };
@@ -167,9 +167,9 @@ export default function DailyLog() {
     setLog(prev => {
       const expenses = Array.isArray(prev.expenses) ? prev.expenses : [];
       const newEx = expenses.filter((_, i) => i !== idx);
-      return { 
-        ...prev, 
-        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm') }] 
+      return {
+        ...prev,
+        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm') }]
       };
     });
   };
@@ -178,35 +178,35 @@ export default function DailyLog() {
 
   // Morning (30 pts)
   let mScore = 0;
-  if(log.morning.wakeTime) {
+  if (log.morning.wakeTime) {
     const time = parseInt(log.morning.wakeTime.replace(':', ''));
-    if(time <= 500) mScore += 14; 
-    else if(time <= 600) mScore += 10;
-    else if(time <= 700) mScore += 5;
+    if (time <= 500) mScore += 14;
+    else if (time <= 600) mScore += 10;
+    else if (time <= 700) mScore += 5;
   }
-  if(log.morning.meditate) mScore += 1;
-  if(log.morning.bed) mScore += 2;
-  if(log.morning.teeth) mScore += 2;
-  if(log.morning.shower) mScore += 8;
-  if(log.morning.gel) mScore += 1;
-  if(log.morning.perfume) mScore += 2;
+  if (log.morning.meditate) mScore += 1;
+  if (log.morning.bed) mScore += 2;
+  if (log.morning.teeth) mScore += 2;
+  if (log.morning.shower) mScore += 8;
+  if (log.morning.gel) mScore += 1;
+  if (log.morning.perfume) mScore += 2;
 
   // Night (30 pts)
   let nScore = 0;
   const n = log.night;
-  if(n.gym) nScore += 10;
-  if(n.cleanTable) nScore += 1;
-  if(n.orgTable) nScore += 1;
-  if(n.teeth) nScore += 2;
-  if(n.shave) nScore += 2;
-  if(n.washFace) nScore += 1;
-  if(n.hotShower) nScore += 4;
-  if(n.hygiene) nScore += 2;
-  if(n.fingerNails) nScore += 1;
-  if(n.toeNails) nScore += 1;
-  if(n.wiseSpend) nScore += 1;
-  if(n.saves) nScore += 1;
-  if(n.fillApp) nScore += 3;
+  if (n.gym) nScore += 10;
+  if (n.cleanTable) nScore += 1;
+  if (n.orgTable) nScore += 1;
+  if (n.teeth) nScore += 2;
+  if (n.shave) nScore += 2;
+  if (n.washFace) nScore += 1;
+  if (n.hotShower) nScore += 4;
+  if (n.hygiene) nScore += 2;
+  if (n.fingerNails) nScore += 1;
+  if (n.toeNails) nScore += 1;
+  if (n.wiseSpend) nScore += 1;
+  if (n.saves) nScore += 1;
+  if (n.fillApp) nScore += 3;
 
 
   const hScore = log.hustle.achieved ? 5 : 0;
@@ -217,21 +217,21 @@ export default function DailyLog() {
   // Bad Habits — checked = avoided = GAIN points (positive scoring)
   let b = log.bad;
   let dynamicBadScore = 0;
-  if(b.smoking.checked) dynamicBadScore += 10;
-  if(b.sexual.checked) dynamicBadScore += 4;
-  if(b.social.checked) dynamicBadScore += 2;
-  if(b.phone.checked) dynamicBadScore += 6;
-  if(b.coffee.checked) dynamicBadScore += 2;
-  if(b.eating.checked) dynamicBadScore += 2;
-  if(b.noSugar?.checked) dynamicBadScore += 2;
+  if (b.smoking.checked) dynamicBadScore += 10;
+  if (b.sexual.checked) dynamicBadScore += 4;
+  if (b.social.checked) dynamicBadScore += 2;
+  if (b.phone.checked) dynamicBadScore += 6;
+  if (b.coffee.checked) dynamicBadScore += 2;
+  if (b.eating.checked) dynamicBadScore += 2;
+  if (b.noSugar?.checked) dynamicBadScore += 2;
 
   let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + sysScore + hScore + vScore));
-  
+
   let dynamicRank = 'F';
-  if(dynamicTotalScore >= 90) dynamicRank = 'S';
-  else if(dynamicTotalScore >= 80) dynamicRank = 'A';
-  else if(dynamicTotalScore >= 60) dynamicRank = 'B';
-  else if(dynamicTotalScore >= 50) dynamicRank = 'C';
+  if (dynamicTotalScore >= 90) dynamicRank = 'S';
+  else if (dynamicTotalScore >= 80) dynamicRank = 'A';
+  else if (dynamicTotalScore >= 60) dynamicRank = 'B';
+  else if (dynamicTotalScore >= 50) dynamicRank = 'C';
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isFuture = date > todayStr;
@@ -281,14 +281,14 @@ export default function DailyLog() {
 
       <div className="grid-2">
         <div className="flex-col gap-6">
-          
+
           {/* Morning Habits */}
           <div className="glass-card p-6 section-morning" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(245, 158, 11, 0.03))' }}>
             <div className="flex justify-between items-center mb-5">
               <h3 className="m-0 flex items-center gap-2">☀️ Morning Habits</h3>
               <span className="grade-pill" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--accent-amber)', fontSize: '0.8rem' }}>{mScore}/30pts</span>
             </div>
-            
+
             <div className="flex-col gap-3">
               {[
                 { id: 'wakeTime', label: 'Wake up time', pts: '14pts', type: 'time' },
@@ -299,7 +299,7 @@ export default function DailyLog() {
                 { id: 'gel', label: 'Apply hair gel', pts: '1pt' },
                 { id: 'perfume', label: 'Put on perfume', pts: '2pts' }
               ].map(item => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.morning[item.id] ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.morning[item.id] ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
@@ -330,7 +330,7 @@ export default function DailyLog() {
                 <strong style={{ color: '#10b981' }}>Tip:</strong> Check off the habits you successfully avoided today to earn points!
               </p>
             </div>
-            
+
             <div className="flex-col gap-3">
               {[
                 { id: 'smoking', label: '1. Smoking', pts: '10pts', extra: 'count', placeholder: 'Qty' },
@@ -341,7 +341,7 @@ export default function DailyLog() {
                 { id: 'eating', label: '6. Eating out', pts: '2pts' },
                 { id: 'noSugar', label: '7. No sugar', pts: '2pts' },
               ].map(item => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.bad[item.id].checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.bad[item.id].checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
@@ -352,7 +352,7 @@ export default function DailyLog() {
                   </div>
                   <div className="flex items-center gap-2">
                     {item.extra && (
-                      <input type="number" placeholder={item.placeholder} style={{width: '65px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff'}}
+                      <input type="number" placeholder={item.placeholder} style={{ width: '65px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
                         value={log.bad[item.id][item.extra] || ''} onChange={e => updateBad(item.id, item.extra, e.target.value)} disabled={isFuture} />
                     )}
                     <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
@@ -361,7 +361,7 @@ export default function DailyLog() {
               ))}
             </div>
           </div>
-          
+
           {/* Night Habits */}
           <div className="glass-card p-6 section-night" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(99, 102, 241, 0.03))' }}>
             <div className="flex justify-between items-center mb-5">
@@ -384,7 +384,7 @@ export default function DailyLog() {
                 { id: 'saves', label: '12. 1 TND Saved', pts: '1pt' },
                 { id: 'fillApp', label: '13. Fill web app', pts: '3pts' },
               ].map(item => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.night[item.id] ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.night[item.id] ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
@@ -402,19 +402,19 @@ export default function DailyLog() {
           {(isSaturday || isSunday) && (
             <div className="glass-card p-6 section-weekend">
               <h3 className="mb-4 flex items-center gap-2"><Calendar size={20} className="text-amber" /> Weekend Duties <span className="text-amber text-sm">{isSaturday ? 'Saturday' : 'Sunday'}</span></h3>
-              
+
               {isSaturday && (
                 <div className="flex-col gap-3">
-                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                     background: log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                     border: `1px solid ${log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   }}>
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.saturday?.preLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Pre-laundry arrangement</span>
-                    <input 
-                      type="checkbox" 
-                      className="habit-checkbox" 
-                      checked={log.weekend?.saturday?.preLaundry || false} 
-                      onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })} 
+                    <input
+                      type="checkbox"
+                      className="habit-checkbox"
+                      checked={log.weekend?.saturday?.preLaundry || false}
+                      onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })}
                       disabled={isFuture}
                     />
                   </div>
@@ -423,47 +423,47 @@ export default function DailyLog() {
 
               {isSunday && (
                 <>
-                <div className="flex-col gap-3">
-                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
-                    background: log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                  }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Cleaning Room</span>
-                    <input 
-                      type="checkbox" 
-                      className="habit-checkbox" 
-                      checked={log.weekend?.sunday?.cleanRoom || false} 
-                      onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, cleanRoom: e.target.checked })} 
-                      disabled={isFuture}
-                    />
+                  <div className="flex-col gap-3">
+                    <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                      background: log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                    }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Cleaning Room</span>
+                      <input
+                        type="checkbox"
+                        className="habit-checkbox"
+                        checked={log.weekend?.sunday?.cleanRoom || false}
+                        onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, cleanRoom: e.target.checked })}
+                        disabled={isFuture}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                      background: log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                    }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Regular laundry</span>
+                      <input
+                        type="checkbox"
+                        className="habit-checkbox"
+                        checked={log.weekend?.sunday?.regularLaundry || false}
+                        onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, regularLaundry: e.target.checked })}
+                        disabled={isFuture}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                      background: log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                    }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)' }}>3. 1 share bought</span>
+                      <input
+                        type="checkbox"
+                        className="habit-checkbox"
+                        checked={log.weekend?.sunday?.shareBought || false}
+                        onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, shareBought: e.target.checked })}
+                        disabled={isFuture}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
-                    background: log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                  }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Regular laundry</span>
-                    <input 
-                      type="checkbox" 
-                      className="habit-checkbox" 
-                      checked={log.weekend?.sunday?.regularLaundry || false} 
-                      onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, regularLaundry: e.target.checked })} 
-                      disabled={isFuture}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
-                    background: log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                  }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)' }}>3. 1 share bought</span>
-                    <input 
-                      type="checkbox" 
-                      className="habit-checkbox" 
-                      checked={log.weekend?.sunday?.shareBought || false} 
-                      onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, shareBought: e.target.checked })} 
-                      disabled={isFuture}
-                    />
-                  </div>
-                </div>
                 </>
               )}
             </div>
@@ -482,27 +482,27 @@ export default function DailyLog() {
             <div className="flex flex-col gap-3">
               <div style={{ position: 'relative' }}>
                 <Target size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Planned Task" value={log.hustle.task} onChange={e=>updateSection('hustle', 'task', e.target.value)} disabled={isFuture} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Planned Task" value={log.hustle.task} onChange={e => updateSection('hustle', 'task', e.target.value)} disabled={isFuture} />
               </div>
               <div style={{ position: 'relative' }}>
                 <Clock size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Time Spent (e.g. 2h 30m)" value={log.hustle.time} onChange={e=>updateSection('hustle', 'time', e.target.value)} disabled={isFuture} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Time Spent (e.g. 2h 30m)" value={log.hustle.time} onChange={e => updateSection('hustle', 'time', e.target.value)} disabled={isFuture} />
               </div>
             </div>
-            
+
             {hustleWarning && (
-              <span style={{color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'adm-shake 0.4s ease' }}>
+              <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'adm-shake 0.4s ease' }}>
                 ⚠️ Fill Task & Time to check this box.
               </span>
             )}
-            
-            <label className="flex items-center gap-3 mt-4" style={{ 
+
+            <label className="flex items-center gap-3 mt-4" style={{
               cursor: isFuture ? 'default' : 'pointer'
             }}>
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 className="habit-checkbox"
-                checked={log.hustle.achieved} 
+                checked={log.hustle.achieved}
                 onChange={e => {
                   if (e.target.checked && (!log.hustle.task.trim() || !log.hustle.time.trim())) {
                     setHustleWarning(true);
@@ -512,17 +512,17 @@ export default function DailyLog() {
                   updateSection('hustle', 'achieved', e.target.checked)
                 }}
                 disabled={isFuture}
-              /> 
+              />
               <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
             </label>
 
-            <div className="mt-10 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
+            <div className="mt-10 pt-5" style={{ borderTop: '1px dashed var(--border)' }}>
               <div className="flex justify-between items-center mb-3">
-                <h4 className="m-0 flex items-center gap-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
+                <h4 className="m-0 flex items-center gap-2" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                   <Sparkles size={14} className="text-amber" /> Key Lessons
                 </h4>
               </div>
-              
+
               {lessonMsg && (
                 <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '12px', border: '1px solid rgba(16,185,129,0.2)' }}>
                   {lessonMsg}
@@ -531,23 +531,23 @@ export default function DailyLog() {
 
               <div className="flex flex-col gap-2 mb-4">
                 {(log.hustle.lessons || []).map((lesson, idx) => (
-                  <div key={idx} className="glass-card" style={{ 
-                    padding: '10px 12px', 
-                    background: 'rgba(255,255,255,0.02)', 
+                  <div key={idx} className="glass-card" style={{
+                    padding: '10px 12px',
+                    background: 'rgba(255,255,255,0.02)',
                     border: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex', 
+                    display: 'flex',
                     flexDirection: 'column',
                     gap: 8
                   }}>
                     {editingLessonIdx === idx ? (
                       <div className="flex flex-col gap-2">
-                        <textarea 
-                          className="w-full" 
-                          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-blue)', borderRadius: 8, padding: '8px', fontSize: '0.85rem', color: '#fff', resize: 'none' }} 
+                        <textarea
+                          className="w-full"
+                          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-blue)', borderRadius: 8, padding: '8px', fontSize: '0.85rem', color: '#fff', resize: 'none' }}
                           rows={2}
-                          value={editingLessonText} 
-                          onChange={e => setEditingLessonText(e.target.value)} 
-                          autoFocus 
+                          value={editingLessonText}
+                          onChange={e => setEditingLessonText(e.target.value)}
+                          autoFocus
                         />
                         <div className="flex gap-2 justify-end">
                           <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => setEditingLessonIdx(null)}>Cancel</button>
@@ -592,28 +592,29 @@ export default function DailyLog() {
             <div className="flex flex-col gap-3">
               <div style={{ position: 'relative' }}>
                 <Edit2 size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Planned Task" value={log.video.task} onChange={e=>updateSection('video', 'task', e.target.value)} disabled={isFuture} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Planned Task" value={log.video.task} onChange={e => updateSection('video', 'task', e.target.value)} disabled={isFuture} />
               </div>
               <div style={{ position: 'relative' }}>
                 <Clock size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Time Spent" value={log.video.time} onChange={e=>updateSection('video', 'time', e.target.value)} disabled={isFuture} />
+                <input className="w-full" style={{ paddingLeft: '2.5rem' }} placeholder="Time Spent" value={log.video.time} onChange={e => updateSection('video', 'time', e.target.value)} disabled={isFuture} />
               </div>
             </div>
-            
+
             {videoWarning && (
-              <span style={{color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'evolvia-shake 0.4s ease'}}>
+              <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '8px', display: 'block', animation: 'evolvia-shake 0.4s ease' }}>
                 ⚠️ Fill Task & Time to check this box.
               </span>
             )}
 
+
             <div className="flex flex-col gap-3 mt-4">
-              <label className="flex items-center gap-3" style={{ 
+              <label className="flex items-center gap-3" style={{
                 cursor: isFuture ? 'default' : 'pointer'
               }}>
-                <input 
-                  type="checkbox" 
-                  className="habit-checkbox" 
-                  checked={log.video.achieved} 
+                <input
+                  type="checkbox"
+                  className="habit-checkbox"
+                  checked={log.video.achieved}
                   onChange={e => {
                     if (e.target.checked && (!log.video.task.trim() || !log.video.time.trim())) {
                       setVideoWarning(true);
@@ -623,10 +624,10 @@ export default function DailyLog() {
                     updateSection('video', 'achieved', e.target.checked)
                   }}
                   disabled={isFuture}
-                /> 
+                />
                 <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
               </label>
-              
+
               <div className="flex gap-2 p-1 bg-[rgba(0,0,0,0.2)] rounded-xl border border-[var(--border)]">
                 {[
                   { val: 'Better', icon: TrendingUp, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
@@ -660,11 +661,11 @@ export default function DailyLog() {
               </div>
             </div>
 
-            <div className="mt-10 pt-5" style={{borderTop: '1px dashed var(--border)'}}>
-              <h4 className="mb-3 flex items-center gap-2" style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
+            <div className="mt-10 pt-5" style={{ borderTop: '1px dashed var(--border)' }}>
+              <h4 className="mb-3 flex items-center gap-2" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                 <Sparkles size={14} className="text-amber" /> Key Lessons
               </h4>
-              
+
               {videoLessonMsg && (
                 <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '12px', border: '1px solid rgba(16,185,129,0.2)' }}>
                   {videoLessonMsg}
@@ -673,23 +674,23 @@ export default function DailyLog() {
 
               <div className="flex flex-col gap-2 mb-4">
                 {(log.video.lessons || []).map((lesson, idx) => (
-                  <div key={idx} className="glass-card" style={{ 
-                    padding: '10px 12px', 
-                    background: 'rgba(255,255,255,0.02)', 
+                  <div key={idx} className="glass-card" style={{
+                    padding: '10px 12px',
+                    background: 'rgba(255,255,255,0.02)',
                     border: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex', 
+                    display: 'flex',
                     flexDirection: 'column',
                     gap: 8
                   }}>
                     {editingVideoLessonIdx === idx ? (
                       <div className="flex flex-col gap-2">
-                        <textarea 
-                          className="w-full" 
-                          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-blue)', borderRadius: 8, padding: '8px', fontSize: '0.85rem', color: '#fff', resize: 'none' }} 
+                        <textarea
+                          className="w-full"
+                          style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-blue)', borderRadius: 8, padding: '8px', fontSize: '0.85rem', color: '#fff', resize: 'none' }}
                           rows={2}
-                          value={editingVideoLessonText} 
-                          onChange={e => setEditingVideoLessonText(e.target.value)} 
-                          autoFocus 
+                          value={editingVideoLessonText}
+                          onChange={e => setEditingVideoLessonText(e.target.value)}
+                          autoFocus
                         />
                         <div className="flex gap-2 justify-end">
                           <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => setEditingVideoLessonIdx(null)}>Cancel</button>
@@ -727,7 +728,7 @@ export default function DailyLog() {
 
           <div className="glass-card p-6">
             <h3 className="mb-4 flex items-center gap-2"><BookOpen size={20} className="text-amber" /> Book Reading <span className="text-amber text-sm">{(log.books.read ? 10 : 0)}/10pts</span></h3>
-            
+
             {bookProgress && (
               <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '8px', borderRadius: '6px', marginBottom: '1rem' }}>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--accent-blue)', fontWeight: 'bold' }}>
@@ -775,12 +776,12 @@ export default function DailyLog() {
               </div>
             )}
             <label className="flex items-center gap-2">
-              <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e=>updateSection('books', 'read', e.target.checked)} disabled={isFuture}/> 
+              <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e => updateSection('books', 'read', e.target.checked)} disabled={isFuture} />
               Reading Finished (10pts)
             </label>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-              {bookProgress 
-                ? '💡 Tip: Enter your page number daily to track your reading progress on the Dashboard.' 
+              {bookProgress
+                ? '💡 Tip: Enter your page number daily to track your reading progress on the Dashboard.'
                 : '💡 Tip: Start tracking a book on the Dashboard to synchronize it here.'}
             </p>
           </div>
@@ -788,7 +789,7 @@ export default function DailyLog() {
           <div className="glass-card p-6">
             <h3 className="mb-4 flex items-center gap-2"><ShieldCheck size={20} className="text-amber" /> System Check <span className="text-amber text-sm">{sysScore}/2pts</span></h3>
             <div className="flex-col gap-3">
-              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                 background: log.system?.todo ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                 border: `1px solid ${log.system?.todo ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
@@ -796,15 +797,15 @@ export default function DailyLog() {
                   <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. ToDo App Updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
-                <input 
-                  type="checkbox" 
-                  className="habit-checkbox" 
-                  checked={log.system?.todo || false} 
-                  onChange={e => updateSection('system', 'todo', e.target.checked)} 
+                <input
+                  type="checkbox"
+                  className="habit-checkbox"
+                  checked={log.system?.todo || false}
+                  onChange={e => updateSection('system', 'todo', e.target.checked)}
                   disabled={isFuture}
                 />
               </div>
-              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{ 
+              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                 background: log.system?.money ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                 border: `1px solid ${log.system?.money ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
@@ -812,11 +813,11 @@ export default function DailyLog() {
                   <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Money Tracker Updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
-                <input 
-                  type="checkbox" 
-                  className="habit-checkbox" 
-                  checked={log.system?.money || false} 
-                  onChange={e => updateSection('system', 'money', e.target.checked)} 
+                <input
+                  type="checkbox"
+                  className="habit-checkbox"
+                  checked={log.system?.money || false}
+                  onChange={e => updateSection('system', 'money', e.target.checked)}
                   disabled={isFuture}
                 />
               </div>
@@ -837,12 +838,12 @@ export default function DailyLog() {
                     onChange={e => updateExpense(i, 'desc', e.target.value)}
                     disabled={isFuture}
                   />
-                  <div style={{ 
-                    fontSize: '0.8rem', 
-                    fontWeight: 600, 
-                    color: 'var(--text-muted)', 
-                    background: 'rgba(255,255,255,0.03)', 
-                    padding: '8px 12px', 
+                  <div style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    background: 'rgba(255,255,255,0.03)',
+                    padding: '8px 12px',
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                     display: 'flex',
@@ -889,15 +890,15 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || 'Other', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
+            <button className="btn btn-secondary w-full mt-2" style={{ padding: '0.5rem' }} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || 'Other', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
               + Add Expense
             </button>
-            <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
+            <div className="mt-4 pt-4 flex justify-between" style={{ borderTop: '1px solid var(--border)' }}>
               <strong>Total Spent:</strong>
-              <strong className="text-amber">{(Array.isArray(log.expenses) ? log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND</strong>
+              <strong className="text-amber">{(Array.isArray(log.expenses) ? log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3)} TND</strong>
             </div>
           </div>
-          
+
         </div>
       </div>
 
