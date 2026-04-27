@@ -1328,6 +1328,7 @@ label {
 [data-theme='light'] .dashboard-welcome h1 {
   background: linear-gradient(to right, #0f172a, #334155) !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
 }
 

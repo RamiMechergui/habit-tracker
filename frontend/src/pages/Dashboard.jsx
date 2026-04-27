@@ -153,6 +153,7 @@ export default function Dashboard() {
           fontWeight: 900, 
           background: 'linear-gradient(to right, #fff, #94a3b8)', 
           WebkitBackgroundClip: 'text', 
+          backgroundClip: 'text', 
           WebkitTextFillColor: 'transparent',
           marginBottom: '0.5rem'
         }}>
