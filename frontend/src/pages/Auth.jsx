@@ -28,6 +28,8 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
     setLoading(true);
+    // Add artificial 3-second delay to show off the loading animation as requested
+    await new Promise(resolve => setTimeout(resolve, 3000));
     try {
       if (isLogin) {
         await login(email, password);
