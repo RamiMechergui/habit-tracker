@@ -320,7 +320,7 @@ export default function DailyLog() {
 
           {/* Bad Habits — checked = avoided = positive points */}
           <div className="glass-card p-6 section-bad" style={{ background: 'linear-gradient(145deg, var(--bg-card), rgba(16, 185, 129, 0.03))' }}>
-            <div className="flex justify-between items-center mb-1">
+            <div className="flex justify-between items-center mb-5">
               <h3 className="m-0 flex items-center gap-2">🛡️ Bad Habits</h3>
               <span className="grade-pill" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.8rem' }}>{dynamicBadScore}/28pts</span>
             </div>
