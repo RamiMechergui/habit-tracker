@@ -96,6 +96,25 @@ function App() {
               </span>
             </div>
           </div>
+          <button
+            onClick={toggleTheme}
+            style={{ 
+              background: 'rgba(255,255,255,0.05)', 
+              border: '1px solid var(--border)', 
+              borderRadius: '8px', 
+              width: '36px', 
+              height: '36px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--text-primary)',
+              transition: 'all 0.2s'
+            }}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </div>
 
         <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
