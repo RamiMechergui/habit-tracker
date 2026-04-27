@@ -57,6 +57,26 @@ export default function ExpenseTracker() {
     return { totalSpent, activeCategories };
   }, [logs, viewMode, currentDate, expenseCategories]);
 
+  // Filter logs for transaction history based on current viewMode and date
+  const filteredHistoryLogs = useMemo(() => {
+    return Object.entries(logs)
+      .filter(([dateStr, log]) => {
+        const logDate = new Date(dateStr + 'T00:00:00');
+        let include = false;
+
+        if (viewMode === 'daily') {
+          include = isSameDay(logDate, currentDate);
+        } else if (viewMode === 'monthly') {
+          include = isSameMonth(logDate, currentDate);
+        } else if (viewMode === 'yearly') {
+          include = isSameYear(logDate, currentDate);
+        }
+        
+        return include && Array.isArray(log.expenses) && log.expenses.some(e => (parseFloat(e.amount)||0) > 0);
+      })
+      .sort((a, b) => new Date(b[0]) - new Date(a[0]));
+  }, [logs, viewMode, currentDate]);
+
   // Navigation handlers
   const handlePrev = () => {
     const newDate = new Date(currentDate);
@@ -212,13 +232,11 @@ export default function ExpenseTracker() {
         </div>
 
         {/* Transaction History Card */}
-        <div className="glass-card p-6" style={{ gridColumn: '1 / -1' }}>
+        <div className="glass-card p-6 mt-8" style={{ gridColumn: '1 / -1' }}>
           <h3 className="mb-4 flex items-center gap-2">📑 Transaction History</h3>
-          <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
-            {Object.entries(logs)
-              .filter(([_, log]) => Array.isArray(log.expenses) && log.expenses.some(e => parseFloat(e.amount) > 0))
-              .sort((a, b) => new Date(b[0]) - new Date(a[0])) // Sort by date descending
-              .map(([dateStr, log]) => (
+          <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }} className="adm-scrollbar">
+            {filteredHistoryLogs.length > 0 ? (
+              filteredHistoryLogs.map(([dateStr, log]) => (
                 <div key={dateStr} className="mb-6">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                     <span className="grade-pill" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.8rem', padding: '4px 12px' }}>
@@ -248,13 +266,11 @@ export default function ExpenseTracker() {
                           </div>
                         </div>
                       ))}
-                  </div>
                 </div>
-              ))}
-            
-            {Object.keys(logs).every(date => !Array.isArray(logs[date].expenses) || !logs[date].expenses.some(e => parseFloat(e.amount) > 0)) && (
-              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-                <p>No transactions found in your history.</p>
+              ))
+            ) : (
+              <div style={{ textAlign:'center', padding:'3rem 0', color:'var(--text-muted)' }}>
+                <p>No transactions found for the selected period.</p>
               </div>
             )}
           </div>
