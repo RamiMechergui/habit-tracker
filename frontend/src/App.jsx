@@ -119,7 +119,7 @@ function App() {
 
         <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
 
-        <nav className="flex-col gap-1" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="evolvia-scrollbar">
+        <nav className="flex-col gap-1 evolvia-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
           {NAV_LINKS.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <Icon size={18} /> 
