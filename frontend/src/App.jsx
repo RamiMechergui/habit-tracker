@@ -61,47 +61,77 @@ function App() {
     <div className="layout" style={{ display: 'flex', minHeight: '100vh' }}>
 
       {/* ── Desktop sidebar (hidden on mobile via CSS) ── */}
-      <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', marginTop: '1rem' }}>
-          <AvatarUploader />
+      <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem' }}>
+          <div style={{ position: 'relative' }}>
+            <AvatarUploader />
+            <div style={{ 
+              position: 'absolute', 
+              bottom: 0, 
+              right: 0, 
+              width: '12px', 
+              height: '12px', 
+              borderRadius: '50%', 
+              background: isOnline ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+              border: '2px solid var(--bg)',
+              boxShadow: isOnline ? '0 0 10px var(--accent-emerald-glow)' : 'none'
+            }} />
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '1.1rem', 
+              fontWeight: 800,
+              fontFamily: 'var(--font-heading)',
+              color: 'var(--text-primary)',
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap' 
+            }}>
               {displayName}
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <img src="/logo.png" alt="Logo" style={{ width: '18px', height: '18px', borderRadius: '4px' }} />
-              <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6, fontWeight: 600 }}>Evolvia</p>
-              <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block', marginLeft: '2px', transition: 'background 0.3s' }} />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Operational
+              </span>
             </div>
           </div>
-          <button
-            className="theme-toggle-btn"
-            onClick={toggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
         </div>
 
-        <nav className="flex-col gap-2" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+        <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
+
+        <nav className="flex-col gap-1" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="evolvia-scrollbar">
           {NAV_LINKS.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-              <Icon size={20} /> {label}
+              <Icon size={18} /> 
+              <span style={{ fontSize: '0.95rem' }}>{label}</span>
             </NavLink>
           ))}
         </nav>
 
-        <button
-          className="btn w-full mt-auto"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            padding: '0.75rem', background: 'var(--bg-card)', color: 'var(--text-primary)',
-            border: '1px solid var(--border)'
-          }}
-          onClick={logout}
-        >
-          <LogOut size={18} /> Logout
-        </button>
+        <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+          <button
+            className="btn btn-secondary w-full"
+            style={{ 
+              justifyContent: 'center', 
+              gap: '10px', 
+              padding: '0.75rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.9rem',
+              background: 'rgba(239, 68, 68, 0.05)',
+              color: '#fca5a5',
+              border: '1px solid rgba(239, 68, 68, 0.1)'
+            }}
+            onClick={logout}
+          >
+            <LogOut size={16} /> Sign Out
+          </button>
+          
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', opacity: 0.4 }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px', filter: 'grayscale(1)' }} />
+            <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>EVOLVIA</span>
+          </div>
+        </div>
       </aside>
 
       {/* ── Mobile top header (visible only on mobile via CSS) ── */}

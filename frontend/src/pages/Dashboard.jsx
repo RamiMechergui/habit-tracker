@@ -142,55 +142,83 @@ export default function Dashboard() {
   };
 
   return (
-    <div>
-      <h1 className="mb-2">Dashboard</h1>
-      <p className="mb-6">Welcome back. Stay disciplined.</p>
+      <div className="dashboard-welcome mb-8" style={{ animation: 'evolvia-up 0.5s ease-out' }}>
+        <h1 style={{ 
+          fontSize: '2.5rem', 
+          fontWeight: 900, 
+          background: 'linear-gradient(to right, #fff, #94a3b8)', 
+          WebkitBackgroundClip: 'text', 
+          WebkitTextFillColor: 'transparent',
+          marginBottom: '0.5rem'
+        }}>
+          Protocol Dashboard
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>
+          Welcome back, <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{displayName}</span>. Stay disciplined, stay focused.
+        </p>
+      </div>
       
-      <div className="grid-2 mb-6">
-        <div className="glass-card stat-card">
-          <h3 className="mb-2">Today's Protocol</h3>
-          <div className="stat-number">{todayLog.totalScore}<span className="pts">/100</span></div>
-          <div className="flex justify-center mt-2">
-            <span className={`grade-pill grade-${todayLog.rank.toLowerCase()}`}>
+      <div className="grid-2 mb-8">
+        <div className="glass-card stat-card" style={{ 
+          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05))',
+          borderColor: 'rgba(59, 130, 246, 0.2)'
+        }}>
+          <h3 className="mb-2" style={{ opacity: 0.8 }}>Today's Performance</h3>
+          <div className="stat-number" style={{ fontSize: '3.5rem', fontWeight: 900, letterSpacing: '-2px' }}>
+            {todayLog.totalScore}<span className="pts" style={{ fontSize: '1rem', opacity: 0.5 }}>/100</span>
+          </div>
+          <div className="flex justify-center mt-3">
+            <span className={`grade-pill grade-${todayLog.rank.toLowerCase()}`} style={{ scale: '1.1' }}>
               Rank {todayLog.rank}
             </span>
           </div>
-          <p className="mt-4"><NavLink to="/daily" className="text-amber" style={{textDecoration: 'none'}}>Edit Today's Journal →</NavLink></p>
+          <p className="mt-6" style={{ textAlign: 'center' }}>
+            <NavLink to="/daily" className="text-amber" style={{ 
+              textDecoration: 'none', 
+              fontWeight: 600, 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '8px' 
+            }}>
+              Journal Entry <ChevronRight size={16} />
+            </NavLink>
+          </p>
         </div>
         
-        <div className="glass-card p-6">
-          <h3 className="mb-4">Quick Stats</h3>
-          <div className="flex justify-between mb-2">
-            <span>Expenses Today</span>
-            <strong className="text-amber">
-              {(Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND
-            </strong>
-          </div>
-          <div className="flex justify-between mb-2">
-            <span>Side Hustle</span>
-            <strong style={{ color: todayLog.hustle.achieved ? '#10b981' : 'var(--text-muted)' }}>
-              {todayLog.hustle.achieved ? '✓ Completed' : 'Pending'}
-            </strong>
-          </div>
-          <div className="flex justify-between" style={{ alignItems: 'center' }}>
-            <span>Book Reading</span>
-            <strong
-              style={{
-                color: bookReadingColor,
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <h3 className="mb-6" style={{ opacity: 0.8 }}>Quick Metrics</h3>
+          <div className="flex-col gap-4">
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span className="text-muted">Total Expenses</span>
+              <strong className="text-amber" style={{ fontSize: '1.1rem' }}>
+                {(Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND
+              </strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span className="text-muted">Hustle Status</span>
+              <strong style={{ 
+                color: todayLog.hustle.achieved ? 'var(--accent-emerald)' : 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.85rem',
-                maxWidth: '55%',
-                textAlign: 'right',
-              }}
-              title={bookReadingStatus}
-            >
-              <BookReadingIcon size={13} style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                gap: '6px'
+              }}>
+                {todayLog.hustle.achieved ? <CheckCircle2 size={16} /> : null}
+                {todayLog.hustle.achieved ? 'Operational' : 'Pending'}
+              </strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span className="text-muted">Active Reading</span>
+              <strong style={{ 
+                color: bookReadingColor, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                fontSize: '0.9rem' 
+              }}>
+                <BookReadingIcon size={16} />
                 {bookReadingStatus}
-              </span>
-            </strong>
+              </strong>
+            </div>
           </div>
         </div>
       </div>

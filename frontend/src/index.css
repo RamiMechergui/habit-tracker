@@ -39,6 +39,20 @@
   --heading: 'Outfit', system-ui, sans-serif;
   
   --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --accent-blue: #3b82f6;
+  --accent-blue-glow: rgba(59, 130, 246, 0.25);
+  --accent-amber: #f5a623;
+  --accent-amber-glow: rgba(245, 166, 35, 0.25);
+  --accent-emerald: #10b981;
+  --accent-emerald-glow: rgba(16, 185, 129, 0.25);
+  --accent-rose: #f43f5e;
+  
+  --glass-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+  
   --radius-sm: 8px;
   --radius-md: 16px;
   --radius-lg: 24px;
@@ -50,15 +64,17 @@
 
 body {
   margin: 0;
-  font-family: var(--sans);
+  font-family: var(--font-sans);
   background-color: var(--bg);
   color: var(--text-primary);
-  line-height: 1.5;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(245, 166, 35, 0.03), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.03), transparent 25%);
+    radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(245, 166, 35, 0.05), transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.03), transparent 50%);
+  background-attachment: fixed;
 }
 
 .spinner {
@@ -122,6 +138,46 @@ p { margin: 0 0 1rem 0; color: var(--text-secondary); }
 .glass-card:hover {
   background: var(--bg-card-hover);
   border-color: rgba(255, 255, 255, 0.15);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.03),
+    transparent
+  );
+  transition: 0.5s;
+}
+
+.glass-card:hover::before {
+  left: 100%;
 }
 
 /* Layout */
@@ -199,15 +255,11 @@ label {
 }
 
 .btn {
-  background: var(--accent-amber);
-  color: #000;
-  border: none;
+  padding: 0.8rem 1.5rem;
   border-radius: var(--radius-sm);
-  padding: 0.75rem 1.5rem;
-  font-family: var(--heading);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
