@@ -799,7 +799,7 @@ export default function DailyLog() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="m-0 flex items-center gap-2">💰 Expenses</h3>
             </div>
-            {log.expenses.map((exp, i) => (
+            {Array.isArray(log.expenses) && log.expenses.map((exp, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div className="flex gap-2 items-center">
                   <input
@@ -866,7 +866,7 @@ export default function DailyLog() {
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>
               <strong>Total Spent:</strong>
-              <strong className="text-amber">{log.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND</strong>
+              <strong className="text-amber">{(Array.isArray(log.expenses) ? log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND</strong>
             </div>
           </div>
           

@@ -367,7 +367,7 @@ export const HabitProvider = ({ children }) => {
         hustle: { ...emptyLog.hustle, ...(existingLog.hustle || {}) },
         video: { ...emptyLog.video, ...(existingLog.video || {}) },
         system: { ...emptyLog.system, ...(existingLog.system || {}) },
-        expenses: existingLog.expenses && existingLog.expenses.length > 0 ? existingLog.expenses : emptyLog.expenses
+        expenses: Array.isArray(existingLog.expenses) && existingLog.expenses.length > 0 ? existingLog.expenses : emptyLog.expenses
       };
 
       // Fix lessons if they are strings (legacy support)

@@ -32,7 +32,7 @@ export default function ExpenseTracker() {
         include = isSameYear(logDate, currentDate);
       }
 
-      if (include && log.expenses && log.expenses.length > 0) {
+      if (include && Array.isArray(log.expenses) && log.expenses.length > 0) {
         log.expenses.forEach(exp => {
           const amt = parseFloat(exp.amount) || 0;
           if (amt > 0) {
@@ -216,7 +216,7 @@ export default function ExpenseTracker() {
           <h3 className="mb-4 flex items-center gap-2">📑 Transaction History</h3>
           <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
             {Object.entries(logs)
-              .filter(([_, log]) => log.expenses && log.expenses.some(e => parseFloat(e.amount) > 0))
+              .filter(([_, log]) => Array.isArray(log.expenses) && log.expenses.some(e => parseFloat(e.amount) > 0))
               .sort((a, b) => new Date(b[0]) - new Date(a[0])) // Sort by date descending
               .map(([dateStr, log]) => (
                 <div key={dateStr} className="mb-6">
@@ -252,7 +252,7 @@ export default function ExpenseTracker() {
                 </div>
               ))}
             
-            {Object.keys(logs).every(date => !logs[date].expenses || !logs[date].expenses.some(e => parseFloat(e.amount) > 0)) && (
+            {Object.keys(logs).every(date => !Array.isArray(logs[date].expenses) || !logs[date].expenses.some(e => parseFloat(e.amount) > 0)) && (
               <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
                 <p>No transactions found in your history.</p>
               </div>
