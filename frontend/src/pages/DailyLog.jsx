@@ -132,13 +132,13 @@ export default function DailyLog() {
   };
 
   const updateExpense = (idx, field, val) => {
-    const newEx = [...log.expenses];
+    const newEx = [...(Array.isArray(log.expenses) ? log.expenses : [])];
     newEx[idx] = { ...newEx[idx], [field]: val };
     setLog(prev => ({ ...prev, expenses: newEx }));
   };
 
   const deleteExpense = (idx) => {
-    const newEx = log.expenses.filter((_, i) => i !== idx);
+    const newEx = (Array.isArray(log.expenses) ? log.expenses : []).filter((_, i) => i !== idx);
     setLog(prev => ({ ...prev, expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0], time: format(new Date(), 'HH:mm') }] }));
   };
 
@@ -800,7 +800,7 @@ export default function DailyLog() {
               <h3 className="m-0 flex items-center gap-2">💰 Expenses</h3>
             </div>
             {Array.isArray(log.expenses) && log.expenses.map((exp, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < log.expenses.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < (Array.isArray(log.expenses) ? log.expenses.length : 0) - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div className="flex gap-2 items-center">
                   <input
                     className="flex-1"
@@ -861,7 +861,7 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...prev.expenses, { desc: '', category: expenseCategories[0] || '', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
+            <button className="btn btn-secondary w-full mt-2" style={{padding: '0.5rem'}} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || '', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{borderTop: '1px solid var(--border)'}}>

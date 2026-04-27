@@ -163,7 +163,7 @@ export default function Dashboard() {
           <div className="flex justify-between mb-2">
             <span>Expenses Today</span>
             <strong className="text-amber">
-              {todayLog.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND
+              {(Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND
             </strong>
           </div>
           <div className="flex justify-between mb-2">
@@ -426,7 +426,7 @@ export default function Dashboard() {
             const isToday = d.date === todayStr;
             const isCurrentMonthView = isSameMonth(calendarDate, todayDate);
             const logData = d.log;
-            const expenseStr = logData.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3) + ' TND';
+            const expenseStr = (Array.isArray(logData.expenses) ? logData.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3) + ' TND';
             
             return (
               <div 

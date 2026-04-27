@@ -42,7 +42,7 @@ export default function WeeklyReview() {
     labels,
     datasets: [{
       label: 'Daily Expense (TND)',
-      data: weeklyData.map(d => parseFloat(d.log.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3))),
+      data: weeklyData.map(d => parseFloat((Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3))),
       backgroundColor: '#F5A623'
     }]
   };
@@ -176,7 +176,7 @@ export default function WeeklyReview() {
           <Bar data={expensesData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
         </div>
         <div className="text-center mt-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
-          <h3>Total Weekly Expense: {weeklyData.reduce((t, d) => t + d.log.expenses.reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3)} TND</h3>
+          <h3>Total Weekly Expense: {weeklyData.reduce((t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3)} TND</h3>
         </div>
       </div>
 

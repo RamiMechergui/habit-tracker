@@ -57,13 +57,13 @@ export default function MonthlyReview() {
     labels,
     datasets: [{
       label: 'Daily Spend (TND)',
-      data: monthlyData.map(d => parseFloat(d.log.expenses.reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3))),
+      data: monthlyData.map(d => parseFloat((Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3))),
       backgroundColor: '#F5A623',
       barPercentage: 0.5
     }]
   };
 
-  const totalMonthlySpend = monthlyData.reduce((t, d) => t + d.log.expenses.reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3);
+  const totalMonthlySpend = monthlyData.reduce((t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3);
 
   // Weekend Duties Aggregation for the Month
   let preLaundryCount = 0;
