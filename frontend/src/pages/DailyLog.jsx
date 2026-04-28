@@ -15,6 +15,7 @@ export default function DailyLog() {
   const [videoWarning, setVideoWarning] = useState(false);
   const [saveStatus, setSaveStatus] = useState('Saved'); // 'Saved', 'Saving...', 'Error'
   const [submitError, setSubmitError] = useState('');
+  const [localDirty, setLocalDirty] = useState(false);
 
   // Side Hustle Lessons State
   const [newLesson, setNewLesson] = useState('');
@@ -44,6 +45,7 @@ export default function DailyLog() {
       return { ...prev, hustle: { ...prev.hustle, lessons } };
     });
     setNewLesson('');
+    setLocalDirty(true);
   };
 
   const handleSaveEditLesson = (idx) => {
@@ -56,6 +58,7 @@ export default function DailyLog() {
     setEditingLessonIdx(null);
     setEditingLessonText('');
     showLessonMessage('Key lesson edited successfully');
+    setLocalDirty(true);
   };
 
   const handleDeleteLesson = (idx) => {
@@ -64,6 +67,7 @@ export default function DailyLog() {
       return { ...prev, hustle: { ...prev.hustle, lessons } };
     });
     showLessonMessage('Key lesson deleted successfully');
+    setLocalDirty(true);
   };
 
   const handleAddVideoLesson = () => {
@@ -73,6 +77,7 @@ export default function DailyLog() {
       return { ...prev, video: { ...prev.video, lessons } };
     });
     setNewVideoLesson('');
+    setLocalDirty(true);
   };
 
   const handleSaveEditVideoLesson = (idx) => {
@@ -85,6 +90,7 @@ export default function DailyLog() {
     setEditingVideoLessonIdx(null);
     setEditingVideoLessonText('');
     showVideoLessonMessage('Key lesson edited successfully');
+    setLocalDirty(true);
   };
 
   const handleDeleteVideoLesson = (idx) => {
@@ -93,6 +99,7 @@ export default function DailyLog() {
       return { ...prev, video: { ...prev.video, lessons } };
     });
     showVideoLessonMessage('Key lesson deleted successfully');
+    setLocalDirty(true);
   };
 
   const bookProgress = getBookProgress();
@@ -111,11 +118,15 @@ export default function DailyLog() {
 
     // Update state if date changed OR if data arrived in the global store
     setLog(prev => {
-      if (!prev || prev.date !== date) return newLog;
+      // If we're changing dates, always use the new log and reset dirty flag
+      if (!prev || prev.date !== date) {
+        setLocalDirty(false);
+        return newLog;
+      }
       
       // If we're on the same date, but the store version now has data (e.g. loaded from server)
-      // and our current local version hasn't been saved yet, update it.
-      if (logs[date] && !prev.isSubmitted) return newLog;
+      // ONLY update if we haven't made any local unsaved changes yet.
+      if (!localDirty && logs[date] && !prev.isSubmitted) return newLog;
       
       return prev;
     });
@@ -124,16 +135,19 @@ export default function DailyLog() {
     setVideoWarning(false);
     // Keep URL in sync
     setSearchParams({ date });
-  }, [date, currentBook, logs]); // Keep logs here to handle background syncs or external changes
+  }, [date, currentBook, logs, localDirty]); 
 
   useEffect(() => {
-    // Auto-save logic with debounce
+    // Only auto-save if we are dirty
+    if (!localDirty) return;
+
     setSaveStatus('Saving...');
     const timeoutId = setTimeout(async () => {
       try {
         await saveLog(date, log);
         setSaveStatus('Saved');
         setSubmitError('');
+        setLocalDirty(false); // Clear dirty flag after successful save
       } catch (error) {
         setSaveStatus('Error');
         setSubmitError(error?.message || 'Unable to save. Please try again.');
@@ -141,10 +155,11 @@ export default function DailyLog() {
     }, 800); // 800ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [log, date, saveLog]);
+  }, [log, date, saveLog, localDirty]);
 
   const updateSection = (section, key, val) => {
     setLog(prev => ({ ...prev, [section]: { ...prev[section], [key]: val } }));
+    setLocalDirty(true);
   };
 
   const updateBad = (key, field, val) => {
@@ -155,6 +170,7 @@ export default function DailyLog() {
         [key]: { ...(prev.bad?.[key] || {}), [field]: val }
       }
     }));
+    setLocalDirty(true);
   };
 
   const updateExpense = (idx, field, val) => {
@@ -165,6 +181,7 @@ export default function DailyLog() {
       }
       return { ...prev, expenses };
     });
+    setLocalDirty(true);
   };
 
   const deleteExpense = (idx) => {
@@ -176,6 +193,7 @@ export default function DailyLog() {
         expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm') }]
       };
     });
+    setLocalDirty(true);
   };
 
   // --- Live Score Calculations ---

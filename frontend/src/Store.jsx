@@ -20,6 +20,28 @@ export const HabitProvider = ({ children }) => {
   const [archivedBooks, setArchivedBooks] = useState([]);
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
 
+  // Daily Defaults - Memoized to prevent unnecessary re-renders
+  const createEmptyDay = useCallback((dateStr) => ({
+    date: dateStr,
+    morning: { wakeTime: '', meditate: false, bed: false, teeth: false, shower: false, gel: false, perfume: false },
+    bad: { smoking: { checked: false, a: false, s: false, count: 0 }, sexual: { checked: false, a: false, s: false }, social: { checked: false, a: false, s: false, min: 0 }, phone: { checked: false, a: false, s: false, min: 0 }, coffee: { checked: false, a: false, s: false }, eating: { checked: false, a: false, s: false }, noSugar: { checked: false, a: false, s: false } },
+    night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, fillApp: false },
+    weekend: { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } },
+    books: { name: '', page: '', read: false },
+    hustle: { task: '', time: '', achieved: false, lessons: [] },
+    video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
+    system: { todo: false, money: false },
+    expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime }],
+    morningScore: 0,
+    badScore: 0,
+    nightScore: 0,
+    bookScore: 0,
+    hustleScore: 0,
+    videoScore: 0,
+    totalScore: 0,
+    rank: 'F'
+  }), [pageOpenTime]);
+
   // ── Online / Offline state tracking ──────────────────────────
   useEffect(() => {
     const goOnline = () => setIsOnline(true);
@@ -62,8 +84,12 @@ export const HabitProvider = ({ children }) => {
       }
       if (logsRes.ok) {
         const logsData = await logsRes.json();
-        setLogs(logsData);
-        db.saveLogs(logsData);
+        setLogs(prev => {
+          // Merge logic: prefer server data for conflicts but keep local-only dates
+          const merged = { ...prev, ...logsData };
+          db.saveLogs(merged);
+          return merged;
+        });
       }
 
       let profileData = {};
@@ -85,20 +111,23 @@ export const HabitProvider = ({ children }) => {
     } catch (e) {
       console.error('[Store] refreshFromServer error:', e);
     }
-  }, []);
+  }, [API_URL]);
 
   // ── Register sync callback ──────────────────────────────────
   useEffect(() => {
     onSyncDone(refreshFromServer);
   }, [refreshFromServer]);
 
-  // ── Initialize app: try server first, fall back to IndexedDB ─
+  // ── Initialize app: ALWAYS load offline data first ─────────
   useEffect(() => {
     const initApp = async () => {
       const startTime = Date.now();
       try {
+        // Step 1: Load everything from IndexedDB instantly
+        await loadOfflineData();
+
+        // Step 2: If online, verify session and sync with server
         if (navigator.onLine) {
-          // Try to verify session with backend
           const res = await fetch(`${API_URL}/api/verify`, {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
@@ -116,25 +145,16 @@ export const HabitProvider = ({ children }) => {
             setUser(mockUser);
             db.saveUser(mockUser);
 
-            // Fetch everything from server in parallel
+            // Fetch everything from server and merge
             await refreshFromServer();
-
-            // Start background sync listener
-            startSyncListener();
-          } else {
-            // Not authenticated — try loading offline user
-            await loadOfflineData();
           }
-        } else {
-          // Offline — load from IndexedDB
-          console.log('[Store] Offline boot — loading from IndexedDB');
-          await loadOfflineData();
-          startSyncListener();
         }
+        
+        // Step 3: Start sync listener (handles background replay)
+        startSyncListener();
+
       } catch (e) {
         console.error('App initialization error:', e);
-        // Network error — fall back to IndexedDB
-        await loadOfflineData();
         startSyncListener();
       }
 
@@ -149,7 +169,7 @@ export const HabitProvider = ({ children }) => {
     };
 
     initApp();
-  }, []);
+  }, [refreshFromServer]);
 
   // Load all state from IndexedDB
   const loadOfflineData = async () => {
@@ -164,9 +184,9 @@ export const HabitProvider = ({ children }) => {
 
       if (offUser) setUser(offUser);
       if (offLogs && Object.keys(offLogs).length > 0) setLogs(offLogs);
-      if (offCats.length > 0) setExpenseCategories(offCats);
+      if (offCats && offCats.length > 0) setExpenseCategories(offCats);
       if (offBook) setCurrentBookState(offBook);
-      if (offArchives.length > 0) setArchivedBooks(offArchives);
+      if (offArchives && offArchives.length > 0) setArchivedBooks(offArchives);
     } catch (e) {
       console.error('[Store] loadOfflineData error:', e);
     }

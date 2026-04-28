@@ -33,7 +33,7 @@ const logRoutes = require('./routes/logs');
 const userRoutes = require('./routes/user');
 
 app.use('/api/auth', authRoutes);
-app.use('/api/logs', logRoutes);
+app.use('/api/daily', logRoutes);
 app.use('/api/user', userRoutes);
 
 const PORT = process.env.PORT || 5000;
