@@ -6,7 +6,8 @@ const expenseSchema = new mongoose.Schema({
   expenses: [{
     desc: String,
     category: String,
-    amount: { type: Number, default: 0 }
+    amount: { type: Number, default: 0 },
+    time: String
   }]
 }, { timestamps: true });
 
