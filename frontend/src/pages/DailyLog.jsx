@@ -109,11 +109,15 @@ export default function DailyLog() {
       newLog.books.name = bookProgress.bookName;
     }
 
-    // Only update state if the date changed or we don't have a log yet
-    // This prevents overwriting local edits when logs (plural) updates due to saving
+    // Update state if date changed OR if data arrived in the global store
     setLog(prev => {
-      if (prev && prev.date === date) return prev;
-      return newLog;
+      if (!prev || prev.date !== date) return newLog;
+      
+      // If we're on the same date, but the store version now has data (e.g. loaded from server)
+      // and our current local version hasn't been saved yet, update it.
+      if (logs[date] && !prev.isSubmitted) return newLog;
+      
+      return prev;
     });
 
     setHustleWarning(false);

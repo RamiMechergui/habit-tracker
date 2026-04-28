@@ -1,13 +1,20 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const DailyLog = require('./models/DailyLog');
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/daily_db';
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('Daily Aggregator Service: MongoDB connected'))
+  .catch(err => console.error('Daily Aggregator Service: MongoDB connection error:', err));
 
 const verifyToken = (req, res, next) => {
   let token;
@@ -35,8 +42,16 @@ const SERVICES = {
 
 app.get('/api/daily', verifyToken, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || `Bearer ${req.cookies.habitToken}`;
+    // 1. Get the "Authority" data from our own DB (contains scores, meta, etc)
+    const storedLogs = await DailyLog.find({ userId: req.user._id });
+    const logsByDate = {};
     
+    storedLogs.forEach(log => {
+      logsByDate[log.date] = log.data;
+    });
+
+    // 2. Fetch fresh sub-service data to ensure specific items are up to date
+    const authHeader = req.headers.authorization || `Bearer ${req.cookies.habitToken}`;
     const results = await Promise.allSettled(
       Object.entries(SERVICES).map(([key, url]) => {
         const endpoint = key === 'books' ? 'book-log' : key;
@@ -47,15 +62,13 @@ app.get('/api/daily', verifyToken, async (req, res) => {
       })
     );
 
-    const logsByDate = {};
-
+    // 3. Merge sub-service data over our stored logs
     results.forEach((result, i) => {
       const key = Object.keys(SERVICES)[i];
       if (result.status === 'fulfilled') {
         const items = result.value.data;
         items.forEach(item => {
-          if (!logsByDate[item.date]) logsByDate[item.date] = {};
-          // Map book-log back to 'books' key if needed, or just use the key
+          if (!logsByDate[item.date]) logsByDate[item.date] = { date: item.date };
           logsByDate[item.date][key] = item;
         });
       }
@@ -68,8 +81,13 @@ app.get('/api/daily', verifyToken, async (req, res) => {
 app.get('/api/daily/:date', verifyToken, async (req, res) => {
   try {
     const { date } = req.params;
-    const authHeader = req.headers.authorization || `Bearer ${req.cookies.habitToken}`;
+    
+    // Get stored log first
+    let logDoc = await DailyLog.findOne({ userId: req.user._id, date });
+    let fullLog = logDoc ? logDoc.data : { date };
 
+    // Overlay sub-service data
+    const authHeader = req.headers.authorization || `Bearer ${req.cookies.habitToken}`;
     const results = await Promise.allSettled(
       Object.entries(SERVICES).map(([key, url]) => {
         const endpoint = key === 'books' ? 'book-log' : key;
@@ -80,12 +98,11 @@ app.get('/api/daily/:date', verifyToken, async (req, res) => {
       })
     );
 
-    const fullLog = { date };
     results.forEach((result, i) => {
       const key = Object.keys(SERVICES)[i];
       if (result.status === 'fulfilled') {
         fullLog[key] = result.value.data;
-      } else {
+      } else if (!fullLog[key]) {
         fullLog[key] = {}; 
       }
     });
@@ -100,7 +117,16 @@ app.post('/api/daily/:date', verifyToken, async (req, res) => {
     const data = req.body;
     const authHeader = req.headers.authorization || `Bearer ${req.cookies.habitToken}`;
 
-    // Split and save to each service
+    // 1. Persist the FULL blob locally in this service
+    let logDoc = await DailyLog.findOne({ userId: req.user._id, date });
+    if (logDoc) {
+      logDoc.data = data;
+      await logDoc.save();
+    } else {
+      await DailyLog.create({ userId: req.user._id, date, data });
+    }
+
+    // 2. Split and save to each sub-service
     await Promise.allSettled(
       Object.entries(SERVICES).map(([key, url]) => {
         const endpoint = key === 'books' ? 'book-log' : key;
@@ -112,7 +138,7 @@ app.post('/api/daily/:date', verifyToken, async (req, res) => {
       })
     );
 
-    // Notify Analytics
+    // 3. Notify Analytics
     try {
       const analyticsUrl = process.env.ANALYTICS_SERVICE_URL || 'http://analytics:5113';
       await axios.post(`${analyticsUrl}/api/analytics/ingest`, {

@@ -52,6 +52,7 @@ services:
     environment:
       - PORT=5105
       - JWT_SECRET=${JWT_SECRET}
+      - MONGO_URI=mongodb://mongo:27017/daily_db
       - MORNING_SERVICE_URL=http://morning-habits:5118
       - BAD_SERVICE_URL=http://bad-habits:5119
       - NIGHT_SERVICE_URL=http://night-habits:5120
