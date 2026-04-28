@@ -335,28 +335,6 @@ export const HabitProvider = ({ children }) => {
     db.saveUser(updated);
   };
 
-  // Daily Defaults
-  const createEmptyDay = (dateStr) => ({
-    date: dateStr,
-    morning: { wakeTime: '', meditate: false, bed: false, teeth: false, shower: false, gel: false, perfume: false },
-    bad: { smoking: { checked: false, a: false, s: false, count: 0 }, sexual: { checked: false, a: false, s: false }, social: { checked: false, a: false, s: false, min: 0 }, phone: { checked: false, a: false, s: false, min: 0 }, coffee: { checked: false, a: false, s: false }, eating: { checked: false, a: false, s: false }, noSugar: { checked: false, a: false, s: false } },
-    night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, fillApp: false },
-    weekend: { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } },
-    books: { name: '', page: '', read: false },
-    hustle: { task: '', time: '', achieved: false, lessons: [] },
-    video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
-    system: { todo: false, money: false },
-    expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime }],
-    morningScore: 0,
-    badScore: 0,
-    nightScore: 0,
-    bookScore: 0,
-    hustleScore: 0,
-    videoScore: 0,
-    totalScore: 0,
-    rank: 'F'
-  });
-
   const getLog = useCallback((dateStr) => {
     const existingLog = logs[dateStr];
     const currentBookActive = currentBook && currentBook.isActive && currentBook.bookName;
