@@ -125,8 +125,11 @@ export default function DailyLog() {
       }
       
       // If we're on the same date, but the store version now has data (e.g. loaded from server)
-      // ONLY update if we haven't made any local unsaved changes yet.
-      if (!localDirty && logs[date] && !prev.isSubmitted) return newLog;
+      // ONLY update if we haven't made any local unsaved changes yet,
+      // AND if the data is actually different (avoids unnecessary re-renders).
+      if (!localDirty && logs[date] && JSON.stringify(newLog) !== JSON.stringify(prev)) {
+        return newLog;
+      }
       
       return prev;
     });

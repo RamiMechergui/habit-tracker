@@ -2,9 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import * as db from './offlineDb.js';
 import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
-import { Capacitor } from '@capacitor/core';
-
-export const API_URL = Capacitor.isNativePlatform() ? 'https://habit-tracker-production-3ba1.up.railway.app' : ''; 
+import { API_URL } from './config'; 
 
 const HabitContext = createContext();
 

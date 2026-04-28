@@ -36,5 +36,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/daily', logRoutes);
 app.use('/api/user', userRoutes);
 
+// Aliases for monolithic compatibility with microservices frontend
+app.use('/api/currentbook', userRoutes);
+app.use('/api/archives', userRoutes);
+app.use('/api/settings', userRoutes);
+app.use('/api/categories', userRoutes);
+app.use('/api/avatar', userRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

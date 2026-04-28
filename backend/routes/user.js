@@ -111,7 +111,7 @@ router.put('/change-password', protect, async (req, res) => {
 });
 
 // GET /api/user/expense-categories — get user's expense categories
-router.get('/expense-categories', protect, async (req, res) => {
+router.get(['/expense-categories', '/categories'], protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('expenseCategories');
     res.json({ expenseCategories: user.expenseCategories });
@@ -160,7 +160,7 @@ router.delete('/expense-categories/:category', protect, async (req, res) => {
 });
 
 // GET /api/user/archived-books — get archived books
-router.get('/archived-books', protect, async (req, res) => {
+router.get(['/archived-books', '/archives'], protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('archivedBooks');
     res.json({ archivedBooks: user.archivedBooks || [] });
@@ -170,7 +170,7 @@ router.get('/archived-books', protect, async (req, res) => {
 });
 
 // GET /api/user/current-book — get current book being read
-router.get('/current-book', protect, async (req, res) => {
+router.get(['/current-book', '/'], protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('currentBook');
     res.json(user.currentBook);
@@ -180,7 +180,7 @@ router.get('/current-book', protect, async (req, res) => {
 });
 
 // POST /api/user/current-book — set a new book to read
-router.post('/current-book', protect, async (req, res) => {
+router.post(['/current-book', '/'], protect, async (req, res) => {
   try {
     const { bookName, targetPages } = req.body;
     
