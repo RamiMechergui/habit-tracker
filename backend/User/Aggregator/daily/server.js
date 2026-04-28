@@ -69,7 +69,12 @@ app.get('/api/daily', verifyToken, async (req, res) => {
         const items = result.value.data;
         items.forEach(item => {
           if (!logsByDate[item.date]) logsByDate[item.date] = { date: item.date };
-          logsByDate[item.date][key] = item;
+          // If expenses, we want just the array
+          if (key === 'expenses' && item.expenses) {
+            logsByDate[item.date][key] = item.expenses;
+          } else {
+            logsByDate[item.date][key] = item;
+          }
         });
       }
     });
@@ -101,7 +106,12 @@ app.get('/api/daily/:date', verifyToken, async (req, res) => {
     results.forEach((result, i) => {
       const key = Object.keys(SERVICES)[i];
       if (result.status === 'fulfilled') {
-        fullLog[key] = result.value.data;
+        const item = result.value.data;
+        if (key === 'expenses' && item.expenses) {
+          fullLog[key] = item.expenses;
+        } else {
+          fullLog[key] = item;
+        }
       } else if (!fullLog[key]) {
         fullLog[key] = {}; 
       }
@@ -130,7 +140,13 @@ app.post('/api/daily/:date', verifyToken, async (req, res) => {
     await Promise.allSettled(
       Object.entries(SERVICES).map(([key, url]) => {
         const endpoint = key === 'books' ? 'book-log' : key;
-        const sectionData = data[key] || {};
+        let sectionData = data[key] || {};
+        
+        // Special case: Expenses service expects { expenses: [...] }
+        if (key === 'expenses' && Array.isArray(sectionData)) {
+          sectionData = { expenses: sectionData };
+        }
+
         return axios.post(`${url}/api/${endpoint}/${date}`, sectionData, {
           headers: { Authorization: authHeader },
           withCredentials: true
