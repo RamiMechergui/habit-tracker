@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ShieldCheck, Loader } from 'lucide-react';
 import { useHabits } from '../Store';
 
@@ -26,11 +26,26 @@ export default function Essentials() {
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('🧴');
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
+  const iconBtnRef = useRef(null);
   const [adding, setAdding] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [formError, setFormError] = useState('');
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showIconPicker) return;
+    const handler = (e) => {
+      if (iconBtnRef.current && !iconBtnRef.current.contains(e.target)) {
+        setShowIconPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showIconPicker]);
 
   // Filtered items
   const filtered = useMemo(() => {
@@ -79,6 +94,7 @@ export default function Essentials() {
   };
 
   const handleDelete = async (id) => {
+    setConfirmDeleteId(null);
     setDeletingId(id);
     try {
       await deleteEssential(id);
@@ -132,17 +148,29 @@ export default function Essentials() {
         </h3>
         <form onSubmit={handleAdd} className="essentials-add-form">
           {/* Icon Picker */}
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative' }} ref={iconBtnRef}>
             <button
               type="button"
               className="essentials-icon-btn"
-              onClick={() => setShowIconPicker(p => !p)}
+              onClick={() => {
+                if (!showIconPicker && iconBtnRef.current) {
+                  const rect = iconBtnRef.current.getBoundingClientRect();
+                  setPickerPos({
+                    top: rect.bottom + 8,
+                    left: rect.left,
+                  });
+                }
+                setShowIconPicker(p => !p);
+              }}
               title="Choose icon"
             >
               <span style={{ fontSize: '1.5rem' }}>{newIcon}</span>
             </button>
             {showIconPicker && (
-              <div className="essentials-icon-picker">
+              <div
+                className="essentials-icon-picker"
+                style={{ top: pickerPos.top, left: pickerPos.left }}
+              >
                 {PRESET_ICONS.map(icon => (
                   <button
                     key={icon}
@@ -266,17 +294,40 @@ export default function Essentials() {
                   <div className="essential-urgent-ring" />
                 )}
 
-                {/* Delete button */}
-                <button
-                  className="essential-delete-btn"
-                  onClick={() => handleDelete(item._id)}
-                  disabled={isDeleting}
-                  title="Delete item"
-                >
-                  {isDeleting
-                    ? <span className="spinner" style={{ width: '12px', height: '12px' }} />
-                    : <Trash2 size={13} />}
-                </button>
+                {/* Delete button — first click asks for confirmation */}
+                {confirmDeleteId === item._id ? (
+                  <div className="essential-confirm-overlay">
+                    <span className="essential-confirm-text">Delete this item?</span>
+                    <div className="essential-confirm-actions">
+                      <button
+                        className="essential-confirm-cancel"
+                        onClick={() => setConfirmDeleteId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="essential-confirm-delete"
+                        onClick={() => handleDelete(item._id)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting
+                          ? <span className="spinner" style={{ width: '10px', height: '10px', borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} />
+                          : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="essential-delete-btn"
+                    onClick={() => setConfirmDeleteId(item._id)}
+                    disabled={isDeleting}
+                    title="Delete item"
+                  >
+                    {isDeleting
+                      ? <span className="spinner" style={{ width: '12px', height: '12px' }} />
+                      : <Trash2 size={13} />}
+                  </button>
+                )}
               </div>
             );
           })}

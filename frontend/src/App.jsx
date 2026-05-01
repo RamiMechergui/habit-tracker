@@ -100,28 +100,7 @@ function App() {
               </span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-            <NotificationBar />
-            <button
-              onClick={toggleTheme}
-              style={{ 
-                background: 'rgba(255,255,255,0.05)', 
-                border: '1px solid var(--border)', 
-                borderRadius: '8px', 
-                width: '36px', 
-                height: '36px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
-                transition: 'all 0.2s'
-              }}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-          </div>
+
         </div>
 
         <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
@@ -231,6 +210,47 @@ function App() {
           </NavLink>
         ))}
       </nav>
+
+      {/* ── Top-right floating action bar ── */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '1rem',
+          right: '1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          zIndex: 1000,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '0.35rem 0.5rem',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <NotificationBar />
+        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
+        <button
+          onClick={toggleTheme}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '8px',
+            width: '34px',
+            height: '34px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: 'var(--text-primary)',
+            transition: 'all 0.2s',
+          }}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+      </div>
 
       {/* ── PWA Components ── */}
       <InstallPrompt />
