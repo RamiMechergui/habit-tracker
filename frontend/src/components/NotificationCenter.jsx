@@ -27,7 +27,7 @@ export default function NotificationCenter({ onClose }) {
     catch { return 'just now'; }
   };
 
-  return (
+  return createPortal(
     <div className="notif-center-overlay">
       <div className="notif-center-panel glass-card" ref={panelRef}>
         {/* Header */}
