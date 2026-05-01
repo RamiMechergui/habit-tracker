@@ -81,21 +81,32 @@ function App() {
               boxShadow: isOnline ? '0 0 10px var(--accent-emerald-glow)' : 'none'
             }} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: '1.1rem', 
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ 
+              fontSize: '1rem', 
               fontWeight: 800,
               fontFamily: 'var(--font-heading)',
               color: 'var(--text-primary)',
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap' 
+              lineHeight: 1.1,
+              textTransform: 'uppercase',
+              letterSpacing: '-0.02em'
             }}>
-              {displayName}
-            </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {user.firstName || 'User'}
+            </div>
+            <div style={{ 
+              fontSize: '1rem', 
+              fontWeight: 800,
+              fontFamily: 'var(--font-heading)',
+              color: 'var(--text-primary)',
+              lineHeight: 1.1,
+              opacity: 0.7,
+              textTransform: 'uppercase',
+              letterSpacing: '-0.02em'
+            }}>
+              {user.lastName || ''}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '4px' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Operational
               </span>
             </div>
