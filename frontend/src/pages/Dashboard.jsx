@@ -362,7 +362,7 @@ export default function Dashboard() {
         <h3 className="mb-4">Manage Expense Classifications</h3>
         <p className="text-muted text-sm mb-4">Define custom categories for your daily expenses.</p>
         
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4 evolvia-scrollbar" style={{ maxHeight: '180px', overflowY: 'auto', padding: '2px', alignContent: 'flex-start' }}>
           {expenseCategories.map(cat => (
             <div key={cat} className="flex items-center gap-2" style={{ background: 'var(--bg-card-hover)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
               {editingCategory === cat ? (
