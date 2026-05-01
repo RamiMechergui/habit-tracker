@@ -295,6 +295,13 @@ label {
   filter: brightness(1.1);
 }
 
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: #000 !important;
+  border: none;
+  box-shadow: 0 4px 15px var(--accent-amber-glow);
+}
+
 .btn-secondary {
   background: transparent;
   color: var(--text-primary);
