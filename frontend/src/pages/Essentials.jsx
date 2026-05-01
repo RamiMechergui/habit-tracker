@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Trash2, ShieldCheck, Loader } from 'lucide-react';
 import { useHabits } from '../Store';
 
@@ -177,10 +178,15 @@ export default function Essentials() {
             >
               <span style={{ fontSize: '1.5rem' }}>{newIcon}</span>
             </button>
-            {showIconPicker && (
+            {showIconPicker && createPortal(
               <div
                 className="essentials-icon-picker"
-                style={{ top: pickerPos.top, left: pickerPos.left }}
+                style={{ 
+                  position: 'fixed',
+                  top: pickerPos.top, 
+                  left: pickerPos.left,
+                  zIndex: 10001
+                }}
               >
                 {PRESET_ICONS.map(icon => (
                   <button
@@ -192,7 +198,8 @@ export default function Essentials() {
                     {icon}
                   </button>
                 ))}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 
@@ -289,14 +296,14 @@ export default function Essentials() {
                   >
                     {item.icon || '🧴'}
                   </button>
-                  {editingIconId === item._id && (
+                  {editingIconId === item._id && createPortal(
                     <div
                       className="essentials-icon-picker"
                       style={{ 
                         position: 'fixed', 
                         top: pickerPos.top, 
-                        left: Math.min(pickerPos.left, window.innerWidth - 200),
-                        zIndex: 1000 
+                        left: Math.min(pickerPos.left, window.innerWidth - 220),
+                        zIndex: 10001 
                       }}
                     >
                       {PRESET_ICONS.map(icon => (
@@ -309,7 +316,8 @@ export default function Essentials() {
                           {icon}
                         </button>
                       ))}
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
 
