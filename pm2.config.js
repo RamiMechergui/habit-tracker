@@ -1,7 +1,7 @@
 const commonEnv = {
   MONGO_URI: process.env.MONGO_URI || process.env.MONGO_URL || process.env.MONGODB_URL,
   JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod',
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'admin123',
   NODE_ENV: 'production',
   CLIENT_URL: process.env.CLIENT_URL
 };
