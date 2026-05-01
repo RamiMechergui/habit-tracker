@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Doughnut } from 'react-chartjs-2';
 import { format, parseISO, isSameDay, isSameMonth, isSameYear } from 'date-fns';
-import { ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Wallet, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function ExpenseTracker() {
   const { logs, expenseCategories } = useHabits();
@@ -135,6 +137,77 @@ export default function ExpenseTracker() {
     maintainAspectRatio: false
   };
 
+  const generatePDF = async () => {
+    const doc = new jsPDF();
+    
+    // Add Evolvio Logo
+    try {
+      const imgData = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+        img.src = '/logo_circle.png';
+      });
+      doc.addImage(imgData, 'PNG', 170, 10, 24, 24);
+    } catch (e) {
+      console.warn("Could not load logo for PDF", e);
+    }
+
+    doc.setFontSize(20);
+    doc.text(`Financial Report - ${dateTitle}`, 14, 22);
+    
+    doc.setFontSize(12);
+    doc.text(`Total Spent: ${aggregatedData.totalSpent.toFixed(3)} TND`, 14, 32);
+    
+    let yPos = 40;
+    doc.setFontSize(14);
+    doc.text('Category Breakdown:', 14, yPos);
+    yPos += 8;
+    
+    doc.setFontSize(11);
+    aggregatedData.activeCategories.forEach(([category, amount]) => {
+      const percentage = ((amount / aggregatedData.totalSpent) * 100).toFixed(1);
+      doc.text(`${category}: ${amount.toFixed(3)} TND (${percentage}%)`, 14, yPos);
+      yPos += 6;
+    });
+
+    yPos += 10;
+    
+    const tableColumn = ["Date", "Time", "Category", "Description", "Amount (TND)"];
+    const tableRows = [];
+    
+    filteredHistoryLogs.forEach(([dateStr, log]) => {
+      const formattedDate = format(new Date(dateStr + 'T00:00:00'), 'MMM dd, yyyy');
+      log.expenses.filter(exp => parseFloat(exp.amount) > 0).forEach(exp => {
+        tableRows.push([
+          formattedDate,
+          exp.time || '--:--',
+          exp.category,
+          exp.desc || 'No description',
+          parseFloat(exp.amount).toFixed(3)
+        ]);
+      });
+    });
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [tableColumn],
+      body: tableRows,
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+    
+    doc.save(`Evolvio_Report_${dateTitle.replace(/[\s,]+/g, '_')}.pdf`);
+  };
+
   return (
     <div className="page-container">
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
@@ -178,6 +251,18 @@ export default function ExpenseTracker() {
           <h3 style={{ margin: 0, textAlign: 'center', flex: 1, fontSize: '1.1rem' }}>{dateTitle}</h3>
           <button className="btn" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }} onClick={handleNext}>
             <ChevronRight size={20} />
+          </button>
+        </div>
+
+        {/* Download Button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: '400px' }}>
+          <button 
+            className="btn" 
+            style={{ padding: '8px 16px', background: 'var(--accent-blue)', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }} 
+            onClick={generatePDF}
+          >
+            <Download size={18} />
+            Download Report
           </button>
         </div>
       </div>

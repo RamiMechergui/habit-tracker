@@ -5,10 +5,18 @@ import { useHabits } from '../Store';
 
 // Preset emoji icons for hygiene items
 const PRESET_ICONS = [
+  '/icons/icon1.png', '/icons/icon2.png', '/icons/icon3.jpg',
   '🧴', '🪥', '🦷', '🪒', '🧼', '🧽', '🫧', '🧻', '🤧', '🪮',
   '💊', '🩹', '🧹', '🧺', '🪣', '🫙', '💉', '🩺', '✨', '💨',
   '🧖', '💆', '🛁', '🚿', '🪑', '🪟', '🌿', '✂️'
 ];
+
+const IconDisplay = ({ icon }) => {
+  if (icon && typeof icon === 'string' && icon.startsWith('/icons/')) {
+    return <img src={icon} alt="icon" style={{ width: '1em', height: '1em', objectFit: 'contain', verticalAlign: 'middle' }} />;
+  }
+  return <span>{icon || '🧴'}</span>;
+};
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -181,7 +189,7 @@ export default function Essentials() {
               }}
               title="Choose icon"
             >
-              <span style={{ fontSize: '1.5rem' }}>{newIcon}</span>
+              <span style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconDisplay icon={newIcon} /></span>
             </button>
             {showIconPicker && createPortal(
               <div
@@ -200,7 +208,7 @@ export default function Essentials() {
                     className={`essentials-icon-option ${newIcon === icon ? 'selected' : ''}`}
                     onClick={() => { setNewIcon(icon); setShowIconPicker(false); }}
                   >
-                    {icon}
+                    <IconDisplay icon={icon} />
                   </button>
                 ))}
               </div>,
@@ -299,7 +307,7 @@ export default function Essentials() {
                     title="Change icon"
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
-                    {item.icon || '🧴'}
+                    <IconDisplay icon={item.icon || '🧴'} />
                   </button>
                   {editingIconId === item._id && createPortal(
                     <div
@@ -318,7 +326,7 @@ export default function Essentials() {
                           className={`essentials-icon-option ${item.icon === icon ? 'selected' : ''}`}
                           onClick={() => handleIconChange(item._id, icon)}
                         >
-                          {icon}
+                          <IconDisplay icon={icon} />
                         </button>
                       ))}
                     </div>,
