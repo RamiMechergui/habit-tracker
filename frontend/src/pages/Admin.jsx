@@ -478,7 +478,7 @@ function DevelopmentView() {
     localStorage.setItem('evolvia_dev_archive', JSON.stringify(archivedIdeas));
   }, [archivedIdeas]);
 
-  const isReadyForArchive = (idea) => idea.status === 'Implemented' && idea.deployed && idea.finished;
+  const isReadyForArchive = (idea) => idea.status === 'Implemented';
 
   const archiveIdea = (idea) => {
     const archived = {
@@ -637,7 +637,7 @@ function DevelopmentView() {
           <div className="adm-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:16 }}>
             {archivedIdeas.length === 0 ? (
               <div style={{ gridColumn:'1 / -1', padding:24, borderRadius:16, border:'1px dashed rgba(16,185,129,0.16)', color:'#64748b', textAlign:'center' }}>
-                Features move here only after they are marked Implemented, Deployed, and Finished.
+                Features move here automatically once their status is marked as Implemented.
               </div>
             ) : archivedIdeas.map(idea => (
               <div key={idea.id} className="glass-card" style={{ padding:20, border:'1px solid rgba(16,185,129,0.18)', background:'#0f141b' }}>
@@ -691,7 +691,7 @@ function DevelopmentView() {
                   Finished
                 </label>
               </div>
-              {newStatus === 'Implemented' && newDeployed && newFinished && (
+              {newStatus === 'Implemented' && (
                 <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:12, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.22)', color:'#10b981', fontSize:13, fontWeight:700 }}>
                   <Archive size={15} /> Saving will move this feature to the Development Archive.
                 </div>
