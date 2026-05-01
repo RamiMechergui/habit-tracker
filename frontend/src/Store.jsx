@@ -230,15 +230,15 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
-  const updateEssentialStatus = useCallback(async (id, newStatus) => {
+  const updateEssential = useCallback(async (id, updates) => {
     // Optimistic update
-    setEssentials(prev => prev.map(i => i._id === id ? { ...i, status: newStatus, lastUpdated: new Date().toISOString() } : i));
+    setEssentials(prev => prev.map(i => i._id === id ? { ...i, ...updates, lastUpdated: new Date().toISOString() } : i));
     try {
       const res = await fetch(`${API_URL}/api/essentials/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(updates)
       });
       if (!res.ok) {
         // Roll back on failure
@@ -247,7 +247,7 @@ export const HabitProvider = ({ children }) => {
         throw new Error(data.message);
       }
     } catch (e) {
-      console.error('[Store] updateEssentialStatus error:', e);
+      console.error('[Store] updateEssential error:', e);
       throw e;
     }
   }, [API_URL, loadEssentials]);
@@ -994,7 +994,7 @@ export const HabitProvider = ({ children }) => {
       currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
       isOnline,
       // Essentials
-      essentials, essentialsLoading, addEssential, updateEssentialStatus, deleteEssential,
+      essentials, essentialsLoading, addEssential, updateEssential, deleteEssential,
       // Notifications
       notifications, unreadCount, toasts, dismissToast,
       markNotificationRead, markAllNotificationsRead, deleteNotification

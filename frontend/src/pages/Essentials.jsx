@@ -20,7 +20,7 @@ const FILTERS = ['All', 'Available', 'Buy Soon', 'Not Available'];
 const FILTER_MAP = { 'All': null, 'Available': 'A', 'Buy Soon': 'BS', 'Not Available': 'NA' };
 
 export default function Essentials() {
-  const { essentials, addEssential, updateEssentialStatus, deleteEssential, essentialsLoading } = useHabits();
+  const { essentials, addEssential, updateEssential, deleteEssential, essentialsLoading } = useHabits();
 
   // Add-item form state
   const [newName, setNewName] = useState('');
@@ -33,19 +33,21 @@ export default function Essentials() {
   const [updatingId, setUpdatingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [editingIconId, setEditingIconId] = useState(null);
   const [formError, setFormError] = useState('');
 
   // Close picker on outside click
   useEffect(() => {
-    if (!showIconPicker) return;
+    if (!showIconPicker && !editingIconId) return;
     const handler = (e) => {
       if (iconBtnRef.current && !iconBtnRef.current.contains(e.target)) {
         setShowIconPicker(false);
+        setEditingIconId(null);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showIconPicker]);
+  }, [showIconPicker, editingIconId]);
 
   // Filtered items
   const filtered = useMemo(() => {
@@ -87,9 +89,18 @@ export default function Essentials() {
     setUpdatingId(item._id);
     try {
       const nextStatus = STATUS_CONFIG[item.status].next;
-      await updateEssentialStatus(item._id, nextStatus);
+      await updateEssential(item._id, { status: nextStatus });
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleIconChange = async (id, icon) => {
+    setEditingIconId(null);
+    try {
+      await updateEssential(id, { icon });
+    } catch (err) {
+      console.error('Failed to change icon:', err);
     }
   };
 
@@ -264,8 +275,43 @@ export default function Essentials() {
                 className={`essential-card glass-card ${item.status === 'NA' ? 'essential-card-urgent' : ''}`}
                 style={{ borderColor: cfg.border }}
               >
-                {/* Icon */}
-                <div className="essential-card-icon">{item.icon || '🧴'}</div>
+                {/* Icon (Clickable to change) */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    className="essential-card-icon"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setPickerPos({ top: rect.bottom + 8, left: rect.left });
+                      setEditingIconId(item._id);
+                    }}
+                    title="Change icon"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    {item.icon || '🧴'}
+                  </button>
+                  {editingIconId === item._id && (
+                    <div
+                      className="essentials-icon-picker"
+                      style={{ 
+                        position: 'fixed', 
+                        top: pickerPos.top, 
+                        left: Math.min(pickerPos.left, window.innerWidth - 200),
+                        zIndex: 1000 
+                      }}
+                    >
+                      {PRESET_ICONS.map(icon => (
+                        <button
+                          key={icon}
+                          type="button"
+                          className={`essentials-icon-option ${item.icon === icon ? 'selected' : ''}`}
+                          onClick={() => handleIconChange(item._id, icon)}
+                        >
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Name */}
                 <h3 className="essential-card-name">{item.name}</h3>

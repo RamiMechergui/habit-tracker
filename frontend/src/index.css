@@ -2017,9 +2017,9 @@ label {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-md);
-  background: rgba(15, 10, 10, 0.88);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2056,16 +2056,16 @@ label {
   padding: 0.35rem 0.85rem;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.06);
-  color: var(--text-secondary);
+  background: var(--border);
+  color: var(--text-primary);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
 .essential-confirm-cancel:hover {
-  background: rgba(255,255,255,0.12);
-  color: var(--text-primary);
+  background: var(--text-muted);
+  color: #fff;
 }
 
 .essential-confirm-delete {
@@ -2631,5 +2631,21 @@ label {
 @keyframes essential-urgent-pulse-light {
   0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.15); }
   50%       { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+}
+
+[data-theme='light'] .essential-confirm-overlay {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .essential-confirm-cancel {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+[data-theme='light'] .essential-confirm-cancel:hover {
+  background: #e2e8f0;
+  color: #1e293b;
 }
 
