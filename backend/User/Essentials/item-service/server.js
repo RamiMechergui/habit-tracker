@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -48,21 +49,43 @@ let producerReady = false;
   }
 })();
 
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:5128';
+
 async function publishStatusChange(payload) {
-  if (!producerReady) {
-    console.warn('[Item Service] Kafka not available, skipping event publish');
-    return;
+  if (producerReady) {
+    try {
+      await producer.send({
+        topic: 'item-status-changed',
+        messages: [{
+          key: payload.userId,
+          value: JSON.stringify(payload)
+        }]
+      });
+      console.log('[Item Service] Event published to Kafka');
+      return;
+    } catch (err) {
+      console.error('[Item Service] Kafka publish failed, trying HTTP fallback:', err.message);
+    }
   }
+
+  // Fallback to HTTP
   try {
-    await producer.send({
-      topic: 'item-status-changed',
-      messages: [{
-        key: payload.userId,          // partition by userId for ordered processing
-        value: JSON.stringify(payload)
-      }]
-    });
+    const url = new URL(`${NOTIFICATION_SERVICE_URL}/api/notifications/webhook`);
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    };
+
+    const req = http.request(options);
+    req.on('error', (e) => console.error('[Item Service] HTTP fallback request error:', e.message));
+    req.write(JSON.stringify(payload));
+    req.end();
+    console.log('[Item Service] Event sent via HTTP fallback');
   } catch (err) {
-    console.error('[Item Service] Failed to publish Kafka event:', err.message);
+    console.error('[Item Service] HTTP fallback failed:', err.message);
   }
 }
 

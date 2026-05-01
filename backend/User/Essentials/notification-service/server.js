@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -47,6 +48,68 @@ function buildMessage(itemName, newStatus) {
   return `${itemName} is now available.`;
 }
 
+const DELIVERY_SERVICE_URL = process.env.DELIVERY_SERVICE_URL || 'http://127.0.0.1:5129';
+
+async function processItemStatusEvent(event) {
+  const { eventId, userId, itemId, itemName, newStatus } = event;
+  if (newStatus === 'A') return;
+
+  try {
+    await ProcessedEvent.create({ eventId });
+  } catch (dupErr) {
+    console.log(`[Notification Service] Event ${eventId} already processed`);
+    return;
+  }
+
+  const type = newStatus === 'NA' ? 'urgent' : 'reminder';
+  const message_ = buildMessage(itemName, newStatus);
+
+  try {
+    const notification = await Notification.create({
+      userId, itemId, itemName, message: message_, type, eventId
+    });
+
+    const payload = {
+      notificationId: notification._id.toString(),
+      userId,
+      itemId,
+      itemName,
+      message: message_,
+      type,
+      timestamp: notification.timestamp
+    };
+
+    // Try Kafka
+    let kafkaSuccess = false;
+    try {
+      await producer.send({
+        topic: 'notifications-created',
+        messages: [{ key: userId, value: JSON.stringify(payload) }]
+      });
+      kafkaSuccess = true;
+    } catch (err) {
+      console.warn('[Notification Service] Kafka publish failed, trying HTTP fallback');
+    }
+
+    if (!kafkaSuccess) {
+      const url = new URL(`${DELIVERY_SERVICE_URL}/api/delivery/webhook`);
+      const options = {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      };
+      const req = http.request(options);
+      req.on('error', (e) => console.error('[Notification Service] HTTP fallback error:', e.message));
+      req.write(JSON.stringify(payload));
+      req.end();
+    }
+  } catch (err) {
+    console.error('[Notification Service] Error processing event:', err.message);
+  }
+}
+
 async function startKafkaConsumer() {
   try {
     await producer.connect();
@@ -55,66 +118,15 @@ async function startKafkaConsumer() {
 
     await consumer.run({
       eachMessage: async ({ message }) => {
-        let event;
         try {
-          event = JSON.parse(message.value.toString());
-        } catch {
-          console.warn('[Notification Service] Bad message format, skipping');
-          return;
-        }
-
-        const { eventId, userId, itemId, itemName, newStatus } = event;
-
-        // Skip if status went back to 'A' (no notification needed)
-        if (newStatus === 'A') return;
-
-        // ── Idempotency check ──────────────────────────────────
-        try {
-          await ProcessedEvent.create({ eventId });
-        } catch (dupErr) {
-          // Duplicate key error = already processed
-          console.log(`[Notification Service] Event ${eventId} already processed, skipping`);
-          return;
-        }
-
-        // ── Build & persist notification ───────────────────────
-        const type    = newStatus === 'NA' ? 'urgent' : 'reminder';
-        const message_ = buildMessage(itemName, newStatus);
-
-        let notification;
-        try {
-          notification = await Notification.create({
-            userId, itemId, itemName, message: message_, type, eventId
-          });
-          console.log(`[Notification Service] Created ${type} notification for user ${userId}`);
+          const event = JSON.parse(message.value.toString());
+          await processItemStatusEvent(event);
         } catch (err) {
-          console.error('[Notification Service] Failed to save notification:', err.message);
-          return;
-        }
-
-        // ── Publish to notifications-created topic ─────────────
-        try {
-          await producer.send({
-            topic: 'notifications-created',
-            messages: [{
-              key: userId,
-              value: JSON.stringify({
-                notificationId: notification._id.toString(),
-                userId,
-                itemId,
-                itemName,
-                message: message_,
-                type,
-                timestamp: notification.timestamp
-              })
-            }]
-          });
-        } catch (err) {
-          console.error('[Notification Service] Failed to publish notifications-created:', err.message);
+          console.warn('[Notification Service] Kafka message error:', err.message);
         }
       }
     });
-    console.log('[Notification Service] Kafka consumer running on topic: item-status-changed');
+    console.log('[Notification Service] Kafka consumer running');
   } catch (err) {
     console.warn('[Notification Service] Kafka not available:', err.message);
   }
@@ -181,6 +193,16 @@ app.put('/api/notifications/read-all', verifyToken, async (req, res) => {
 });
 
 // DELETE /api/notifications/:id — delete a notification
+// Internal Webhook for HTTP Fallback
+app.post('/api/notifications/webhook', async (req, res) => {
+  try {
+    await processItemStatusEvent(req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.delete('/api/notifications/:id', verifyToken, async (req, res) => {
   try {
     await Notification.findOneAndDelete({ _id: req.params.id, userId: req.user._id });

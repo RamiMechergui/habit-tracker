@@ -57,12 +57,29 @@ function sendSSEToUser(userId, eventData) {
   }
 }
 
-// ── Kafka Consumer ─────────────────────────────────────────────
-const kafka = new Kafka({
-  clientId: 'delivery-service',
-  brokers: [(process.env.KAFKA_BROKER || 'kafka:9092')],
-  retry: { retries: 5, initialRetryTime: 300 }
-});
+function deliverNotification(event) {
+  const { notificationId, userId, itemName, message: msg, type, timestamp } = event;
+
+  // ── Push SSE to any connected frontend clients ──────────
+  sendSSEToUser(userId, {
+    notificationId,
+    userId,
+    itemName,
+    message: msg,
+    type,
+    timestamp,
+    status: 'UNREAD'
+  });
+
+  // ── Record delivery in DB ──────────────────────────────
+  DeliveryRecord.create({
+    userId,
+    notificationId,
+    channel:     'in-app',
+    status:      'delivered',
+    deliveredAt: new Date()
+  }).catch(err => console.error('[Delivery Service] Failed to record delivery:', err.message));
+}
 
 const consumer = kafka.consumer({ groupId: 'delivery-service-group' });
 
@@ -73,38 +90,11 @@ async function startKafkaConsumer() {
 
     await consumer.run({
       eachMessage: async ({ message }) => {
-        let event;
         try {
-          event = JSON.parse(message.value.toString());
-        } catch {
-          return;
-        }
-
-        const { notificationId, userId, itemName, message: msg, type, timestamp } = event;
-
-        // ── Push SSE to any connected frontend clients ──────────
-        sendSSEToUser(userId, {
-          notificationId,
-          userId,
-          itemName,
-          message: msg,
-          type,
-          timestamp,
-          status: 'UNREAD'
-        });
-
-        // ── Record delivery in DB ──────────────────────────────
-        try {
-          await DeliveryRecord.create({
-            userId,
-            notificationId,
-            channel:     'in-app',
-            status:      'delivered',
-            deliveredAt: new Date()
-          });
+          const event = JSON.parse(message.value.toString());
+          deliverNotification(event);
         } catch (err) {
-          console.error('[Delivery Service] Failed to record delivery:', err.message);
-          // Attempt DLQ publish on repeated failure
+          console.warn('[Delivery Service] Kafka message error:', err.message);
         }
       }
     });
@@ -147,6 +137,16 @@ app.get('/api/delivery/stream', verifyToken, (req, res) => {
 
 // GET /api/delivery/health
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'delivery-service', sseClients: sseClients.size }));
+
+// Internal Webhook for HTTP Fallback
+app.post('/api/delivery/webhook', async (req, res) => {
+  try {
+    deliverNotification(req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5129;
