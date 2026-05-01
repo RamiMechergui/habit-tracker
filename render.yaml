@@ -12,6 +12,8 @@ services:
         sync: false # Set your MongoDB Atlas string in Render UI
       - key: JWT_SECRET
         sync: false # Set a secure secret in Render UI
+      - key: ADMIN_PASSWORD
+        sync: false # Set the admin dashboard password in Render UI
       - key: CLIENT_URL
         fromService:
           type: web

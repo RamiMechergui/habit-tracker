@@ -55,6 +55,22 @@ const verifyToken = (req, res, next) => {
   } catch (error) { res.status(401).json({ message: 'Invalid token' }); }
 };
 
+const ADMIN_COOKIE = 'adminToken';
+
+const verifyAdmin = (req, res, next) => {
+  const token = req.cookies[ADMIN_COOKIE];
+  if (!token) return res.status(401).json({ message: 'Admin session required' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod');
+    if (decoded.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+    req.admin = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid admin session' });
+  }
+};
+
 /**
  * @swagger
  * /api/login:
@@ -158,8 +174,49 @@ app.put('/api/login/change-password', verifyToken, async (req, res) => {
   }
 });
 
+app.post('/api/login/admin/session', async (req, res) => {
+  const { password } = req.body;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    return res.status(503).json({ message: 'Admin access is not configured' });
+  }
+
+  if (!password || password !== adminPassword) {
+    return res.status(401).json({ message: 'Invalid admin credentials' });
+  }
+
+  const token = jwt.sign(
+    { role: 'admin', scope: 'dashboard' },
+    process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod',
+    { expiresIn: '8h' }
+  );
+
+  res.cookie(ADMIN_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 8 * 60 * 60 * 1000
+  });
+
+  res.json({ ok: true });
+});
+
+app.get('/api/login/admin/session', verifyAdmin, (req, res) => {
+  res.json({ ok: true });
+});
+
+app.delete('/api/login/admin/session', (req, res) => {
+  res.clearCookie(ADMIN_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  res.json({ ok: true });
+});
+
 // Admin Endpoint for Dashboard: User Count
-app.get('/api/login/admin/users', async (req, res) => {
+app.get('/api/login/admin/users', verifyAdmin, async (req, res) => {
   try {
     const count = await User.countDocuments();
     res.json({ count });
@@ -169,7 +226,7 @@ app.get('/api/login/admin/users', async (req, res) => {
 });
 
 // Admin Endpoint for Dashboard: User List
-app.get('/api/login/admin/users/list', async (req, res) => {
+app.get('/api/login/admin/users/list', verifyAdmin, async (req, res) => {
   try {
     const users = await User.find({}, '-password').sort({ createdAt: -1 });
     res.json(users);
@@ -179,7 +236,7 @@ app.get('/api/login/admin/users/list', async (req, res) => {
 });
 
 // Admin Endpoint for Dashboard: Delete User
-app.delete('/api/login/admin/users/:userId', async (req, res) => {
+app.delete('/api/login/admin/users/:userId', verifyAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
     const deletedUser = await User.findOneAndDelete({ userId });
