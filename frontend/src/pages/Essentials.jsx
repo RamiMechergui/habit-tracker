@@ -41,7 +41,12 @@ export default function Essentials() {
   useEffect(() => {
     if (!showIconPicker && !editingIconId) return;
     const handler = (e) => {
-      if (iconBtnRef.current && !iconBtnRef.current.contains(e.target)) {
+      // Check if click is inside the trigger button
+      const isInsideTrigger = iconBtnRef.current && iconBtnRef.current.contains(e.target);
+      // Check if click is inside any open picker (handles Portals)
+      const isInsidePicker = e.target.closest('.essentials-icon-picker');
+      
+      if (!isInsideTrigger && !isInsidePicker) {
         setShowIconPicker(false);
         setEditingIconId(null);
       }
