@@ -2144,7 +2144,7 @@ label {
   height: 36px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.05);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -2155,7 +2155,7 @@ label {
 }
 .notif-bell-btn:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.08);
+  background: var(--border);
   transform: scale(1.05);
 }
 .notif-bell-btn.has-unread {
@@ -2217,7 +2217,8 @@ label {
 .notif-center-panel {
   position: absolute;
   top: 70px;
-  left: 260px; /* just past the sidebar */
+  right: 20px;
+
   width: 380px;
   max-height: calc(100vh - 90px);
   display: flex;
@@ -2290,7 +2291,7 @@ label {
 }
 .notif-close-btn:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.08);
+  background: var(--border);
 }
 
 /* ── Tabs ────────────────────────────────────────────────────── */
@@ -2332,7 +2333,7 @@ label {
   color: #fff;
 }
 .notif-tab-badge-muted {
-  background: rgba(255,255,255,0.1);
+  background: var(--border);
   color: var(--text-muted);
 }
 

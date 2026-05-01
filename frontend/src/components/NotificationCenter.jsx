@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, X, Check, CheckCheck, ShieldAlert, ShoppingBag, Trash2, Clock } from 'lucide-react';
 import { useHabits } from '../Store';
 import { formatDistanceToNow } from 'date-fns';
@@ -133,6 +134,7 @@ export default function NotificationCenter({ onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -221,7 +221,7 @@ function App() {
           alignItems: 'center',
           gap: '0.5rem',
           zIndex: 1000,
-          background: 'var(--surface)',
+          background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           padding: '0.35rem 0.5rem',
