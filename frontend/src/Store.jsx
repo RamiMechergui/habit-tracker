@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import * as db from './offlineDb.js';
 import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
@@ -17,6 +17,16 @@ export const HabitProvider = ({ children }) => {
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
+
+  // ── Essentials state ──────────────────────────────────────────
+  const [essentials, setEssentials] = useState([]);
+  const [essentialsLoading, setEssentialsLoading] = useState(false);
+
+  // ── Notification state ────────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [toasts, setToasts] = useState([]);            // live SSE toasts
+  const sseRef = useRef(null);                         // EventSource reference
 
   // Daily Defaults - Memoized to prevent unnecessary re-renders
   const createEmptyDay = useCallback((dateStr) => ({
@@ -190,6 +200,200 @@ export const HabitProvider = ({ children }) => {
     }
   };
 
+  // ── Essentials: load from server ─────────────────────────────
+  const loadEssentials = useCallback(async () => {
+    if (!navigator.onLine) return;
+    setEssentialsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/essentials`, { credentials: 'include' });
+      if (res.ok) {
+        const items = await res.json();
+        setEssentials(items);
+      }
+    } catch (e) {
+      console.warn('[Store] Failed to load essentials:', e.message);
+    } finally {
+      setEssentialsLoading(false);
+    }
+  }, [API_URL]);
+
+  const addEssential = useCallback(async (name, icon) => {
+    const res = await fetch(`${API_URL}/api/essentials`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, icon })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    setEssentials(prev => [data, ...prev]);
+    return data;
+  }, [API_URL]);
+
+  const updateEssentialStatus = useCallback(async (id, newStatus) => {
+    // Optimistic update
+    setEssentials(prev => prev.map(i => i._id === id ? { ...i, status: newStatus, lastUpdated: new Date().toISOString() } : i));
+    try {
+      const res = await fetch(`${API_URL}/api/essentials/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) {
+        // Roll back on failure
+        await loadEssentials();
+        const data = await res.json();
+        throw new Error(data.message);
+      }
+    } catch (e) {
+      console.error('[Store] updateEssentialStatus error:', e);
+      throw e;
+    }
+  }, [API_URL, loadEssentials]);
+
+  const deleteEssential = useCallback(async (id) => {
+    setEssentials(prev => prev.filter(i => i._id !== id)); // optimistic
+    try {
+      const res = await fetch(`${API_URL}/api/essentials/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        await loadEssentials(); // roll back
+      }
+    } catch (e) {
+      console.error('[Store] deleteEssential error:', e);
+      await loadEssentials();
+    }
+  }, [API_URL, loadEssentials]);
+
+  // ── Notifications: load from server ──────────────────────────
+  const loadNotifications = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const [notifRes, countRes] = await Promise.all([
+        fetch(`${API_URL}/api/notifications?limit=100`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/notifications/count`, { credentials: 'include' })
+      ]);
+      if (notifRes.ok) {
+        const { notifications: list } = await notifRes.json();
+        setNotifications(list);
+      }
+      if (countRes.ok) {
+        const { unread } = await countRes.json();
+        setUnreadCount(unread);
+      }
+    } catch (e) {
+      console.warn('[Store] Failed to load notifications:', e.message);
+    }
+  }, [API_URL]);
+
+  const markNotificationRead = useCallback(async (id) => {
+    setNotifications(prev => prev.map(n => (n._id === id || n.notificationId === id) ? { ...n, status: 'READ' } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    try {
+      await fetch(`${API_URL}/api/notifications/${id}/read`, { method: 'PUT', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Store] markNotificationRead error:', e);
+    }
+  }, [API_URL]);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, status: 'READ' })));
+    setUnreadCount(0);
+    try {
+      await fetch(`${API_URL}/api/notifications/read-all`, { method: 'PUT', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Store] markAllNotificationsRead error:', e);
+    }
+  }, [API_URL]);
+
+  const deleteNotification = useCallback(async (id) => {
+    setNotifications(prev => prev.filter(n => n._id !== id && n.notificationId !== id));
+    setUnreadCount(prev => {
+      const notif = notifications.find(n => n._id === id || n.notificationId === id);
+      return notif?.status === 'UNREAD' ? Math.max(0, prev - 1) : prev;
+    });
+    try {
+      await fetch(`${API_URL}/api/notifications/${id}`, { method: 'DELETE', credentials: 'include' });
+    } catch (e) {
+      console.warn('[Store] deleteNotification error:', e);
+    }
+  }, [API_URL, notifications]);
+
+  const dismissToast = useCallback((toastId) => {
+    setToasts(prev => prev.filter(t => t.id !== toastId));
+  }, []);
+
+  // ── SSE: connect to delivery service ─────────────────────────
+  const connectSSE = useCallback(() => {
+    if (sseRef.current) sseRef.current.close();
+    if (!navigator.onLine) return;
+
+    try {
+      const es = new EventSource(`${API_URL}/api/delivery/stream`, { withCredentials: true });
+
+      es.onopen = () => console.log('[Store] SSE stream connected');
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'connected') return; // handshake ping
+
+          // Add to notification list
+          const newNotif = { ...data, status: 'UNREAD', _id: data.notificationId };
+          setNotifications(prev => [newNotif, ...prev]);
+          setUnreadCount(prev => prev + 1);
+
+          // Trigger toast
+          const toastId = `toast_${Date.now()}_${Math.random()}`;
+          setToasts(prev => [...prev.slice(-4), { id: toastId, ...data }]); // max 5 toasts
+        } catch (e) {
+          console.warn('[Store] SSE parse error:', e);
+        }
+      };
+
+      es.onerror = () => {
+        console.warn('[Store] SSE stream error — will auto-reconnect');
+        // EventSource auto-reconnects by spec
+      };
+
+      sseRef.current = es;
+    } catch (e) {
+      console.warn('[Store] Could not open SSE stream (delivery service may be offline):', e.message);
+    }
+  }, [API_URL]);
+
+  // ── Essentials + notifications load after login ───────────────
+  useEffect(() => {
+    if (user && navigator.onLine) {
+      loadEssentials();
+      loadNotifications();
+      connectSSE();
+    }
+    return () => {
+      if (!user && sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
+      }
+    };
+  }, [user, loadEssentials, loadNotifications, connectSSE]);
+
+  // Refresh unread count every 60s as a fallback when SSE is unavailable
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (navigator.onLine) {
+        fetch(`${API_URL}/api/notifications/count`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setUnreadCount(d.unread); })
+          .catch(() => {});
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [user, API_URL]);
+
   const login = async (email, password) => {
     const res = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
@@ -311,11 +515,20 @@ export const HabitProvider = ({ children }) => {
     } catch (e) {
       console.error('Logout error:', e);
     }
+    // Close SSE stream
+    if (sseRef.current) {
+      sseRef.current.close();
+      sseRef.current = null;
+    }
     setUser(null);
     setLogs({});
     setExpenseCategories([]);
     setCurrentBookState(null);
     setArchivedBooks([]);
+    setEssentials([]);
+    setNotifications([]);
+    setUnreadCount(0);
+    setToasts([]);
     db.clearAllOfflineData();
   };
 
@@ -775,11 +988,16 @@ export const HabitProvider = ({ children }) => {
 
   return (
     <HabitContext.Provider value={{
-      logs, getLog, saveLog, getWeeklyData, getMonthlyData, 
+      logs, getLog, saveLog, getWeeklyData, getMonthlyData,
       user, login, register, logout, updateProfilePicture, updateProfile, changePassword, loading,
       expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory,
       currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
-      isOnline
+      isOnline,
+      // Essentials
+      essentials, essentialsLoading, addEssential, updateEssentialStatus, deleteEssential,
+      // Notifications
+      notifications, unreadCount, toasts, dismissToast,
+      markNotificationRead, markAllNotificationsRead, deleteNotification
     }}>
       {children}
     </HabitContext.Provider>

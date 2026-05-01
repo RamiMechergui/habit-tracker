@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket, Video
+  WifiOff, Wallet, Rocket, Video, ShieldCheck
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -16,26 +16,30 @@ import Auth from './pages/Auth';
 import ExpenseTracker from './pages/ExpenseTracker';
 import SideHustle from './pages/SideHustle';
 import VideoEditing from './pages/VideoEditing';
+import Essentials from './pages/Essentials';
 import Admin from './pages/Admin';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
+import NotificationBar from './components/NotificationBar';
+import NotificationToast from './components/NotificationToast';
 import { useHabits } from './Store';
 
 const NAV_LINKS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/daily',     icon: CheckSquare,     label: 'Daily Log' },
-  { to: '/weekly',    icon: CalendarDays,    label: 'Weekly' },
-  { to: '/monthly',   icon: CalendarRange,   label: 'Monthly' },
-  { to: '/archive',   icon: BookOpen,        label: 'Archive' },
-  { to: '/expenses',  icon: Wallet,          label: 'Expenses' },
-  { to: '/sidehustle',icon: Rocket,          label: 'Side Hustle' },
-  { to: '/video-editing', icon: Video,       label: 'Video Editing' },
-  { to: '/settings',  icon: SettingsIcon,    label: 'Settings' },
+  { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/daily',         icon: CheckSquare,     label: 'Daily Log' },
+  { to: '/weekly',        icon: CalendarDays,    label: 'Weekly' },
+  { to: '/monthly',       icon: CalendarRange,   label: 'Monthly' },
+  { to: '/archive',       icon: BookOpen,        label: 'Archive' },
+  { to: '/expenses',      icon: Wallet,          label: 'Expenses' },
+  { to: '/essentials',    icon: ShieldCheck,     label: 'Essentials' },
+  { to: '/sidehustle',    icon: Rocket,          label: 'Side Hustle' },
+  { to: '/video-editing', icon: Video,           label: 'Video Editing' },
+  { to: '/settings',      icon: SettingsIcon,    label: 'Settings' },
 ];
 
 function App() {
-  const { loading, user, logout, isOnline } = useHabits();
+  const { loading, user, logout, isOnline, toasts, dismissToast } = useHabits();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const location = useLocation();
 
@@ -96,25 +100,28 @@ function App() {
               </span>
             </div>
           </div>
-          <button
-            onClick={toggleTheme}
-            style={{ 
-              background: 'rgba(255,255,255,0.05)', 
-              border: '1px solid var(--border)', 
-              borderRadius: '8px', 
-              width: '36px', 
-              height: '36px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--text-primary)',
-              transition: 'all 0.2s'
-            }}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <NotificationBar />
+            <button
+              onClick={toggleTheme}
+              style={{ 
+                background: 'rgba(255,255,255,0.05)', 
+                border: '1px solid var(--border)', 
+                borderRadius: '8px', 
+                width: '36px', 
+                height: '36px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+                transition: 'all 0.2s'
+              }}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
         </div>
 
         <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
@@ -203,6 +210,7 @@ function App() {
             <Route path="/monthly"   element={<MonthlyReview />} />
             <Route path="/archive"   element={<BookArchive />} />
             <Route path="/expenses"  element={<ExpenseTracker />} />
+            <Route path="/essentials" element={<Essentials />} />
             <Route path="/sidehustle" element={<SideHustle />} />
             <Route path="/video-editing" element={<VideoEditing />} />
             <Route path="/settings"  element={<Settings />} />
@@ -227,6 +235,9 @@ function App() {
       {/* ── PWA Components ── */}
       <InstallPrompt />
       <UpdateToast />
+
+      {/* ── Notification Toasts (SSE live events) ── */}
+      <NotificationToast toasts={toasts} onDismiss={dismissToast} />
 
     </div>
   );

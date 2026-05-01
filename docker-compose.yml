@@ -244,9 +244,89 @@ services:
       - mongo_data:/data/db
     networks: [habit-network]
 
+  # ── Kafka Infrastructure ─────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks: [habit-network]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 10
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Pre-create topics with 10 partitions each
+      KAFKA_CREATE_TOPICS: "item-status-changed:10:1,notifications-created:10:1,notifications-created-dlq:1:1"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks: [habit-network]
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  # ── Essentials Microservices ─────────────────────────────────
+  essentials:
+    build: ./backend/User/Essentials/item-service
+    hostname: essentials
+    environment:
+      - PORT=5127
+      - MONGO_URI=mongodb://mongo:27017/essentials_db
+      - JWT_SECRET=${JWT_SECRET}
+      - KAFKA_BROKER=kafka:9092
+    depends_on: [mongo, kafka]
+    networks: [habit-network]
+
+  notifications:
+    build: ./backend/User/Essentials/notification-service
+    hostname: notifications
+    environment:
+      - PORT=5128
+      - MONGO_URI=mongodb://mongo:27017/notifications_db
+      - JWT_SECRET=${JWT_SECRET}
+      - KAFKA_BROKER=kafka:9092
+    depends_on: [mongo, kafka]
+    networks: [habit-network]
+
+  delivery:
+    build: ./backend/User/Essentials/delivery-service
+    hostname: delivery
+    environment:
+      - PORT=5129
+      - MONGO_URI=mongodb://mongo:27017/delivery_db
+      - JWT_SECRET=${JWT_SECRET}
+      - KAFKA_BROKER=kafka:9092
+    depends_on: [mongo, kafka]
+    networks: [habit-network]
+
+  user-prefs:
+    build: ./backend/User/Essentials/user-prefs-service
+    hostname: user-prefs
+    environment:
+      - PORT=5130
+      - MONGO_URI=mongodb://mongo:27017/user_prefs_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
 networks:
   habit-network:
     driver: bridge
 
 volumes:
   mongo_data:
+  zookeeper_data:
+  kafka_data:

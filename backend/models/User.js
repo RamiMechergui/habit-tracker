@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema({
     startDate: { type: String },
     completionDate: { type: String },
     finalPage: { type: Number }
+  }],
+  essentials: [{
+    name:        { type: String, required: true },
+    icon:        { type: String, default: '🧴' },
+    status:      { type: String, enum: ['A', 'BS', 'NA'], default: 'A' },
+    lastUpdated: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
 

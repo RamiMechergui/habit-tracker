@@ -31,10 +31,14 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://mongo:27017/habittracker')
 const authRoutes = require('./routes/auth');
 const logRoutes = require('./routes/logs');
 const userRoutes = require('./routes/user');
+const essentialsRoutes = require('./routes/essentials');
+const notificationsRoutes = require('./routes/notifications');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/daily', logRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/essentials', essentialsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Aliases for monolithic compatibility with microservices frontend
 app.use('/api/currentbook', userRoutes);
@@ -42,6 +46,14 @@ app.use('/api/archives', userRoutes);
 app.use('/api/settings', userRoutes);
 app.use('/api/categories', userRoutes);
 app.use('/api/avatar', userRoutes);
+
+// SSE delivery stream — not available in monolithic mode; return graceful 503
+// so the frontend EventSource fails fast rather than hanging indefinitely
+app.get('/api/delivery/stream', (_req, res) => {
+  res.status(503).json({
+    message: 'Delivery service not available in monolithic mode. Real-time push is disabled.'
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
