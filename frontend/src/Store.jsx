@@ -39,6 +39,7 @@ export const HabitProvider = ({ children }) => {
     hustle: { task: '', time: '', achieved: false, lessons: [] },
     video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
     system: { todo: false, money: false },
+    tasks: [],
     expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime }],
     morningScore: 0,
     badScore: 0,
@@ -576,6 +577,7 @@ export const HabitProvider = ({ children }) => {
         hustle: { ...emptyLog.hustle, ...(existingLog.hustle || {}) },
         video: { ...emptyLog.video, ...(existingLog.video || {}) },
         system: { ...emptyLog.system, ...(existingLog.system || {}) },
+        tasks: Array.isArray(existingLog.tasks) ? existingLog.tasks : emptyLog.tasks,
         expenses: Array.isArray(existingLog.expenses) && existingLog.expenses.length > 0 ? existingLog.expenses : emptyLog.expenses
       };
 

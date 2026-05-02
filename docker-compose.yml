@@ -63,8 +63,9 @@ services:
       - BOOK_LOG_SERVICE_URL=http://book-reading:5124
       - SYSTEM_SERVICE_URL=http://system-check:5125
       - EXPENSES_SERVICE_URL=http://expenses:5126
+      - TASKS_SERVICE_URL=http://tasks-service:5131
       - ANALYTICS_SERVICE_URL=http://analytics:5113
-    depends_on: [mongo, morning-habits, bad-habits, night-habits, weekend-duties, side-hustle, video-editing, book-reading, system-check, expenses]
+    depends_on: [mongo, morning-habits, bad-habits, night-habits, weekend-duties, side-hustle, video-editing, book-reading, system-check, expenses, tasks-service]
     networks: [habit-network]
 
   scoring:
@@ -237,6 +238,17 @@ services:
     depends_on: [mongo]
     networks: [habit-network]
 
+  tasks-service:
+    build: ./backend/User/Habits/tasks-service
+    hostname: tasks-service
+    environment:
+      - PORT=5131
+      - MONGO_URI=mongodb://mongo:27017/tasks_db
+      - JWT_SECRET=${JWT_SECRET}
+      - KAFKA_BROKER=kafka:9092
+    depends_on: [mongo, kafka]
+    networks: [habit-network]
+
   mongo:
     image: mongo:6.0
     hostname: mongo
@@ -268,7 +280,7 @@ services:
       KAFKA_NUM_PARTITIONS: 10
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       # Pre-create topics with 10 partitions each
-      KAFKA_CREATE_TOPICS: "item-status-changed:10:1,notifications-created:10:1,notifications-created-dlq:1:1"
+      KAFKA_CREATE_TOPICS: "item-status-changed:10:1,notifications-created:10:1,notifications-created-dlq:1:1,task-notifications:10:1"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks: [habit-network]

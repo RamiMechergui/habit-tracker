@@ -110,17 +110,72 @@ async function processItemStatusEvent(event) {
   }
 }
 
+async function processTaskNotification(event) {
+  const { userId, taskId, title, time, type } = event;
+  
+  const message_ = `Reminder: Task "${title}" is scheduled at ${time}.`;
+
+  try {
+    const notification = await Notification.create({
+      userId, itemId: taskId, itemName: title, message: message_, type: type || 'task-reminder', eventId: `task_${taskId}_${Date.now()}`
+    });
+
+    const payload = {
+      notificationId: notification._id.toString(),
+      userId,
+      itemId: taskId,
+      itemName: title,
+      message: message_,
+      type: type || 'task-reminder',
+      timestamp: notification.timestamp
+    };
+
+    let kafkaSuccess = false;
+    try {
+      await producer.send({
+        topic: 'notifications-created',
+        messages: [{ key: userId, value: JSON.stringify(payload) }]
+      });
+      kafkaSuccess = true;
+    } catch (err) {
+      console.warn('[Notification Service] Kafka publish failed, trying HTTP fallback');
+    }
+
+    if (!kafkaSuccess) {
+      const url = new URL(`${DELIVERY_SERVICE_URL}/api/delivery/webhook`);
+      const options = {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      };
+      const req = http.request(options);
+      req.on('error', (e) => console.error('[Notification Service] HTTP fallback error:', e.message));
+      req.write(JSON.stringify(payload));
+      req.end();
+    }
+  } catch (err) {
+    console.error('[Notification Service] Error processing task notification:', err.message);
+  }
+}
+
 async function startKafkaConsumer() {
   try {
     await producer.connect();
     await consumer.connect();
     await consumer.subscribe({ topic: 'item-status-changed', fromBeginning: false });
+    await consumer.subscribe({ topic: 'task-notifications', fromBeginning: false });
 
     await consumer.run({
-      eachMessage: async ({ message }) => {
+      eachMessage: async ({ topic, message }) => {
         try {
           const event = JSON.parse(message.value.toString());
-          await processItemStatusEvent(event);
+          if (topic === 'item-status-changed') {
+            await processItemStatusEvent(event);
+          } else if (topic === 'task-notifications') {
+            await processTaskNotification(event);
+          }
         } catch (err) {
           console.warn('[Notification Service] Kafka message error:', err.message);
         }

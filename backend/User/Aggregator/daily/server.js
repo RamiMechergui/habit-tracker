@@ -37,7 +37,8 @@ const SERVICES = {
   video: process.env.VIDEO_SERVICE_URL || 'http://video-editing:5123',
   books: process.env.BOOK_LOG_SERVICE_URL || 'http://book-reading:5124',
   system: process.env.SYSTEM_SERVICE_URL || 'http://system-check:5125',
-  expenses: process.env.EXPENSES_SERVICE_URL || 'http://expenses:5126'
+  expenses: process.env.EXPENSES_SERVICE_URL || 'http://expenses:5126',
+  tasks: process.env.TASKS_SERVICE_URL || 'http://tasks-service:5131'
 };
 
 app.get('/api/daily', verifyToken, async (req, res) => {
