@@ -4,7 +4,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { format, parseISO, isSameDay, isSameMonth, isSameYear } from 'date-fns';
 import { ChevronLeft, ChevronRight, Wallet, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function ExpenseTracker() {
   const { logs, expenseCategories } = useHabits();
@@ -197,7 +197,7 @@ export default function ExpenseTracker() {
       });
     });
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [tableColumn],
       body: tableRows,
