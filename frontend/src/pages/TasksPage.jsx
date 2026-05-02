@@ -16,6 +16,7 @@ export default function TasksPage() {
 
   const [timelineView, setTimelineView] = useState('daily');
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   // Sync log when date changes
   useEffect(() => {
@@ -61,8 +62,25 @@ export default function TasksPage() {
     setLocalDirty(true);
   };
 
-  const handleAddTask = (newTask) => {
-    setLog(prev => ({ ...prev, tasks: [...(prev.tasks || []), newTask] }));
+  const handleSaveTask = (taskData) => {
+    setLog(prev => {
+      const existingTasks = prev.tasks || [];
+      const index = existingTasks.findIndex(t => t.id === taskData.id);
+      if (index >= 0) {
+        const updated = [...existingTasks];
+        updated[index] = taskData;
+        return { ...prev, tasks: updated };
+      }
+      return { ...prev, tasks: [...existingTasks, taskData] };
+    });
+    setLocalDirty(true);
+  };
+
+  const handleDeleteTask = (taskId) => {
+    setLog(prev => ({
+      ...prev,
+      tasks: (prev.tasks || []).filter(t => t.id !== taskId)
+    }));
     setLocalDirty(true);
   };
 
@@ -114,6 +132,10 @@ export default function TasksPage() {
           date={date} 
           tasks={log.tasks || []} 
           onUpdateTask={handleUpdateTasks} 
+          onEditTask={(task) => {
+            setEditingTask(task);
+            setIsTaskSheetOpen(true);
+          }}
           isFutureDate={isFuture} 
         />
       )}
@@ -121,7 +143,7 @@ export default function TasksPage() {
       {/* FAB for Task Creation */}
       {timelineView === 'daily' && (
         <button 
-          onClick={() => setIsTaskSheetOpen(true)}
+          onClick={() => { setEditingTask(null); setIsTaskSheetOpen(true); }}
           disabled={isFuture}
           style={{
             position: 'fixed',
@@ -151,8 +173,10 @@ export default function TasksPage() {
 
       <TaskBottomSheet 
         isOpen={isTaskSheetOpen} 
-        onClose={() => setIsTaskSheetOpen(false)} 
-        onSave={handleAddTask}
+        onClose={() => { setIsTaskSheetOpen(false); setEditingTask(null); }} 
+        onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
+        initialData={editingTask}
         isFutureDate={isFuture}
       />
 

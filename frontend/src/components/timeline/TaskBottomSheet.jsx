@@ -1,26 +1,42 @@
-import React, { useState } from 'react';
-import { X, Clock, Bell, AlignLeft, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Clock, Bell, AlignLeft, Target, Trash2 } from 'lucide-react';
 
-export default function TaskBottomSheet({ isOpen, onClose, onSave, isFutureDate }) {
+export default function TaskBottomSheet({ isOpen, onClose, onSave, onDelete, initialData, isFutureDate }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [time, setTime] = useState('12:00');
   const [duration, setDuration] = useState('30');
   const [notificationEnabled, setNotificationEnabled] = useState(true);
 
+  useEffect(() => {
+    if (initialData) {
+      setTitle(initialData.title || '');
+      setDescription(initialData.description || '');
+      setTime(initialData.time || '12:00');
+      setDuration(initialData.duration || '30');
+      setNotificationEnabled(initialData.notificationEnabled ?? true);
+    } else {
+      setTitle('');
+      setDescription('');
+      setTime('12:00');
+      setDuration('30');
+      setNotificationEnabled(true);
+    }
+  }, [initialData, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSave = () => {
     if (!title.trim() || !time) return;
     onSave({
-      id: `task_${Date.now()}`,
+      id: initialData?.id || `task_${Date.now()}`,
       title: title.trim(),
       description: description.trim(),
       time,
       duration,
       notificationEnabled,
-      status: 'Pending',
-      notificationSent: false
+      status: initialData?.status || 'Pending',
+      notificationSent: initialData?.notificationSent || false
     });
     // Reset
     setTitle('');
@@ -52,7 +68,7 @@ export default function TaskBottomSheet({ isOpen, onClose, onSave, isFutureDate 
         animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Add New Task</h3>
+          <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{initialData ? 'Edit Task' : 'Add New Task'}</h3>
           <button className="btn" style={{ background: 'transparent', padding: '8px' }} onClick={onClose}>
             <X size={20} />
           </button>
@@ -115,6 +131,20 @@ export default function TaskBottomSheet({ isOpen, onClose, onSave, isFutureDate 
           >
             Save Task
           </button>
+
+          {initialData && onDelete && (
+            <button 
+              className="btn w-full mt-2" 
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '12px', fontWeight: 600 }}
+              onClick={() => {
+                onDelete(initialData.id);
+                onClose();
+              }}
+              disabled={isFutureDate}
+            >
+              <Trash2 size={16} /> Delete Task
+            </button>
+          )}
         </div>
       </div>
       <style>{`
