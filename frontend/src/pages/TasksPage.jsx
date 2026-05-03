@@ -13,6 +13,8 @@ import { Bell, BellOff, Loader2 } from 'lucide-react';
 export default function TasksPage() {
   const { getLog, saveLog, logs } = useHabits();
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  console.log('[TasksPage] Rendering date:', date);
+
   const [log, setLog] = useState(logs[date] || { date, tasks: [] });
   const [saveStatus, setSaveStatus] = useState('');
   const [localDirty, setLocalDirty] = useState(false);

@@ -10,15 +10,20 @@ import annotationPlugin from 'chartjs-plugin-annotation';
 
 Chart.register(annotationPlugin);
 
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <HabitProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </HabitProvider>
+    <ErrorBoundary>
+      <HabitProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </HabitProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 )
+
 
 // ── Service Worker Registration ──────────────────────────────────
 if ('serviceWorker' in navigator) {
