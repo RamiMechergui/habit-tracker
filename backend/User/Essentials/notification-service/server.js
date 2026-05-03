@@ -279,9 +279,15 @@ app.post('/api/notifications/action', verifyToken, async (req, res) => {
       let data = '';
       proxyRes.on('data', chunk => data += chunk);
       proxyRes.on('end', () => {
-        res.status(proxyRes.statusCode).json(JSON.parse(data));
+        try {
+          const parsed = data ? JSON.parse(data) : {};
+          res.status(proxyRes.statusCode).json(parsed);
+        } catch (e) {
+          res.status(proxyRes.statusCode).json({ message: 'Response from tasks-service was not valid JSON', raw: data });
+        }
       });
     });
+
 
     proxyReq.on('error', (err) => {
       console.error('[Notification Service] Proxy error:', err);
@@ -379,18 +385,24 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'notificatio
 const PORT = process.env.PORT || 5128;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/notifications_db';
 
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('[Notification Service] MongoDB connected');
-    startKafkaConsumer();
-  })
-  .catch(err => console.error('[Notification Service] MongoDB error:', err));
-
-app.listen(PORT, '0.0.0.0', () => console.log(`[Notification Service] Running on port ${PORT}`));
-
+// Start Express server immediately (essential for Railway/Heroku port binding)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[Notification Service] Running on port ${PORT}`);
+  
+  // Connect to DB and Kafka in the background
+  mongoose.connect(MONGO_URI)
+    .then(() => {
+      console.log('[Notification Service] MongoDB connected');
+      startKafkaConsumer();
+    })
+    .catch(err => console.error('[Notification Service] MongoDB error:', err));
+});
 
 process.on('SIGTERM', async () => {
-  await consumer.disconnect();
-  await producer.disconnect();
+  try {
+    await consumer.disconnect();
+    await producer.disconnect();
+  } catch (e) {}
   process.exit(0);
 });
+

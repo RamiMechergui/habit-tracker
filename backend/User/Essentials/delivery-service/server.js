@@ -159,16 +159,21 @@ app.post('/api/delivery/webhook', async (req, res) => {
 const PORT = process.env.PORT || 5129;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/delivery_db';
 
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('[Delivery Service] MongoDB connected');
-    startKafkaConsumer();
-  })
-  .catch(err => console.error('[Delivery Service] MongoDB error:', err));
-
-app.listen(PORT, '0.0.0.0', () => console.log(`[Delivery Service] Running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[Delivery Service] Running on port ${PORT}`);
+  
+  mongoose.connect(MONGO_URI)
+    .then(() => {
+      console.log('[Delivery Service] MongoDB connected');
+      startKafkaConsumer();
+    })
+    .catch(err => console.error('[Delivery Service] MongoDB error:', err));
+});
 
 process.on('SIGTERM', async () => {
-  await consumer.disconnect();
+  try {
+    await consumer.disconnect();
+  } catch (e) {}
   process.exit(0);
 });
+
