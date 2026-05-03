@@ -12,10 +12,11 @@ export function usePushNotifications() {
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;
     setIsSupported(supported);
-    if (supported) {
-      setPermission(Notification.permission);
+    if (supported && typeof window.Notification !== 'undefined') {
+      setPermission(window.Notification.permission);
     }
   }, []);
+
 
   const urlBase64ToUint8Array = (base64String) => {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
