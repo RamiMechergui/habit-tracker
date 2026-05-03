@@ -102,19 +102,17 @@ export default function TasksPage() {
 
       {/* Push Notification Banner */}
       {isSupported && !isSubscribed && permission !== 'denied' && (
-        <div style={{ 
+        <>
+        <div className="push-banner" style={{ 
           background: 'rgba(59, 130, 246, 0.1)', 
           border: '1px solid rgba(59, 130, 246, 0.3)', 
           padding: '16px', 
           borderRadius: '16px', 
           marginBottom: '1.5rem', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          gap: '16px',
           animation: 'pageSlideIn 0.3s ease-out'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
             <div style={{ background: 'var(--accent-blue)', padding: '8px', borderRadius: '12px', color: '#fff' }}>
               <Bell size={20} />
             </div>
@@ -142,7 +140,27 @@ export default function TasksPage() {
             {loading ? <Loader2 size={16} className="animate-spin" /> : 'Enable'}
           </button>
         </div>
+        <style>{`
+          .push-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+          }
+          @media (max-width: 600px) {
+            .push-banner {
+              flex-direction: column;
+              align-items: flex-start;
+            }
+            .push-banner button {
+              align-self: flex-end;
+              margin-top: 4px;
+            }
+          }
+        `}</style>
+        </>
       )}
+
 
       {/* Header */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
