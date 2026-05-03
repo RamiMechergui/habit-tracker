@@ -220,7 +220,12 @@ async function startKafkaConsumer() {
 
 // ── REST API ───────────────────────────────────────────────────
 
+app.get('/api/notifications/ping', (req, res) => {
+  res.json({ status: 'ok', time: new Date() });
+});
+
 app.get('/api/notifications/vapidPublicKey', (req, res) => {
+
   res.json({ publicKey: publicVapidKey });
 });
 
