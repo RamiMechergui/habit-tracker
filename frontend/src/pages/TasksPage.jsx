@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
-import { format, isAfter, startOfDay } from 'date-fns';
+import { format, isAfter, startOfDay, parseISO } from 'date-fns';
+
 import { CheckCircle2, List, CalendarDays, Plus } from 'lucide-react';
 import DailyTimeline from '../components/timeline/DailyTimeline';
 import TaskBottomSheet from '../components/timeline/TaskBottomSheet';
@@ -50,7 +51,8 @@ export default function TasksPage() {
     return () => clearTimeout(timer);
   }, [log, date, saveLog, localDirty]);
 
-  const isFuture = isAfter(startOfDay(new Date(date)), startOfDay(new Date()));
+  const isFuture = isAfter(startOfDay(parseISO(date)), startOfDay(new Date()));
+
 
   const handleUpdateTasks = (newTasks) => {
     setLog(prev => ({ ...prev, tasks: newTasks }));
