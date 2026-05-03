@@ -314,16 +314,6 @@ services:
     depends_on: [mongo, kafka]
     networks: [habit-network]
 
-  delivery:
-    build: ./backend/User/Essentials/delivery-service
-    hostname: delivery
-    environment:
-      - PORT=5129
-      - MONGO_URI=mongodb://mongo:27017/delivery_db
-      - JWT_SECRET=${JWT_SECRET}
-      - KAFKA_BROKER=kafka:9092
-    depends_on: [mongo, kafka]
-    networks: [habit-network]
 
   user-prefs:
     build: ./backend/User/Essentials/user-prefs-service

@@ -41,7 +41,7 @@ module.exports = {
     // --- ESSENTIALS MICROSERVICES ---
     { name: 'essentials',    port: 5127, path: 'backend/User/Essentials/item-service' },
     { name: 'notifications', port: 5128, path: 'backend/User/Essentials/notification-service' },
-    { name: 'delivery',      port: 5129, path: 'backend/User/Essentials/delivery-service' },
+
     { name: 'user-prefs',    port: 5130, path: 'backend/User/Essentials/user-prefs-service' }
   ].map(service => {
     return {

@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+
 import { format, isAfter, parseISO, endOfDay } from 'date-fns';
 
 import TaskCard from './TaskCard';
@@ -155,10 +156,11 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, i
 }
 
 function CurrentTimeIndicator() {
-  const [top, setTop] = React.useState(0);
-  const ref = React.useRef(null);
+  const [top, setTop] = useState(0);
+  const ref = useRef(null);
+  const scrollDone = useRef(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       const minutes = now.getHours() * 60 + now.getMinutes();
@@ -166,16 +168,27 @@ function CurrentTimeIndicator() {
     };
     updateTime();
     
-    // Initial auto-scroll
-    setTimeout(() => {
-      if (ref.current) {
-        ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Initial auto-scroll (safely)
+    const scrollTimer = setTimeout(() => {
+      if (ref.current && !scrollDone.current) {
+        try {
+          ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scrollDone.current = true;
+        } catch (e) {
+          try {
+            ref.current.scrollIntoView(); // Fallback to instant scroll
+          } catch (err) {}
+        }
       }
-    }, 300);
+    }, 500);
 
     const interval = setInterval(updateTime, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(scrollTimer);
+    };
   }, []);
+
 
   return (
     <div ref={ref} style={{
