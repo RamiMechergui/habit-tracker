@@ -310,6 +310,7 @@ services:
       - MONGO_URI=mongodb://mongo:27017/notifications_db
       - JWT_SECRET=${JWT_SECRET}
       - KAFKA_BROKER=kafka:9092
+      - TASKS_SERVICE_URL=http://tasks-service:5131
     depends_on: [mongo, kafka]
     networks: [habit-network]
 

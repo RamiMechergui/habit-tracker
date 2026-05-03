@@ -135,11 +135,42 @@ app.post('/api/tasks/:date', verifyToken, async (req, res) => {
     } else {
       log = await TaskLog.create({ userId: req.user._id, date, tasks: tasks || [] });
     }
-    res.json(log);
+app.post('/api/tasks/action', verifyToken, async (req, res) => {
+  try {
+    const { taskId, action } = req.body;
+    const userId = req.user._id;
+
+    // Find the task log that contains this task ID for this user
+    const log = await TaskLog.findOne({ userId, 'tasks.id': taskId });
+    if (!log) return res.status(404).json({ message: 'Task not found' });
+
+    const taskIndex = log.tasks.findIndex(t => t.id === taskId);
+    const task = log.tasks[taskIndex];
+
+    if (action === 'complete') {
+      task.status = 'Completed';
+    } else if (action === 'snooze') {
+      // Add 10 minutes to current time
+      const [h, m] = task.time.split(':').map(Number);
+      let newM = m + 10;
+      let newH = h;
+      if (newM >= 60) {
+        newM -= 60;
+        newH = (newH + 1) % 24;
+      }
+      task.time = `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
+      task.notificationSent = false;
+    } else {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+
+    await log.save();
+    res.json({ message: `Task ${action} successfully`, task });
   } catch (error) { res.status(500).json({ message: error.message }); }
 });
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
+
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5131;

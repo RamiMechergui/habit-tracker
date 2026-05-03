@@ -160,7 +160,12 @@ async function processTaskNotification(event) {
       for (const sub of subscriptions) {
         webpush.sendNotification(
           { endpoint: sub.endpoint, keys: sub.keys },
-          JSON.stringify({ title: 'Task Reminder', body: message_, url: '/tasks' })
+          JSON.stringify({ 
+            title: 'Task Reminder', 
+            body: message_, 
+            url: '/tasks',
+            taskId // Pass ID for background actions
+          })
         ).catch(async err => {
           if (err.statusCode === 410) {
             await PushSubscription.deleteOne({ _id: sub._id });
@@ -245,6 +250,46 @@ app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
       { upsert: true, new: true }
     );
     res.status(201).json({ message: 'Subscribed successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/notifications/action — proxy to tasks-service
+const TASKS_SERVICE_URL = process.env.TASKS_SERVICE_URL || 'http://127.0.0.1:5131';
+
+app.post('/api/notifications/action', verifyToken, async (req, res) => {
+  try {
+    const { taskId, action } = req.body;
+    
+    // Internal HTTP call to tasks-service
+    const url = new URL(`${TASKS_SERVICE_URL}/api/tasks/action`);
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname,
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${req.cookies.habitToken || req.headers.authorization?.split(' ')[1]}`
+      }
+    };
+
+    const proxyReq = http.request(options, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', chunk => data += chunk);
+      proxyRes.on('end', () => {
+        res.status(proxyRes.statusCode).json(JSON.parse(data));
+      });
+    });
+
+    proxyReq.on('error', (err) => {
+      console.error('[Notification Service] Proxy error:', err);
+      res.status(500).json({ message: 'Error communicating with tasks-service' });
+    });
+
+    proxyReq.write(JSON.stringify({ taskId, action }));
+    proxyReq.end();
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
