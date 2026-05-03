@@ -129,7 +129,17 @@ body {
 .evolvia-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; border: 1px solid transparent; }
 .evolvia-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+@keyframes pageSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-spin {
+  animation: evolvia-spin 1s linear infinite;
+}
+
 #root {
+
   min-height: 100vh;
   display: flex;
 }

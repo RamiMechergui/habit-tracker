@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
+import { format } from 'date-fns';
 import TaskCard from './TaskCard';
+
 
 export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, isFutureDate }) {
   // Generate hour markers from 00:00 to 23:00
@@ -142,9 +144,10 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, i
         ))}
 
         {/* Current Time Indicator (Only if today) */}
-        {!isFutureDate && date === new Date().toISOString().split('T')[0] && (
+        {!isFutureDate && date === format(new Date(), 'yyyy-MM-dd') && (
           <CurrentTimeIndicator />
         )}
+
       </div>
     </div>
   );
