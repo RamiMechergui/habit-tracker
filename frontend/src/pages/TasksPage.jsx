@@ -215,29 +215,9 @@ export default function TasksPage() {
       {/* FAB for Task Creation */}
       {timelineView === 'daily' && (
         <button 
+          className="fab-button"
           onClick={() => { setEditingTask(null); setIsTaskSheetOpen(true); }}
           disabled={isFuture}
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--accent-blue)',
-            color: '#fff',
-            border: 'none',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
-            cursor: isFuture ? 'default' : 'pointer',
-            opacity: isFuture ? 0.5 : 1,
-            zIndex: 100,
-            transition: 'transform 0.2s ease'
-          }}
-          onMouseEnter={e => e.currentTarget.style.transform = isFuture ? 'none' : 'scale(1.05)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
         >
           <Plus size={24} />
         </button>
