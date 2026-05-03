@@ -5,8 +5,15 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { Kafka } = require('kafkajs');
+const webpush = require('web-push');
 const Notification = require('./models/Notification');
 const ProcessedEvent = require('./models/ProcessedEvent');
+const PushSubscription = require('./models/PushSubscription');
+
+// ── Web Push Setup ─────────────────────────────────────────────
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BCgZJNOei3SV_w0HlSfIU19B14iNQCN468a7deREHBZCNV7jbBwms6JJuIBF8SSTXZoh7hZFUBqDMfyZKdvWSgE';
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'NFgyHMzWbXN2SAPCKzgqQTOMJ3LD6TReyUKLdYy59oM';
+webpush.setVapidDetails('mailto:admin@evolvia.app', publicVapidKey, privateVapidKey);
 
 // ── App Setup ──────────────────────────────────────────────────
 const app = express();
@@ -79,6 +86,23 @@ async function processItemStatusEvent(event) {
       timestamp: notification.timestamp
     };
 
+    // Trigger Web Push
+    try {
+      const subscriptions = await PushSubscription.find({ userId });
+      for (const sub of subscriptions) {
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: sub.keys },
+          JSON.stringify({ title: 'Inventory Alert', body: message_, url: '/essentials' })
+        ).catch(async err => {
+          if (err.statusCode === 410) {
+            await PushSubscription.deleteOne({ _id: sub._id });
+          }
+        });
+      }
+    } catch (pushErr) {
+      console.error('[Notification Service] Web Push error:', pushErr);
+    }
+
     // Try Kafka
     let kafkaSuccess = false;
     try {
@@ -129,6 +153,23 @@ async function processTaskNotification(event) {
       type: type || 'task-reminder',
       timestamp: notification.timestamp
     };
+
+    // Trigger Web Push
+    try {
+      const subscriptions = await PushSubscription.find({ userId });
+      for (const sub of subscriptions) {
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: sub.keys },
+          JSON.stringify({ title: 'Task Reminder', body: message_, url: '/tasks' })
+        ).catch(async err => {
+          if (err.statusCode === 410) {
+            await PushSubscription.deleteOne({ _id: sub._id });
+          }
+        });
+      }
+    } catch (pushErr) {
+      console.error('[Notification Service] Web Push error:', pushErr);
+    }
 
     let kafkaSuccess = false;
     try {
@@ -188,6 +229,26 @@ async function startKafkaConsumer() {
 }
 
 // ── REST API ───────────────────────────────────────────────────
+
+// GET /api/notifications/vapidPublicKey
+app.get('/api/notifications/vapidPublicKey', (req, res) => {
+  res.json({ publicKey: publicVapidKey });
+});
+
+// POST /api/notifications/subscribe
+app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
+  try {
+    const subscription = req.body;
+    await PushSubscription.findOneAndUpdate(
+      { userId: req.user._id, endpoint: subscription.endpoint },
+      { userId: req.user._id, ...subscription },
+      { upsert: true, new: true }
+    );
+    res.status(201).json({ message: 'Subscribed successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // GET /api/notifications — list notifications (paginated, filterable by status)
 app.get('/api/notifications', verifyToken, async (req, res) => {

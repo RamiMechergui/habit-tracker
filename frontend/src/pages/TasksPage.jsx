@@ -6,6 +6,8 @@ import DailyTimeline from '../components/timeline/DailyTimeline';
 import TaskBottomSheet from '../components/timeline/TaskBottomSheet';
 import MissedTasksBar from '../components/timeline/MissedTasksBar';
 import MonthlyCalendar from '../components/timeline/MonthlyCalendar';
+import { usePushNotifications } from '../hooks/usePushNotifications';
+import { Bell, BellOff, Loader2 } from 'lucide-react';
 
 export default function TasksPage() {
   const { getLog, saveLog, logs } = useHabits();
@@ -17,6 +19,8 @@ export default function TasksPage() {
   const [timelineView, setTimelineView] = useState('daily');
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+
+  const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
 
   // Sync log when date changes
   useEffect(() => {
@@ -95,6 +99,50 @@ export default function TasksPage() {
 
       {/* Missed Tasks Bar */}
       <MissedTasksBar tasks={log.tasks || []} onUpdateTaskStatus={handleUpdateTaskStatus} />
+
+      {/* Push Notification Banner */}
+      {isSupported && !isSubscribed && permission !== 'denied' && (
+        <div style={{ 
+          background: 'rgba(59, 130, 246, 0.1)', 
+          border: '1px solid rgba(59, 130, 246, 0.3)', 
+          padding: '16px', 
+          borderRadius: '16px', 
+          marginBottom: '1.5rem', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          gap: '16px',
+          animation: 'pageSlideIn 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ background: 'var(--accent-blue)', padding: '8px', borderRadius: '12px', color: '#fff' }}>
+              <Bell size={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Enable Background Reminders</h4>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Get notified for your tasks even when the app is closed.</p>
+            </div>
+          </div>
+          <button 
+            className="btn" 
+            onClick={subscribe}
+            disabled={loading}
+            style={{ 
+              background: 'var(--accent-blue)', 
+              color: '#fff', 
+              padding: '8px 16px', 
+              fontSize: '0.85rem', 
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Enable'}
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
