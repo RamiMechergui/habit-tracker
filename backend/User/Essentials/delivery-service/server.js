@@ -6,6 +6,15 @@ const jwt = require('jsonwebtoken');
 const { Kafka } = require('kafkajs');
 const DeliveryRecord = require('./models/DeliveryRecord');
 
+// ── Kafka Setup ────────────────────────────────────────────────
+const kafka = new Kafka({
+  clientId: 'delivery-service',
+  brokers: [(process.env.KAFKA_BROKER || 'kafka:9092')],
+  retry: { retries: 5, initialRetryTime: 300 }
+});
+
+const consumer = kafka.consumer({ groupId: 'delivery-service-group' });
+
 // ── App Setup ──────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
@@ -80,8 +89,6 @@ function deliverNotification(event) {
     deliveredAt: new Date()
   }).catch(err => console.error('[Delivery Service] Failed to record delivery:', err.message));
 }
-
-const consumer = kafka.consumer({ groupId: 'delivery-service-group' });
 
 async function startKafkaConsumer() {
   try {
@@ -159,7 +166,7 @@ mongoose.connect(MONGO_URI)
   })
   .catch(err => console.error('[Delivery Service] MongoDB error:', err));
 
-app.listen(PORT, () => console.log(`[Delivery Service] Running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`[Delivery Service] Running on port ${PORT}`));
 
 process.on('SIGTERM', async () => {
   await consumer.disconnect();

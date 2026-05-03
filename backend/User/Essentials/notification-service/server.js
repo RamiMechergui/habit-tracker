@@ -386,7 +386,8 @@ mongoose.connect(MONGO_URI)
   })
   .catch(err => console.error('[Notification Service] MongoDB error:', err));
 
-app.listen(PORT, () => console.log(`[Notification Service] Running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`[Notification Service] Running on port ${PORT}`));
+
 
 process.on('SIGTERM', async () => {
   await consumer.disconnect();
