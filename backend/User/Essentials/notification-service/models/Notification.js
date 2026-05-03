@@ -5,7 +5,8 @@ const notificationSchema = new mongoose.Schema({
   itemId:    { type: String, required: true },
   itemName:  { type: String, required: true },
   message:   { type: String, required: true },
-  type:      { type: String, enum: ['reminder', 'urgent'], required: true },
+  type:      { type: String, enum: ['reminder', 'urgent', 'task-reminder'], required: true },
+
   status:    { type: String, enum: ['UNREAD', 'READ'], default: 'UNREAD' },
   eventId:   { type: String, required: true, unique: true }, // idempotency key
   timestamp: { type: Date, default: Date.now }

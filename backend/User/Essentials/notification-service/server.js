@@ -13,7 +13,12 @@ const PushSubscription = require('./models/PushSubscription');
 // ── Web Push Setup ─────────────────────────────────────────────
 const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BCgZJNOei3SV_w0HlSfIU19B14iNQCN468a7deREHBZCNV7jbBwms6JJuIBF8SSTXZoh7hZFUBqDMfyZKdvWSgE';
 const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'NFgyHMzWbXN2SAPCKzgqQTOMJ3LD6TReyUKLdYy59oM';
-webpush.setVapidDetails('mailto:admin@evolvia.app', publicVapidKey, privateVapidKey);
+
+try {
+  webpush.setVapidDetails('mailto:admin@evolvia.app', publicVapidKey, privateVapidKey);
+} catch (err) {
+  console.error('[Notification Service] Web Push VAPID setup failed:', err.message);
+}
 
 // ── App Setup ──────────────────────────────────────────────────
 const app = express();
@@ -41,11 +46,11 @@ const verifyToken = (req, res, next) => {
 const kafka = new Kafka({
   clientId: 'notification-service',
   brokers: [(process.env.KAFKA_BROKER || 'kafka:9092')],
-  retry: { retries: 5, initialRetryTime: 300 }
+  retry: { retries: 2, initialRetryTime: 300 } // Reduced retries for faster failure
 });
 
-const consumer = kafka.consumer({ groupId: 'notification-service-group' });
-const producer  = kafka.producer(); // to publish to notifications-created
+let consumer = null;
+let producer = null;
 
 function buildMessage(itemName, newStatus) {
   if (newStatus === 'BS')
@@ -55,7 +60,7 @@ function buildMessage(itemName, newStatus) {
   return `${itemName} is now available.`;
 }
 
-const DELIVERY_SERVICE_URL = process.env.DELIVERY_SERVICE_URL || 'http://127.0.0.1:5129';
+const DELIVERY_SERVICE_URL = process.env.DELIVERY_SERVICE_URL || 'http://delivery:5129';
 
 async function processItemStatusEvent(event) {
   const { eventId, userId, itemId, itemName, newStatus } = event;
@@ -64,7 +69,6 @@ async function processItemStatusEvent(event) {
   try {
     await ProcessedEvent.create({ eventId });
   } catch (dupErr) {
-    console.log(`[Notification Service] Event ${eventId} already processed`);
     return;
   }
 
@@ -94,25 +98,23 @@ async function processItemStatusEvent(event) {
           { endpoint: sub.endpoint, keys: sub.keys },
           JSON.stringify({ title: 'Inventory Alert', body: message_, url: '/essentials' })
         ).catch(async err => {
-          if (err.statusCode === 410) {
-            await PushSubscription.deleteOne({ _id: sub._id });
-          }
+          if (err.statusCode === 410) await PushSubscription.deleteOne({ _id: sub._id });
         });
       }
-    } catch (pushErr) {
-      console.error('[Notification Service] Web Push error:', pushErr);
-    }
+    } catch (pushErr) {}
 
     // Try Kafka
     let kafkaSuccess = false;
-    try {
-      await producer.send({
-        topic: 'notifications-created',
-        messages: [{ key: userId, value: JSON.stringify(payload) }]
-      });
-      kafkaSuccess = true;
-    } catch (err) {
-      console.warn('[Notification Service] Kafka publish failed, trying HTTP fallback');
+    if (producer) {
+      try {
+        await producer.send({
+          topic: 'notifications-created',
+          messages: [{ key: userId, value: JSON.stringify(payload) }]
+        });
+        kafkaSuccess = true;
+      } catch (err) {
+        console.warn('[Notification Service] Kafka publish failed');
+      }
     }
 
     if (!kafkaSuccess) {
@@ -125,18 +127,15 @@ async function processItemStatusEvent(event) {
         headers: { 'Content-Type': 'application/json' }
       };
       const req = http.request(options);
-      req.on('error', (e) => console.error('[Notification Service] HTTP fallback error:', e.message));
+      req.on('error', () => {});
       req.write(JSON.stringify(payload));
       req.end();
     }
-  } catch (err) {
-    console.error('[Notification Service] Error processing event:', err.message);
-  }
+  } catch (err) {}
 }
 
 async function processTaskNotification(event) {
   const { userId, taskId, title, time, type } = event;
-  
   const message_ = `Reminder: Task "${title}" is scheduled at ${time}.`;
 
   try {
@@ -154,61 +153,52 @@ async function processTaskNotification(event) {
       timestamp: notification.timestamp
     };
 
-    // Trigger Web Push
+    // Web Push
     try {
       const subscriptions = await PushSubscription.find({ userId });
       for (const sub of subscriptions) {
         webpush.sendNotification(
           { endpoint: sub.endpoint, keys: sub.keys },
-          JSON.stringify({ 
-            title: 'Task Reminder', 
-            body: message_, 
-            url: '/tasks',
-            taskId // Pass ID for background actions
-          })
+          JSON.stringify({ title: 'Task Reminder', body: message_, url: '/tasks', taskId })
         ).catch(async err => {
-          if (err.statusCode === 410) {
-            await PushSubscription.deleteOne({ _id: sub._id });
-          }
+          if (err.statusCode === 410) await PushSubscription.deleteOne({ _id: sub._id });
         });
       }
-    } catch (pushErr) {
-      console.error('[Notification Service] Web Push error:', pushErr);
-    }
+    } catch (pushErr) {}
 
     let kafkaSuccess = false;
-    try {
-      await producer.send({
-        topic: 'notifications-created',
-        messages: [{ key: userId, value: JSON.stringify(payload) }]
-      });
-      kafkaSuccess = true;
-    } catch (err) {
-      console.warn('[Notification Service] Kafka publish failed, trying HTTP fallback');
+    if (producer) {
+      try {
+        await producer.send({
+          topic: 'notifications-created',
+          messages: [{ key: userId, value: JSON.stringify(payload) }]
+        });
+        kafkaSuccess = true;
+      } catch (err) {}
     }
 
     if (!kafkaSuccess) {
       const url = new URL(`${DELIVERY_SERVICE_URL}/api/delivery/webhook`);
-      const options = {
+      const req = http.request({
         hostname: url.hostname,
         port: url.port,
         path: url.pathname,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
-      };
-      const req = http.request(options);
-      req.on('error', (e) => console.error('[Notification Service] HTTP fallback error:', e.message));
+      });
+      req.on('error', () => {});
       req.write(JSON.stringify(payload));
       req.end();
     }
-  } catch (err) {
-    console.error('[Notification Service] Error processing task notification:', err.message);
-  }
+  } catch (err) {}
 }
 
 async function startKafkaConsumer() {
   try {
+    producer = kafka.producer();
     await producer.connect();
+    
+    consumer = kafka.consumer({ groupId: 'notification-service-group' });
     await consumer.connect();
     await consumer.subscribe({ topic: 'item-status-changed', fromBeginning: false });
     await consumer.subscribe({ topic: 'task-notifications', fromBeginning: false });
@@ -217,30 +207,23 @@ async function startKafkaConsumer() {
       eachMessage: async ({ topic, message }) => {
         try {
           const event = JSON.parse(message.value.toString());
-          if (topic === 'item-status-changed') {
-            await processItemStatusEvent(event);
-          } else if (topic === 'task-notifications') {
-            await processTaskNotification(event);
-          }
-        } catch (err) {
-          console.warn('[Notification Service] Kafka message error:', err.message);
-        }
+          if (topic === 'item-status-changed') await processItemStatusEvent(event);
+          else if (topic === 'task-notifications') await processTaskNotification(event);
+        } catch (err) {}
       }
     });
-    console.log('[Notification Service] Kafka consumer running');
+    console.log('[Notification Service] Kafka initialized');
   } catch (err) {
-    console.warn('[Notification Service] Kafka not available:', err.message);
+    console.warn('[Notification Service] Kafka failed:', err.message);
   }
 }
 
 // ── REST API ───────────────────────────────────────────────────
 
-// GET /api/notifications/vapidPublicKey
 app.get('/api/notifications/vapidPublicKey', (req, res) => {
   res.json({ publicKey: publicVapidKey });
 });
 
-// POST /api/notifications/subscribe
 app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
   try {
     const subscription = req.body;
@@ -255,14 +238,11 @@ app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
   }
 });
 
-// POST /api/notifications/action — proxy to tasks-service
-const TASKS_SERVICE_URL = process.env.TASKS_SERVICE_URL || 'http://127.0.0.1:5131';
+const TASKS_SERVICE_URL = process.env.TASKS_SERVICE_URL || 'http://tasks-service:5131';
 
 app.post('/api/notifications/action', verifyToken, async (req, res) => {
   try {
     const { taskId, action } = req.body;
-    
-    // Internal HTTP call to tasks-service
     const url = new URL(`${TASKS_SERVICE_URL}/api/tasks/action`);
     const options = {
       hostname: url.hostname,
@@ -280,18 +260,15 @@ app.post('/api/notifications/action', verifyToken, async (req, res) => {
       proxyRes.on('data', chunk => data += chunk);
       proxyRes.on('end', () => {
         try {
-          const parsed = data ? JSON.parse(data) : {};
-          res.status(proxyRes.statusCode).json(parsed);
+          res.status(proxyRes.statusCode).json(data ? JSON.parse(data) : {});
         } catch (e) {
-          res.status(proxyRes.statusCode).json({ message: 'Response from tasks-service was not valid JSON', raw: data });
+          res.status(proxyRes.statusCode).json({ message: 'Invalid JSON', raw: data });
         }
       });
     });
 
-
     proxyReq.on('error', (err) => {
-      console.error('[Notification Service] Proxy error:', err);
-      res.status(500).json({ message: 'Error communicating with tasks-service' });
+      res.status(500).json({ message: 'Proxy error' });
     });
 
     proxyReq.write(JSON.stringify({ taskId, action }));
@@ -301,27 +278,22 @@ app.post('/api/notifications/action', verifyToken, async (req, res) => {
   }
 });
 
-// GET /api/notifications — list notifications (paginated, filterable by status)
 app.get('/api/notifications', verifyToken, async (req, res) => {
   try {
     const { status, limit = 50, skip = 0 } = req.query;
     const filter = { userId: req.user._id };
     if (status && ['UNREAD', 'READ'].includes(status)) filter.status = status;
 
-    const [notifications, total] = await Promise.all([
-      Notification.find(filter)
-        .sort({ timestamp: -1 })
-        .skip(Number(skip))
-        .limit(Number(limit)),
+    const [notifs, total] = await Promise.all([
+      Notification.find(filter).sort({ timestamp: -1 }).skip(Number(skip)).limit(Number(limit)),
       Notification.countDocuments(filter)
     ]);
-    res.json({ notifications, total });
+    res.json({ notifications: notifs, total });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// GET /api/notifications/count — unread count badge
 app.get('/api/notifications/count', verifyToken, async (req, res) => {
   try {
     const unread = await Notification.countDocuments({ userId: req.user._id, status: 'UNREAD' });
@@ -331,36 +303,25 @@ app.get('/api/notifications/count', verifyToken, async (req, res) => {
   }
 });
 
-// PUT /api/notifications/:id/read — mark single notification as READ
 app.put('/api/notifications/:id/read', verifyToken, async (req, res) => {
   try {
-    const notif = await Notification.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
-      { status: 'READ' },
-      { new: true }
-    );
-    if (!notif) return res.status(404).json({ message: 'Notification not found' });
+    const notif = await Notification.findOneAndUpdate({ _id: req.params.id, userId: req.user._id }, { status: 'READ' }, { new: true });
+    if (!notif) return res.status(404).json({ message: 'Not found' });
     res.json(notif);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/notifications/read-all — mark all notifications as READ
 app.put('/api/notifications/read-all', verifyToken, async (req, res) => {
   try {
-    await Notification.updateMany(
-      { userId: req.user._id, status: 'UNREAD' },
-      { status: 'READ' }
-    );
-    res.json({ message: 'All notifications marked as read' });
+    await Notification.updateMany({ userId: req.user._id, status: 'UNREAD' }, { status: 'READ' });
+    res.json({ message: 'Done' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// DELETE /api/notifications/:id — delete a notification
-// Internal Webhook for HTTP Fallback
 app.post('/api/notifications/webhook', async (req, res) => {
   try {
     await processItemStatusEvent(req.body);
@@ -373,36 +334,30 @@ app.post('/api/notifications/webhook', async (req, res) => {
 app.delete('/api/notifications/:id', verifyToken, async (req, res) => {
   try {
     await Notification.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
-    res.json({ message: 'Notification deleted' });
+    res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'notification-service' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5128;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/notifications_db';
 
-// Start Express server immediately (essential for Railway/Heroku port binding)
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Notification Service] Running on port ${PORT}`);
-  
-  // Connect to DB and Kafka in the background
+  console.log(`[Notification Service] Bound to port ${PORT}`);
   mongoose.connect(MONGO_URI)
     .then(() => {
-      console.log('[Notification Service] MongoDB connected');
+      console.log('[Notification Service] DB Connected');
       startKafkaConsumer();
     })
-    .catch(err => console.error('[Notification Service] MongoDB error:', err));
+    .catch(err => console.error('[Notification Service] DB Error:', err.message));
 });
 
 process.on('SIGTERM', async () => {
-  try {
-    await consumer.disconnect();
-    await producer.disconnect();
-  } catch (e) {}
+  if (consumer) await consumer.disconnect().catch(() => {});
+  if (producer) await producer.disconnect().catch(() => {});
   process.exit(0);
 });
-
