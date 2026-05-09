@@ -173,20 +173,15 @@ export default function TasksPage() {
           {/* View toggle */}
           <div className="hub-toolbar-toggle">
             {[
-              { key: 'daily',   icon: <List size={14} />,         label: 'Timeline'   },
-              { key: 'monthly', icon: <CalendarDays size={14} />, label: 'Heatmap' },
+              { key: 'daily',   icon: <List size={14} />,         label: 'Timeline' },
+              { key: 'monthly', icon: <CalendarDays size={14} />, label: 'Heatmap'  },
             ].map(v => (
-              <button key={v.key}
+              <button
+                key={v.key}
+                className={`hub-toggle-btn ${timelineView === v.key ? 'hub-toggle-btn--active' : ''}`}
                 onClick={() => setTimelineView(v.key)}
-                style={{
-                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: timelineView === v.key ? 'var(--accent-blue)' : 'transparent',
-                  color: timelineView === v.key ? '#fff' : 'var(--text-muted)',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: '0.85rem', fontWeight: 700, transition: 'all 0.2s',
-                  fontFamily: 'var(--font-sans)',
-                  boxShadow: timelineView === v.key ? '0 2px 8px rgba(59,130,246,0.3)' : 'none'
-                }}>
+                aria-pressed={timelineView === v.key}
+              >
                 {v.icon} {v.label}
               </button>
             ))}
