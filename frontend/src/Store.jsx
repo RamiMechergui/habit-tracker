@@ -284,10 +284,6 @@ export const HabitProvider = ({ children }) => {
       console.warn('[Store] Failed to cancel reminder', err);
     }
   }, []);
-      console.error('[Store] updateEssential error:', e);
-      throw e;
-    }
-  }, [API_URL, loadEssentials]);
 
   const deleteEssential = useCallback(async (id) => {
     setEssentials(prev => prev.filter(i => i._id !== id)); // optimistic
