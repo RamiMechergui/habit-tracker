@@ -4090,7 +4090,7 @@ label {
 .lfb-btn--complete:hover { background: rgba(255,255,255,0.18); color: #fff; transform: scale(1.05); }
 .lfb-btn--delay    { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); }
 .lfb-btn--delay:hover    { background: rgba(255,255,255,0.14); color: #fff; transform: scale(1.05); }
-[data-theme=''light''] .lfb-btn--complete { background: rgba(0,0,0,0.05); color: #374151; border-color: rgba(0,0,0,0.12); }
-[data-theme=''light''] .lfb-btn--complete:hover { background: #374151; color: #fff; }
-[data-theme=''light''] .lfb-btn--delay    { background: rgba(0,0,0,0.03); color: #6b7280; border-color: rgba(0,0,0,0.08); }
-[data-theme=''light''] .lfb-btn--delay:hover    { background: #6b7280; color: #fff; }
+[data-theme='light'] .lfb-btn--complete { background: rgba(0,0,0,0.05); color: #374151; border-color: rgba(0,0,0,0.12); }
+[data-theme='light'] .lfb-btn--complete:hover { background: #374151; color: #fff; }
+[data-theme='light'] .lfb-btn--delay    { background: rgba(0,0,0,0.03); color: #6b7280; border-color: rgba(0,0,0,0.08); }
+[data-theme='light'] .lfb-btn--delay:hover    { background: #6b7280; color: #fff; }
