@@ -156,8 +156,22 @@ export default function TaskBottomSheet({
                 <Copy size={14} /> Duplicate
               </button>
             )}
-            <button className="btn" style={{ background: 'transparent', padding: '8px' }} onClick={onClose}>
-              <X size={20} />
+            <button 
+              className="btn" 
+              style={{ 
+                background: 'var(--bg-card)', 
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border)',
+                padding: '8px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }} 
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X size={18} />
             </button>
           </div>
         </div>
