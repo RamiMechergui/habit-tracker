@@ -65,7 +65,7 @@ function DonutChart({ pct, size = 64, color = 'var(--accent-blue)' }) {
   const filled = (pct / 100) * circ;
   return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={8} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--tl-chart-bg)" strokeWidth={8} />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={8}
         strokeDasharray={`${filled} ${circ - filled}`} strokeLinecap="round"
         style={{ transition: 'stroke-dasharray 0.8s ease' }}
@@ -116,7 +116,7 @@ export default function TimelineAnalytics({ date, tasks, logs }) {
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 {stats.completed}/{stats.total} done
               </span>
-              <div style={{ width: 60, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+              <div style={{ width: 60, height: 6, borderRadius: 3, background: 'var(--tl-chart-bg)', overflow: 'hidden' }}>
                 <div style={{
                   width: `${stats.pct}%`, height: '100%', borderRadius: 3,
                   background: donutColor, transition: 'width 0.6s ease'

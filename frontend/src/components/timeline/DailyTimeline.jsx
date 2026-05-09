@@ -117,7 +117,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                   position: 'absolute',
                   top: `${hourHeight / 2}px`,
                   left: `calc(var(--tl-axis-width) - 4px)`,
-                  width: 6, height: 1, background: 'rgba(255,255,255,0.08)'
+                  width: 6, height: 1, background: 'var(--tl-tick-maj)',
                 }} />
               )}
               {/* 15min ticks */}
@@ -126,10 +126,10 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                   position: 'absolute',
                   top: `${(hourHeight / 4) * q}px`,
                   left: `calc(var(--tl-axis-width) - 3px)`,
-                  width: 4, height: 1, background: 'rgba(255,255,255,0.06)'
+                  width: 4, height: 1, background: 'var(--tl-tick-min)',
                 }} />
               ))}
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.02)' }} />
+              <div style={{ flex: 1, height: '1px', background: 'var(--tl-divider)' }} />
             </div>
           ))}
 

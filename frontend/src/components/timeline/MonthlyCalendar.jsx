@@ -118,7 +118,7 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
               style={{
                 aspectRatio: '1',
                 padding: '4px 2px 6px',
-                background: today ? 'rgba(59,130,246,0.2)' : (heatBg || 'rgba(255,255,255,0.02)'),
+                background: today ? 'rgba(59,130,246,0.2)' : (heatBg || 'var(--tl-panel-bg)'),
                 border: today
                   ? '1.5px solid var(--accent-blue)'
                   : '1px solid var(--border)',

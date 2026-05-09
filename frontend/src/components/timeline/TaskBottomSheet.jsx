@@ -294,7 +294,7 @@ export default function TaskBottomSheet({
             </div>
 
             {/* Notifications */}
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ background: 'var(--tl-panel-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Bell size={17} color={notificationEnabled ? 'var(--accent-blue)' : 'var(--text-muted)'} />

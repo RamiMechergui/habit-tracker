@@ -3707,6 +3707,13 @@ label {
 }
 
 /* ── Light Theme Overrides ──────────────────────────── */
+[data-theme='light'] {
+  --tl-divider: rgba(0, 0, 0, 0.04);
+  --tl-tick-maj: rgba(0, 0, 0, 0.12);
+  --tl-tick-min: rgba(0, 0, 0, 0.08);
+  --tl-panel-bg: rgba(0, 0, 0, 0.02);
+  --tl-chart-bg: rgba(0, 0, 0, 0.08);
+}
 [data-theme='light'] .hub-toolbar {
   background: rgba(248, 250, 252, 0.75);
   border-color: rgba(0, 0, 0, 0.08);
@@ -3733,3 +3740,11 @@ label {
 }
 [data-theme='light'] .analytics-panel { background: #fff; }
 [data-theme='light'] .week-bar { background: var(--accent-blue); }
+
+:root {
+  --tl-divider: rgba(255, 255, 255, 0.02);
+  --tl-tick-maj: rgba(255, 255, 255, 0.08);
+  --tl-tick-min: rgba(255, 255, 255, 0.06);
+  --tl-panel-bg: rgba(255, 255, 255, 0.02);
+  --tl-chart-bg: rgba(255, 255, 255, 0.06);
+}
