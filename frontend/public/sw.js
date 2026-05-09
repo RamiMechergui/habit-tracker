@@ -8,7 +8,7 @@
  *   • Background sync → replay offline mutations
  */
 
-const CACHE_NAME = 'evolvia-v2';
+const CACHE_NAME = 'evolvia-v3';
 
 // App-shell assets to pre-cache on install
 const PRECACHE_URLS = [
@@ -84,11 +84,15 @@ async function navigationHandler(request) {
     }
     return response;
   } catch (err) {
-    // Try cached version of the page
+    // Try cached version of the exact page
     const cached = await caches.match(request);
     if (cached) return cached;
 
-    // Fall back to offline.html
+    // For SPA routing, fall back to the app shell (/index.html)
+    const indexCached = await caches.match('/index.html');
+    if (indexCached) return indexCached;
+
+    // Absolute fallback
     return caches.match('/offline.html');
   }
 }
