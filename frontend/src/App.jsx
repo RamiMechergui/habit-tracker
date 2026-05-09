@@ -166,12 +166,25 @@ function App() {
           </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button
-            className="theme-toggle-btn"
             onClick={logout}
-            title="Logout"
-            style={{ color: 'var(--text-muted)' }}
+            title="Quit"
+            style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#fff',
+              background: '#ef4444', 
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
+            }}
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
+            <span style={{ display: 'none' }}>Quit</span>
           </button>
         </div>
       </header>
@@ -228,6 +241,26 @@ function App() {
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+        <div className="action-divider" />
+        <button
+          onClick={logout}
+          title="Quit"
+          style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            background: '#ef4444',
+            border: 'none',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+          }}
+        >
+          <LogOut size={15} style={{ marginLeft: '-2px' }} />
         </button>
       </div>
 
