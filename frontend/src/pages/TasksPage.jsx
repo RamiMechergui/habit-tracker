@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useHabits } from '../Store';
 import { format, isAfter, startOfDay, parseISO } from 'date-fns';
-import { CheckCircle2, List, CalendarDays, Plus, Filter, X, Bell, BellOff, Loader2 } from 'lucide-react';
+import { 
+  Plus, Calendar as CalendarIcon, 
+  Loader2, Bell,
+  List, CalendarDays, CheckCircle2, Target, Filter, X
+} from 'lucide-react';
 
 import DailyTimeline     from '../components/timeline/DailyTimeline';
 import TaskBottomSheet   from '../components/timeline/TaskBottomSheet';
 import MissedTasksBar    from '../components/timeline/MissedTasksBar';
 import MonthlyCalendar   from '../components/timeline/MonthlyCalendar';
 import TimelineAnalytics from '../components/timeline/TimelineAnalytics';
+import LiveFocusBanner   from '../components/timeline/LiveFocusBanner';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 const PRIORITY_FILTERS  = ['all','low','medium','high','critical'];
@@ -131,11 +136,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Missed/Delayed tasks bar */}
-      {timelineView === 'daily' && (
-        <MissedTasksBar tasks={tasks} onUpdateTaskStatus={handleUpdateTaskStatus} />
-      )}
-
       {/* Push notification banner */}
       {isSupported && !isSubscribed && permission !== 'denied' && (
         <>
@@ -161,26 +161,31 @@ export default function TasksPage() {
         </>
       )}
 
-      {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <h1 style={{ fontSize: '1.75rem', margin: 0 }}>🕐 Timeline</h1>
-
+      {/* ── Sticky Hub Toolbar ────────────────────────────────────────────── */}
+      <div className="hub-toolbar">
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 10 }}>
+            <Target size={20} color="var(--accent-blue)" />
+            <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>Hub</span>
+          </div>
+
           {/* View toggle */}
-          <div style={{ display: 'flex', background: 'var(--bg-card)', padding: '3px', borderRadius: 9, border: '1px solid var(--border)' }}>
+          <div className="hub-toolbar-toggle">
             {[
-              { key: 'daily',   icon: <List size={13} />,         label: 'Daily'   },
-              { key: 'monthly', icon: <CalendarDays size={13} />, label: 'Monthly' },
+              { key: 'daily',   icon: <List size={14} />,         label: 'Timeline'   },
+              { key: 'monthly', icon: <CalendarDays size={14} />, label: 'Heatmap' },
             ].map(v => (
               <button key={v.key}
                 onClick={() => setTimelineView(v.key)}
                 style={{
-                  padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                   background: timelineView === v.key ? 'var(--accent-blue)' : 'transparent',
                   color: timelineView === v.key ? '#fff' : 'var(--text-muted)',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  fontSize: '0.82rem', fontWeight: 700, transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: '0.85rem', fontWeight: 700, transition: 'all 0.2s',
                   fontFamily: 'var(--font-sans)',
+                  boxShadow: timelineView === v.key ? '0 2px 8px rgba(59,130,246,0.3)' : 'none'
                 }}>
                 {v.icon} {v.label}
               </button>
@@ -188,7 +193,8 @@ export default function TasksPage() {
           </div>
 
           {/* Date picker */}
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: 140 }} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} className="hub-toolbar-date" />
+        </div>
 
           {/* Filter toggle (daily only) */}
           {timelineView === 'daily' && (
@@ -222,12 +228,10 @@ export default function TasksPage() {
             {saveStatus}
           </div>
         </div>
-      </div>
 
       {/* ── Filters bar ──────────────────────────────────────────────────────── */}
       {showFilters && timelineView === 'daily' && (
         <div className="tl-filter-bar" style={{ marginBottom: 16, animation: 'pageSlideIn 0.2s ease' }}>
-          {/* Status filters */}
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Status:</span>
           {STATUS_FILTERS.map(s => (
             <button key={s} className={`tl-filter-chip ${filterStatus === s ? 'active' : ''}`}
@@ -237,7 +241,6 @@ export default function TasksPage() {
           ))}
           <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
 
-          {/* Priority filters */}
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Priority:</span>
           {PRIORITY_FILTERS.map(p => (
             <button key={p} className={`tl-filter-chip ${filterPriority === p ? 'active' : ''}`}
@@ -247,7 +250,6 @@ export default function TasksPage() {
           ))}
           <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
 
-          {/* Category filters */}
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Category:</span>
           {CATEGORY_FILTERS.map(c => (
             <button key={c} className={`tl-filter-chip ${filterCategory === c ? 'active' : ''}`}
@@ -258,11 +260,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* ── Analytics panel (daily view only) ────────────────────────────────── */}
-      {timelineView === 'daily' && (
-        <TimelineAnalytics date={date} tasks={tasks} logs={logs} />
-      )}
-
       {/* ── Views ─────────────────────────────────────────────────────────────── */}
       {timelineView === 'monthly' ? (
         <MonthlyCalendar
@@ -271,14 +268,22 @@ export default function TasksPage() {
           onSelectDate={d => { setDate(d); setTimelineView('daily'); }}
         />
       ) : (
-        <DailyTimeline
-          date={date}
-          tasks={tasks}
-          onUpdateTask={handleUpdateTasks}
-          onEditTask={openEdit}
-          isFutureDate={isFuture}
-          filters={activeFilters}
-        />
+        <div style={{ animation: 'pageSlideIn 0.3s ease' }}>
+          <MissedTasksBar tasks={tasks} onUpdateTaskStatus={handleUpdateTaskStatus} />
+          
+          <LiveFocusBanner tasks={tasks} onUpdateStatus={handleUpdateTaskStatus} />
+
+          <TimelineAnalytics date={date} tasks={tasks} logs={logs} />
+          
+          <DailyTimeline
+            date={date}
+            tasks={tasks}
+            onUpdateTask={handleUpdateTasks}
+            onEditTask={openEdit}
+            isFutureDate={isFuture}
+            filters={activeFilters}
+          />
+        </div>
       )}
 
       {/* ── FAB ───────────────────────────────────────────────────────────────── */}

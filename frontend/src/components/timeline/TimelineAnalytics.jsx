@@ -3,6 +3,8 @@ import { format, subDays } from 'date-fns';
 import { ChevronDown, BarChart2, Flame, Target } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const PRIORITY_WEIGHTS = { Low: 1, Medium: 2, High: 3, Critical: 4 };
+
 function computeDayStats(tasks = []) {
   const total     = tasks.length;
   const completed = tasks.filter(t => t.status === 'Completed').length;
@@ -10,7 +12,25 @@ function computeDayStats(tasks = []) {
   const missed    = tasks.filter(t => t.status === 'Missed').length;
   const pending   = total - completed - delayed - missed;
   const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
-  return { total, completed, delayed, missed, pending, pct };
+
+  let totalWeight = 0;
+  let earned = 0;
+  let penalty = 0;
+
+  for (const t of tasks) {
+    const weight = PRIORITY_WEIGHTS[t.priority] || 1;
+    totalWeight += weight;
+    if (t.status === 'Completed') earned += weight;
+    if (t.status === 'Missed') penalty += weight;
+  }
+
+  let productivityScore = 0;
+  if (totalWeight > 0) {
+    const raw = ((earned - penalty) / totalWeight) * 100;
+    productivityScore = Math.max(0, Math.min(100, Math.round(raw)));
+  }
+
+  return { total, completed, delayed, missed, pending, pct, productivityScore };
 }
 
 function computeStreak(logs, today) {
@@ -32,9 +52,9 @@ function computeWeekBars(logs, today) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = format(subDays(new Date(today + 'T12:00:00'), 6 - i), 'yyyy-MM-dd');
     const tasks = logs[d]?.tasks || [];
-    const pct   = tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100) : 0;
+    const stats = computeDayStats(tasks);
     const isToday = d === today;
-    return { d, pct, day: days[new Date(d + 'T12:00:00').getDay()], isToday };
+    return { d, pct: stats.productivityScore, day: days[new Date(d + 'T12:00:00').getDay()], isToday };
   });
 }
 
@@ -114,18 +134,19 @@ export default function TimelineAnalytics({ date, tasks, logs }) {
         <>
           <div className="analytics-panel-body">
             {/* Donut */}
-            <div className="analytics-stat-card" style={{ gridColumn: 'span 1' }}>
+            <div className="analytics-stat-card" style={{ gridColumn: 'span 1', gridRow: 'span 2', justifyContent: 'center' }}>
               <div className="productivity-donut-wrap" style={{ position: 'relative' }}>
-                <DonutChart pct={stats.pct} color={donutColor} />
+                <DonutChart pct={stats.productivityScore} color={donutColor} />
                 <div style={{
                   position: 'absolute', top: '50%', left: '50%',
                   transform: 'translate(-50%,-50%)',
-                  fontSize: '0.9rem', fontWeight: 800, color: donutColor
+                  fontSize: '1rem', fontWeight: 800, color: donutColor,
+                  textShadow: `0 0 10px ${donutColor}40`
                 }}>
-                  {stats.pct}%
+                  {stats.productivityScore}
                 </div>
               </div>
-              <div className="analytics-stat-label">Productivity</div>
+              <div className="analytics-stat-label">Productivity Score</div>
             </div>
 
             <StatCard number={stats.total}     label="Total"     color="var(--text-primary)" />
