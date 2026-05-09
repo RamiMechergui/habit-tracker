@@ -128,20 +128,8 @@ function App() {
         </nav>
 
         <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
-          <button
-            className="btn sidebar-logout-btn w-full"
-            style={{ 
-              justifyContent: 'center', 
-              gap: '10px', 
-              padding: '0.75rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.9rem'
-            }}
-            onClick={logout}
-          >
-            <LogOut size={16} /> Sign Out
-          </button>
           
+
           <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
             <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
             <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>EVOLVIA</span>
