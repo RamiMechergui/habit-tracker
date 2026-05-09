@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { format, isAfter, startOfDay, parseISO } from 'date-fns';
-import { 
-  Plus, Calendar as CalendarIcon, 
-  Loader2, Bell,
-  List, CalendarDays, CheckCircle2, Target, Filter, X
+import {
+  Plus, Loader2, Bell,
+  List, CalendarDays, CheckCircle2, Target, Filter, X,
 } from 'lucide-react';
 
 import DailyTimeline     from '../components/timeline/DailyTimeline';
@@ -15,41 +14,41 @@ import TimelineAnalytics from '../components/timeline/TimelineAnalytics';
 import LiveFocusBanner   from '../components/timeline/LiveFocusBanner';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
-const PRIORITY_FILTERS  = ['all','low','medium','high','critical'];
-const STATUS_FILTERS    = ['all','Pending','Completed','Delayed','Missed'];
-const CATEGORY_FILTERS  = ['all','Work','Health','Personal','Learning','Finance','Social','Other'];
+// ── Constants ─────────────────────────────────────────────────────────────────
+const PRIORITY_FILTERS = ['all', 'low', 'medium', 'high', 'critical'];
+const STATUS_FILTERS   = ['all', 'Pending', 'Completed', 'Delayed', 'Missed'];
+const CATEGORY_FILTERS = ['all', 'Work', 'Health', 'Personal', 'Learning', 'Finance', 'Social', 'Other'];
 
+const VIEW_OPTIONS = [
+  { key: 'daily',   icon: <List size={14} />,         label: 'Timeline' },
+  { key: 'monthly', icon: <CalendarDays size={14} />, label: 'Heatmap'  },
+];
+
+// ── Page Component ────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const { getLog, saveLog, logs, scheduleTaskReminder, cancelTaskReminder } = useHabits();
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [log,  setLog]  = useState(logs[date] || { date, tasks: [] });
-  const [saveStatus,  setSaveStatus]  = useState('');
-  const [localDirty,  setLocalDirty]  = useState(false);
-  const [timelineView, setTimelineView] = useState('daily');
-  const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
-  const [editingTask,     setEditingTask]     = useState(null);
 
-  // Filters
-  const [showFilters,    setShowFilters]    = useState(false);
-  const [filterStatus,   setFilterStatus]   = useState('all');
-  const [filterPriority, setFilterPriority] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
+  const [date,          setDate]          = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [log,           setLog]           = useState(() => logs[format(new Date(), 'yyyy-MM-dd')] || { date: format(new Date(), 'yyyy-MM-dd'), tasks: [] });
+  const [saveStatus,    setSaveStatus]    = useState('');
+  const [localDirty,    setLocalDirty]    = useState(false);
+  const [timelineView,  setTimelineView]  = useState('daily');
+  const [isSheetOpen,   setIsSheetOpen]   = useState(false);
+  const [editingTask,   setEditingTask]   = useState(null);
+  const [showFilters,   setShowFilters]   = useState(false);
+  const [filterStatus,  setFilterStatus]  = useState('all');
+  const [filterPriority,setFilterPriority]= useState('all');
+  const [filterCategory,setFilterCategory]= useState('all');
 
   const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
 
-  // Sync log when date changes
+  // ── Sync log on date change ──────────────────────────────────────────────────
   useEffect(() => {
-    const current = logs[date];
-    if (current) {
-      setLog(current);
-    } else {
-      const fetched = getLog(date);
-      setLog(fetched || { date, tasks: [] });
-    }
+    setLog(logs[date] ?? getLog(date) ?? { date, tasks: [] });
     setLocalDirty(false);
   }, [date, logs, getLog]);
 
-  // Auto-save
+  // ── Auto-save (1s debounce) ──────────────────────────────────────────────────
   useEffect(() => {
     if (!localDirty) return;
     const timer = setTimeout(async () => {
@@ -66,26 +65,42 @@ export default function TasksPage() {
     return () => clearTimeout(timer);
   }, [log, date, saveLog, localDirty]);
 
-  const isFuture = isAfter(startOfDay(parseISO(date)), startOfDay(new Date()));
+  // ── Derived state ────────────────────────────────────────────────────────────
+  const isFuture = useMemo(
+    () => isAfter(startOfDay(parseISO(date)), startOfDay(new Date())),
+    [date]
+  );
 
-  // Task handlers
-  const handleUpdateTasks = useCallback((newTasks) => {
-    setLog(prev => ({ ...prev, tasks: newTasks }));
+  const tasks = log.tasks ?? [];
+
+  const activeFilters = useMemo(
+    () => ({ status: filterStatus, priority: filterPriority, category: filterCategory }),
+    [filterStatus, filterPriority, filterCategory]
+  );
+
+  const hasActiveFilter = filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all';
+
+  // ── Task handlers ────────────────────────────────────────────────────────────
+  const markDirty = useCallback((updater) => {
+    setLog(updater);
     setLocalDirty(true);
   }, []);
 
+  const handleUpdateTasks = useCallback((newTasks) => {
+    markDirty(prev => ({ ...prev, tasks: newTasks }));
+  }, [markDirty]);
+
   const handleUpdateTaskStatus = useCallback((taskIndex, newStatus) => {
-    setLog(prev => {
-      const updated = [...(prev.tasks || [])];
+    markDirty(prev => {
+      const updated = [...(prev.tasks ?? [])];
       updated[taskIndex] = { ...updated[taskIndex], status: newStatus };
       return { ...prev, tasks: updated };
     });
-    setLocalDirty(true);
-  }, []);
+  }, [markDirty]);
 
   const handleSaveTask = useCallback((taskData) => {
-    setLog(prev => {
-      const existing = prev.tasks || [];
+    markDirty(prev => {
+      const existing = prev.tasks ?? [];
       const idx = existing.findIndex(t => t.id === taskData.id);
       if (idx >= 0) {
         const updated = [...existing];
@@ -94,88 +109,105 @@ export default function TasksPage() {
       }
       return { ...prev, tasks: [...existing, taskData] };
     });
-    setLocalDirty(true);
 
-    // Schedule or cancel reminder
     if (taskData.notificationEnabled && taskData.status === 'Pending') {
       scheduleTaskReminder(taskData, date);
     } else {
       cancelTaskReminder(taskData.id);
     }
-  }, [date, scheduleTaskReminder, cancelTaskReminder]);
+  }, [date, markDirty, scheduleTaskReminder, cancelTaskReminder]);
 
   const handleDeleteTask = useCallback((taskId) => {
-    setLog(prev => ({ ...prev, tasks: (prev.tasks || []).filter(t => t.id !== taskId) }));
-    setLocalDirty(true);
+    markDirty(prev => ({ ...prev, tasks: (prev.tasks ?? []).filter(t => t.id !== taskId) }));
     cancelTaskReminder(taskId);
-  }, [cancelTaskReminder]);
+  }, [markDirty, cancelTaskReminder]);
 
   const handleDuplicateTask = useCallback((task) => {
-    const dup = { ...task, id: `task_${Date.now()}`, status: 'Pending', notificationSent: false, createdAt: new Date().toISOString() };
-    setLog(prev => ({ ...prev, tasks: [...(prev.tasks || []), dup] }));
-    setLocalDirty(true);
-  }, []);
+    const dup = {
+      ...task,
+      id:               `task_${Date.now()}`,
+      status:           'Pending',
+      notificationSent: false,
+      createdAt:        new Date().toISOString(),
+    };
+    markDirty(prev => ({ ...prev, tasks: [...(prev.tasks ?? []), dup] }));
+  }, [markDirty]);
 
   const openEdit = useCallback((task) => {
     setEditingTask(task);
-    setIsTaskSheetOpen(true);
+    setIsSheetOpen(true);
   }, []);
 
-  const activeFilters = { status: filterStatus, priority: filterPriority, category: filterCategory };
-  const hasActiveFilter = filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all';
+  const openAdd = useCallback(() => {
+    setEditingTask(null);
+    setIsSheetOpen(true);
+  }, []);
 
-  const tasks = log.tasks || [];
+  const closeSheet = useCallback(() => {
+    setIsSheetOpen(false);
+    setEditingTask(null);
+  }, []);
 
+  const clearFilters = useCallback((e) => {
+    e.stopPropagation();
+    setFilterStatus('all');
+    setFilterPriority('all');
+    setFilterCategory('all');
+  }, []);
+
+  const handleSelectDate = useCallback((d) => {
+    setDate(d);
+    setTimelineView('daily');
+  }, []);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="page-transition" style={{ maxWidth: '860px', margin: '0 auto' }}>
+    <div className="tasks-page">
 
-      {/* Future date banner */}
+      {/* Future date notice */}
       {isFuture && (
-        <div style={{ background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.3)', padding: '12px 16px', borderRadius: 12, marginBottom: 20, color: '#f5a623', fontSize: '0.88rem' }}>
+        <div className="future-date-banner">
           <strong>📅 Future Date:</strong> Viewing {format(parseISO(date), 'MMMM d, yyyy')}. Task actions are disabled.
         </div>
       )}
 
-      {/* Push notification banner */}
+      {/* Push notification prompt */}
       {isSupported && !isSubscribed && permission !== 'denied' && (
-        <>
-          <div className="push-banner" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', padding: '14px 16px', borderRadius: 14, marginBottom: 20, animation: 'pageSlideIn 0.3s ease' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ background: 'var(--accent-blue)', padding: 8, borderRadius: 10, color: '#fff' }}>
-                <Bell size={18} />
-              </div>
-              <div>
-                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>Enable Task Reminders</h4>
-                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Get notified when tasks are due, even when the app is closed.
-                </p>
-              </div>
+        <div className="push-notif-banner">
+          <div className="push-notif-body">
+            <div className="push-notif-icon">
+              <Bell size={18} aria-hidden="true" />
             </div>
-            <button className="btn" onClick={subscribe} disabled={loading}
-              style={{ background: 'var(--accent-blue)', color: '#fff', padding: '8px 16px', fontSize: '0.83rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {loading ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
-              Enable
-            </button>
+            <div>
+              <h4 className="push-notif-title">Enable Task Reminders</h4>
+              <p className="push-notif-sub">Get notified when tasks are due, even when the app is closed.</p>
+            </div>
           </div>
-          <style>{`.push-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;}@media(max-width:520px){.push-banner{flex-direction:column;align-items:flex-start;}.push-banner button{align-self:flex-end;}}`}</style>
-        </>
+          <button
+            className="btn push-notif-btn"
+            onClick={subscribe}
+            disabled={loading}
+            aria-label="Enable push notifications"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Bell size={14} aria-hidden="true" />}
+            Enable
+          </button>
+        </div>
       )}
 
-      {/* ── Sticky Hub Toolbar ────────────────────────────────────────────── */}
-      <div className="hub-toolbar">
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 10 }}>
-            <Target size={20} color="var(--accent-blue)" />
-            <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>Hub</span>
+      {/* ── Sticky Hub Toolbar ──────────────────────────────────────────────── */}
+      <div className="hub-toolbar" role="toolbar" aria-label="Timeline controls">
+        <div className="hub-toolbar-left">
+
+          {/* Brand */}
+          <div className="hub-brand">
+            <Target size={20} className="hub-brand-icon" aria-hidden="true" />
+            <span className="hub-brand-label">Hub</span>
           </div>
 
           {/* View toggle */}
-          <div className="hub-toolbar-toggle">
-            {[
-              { key: 'daily',   icon: <List size={14} />,         label: 'Timeline' },
-              { key: 'monthly', icon: <CalendarDays size={14} />, label: 'Heatmap'  },
-            ].map(v => (
+          <div className="hub-toolbar-toggle" role="group" aria-label="View mode">
+            {VIEW_OPTIONS.map(v => (
               <button
                 key={v.key}
                 className={`hub-toggle-btn ${timelineView === v.key ? 'hub-toggle-btn--active' : ''}`}
@@ -188,88 +220,93 @@ export default function TasksPage() {
           </div>
 
           {/* Date picker */}
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} className="hub-toolbar-date" />
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="hub-toolbar-date"
+            aria-label="Select date"
+          />
         </div>
 
-          {/* Filter toggle (daily only) */}
+        <div className="hub-toolbar-right">
+          {/* Filter toggle */}
           {timelineView === 'daily' && (
             <button
+              className={`hub-filter-btn ${hasActiveFilter ? 'hub-filter-btn--active' : ''}`}
               onClick={() => setShowFilters(f => !f)}
-              className="btn"
-              style={{
-                padding: '7px 12px', fontSize: '0.82rem', fontWeight: 700,
-                background: hasActiveFilter ? 'rgba(59,130,246,0.15)' : 'transparent',
-                border: `1px solid ${hasActiveFilter ? 'var(--accent-blue)' : 'var(--border)'}`,
-                color: hasActiveFilter ? 'var(--accent-blue)' : 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}
+              aria-expanded={showFilters}
+              aria-label={hasActiveFilter ? 'Filters active' : 'Toggle filters'}
             >
-              <Filter size={13} />
+              <Filter size={13} aria-hidden="true" />
               {hasActiveFilter ? 'Filtered' : 'Filter'}
               {hasActiveFilter && (
                 <span
-                  onClick={e => { e.stopPropagation(); setFilterStatus('all'); setFilterPriority('all'); setFilterCategory('all'); }}
-                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  className="hub-filter-clear"
+                  onClick={clearFilters}
+                  role="button"
+                  aria-label="Clear filters"
+                  tabIndex={0}
+                  onKeyDown={e => e.key === 'Enter' && clearFilters(e)}
                 >
-                  <X size={12} />
+                  <X size={12} aria-hidden="true" />
                 </span>
               )}
             </button>
           )}
 
           {/* Save status */}
-          <div style={{ minWidth: 70, textAlign: 'right', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, color: saveStatus === 'Error' ? '#ef4444' : saveStatus === 'Saved' ? '#10b981' : 'var(--text-muted)' }}>
-            {saveStatus === 'Saved' && <CheckCircle2 size={14} />}
+          <div
+            className={`hub-save-status hub-save-status--${saveStatus === 'Error' ? 'error' : saveStatus === 'Saved' ? 'saved' : 'idle'}`}
+            aria-live="polite"
+          >
+            {saveStatus === 'Saved' && <CheckCircle2 size={14} aria-hidden="true" />}
             {saveStatus}
           </div>
         </div>
+      </div>
 
-      {/* ── Filters bar ──────────────────────────────────────────────────────── */}
+      {/* ── Filter bar ─────────────────────────────────────────────────────── */}
       {showFilters && timelineView === 'daily' && (
-        <div className="tl-filter-bar" style={{ marginBottom: 16, animation: 'pageSlideIn 0.2s ease' }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Status:</span>
-          {STATUS_FILTERS.map(s => (
-            <button key={s} className={`tl-filter-chip ${filterStatus === s ? 'active' : ''}`}
-              onClick={() => setFilterStatus(s)}>
-              {s === 'all' ? 'All' : s}
-            </button>
-          ))}
-          <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
-
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Priority:</span>
-          {PRIORITY_FILTERS.map(p => (
-            <button key={p} className={`tl-filter-chip ${filterPriority === p ? 'active' : ''}`}
-              onClick={() => setFilterPriority(p)}>
-              {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
-          <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
-
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Category:</span>
-          {CATEGORY_FILTERS.map(c => (
-            <button key={c} className={`tl-filter-chip ${filterCategory === c ? 'active' : ''}`}
-              onClick={() => setFilterCategory(c)}>
-              {c === 'all' ? 'All' : c}
-            </button>
-          ))}
+        <div className="tl-filter-bar">
+          <FilterGroup
+            label="Status"
+            options={STATUS_FILTERS}
+            value={filterStatus}
+            onChange={setFilterStatus}
+            display={s => s === 'all' ? 'All' : s}
+          />
+          <span className="tl-filter-divider" aria-hidden="true" />
+          <FilterGroup
+            label="Priority"
+            options={PRIORITY_FILTERS}
+            value={filterPriority}
+            onChange={setFilterPriority}
+            display={p => p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
+          />
+          <span className="tl-filter-divider" aria-hidden="true" />
+          <FilterGroup
+            label="Category"
+            options={CATEGORY_FILTERS}
+            value={filterCategory}
+            onChange={setFilterCategory}
+            display={c => c === 'all' ? 'All' : c}
+          />
         </div>
       )}
 
-      {/* ── Views ─────────────────────────────────────────────────────────────── */}
+      {/* ── Views ──────────────────────────────────────────────────────────── */}
       {timelineView === 'monthly' ? (
         <MonthlyCalendar
           currentDate={date}
           logs={logs}
-          onSelectDate={d => { setDate(d); setTimelineView('daily'); }}
+          onSelectDate={handleSelectDate}
         />
       ) : (
-        <div style={{ animation: 'pageSlideIn 0.3s ease' }}>
+        <div className="timeline-view-wrap">
           <MissedTasksBar tasks={tasks} onUpdateTaskStatus={handleUpdateTaskStatus} />
-          
           <LiveFocusBanner tasks={tasks} onUpdateStatus={handleUpdateTaskStatus} />
-
           <TimelineAnalytics date={date} tasks={tasks} logs={logs} />
-          
           <DailyTimeline
             date={date}
             tasks={tasks}
@@ -281,28 +318,48 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* ── FAB ───────────────────────────────────────────────────────────────── */}
+      {/* ── FAB ────────────────────────────────────────────────────────────── */}
       {timelineView === 'daily' && (
         <button
           className="fab-button-v2"
-          onClick={() => { setEditingTask(null); setIsTaskSheetOpen(true); }}
+          onClick={openAdd}
           disabled={isFuture}
+          aria-label="Add new task"
         >
-          <Plus size={20} />
+          <Plus size={20} aria-hidden="true" />
           <span className="fab-label">Add Task</span>
         </button>
       )}
 
-      {/* ── Bottom sheet ──────────────────────────────────────────────────────── */}
+      {/* ── Task Bottom Sheet ───────────────────────────────────────────────── */}
       <TaskBottomSheet
-        isOpen={isTaskSheetOpen}
-        onClose={() => { setIsTaskSheetOpen(false); setEditingTask(null); }}
+        isOpen={isSheetOpen}
+        onClose={closeSheet}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
         initialData={editingTask}
         isFutureDate={isFuture}
       />
+    </div>
+  );
+}
+
+// ── Filter Group Sub-component ────────────────────────────────────────────────
+function FilterGroup({ label, options, value, onChange, display }) {
+  return (
+    <div className="tl-filter-group" role="group" aria-label={`Filter by ${label}`}>
+      <span className="tl-filter-label">{label}:</span>
+      {options.map(opt => (
+        <button
+          key={opt}
+          className={`tl-filter-chip ${value === opt ? 'active' : ''}`}
+          onClick={() => onChange(opt)}
+          aria-pressed={value === opt}
+        >
+          {display(opt)}
+        </button>
+      ))}
     </div>
   );
 }
