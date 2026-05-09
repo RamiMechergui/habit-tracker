@@ -29,7 +29,8 @@ const userSchema = new mongoose.Schema({
     icon:        { type: String, default: '🧴' },
     status:      { type: String, enum: ['A', 'BS', 'NA'], default: 'A' },
     lastUpdated: { type: Date, default: Date.now }
-  }]
+  }],
+  pushSubscription: { type: Object, default: null }
 }, { timestamps: true });
 
 // Hash password before saving

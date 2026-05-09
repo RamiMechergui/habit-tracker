@@ -248,6 +248,42 @@ export const HabitProvider = ({ children }) => {
         throw new Error(data.message);
       }
     } catch (e) {
+      throw e;
+    }
+  }, [API_URL, loadEssentials]);
+
+  // ── Task Reminders ──────────────────────────────────────────────
+  const scheduleTaskReminder = useCallback(async (task, dateStr) => {
+    if (!navigator.onLine) return;
+    try {
+      await fetch(`${API_URL}/api/tasks/remind`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: task.id,
+          taskTitle: task.title,
+          taskTime: task.time,
+          reminderMinutes: task.reminderMinutes || 15,
+          date: dateStr
+        })
+      });
+    } catch (err) {
+      console.warn('[Store] Failed to schedule reminder', err);
+    }
+  }, []);
+
+  const cancelTaskReminder = useCallback(async (taskId) => {
+    if (!navigator.onLine) return;
+    try {
+      await fetch(`${API_URL}/api/tasks/remind/${taskId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+    } catch (err) {
+      console.warn('[Store] Failed to cancel reminder', err);
+    }
+  }, []);
       console.error('[Store] updateEssential error:', e);
       throw e;
     }
@@ -999,7 +1035,8 @@ export const HabitProvider = ({ children }) => {
       essentials, essentialsLoading, addEssential, updateEssential, deleteEssential,
       // Notifications
       notifications, unreadCount, toasts, dismissToast,
-      markNotificationRead, markAllNotificationsRead, deleteNotification
+      markNotificationRead, markAllNotificationsRead, deleteNotification,
+      scheduleTaskReminder, cancelTaskReminder
     }}>
       {children}
     </HabitContext.Provider>

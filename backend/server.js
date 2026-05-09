@@ -28,17 +28,19 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://mongo:27017/habittracker')
   .catch(err => console.error(err));
 
 // Routes
-const authRoutes = require('./routes/auth');
-const logRoutes = require('./routes/logs');
-const userRoutes = require('./routes/user');
-const essentialsRoutes = require('./routes/essentials');
+const authRoutes         = require('./routes/auth');
+const logRoutes          = require('./routes/logs');
+const userRoutes         = require('./routes/user');
+const essentialsRoutes   = require('./routes/essentials');
 const notificationsRoutes = require('./routes/notifications');
+const tasksRoutes        = require('./routes/tasks');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/daily', logRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/essentials', essentialsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/tasks', tasksRoutes);
 
 // Aliases for monolithic compatibility with microservices frontend
 app.use('/api/currentbook', userRoutes);
@@ -56,4 +58,68 @@ app.get('/api/delivery/stream', (_req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  startReminderPoller();
+});
+
+// ── Task Reminder Poller ──────────────────────────────────────────────────────
+// Runs every 60s, fires notifications for due reminders
+function startReminderPoller() {
+  const ScheduledReminder = require('./models/ScheduledReminder');
+  const Notification      = require('./models/Notification');
+  const User              = require('./models/User');
+  const webpush           = require('web-push');
+
+  setInterval(async () => {
+    try {
+      const now  = new Date();
+      const soon = new Date(now.getTime() + 61000); // next minute window
+      const due  = await ScheduledReminder.find({ fired: false, fireAt: { $lte: soon } });
+
+      for (const rem of due) {
+        const messageText = `⏰ Reminder: "${rem.taskTitle}" is coming up${rem.reminderMinutes > 0 ? ` in ${rem.reminderMinutes} minutes` : ' now'}!`;
+
+        // Create notification
+        const eventId = `task_reminder_${rem.taskId}_${rem.date}`;
+        const exists  = await Notification.findOne({ eventId });
+        if (!exists) {
+          await Notification.create({
+            userId:       rem.userId,
+            taskId:       rem.taskId,
+            taskTitle:    rem.taskTitle,
+            scheduledFor: rem.fireAt,
+            message:      messageText,
+            type:         'task_reminder',
+            status:       'UNREAD',
+            eventId,
+          });
+        }
+        
+        // Push notification
+        const user = await User.findById(rem.userId);
+        if (user && user.pushSubscription) {
+          try {
+            await webpush.sendNotification(user.pushSubscription, JSON.stringify({
+              title: 'Task Reminder',
+              body: messageText,
+              taskId: rem.taskId,
+              url: '/tasks'
+            }));
+          } catch (pushErr) {
+            console.error('[ReminderPoller] Push Error:', pushErr.message);
+          }
+        }
+
+        // Mark as fired
+        rem.fired = true;
+        await rem.save();
+        console.log(`[ReminderPoller] Fired reminder for task "${rem.taskTitle}" (user ${rem.userId})`);
+      }
+    } catch (e) {
+      console.error('[ReminderPoller] Error:', e.message);
+    }
+  }, 60000);
+
+  console.log('[ReminderPoller] Started (60s interval)');
+}

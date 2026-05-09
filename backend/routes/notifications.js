@@ -1,9 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const webpush = require('web-push');
 
-// GET /api/notifications  — list with optional ?status=UNREAD|READ  &limit=50  &skip=0
+// ── VAPID Configuration ────────────────────────────────────────────────────────
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BCgZJNOei3SV_w0HlSfIU19B14iNQCN468a7deREHBZCNV7jbBwms6JJuIBF8SSTXZoh7hZFUBqDMfyZKdvWSgE';
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'NFgyHMzWbXN2SAPCKzgqQTOMJ3LD6TReyUKLdYy59oM';
+
+webpush.setVapidDetails('mailto:admin@evolvia.app', publicVapidKey, privateVapidKey);
+
+// ── GET /api/notifications/vapidPublicKey ────────────────────────────────────
+router.get('/vapidPublicKey', (req, res) => {
+  res.json({ publicKey: publicVapidKey });
+});
+
+// ── POST /api/notifications/subscribe ────────────────────────────────────────
+router.post('/subscribe', protect, async (req, res) => {
+  try {
+    const subscription = req.body;
+    await User.findByIdAndUpdate(req.user._id, { pushSubscription: subscription });
+    res.status(201).json({ message: 'Subscribed to push notifications' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/notifications  — list with optional ?status=UNREAD|READ  &limit=50  &skip=0
 router.get('/', protect, async (req, res) => {
   try {
     const { status, limit = 100, skip = 0 } = req.query;
