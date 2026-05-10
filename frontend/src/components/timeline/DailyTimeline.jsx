@@ -272,9 +272,15 @@ function CurrentTimeIndicator({ hourHeight, sectionStart }) {
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      const mins = (now.getHours() * 60 + now.getMinutes()) - (sectionStart * 60);
-      setTopPx(mins * (hourHeight / 60));
-      setTimeLabel(now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+      const h = now.getHours();
+      const m = now.getMinutes();
+      // Calculate minutes since the start of the section
+      const minsSinceStart = (h * 60 + m) - (sectionStart * 60);
+      setTopPx(minsSinceStart * (hourHeight / 60));
+      
+      const hh = h.toString().padStart(2, '0');
+      const mm = m.toString().padStart(2, '0');
+      setTimeLabel(`${hh}:${mm}`);
     };
     update();
     const id = setInterval(update, 30000);
@@ -282,7 +288,7 @@ function CurrentTimeIndicator({ hourHeight, sectionStart }) {
   }, [hourHeight, sectionStart]);
 
   return (
-    <div className="current-time-line" style={{ top: `${topPx}px`, position: 'absolute' }}>
+    <div className="current-time-line" style={{ top: `${topPx}px`, position: 'absolute', zIndex: 5 }}>
       <div className="current-time-label">{timeLabel}</div>
       <div className="current-time-dot" />
       <div className="current-time-dash" />

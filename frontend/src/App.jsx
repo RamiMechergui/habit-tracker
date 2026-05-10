@@ -139,18 +139,45 @@ function App() {
 
       {/* ── Mobile top header (visible only on mobile via CSS) ── */}
       <header className="mobile-header" style={{ display: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {/* Left: Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
             <img src="/logo.png" alt="Logo" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
-            <span style={{ fontWeight: 700, fontSize: '1rem', background: 'linear-gradient(45deg, #3b82f6, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
               Evolvia
             </span>
-            <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block', transition: 'background 0.3s' }} />
+            <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block' }} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+
+          {/* Center: Profile */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 2, justifyContent: 'center' }}>
             <AvatarUploader />
-            <span style={{ fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user.firstName || 'User'}
+            <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.lastName || user.firstName || 'User'}
             </span>
+          </div>
+
+          {/* Right: Actions */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={logout}
+              title="Quit"
+              className="mobile-quit-btn"
+              style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                background: '#ef4444',
+                border: 'none',
+                width: '30px',
+                height: '30px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              <LogOut size={14} />
+            </button>
           </div>
       </header>
 
@@ -211,6 +238,7 @@ function App() {
         <button
           onClick={logout}
           title="Quit"
+          className="desktop-quit-btn"
           style={{ 
             display: 'flex',
             alignItems: 'center',
