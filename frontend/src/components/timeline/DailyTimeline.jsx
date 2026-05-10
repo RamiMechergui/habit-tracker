@@ -165,9 +165,25 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
             <div 
               className="tl-empty-section" 
               onClick={() => onAddClick?.(section.start)}
-              style={{ position: 'absolute', top: 20, left: 'calc(var(--tl-axis-width) + 12px)', right: 0, cursor: 'pointer' }}
+              style={{ 
+                position: 'absolute', 
+                top: 15, 
+                left: 'calc(var(--tl-axis-width) + 12px)', 
+                right: 12,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: '8px',
+                border: '1px dashed rgba(255,255,255,0.1)',
+                fontSize: '0.8rem',
+                color: 'var(--text-muted)',
+                transition: 'all 0.2s'
+              }}
             >
-              <Plus size={14} /> No tasks yet for this period
+              <Plus size={14} /> Plan something for this time...
             </div>
           )}
 
