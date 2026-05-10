@@ -1,6 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO, addMonths, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+// ── Mobile detection hook ─────────────────────────────────────────────────────
+function useIsMobile(bp = 600) {
+  const [m, setM] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= bp : false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${bp}px)`);
+    const h = (e) => setM(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, [bp]);
+  return m;
+}
 
 const STATUS_COLORS = {
   Completed: '#10b981',
@@ -16,6 +28,7 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
   const [viewDate,       setViewDate]       = useState(parseISO(currentDate));
   const [filterStatus,   setFilterStatus]   = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
+  const isMobile = useIsMobile();
 
   const daysInMonth = useMemo(() => {
     const start = startOfMonth(viewDate);
@@ -66,27 +79,46 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
         </button>
       </div>
 
-      {/* Filter bar */}
-      <div className="month-filter-bar">
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', alignSelf: 'center', marginRight: 4 }}>
-          STATUS:
+      {/* Filter bar — horizontal scroll on mobile */}
+      <div
+        className="month-filter-bar"
+        style={isMobile ? { overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: 4 } : {}}
+      >
+        <span style={{
+          fontSize: '0.72rem', fontWeight: 700,
+          color: 'var(--text-muted)',
+          alignSelf: 'center',
+          marginRight: 2,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}>
+          {isMobile ? 'S:' : 'STATUS:'}
         </span>
         {FILTER_STATUSES.map(s => (
           <button key={s}
             className={`month-filter-chip ${filterStatus === s ? 'active' : ''}`}
             onClick={() => setFilterStatus(s)}
+            style={{ flexShrink: 0 }}
           >
             {s === 'all' ? 'All' : s}
           </button>
         ))}
-        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px', alignSelf: 'center' }} />
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', alignSelf: 'center', marginRight: 4 }}>
-          PRIORITY:
+        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px', alignSelf: 'center', flexShrink: 0 }} />
+        <span style={{
+          fontSize: '0.72rem', fontWeight: 700,
+          color: 'var(--text-muted)',
+          alignSelf: 'center',
+          marginRight: 2,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}>
+          {isMobile ? 'P:' : 'PRIORITY:'}
         </span>
         {FILTER_PRIORITIES.map(p => (
           <button key={p}
             className={`month-filter-chip ${filterPriority === p ? 'active' : ''}`}
             onClick={() => setFilterPriority(p)}
+            style={{ flexShrink: 0 }}
           >
             {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
           </button>

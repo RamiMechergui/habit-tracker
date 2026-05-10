@@ -2777,6 +2777,201 @@ label {
   background: #e2e8f0;
   color: #1e293b;
 }
+border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.notif-card-btn:hover {
+  color: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+  background: rgba(16,185,129,0.08);
+}
+.notif-card-btn-delete:hover {
+  color: var(--accent-rose) !important;
+  border-color: var(--accent-rose) !important;
+  background: rgba(244,63,94,0.08) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   NOTIFICATION TOASTS (SSE live stack)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.notif-toast-stack {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  pointer-events: none;
+  max-width: 360px;
+  width: 100%;
+}
+
+.notif-toast {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  pointer-events: all;
+  animation: toast-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  align-items: flex-start;
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(120%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.notif-toast-reminder {
+  border-left: 3px solid var(--accent-amber);
+}
+.notif-toast-urgent {
+  border-left: 3px solid var(--accent-rose);
+  background: rgba(15, 17, 21, 0.95);
+}
+
+.notif-toast-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.notif-toast-reminder .notif-toast-icon {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+.notif-toast-urgent .notif-toast-icon {
+  background: rgba(244,63,94,0.15);
+  color: var(--accent-rose);
+}
+
+.notif-toast-body { flex: 1; min-width: 0; }
+
+.notif-toast-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+.notif-toast-reminder .notif-toast-label { color: var(--accent-amber); }
+.notif-toast-urgent  .notif-toast-label { color: var(--accent-rose); }
+
+.notif-toast-message {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notif-toast-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.notif-toast-close:hover { color: var(--text-primary); }
+
+/* Progress bar that shrinks from full width to 0 */
+.notif-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  animation: toast-progress linear forwards;
+}
+.notif-toast-reminder .notif-toast-progress { background: var(--accent-amber); }
+.notif-toast-urgent  .notif-toast-progress { background: var(--accent-rose); }
+
+@keyframes toast-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* ── Mobile responsive overrides ──────────────────────────────── */
+@media (max-width: 768px) {
+  .essentials-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.85rem;
+  }
+  .essentials-stats-row { gap: 0.75rem; }
+  .notif-center-panel {
+    left: 0;
+    right: 0;
+    top: 60px;
+    width: 100%;
+    border-radius: var(--radius-sm);
+    max-height: calc(100vh - 70px);
+  }
+  .notif-toast-stack {
+    top: 0.75rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    max-width: none;
+  }
+}
+
+/* ── Light theme overrides ────────────────────────────────────── */
+[data-theme='light'] .notif-center-panel {
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+[data-theme='light'] .notif-toast {
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+[data-theme='light'] .notif-toast-urgent {
+  background: rgba(255,255,255,0.97);
+}
+[data-theme='light'] .essential-card-urgent {
+  animation: essential-urgent-pulse-light 2.5s ease-in-out infinite;
+}
+@keyframes essential-urgent-pulse-light {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.15); }
+  50%       { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+}
+
+[data-theme='light'] .essential-confirm-overlay {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .essential-confirm-cancel {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+[data-theme='light'] .essential-confirm-cancel:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
 
 
 /* ═══════════════════════════════════════════════════
@@ -2785,6 +2980,8 @@ label {
 :root {
   --tl-hour-height: 90px;
   --tl-axis-width: 56px;
+  --tl-axis-width-mobile: 44px;
+  --tl-hour-height-mobile: 70px;
 
   /* Priority — monochrome scale */
   --priority-low:      #6b7280;
@@ -3822,7 +4019,7 @@ label {
 }
 
 /* ---------------------------------------------------
-   TIMELINE � Rebuilt Component Styles (B&W)
+   TIMELINE  Rebuilt Component Styles (B&W)
    --------------------------------------------------- */
 
 /* Alert Bars */
@@ -3915,7 +4112,7 @@ label {
 }
 
 /* ---------------------------------------------------
-   TASKS PAGE � Semantic CSS Classes
+   TASKS PAGE  Semantic CSS Classes
    --------------------------------------------------- */
 
 .tasks-page {
@@ -4329,5 +4526,396 @@ label {
   .month-legend {
     gap: 8px;
     font-size: 0.65rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS — Timeline & Tasks Page
+   Comprehensive overrides for screens ≤ 768px
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Global timeline page layout ───────────────────────────────── */
+@media (max-width: 768px) {
+  .tasks-page {
+    /* Remove auto centering so it fills the screen */
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* ── Hub Toolbar ── */
+  .hub-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 10px 12px;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-radius: 0 0 16px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hub-toolbar-left,
+  .hub-toolbar-right {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .hub-toolbar-left {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .hub-toolbar-left::-webkit-scrollbar { display: none; }
+
+  .hub-toolbar-right {
+    justify-content: space-between;
+  }
+
+  /* Keep brand visible but compact */
+  .hub-brand { flex-shrink: 0; }
+  .hub-brand-label { display: none; }
+
+  /* View toggle — equal width pills */
+  .hub-toolbar-toggle {
+    flex-shrink: 0;
+  }
+  .hub-toggle-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  /* Date input — take remaining width */
+  .hub-toolbar-date {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    font-size: 0.83rem;
+  }
+
+  /* Filter button */
+  .hub-filter-btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  /* Save status — compact */
+  .hub-save-status {
+    min-width: 0;
+    font-size: 0.75rem;
+  }
+
+  /* ── Filter Bar ── */
+  .tl-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 12px;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .tl-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .tl-filter-group::-webkit-scrollbar { display: none; }
+
+  .tl-filter-label {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    margin-right: 0;
+  }
+
+  .tl-filter-chip {
+    padding: 4px 9px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 30px;
+  }
+
+  .tl-filter-divider {
+    display: none;
+  }
+
+  /* ── Future / push-notif banners ── */
+  .future-date-banner,
+  .push-notif-banner {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    margin-bottom: 12px;
+  }
+
+  /* ── Analytics Panel ── */
+  .analytics-panel {
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+  .analytics-panel-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  /* Hide inline mini-bar on very narrow screens — saves space */
+  .analytics-panel-header .mini-bar { display: none; }
+
+  .analytics-panel-body {
+    padding: 14px;
+    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .analytics-stat-card {
+    padding: 10px 6px;
+    border-radius: 10px;
+  }
+  .analytics-stat-number { font-size: 1.3rem; }
+  .analytics-stat-label  { font-size: 0.62rem; }
+
+  .analytics-streak-badge {
+    padding: 3px 8px;
+    font-size: 0.72rem;
+  }
+
+  .week-chart-wrap { padding: 12px 14px 10px; }
+  .week-bars { height: 48px; gap: 4px; }
+  .week-bar-day { font-size: 0.58rem; }
+
+  /* ── Live Focus Banner ── */
+  .live-focus-banner {
+    padding: 14px 14px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+  }
+  .lfb-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .lfb-left { gap: 10px; flex: 1; min-width: 0; }
+  .lfb-icon-wrap { width: 38px; height: 38px; flex-shrink: 0; }
+  .lfb-progress-ring { width: 38px; height: 38px; }
+  .lfb-title { font-size: 0.95rem; }
+  .lfb-label { font-size: 0.6rem; }
+  .lfb-meta  { font-size: 0.7rem; }
+  .lfb-actions { flex-shrink: 0; }
+  .lfb-btn { width: 34px; height: 34px; }
+
+  /* ── Missed / Delayed Alert Bars ── */
+  .alert-bar-v2 {
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+  .alert-bar-title { font-size: 0.82rem; }
+  .alert-bar-action { font-size: 0.72rem; }
+
+  .task-alert-card {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+  .task-alert-title { font-size: 0.85rem; }
+  .task-alert-meta { gap: 4px; }
+  .task-alert-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .task-alert-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.82rem;
+  }
+
+  /* ── FAB ── */
+  .fab-button-v2 {
+    bottom: 96px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .fab-button-v2 .fab-label { display: none; }
+
+  /* ── Section Headers ── */
+  .tl-section-header {
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+  .tl-section-icon  { font-size: 0.95rem; }
+  .tl-section-title { font-size: 0.78rem; letter-spacing: 0.04em; }
+  .tl-section-badge { font-size: 0.65rem; padding: 1px 6px; }
+
+  /* ── Task Cards ── */
+  .task-card-v2 {
+    border-radius: 12px;
+  }
+  .task-card-body {
+    padding: 6px 8px 6px 12px;
+    gap: 2px;
+  }
+  .task-card-title {
+    font-size: 0.78rem;
+    -webkit-line-clamp: 2;
+  }
+  .task-card-meta-row {
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+  .task-card-time { font-size: 0.65rem; }
+  .task-status-pill { font-size: 0.62rem; padding: 1px 6px; }
+  .category-chip    { font-size: 0.62rem; padding: 1px 6px; }
+
+  /* ── Zoom pill group ── */
+  .zoom-pill-group { padding: 2px; }
+  .zoom-pill {
+    padding: 4px 8px;
+    font-size: 0.73rem;
+    min-height: 30px;
+  }
+
+  /* ── Current time indicator ── */
+  .current-time-label { font-size: 0.6rem; padding: 1px 4px; }
+  .current-time-dot   { width: 8px; height: 8px; }
+
+  /* ── Empty section prompt (absolute positioned) ── */
+  .tl-empty-section {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    border-radius: 8px;
+  }
+
+  /* ── Monthly Calendar ── */
+  .month-calendar-card {
+    padding: 12px !important;
+    border-radius: 14px;
+    margin-top: 8px;
+  }
+  .month-nav-header { margin-bottom: 12px; }
+  .month-nav-header h3 { font-size: 0.95rem; }
+  .month-nav-btn { width: 30px; height: 30px; border-radius: 8px; }
+
+  .month-filter-bar {
+    padding: 8px;
+    gap: 4px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .month-filter-bar::-webkit-scrollbar { display: none; }
+  .month-filter-bar > span { flex-shrink: 0; }
+  .month-filter-chip { flex-shrink: 0; white-space: nowrap; }
+
+  .month-grid   { gap: 4px; }
+  .month-grid-header { gap: 4px; }
+  .month-grid-day { font-size: 0.62rem; }
+
+  .month-cell {
+    border-radius: 8px;
+    padding: 2px 1px 4px;
+    gap: 1px;
+  }
+  .month-cell-date { font-size: 0.72rem; }
+  .month-pct-label  { font-size: 0.5rem; }
+  .month-dot { width: 3px; height: 3px; }
+  .month-legend { gap: 10px; font-size: 0.65rem; margin-top: 12px; }
+}
+
+/* ── Extra small screens (≤ 420px) ─────────────────────────────── */
+@media (max-width: 420px) {
+  :root {
+    --tl-axis-width: var(--tl-axis-width-mobile);
+  }
+
+  .hub-toolbar-toggle { display: none; } /* Hide view toggle — use swipe or scroll */
+
+  .analytics-panel-body {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lfb-content { flex-direction: column; align-items: flex-start; }
+  .lfb-actions { width: 100%; justify-content: flex-end; }
+
+  .task-alert-actions { flex-direction: column; }
+  .task-alert-btn { width: 100%; }
+
+  .hub-toolbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  /* Keep view toggle accessible via a simpler icon-only version */
+  .hub-toolbar-toggle { display: flex; }
+  .hub-toggle-btn {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    gap: 3px;
+  }
+  /* Hide text labels, keep icons */
+  .hub-toggle-btn span:last-child {
+    display: none;
+  }
+
+  /* Task card labels can be even smaller */
+  .task-card-title  { font-size: 0.74rem; }
+  .task-card-time   { font-size: 0.6rem; }
+  .task-status-pill { font-size: 0.58rem; padding: 1px 5px; }
+  .category-chip    { font-size: 0.58rem; padding: 1px 5px; }
+
+  .tl-section-title { font-size: 0.72rem; }
+
+  .analytics-stat-number { font-size: 1.1rem; }
+
+  .live-focus-banner { padding: 12px; }
+  .lfb-title { font-size: 0.88rem; }
+}
+
+/* ── Tablets (481px – 768px): slightly more breathing room ──────── */
+@media (min-width: 481px) and (max-width: 768px) {
+  .hub-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 14px;
+  }
+  .hub-toolbar-left,
+  .hub-toolbar-right {
+    width: auto;
+    flex: 1;
+  }
+  .hub-toolbar-right {
+    justify-content: flex-end;
+  }
+  .hub-brand-label { display: inline; }
+
+  .analytics-panel-body {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .tl-filter-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .lfb-content {
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
 }

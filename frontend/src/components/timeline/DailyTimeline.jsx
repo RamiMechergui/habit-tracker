@@ -1,7 +1,21 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, Plus, ZoomIn, ZoomOut } from 'lucide-react';
 import TaskCard from './TaskCard';
+
+// ── Mobile detection hook ─────────────────────────────────────────────────────
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= breakpoint : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ZOOM_OPTIONS = [
@@ -9,6 +23,10 @@ const ZOOM_OPTIONS = [
   { label: '30m', factor: 1.5 },
   { label: '15m', factor: 2   },
 ];
+
+// Base hour heights — desktop uses 90px, mobile 68px
+const BASE_HOUR_DESKTOP = 90;
+const BASE_HOUR_MOBILE  = 68;
 
 const TIME_SECTIONS = [
   { key: 'morning',   label: 'Morning',   icon: '🌅', start: 5,  end: 11 },
@@ -69,7 +87,6 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
     return h >= section.start && h <= section.end;
   });
 
-  const startPx  = section.start * hourHeight;
   const spanHours = section.end - section.start + 1;
   const heightPx  = spanHours * hourHeight;
 
@@ -80,40 +97,47 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
   const isCurrentSection = isToday && currentHour >= section.start && currentHour <= section.end;
 
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 10 }}>
       {/* Section header */}
-      <div className="tl-section-header" onClick={() => setOpen(o => !o)}>
+      <div
+        className="tl-section-header"
+        onClick={() => setOpen(o => !o)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && setOpen(o => !o)}
+        aria-expanded={open}
+      >
         <span className="tl-section-icon">{section.icon}</span>
         <span className="tl-section-title">{section.label}</span>
         <span className="tl-section-badge">{sectionTasks.length} task{sectionTasks.length !== 1 ? 's' : ''}</span>
-        <ChevronDown size={15} className={`tl-section-chevron ${open ? 'open' : ''}`} />
+        <ChevronDown size={15} className={`tl-section-chevron ${open ? 'open' : ''}`} aria-hidden="true" />
       </div>
 
       {/* Section body */}
       {open && (
-        <div style={{ position: 'relative', height: `${heightPx}px`, marginLeft: 0 }}>
+        <div style={{ position: 'relative', height: `${heightPx}px`, overflow: 'hidden' }}>
 
           {/* Axis line */}
           <div style={{
             position: 'absolute', top: 0, bottom: 0,
             left: `calc(var(--tl-axis-width) - 1px)`,
-            width: '1px', background: 'var(--border)', zIndex: 0
+            width: '1px', background: 'var(--border)', zIndex: 0,
           }} />
 
           {/* Hour rows */}
           {hours.map((h, i) => (
             <div key={h} style={{
               position: 'absolute', top: `${i * hourHeight}px`,
-              left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 0
+              left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 0,
             }}>
               <div style={{
                 width: 'var(--tl-axis-width)', textAlign: 'right',
-                fontSize: '0.72rem', color: 'var(--text-muted)',
-                paddingRight: '10px', flexShrink: 0,
+                fontSize: '0.68rem', color: 'var(--text-muted)',
+                paddingRight: '8px', flexShrink: 0, lineHeight: 1,
               }}>
                 {`${h.toString().padStart(2,'0')}:00`}
               </div>
-              <div style={{ width: 10, height: 1, background: 'var(--border)' }} />
+              <div style={{ width: 8, height: 1, background: 'var(--border)', flexShrink: 0 }} />
               {/* Half-hour tick if zoom allows */}
               {zoomFactor >= 1.5 && (
                 <div style={{
@@ -124,7 +148,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 }} />
               )}
               {/* 15min ticks */}
-              {zoomFactor >= 2 && [1,2,3].map(q => (
+              {zoomFactor >= 2 && [1, 2, 3].map(q => (
                 <div key={q} style={{
                   position: 'absolute',
                   top: `${(hourHeight / 4) * q}px`,
@@ -141,11 +165,9 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
             const h = parseInt((t.time || '00:00').split(':')[0]);
             return h >= section.start && h <= section.end;
           }).map((task, i) => {
-            // Re-offset top relative to section start
             const [th, tm] = (task.time || '00:00').split(':').map(Number);
             const offsetMins = (th * 60 + tm) - (section.start * 60);
             const relativeTop = offsetMins * (hourHeight / 60);
-
             return (
               <TaskCard
                 key={task.id || i}
@@ -162,29 +184,20 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 
           {/* Empty section prompt */}
           {sectionTasks.length === 0 && (
-            <div 
-              className="tl-empty-section" 
+            <button
+              className="tl-empty-section"
               onClick={() => onAddClick?.(section.start)}
-              style={{ 
-                position: 'absolute', 
-                top: 15, 
-                left: 'calc(var(--tl-axis-width) + 12px)', 
-                right: 12,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '8px',
-                border: '1px dashed rgba(255,255,255,0.1)',
-                fontSize: '0.8rem',
-                color: 'var(--text-muted)',
-                transition: 'all 0.2s'
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 'calc(var(--tl-axis-width) + 10px)',
+                right: 8,
               }}
+              aria-label={`Add task to ${section.label}`}
             >
-              <Plus size={14} /> Plan something for this time...
-            </div>
+              <Plus size={13} aria-hidden="true" />
+              Plan something for this time…
+            </button>
           )}
 
           {/* Current time indicator */}
@@ -201,9 +214,12 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, filters = {} }) {
   const [zoom, setZoom] = useState(0); // index into ZOOM_OPTIONS
   const timelineRef = useRef(null);
+  const isMobile = useIsMobile();
 
   const zoomFactor = ZOOM_OPTIONS[zoom].factor;
-  const hourHeight = 90 * zoomFactor;
+  // Use a smaller base hour-height on mobile to reduce vertical scroll
+  const baseHour   = isMobile ? BASE_HOUR_MOBILE : BASE_HOUR_DESKTOP;
+  const hourHeight = baseHour * zoomFactor;
 
   // Apply filters
   const filteredTasks = useMemo(() => {
@@ -246,24 +262,78 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
   }, [date, isFutureDate, hourHeight]);
 
   return (
-    <div style={{ marginTop: 16 }}>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>📅</span>
-          <span>{format(new Date(date + 'T12:00:00'), 'EEEE, MMMM d')}</span>
+    <div style={{ marginTop: 12 }}>
+      {/* Toolbar row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+        flexWrap: 'wrap',
+        gap: 8,
+      }}>
+        <h3 style={{
+          margin: 0,
+          fontSize: isMobile ? '0.9rem' : '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flex: 1,
+          minWidth: 0,
+        }}>
+          <span aria-hidden="true">📅</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isMobile ? 'normal' : 'nowrap' }}>
+            {format(new Date(date + 'T12:00:00'), isMobile ? 'EEE, MMM d' : 'EEEE, MMMM d')}
+          </span>
         </h3>
-        <div className="zoom-pill-group">
-          {ZOOM_OPTIONS.map((o, i) => (
-            <button key={o.label} className={`zoom-pill ${zoom === i ? 'active' : ''}`} onClick={() => setZoom(i)}>
-              {o.label}
+
+        {/* Zoom controls */}
+        {isMobile ? (
+          /* On mobile: compact +/- buttons to save toolbar space */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <button
+              className="zoom-pill"
+              style={{ padding: '5px 10px', minHeight: 32 }}
+              onClick={() => setZoom(z => Math.max(0, z - 1))}
+              disabled={zoom === 0}
+              aria-label="Zoom out"
+            >
+              <ZoomOut size={14} />
             </button>
-          ))}
-        </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, minWidth: 30, textAlign: 'center' }}>
+              {ZOOM_OPTIONS[zoom].label}
+            </span>
+            <button
+              className="zoom-pill"
+              style={{ padding: '5px 10px', minHeight: 32 }}
+              onClick={() => setZoom(z => Math.min(ZOOM_OPTIONS.length - 1, z + 1))}
+              disabled={zoom === ZOOM_OPTIONS.length - 1}
+              aria-label="Zoom in"
+            >
+              <ZoomIn size={14} />
+            </button>
+          </div>
+        ) : (
+          <div className="zoom-pill-group" role="group" aria-label="Timeline zoom">
+            {ZOOM_OPTIONS.map((o, i) => (
+              <button
+                key={o.label}
+                className={`zoom-pill ${zoom === i ? 'active' : ''}`}
+                onClick={() => setZoom(i)}
+                aria-pressed={zoom === i}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Timeline sections */}
-      <div ref={timelineRef} style={{ position: 'relative' }}>
+      {/* Timeline sections — no horizontal overflow */}
+      <div
+        ref={timelineRef}
+        style={{ position: 'relative', overflowX: 'hidden' }}
+      >
         {TIME_SECTIONS.map(section => (
           <TimeSection
             key={section.key}
