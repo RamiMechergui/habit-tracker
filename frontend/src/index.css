@@ -4094,3 +4094,222 @@ label {
 [data-theme='light'] .lfb-btn--complete:hover { background: #374151; color: #fff; }
 [data-theme='light'] .lfb-btn--delay    { background: rgba(0,0,0,0.03); color: #6b7280; border-color: rgba(0,0,0,0.08); }
 [data-theme='light'] .lfb-btn--delay:hover    { background: #6b7280; color: #fff; }
+
+/* ═══════════════════════════════════════════════════
+   Monthly Calendar (Heatmap)
+   ═══════════════════════════════════════════════════ */
+
+.month-calendar-card {
+  padding: 24px;
+  margin-top: 20px;
+}
+
+.month-nav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.month-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.month-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.month-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.month-filter-chip {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.month-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.month-filter-chip.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+.month-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.month-grid-day {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding-bottom: 4px;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.month-cell {
+  aspect-ratio: 1;
+  padding: 4px 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  transition: all 0.18s;
+  gap: 2px;
+}
+
+.month-cell.today {
+  border-width: 1.5px;
+}
+
+.month-cell-date {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.month-cell.today .month-cell-date {
+  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+.month-cell-dots {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.month-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.month-pct-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.month-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.month-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Light Theme Adjustments */
+[data-theme='light'] .month-nav-btn {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+[data-theme='light'] .month-filter-bar {
+  background: rgba(255, 255, 255, 0.5);
+}
+[data-theme='light'] .month-filter-chip:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Mobile Responsiveness for Monthly Calendar */
+@media (max-width: 600px) {
+  .month-calendar-card {
+    padding: 12px !important;
+    margin-top: 10px;
+  }
+  
+  .month-filter-bar {
+    padding: 8px;
+    gap: 4px;
+  }
+
+  .month-filter-chip {
+    padding: 4px 8px;
+    font-size: 0.65rem;
+  }
+
+  .month-grid {
+    gap: 4px;
+  }
+  
+  .month-grid-header {
+    gap: 4px;
+  }
+  
+  .month-grid-day {
+    font-size: 0.65rem;
+  }
+
+  .month-cell {
+    border-radius: 8px;
+    padding: 2px 1px 4px;
+    gap: 1px;
+  }
+
+  .month-cell-date {
+    font-size: 0.7rem;
+  }
+
+  .month-pct-label {
+    font-size: 0.5rem;
+  }
+
+  .month-dot {
+    width: 3px;
+    height: 3px;
+  }
+  
+  .month-legend {
+    gap: 8px;
+    font-size: 0.65rem;
+  }
+}

@@ -61,7 +61,7 @@ function clusterTasks(tasks) {
 }
 
 // ── Section block component ───────────────────────────────────────────────────
-function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, onUpdateStatus, onEditTask, onDragTime, onAddTask }) {
+function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddTask }) {
   const [open, setOpen] = useState(section.key !== 'overnight');
 
   const sectionTasks = tasks.filter(t => {
@@ -73,8 +73,11 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
   const spanHours = section.end - section.start + 1;
   const heightPx  = spanHours * hourHeight;
 
-  // Generate hour labels for this section
   const hours = Array.from({ length: spanHours + 1 }, (_, i) => section.start + i);
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isCurrentSection = isToday && currentHour >= section.start && currentHour <= section.end;
 
   return (
     <div style={{ marginBottom: 12 }}>
@@ -163,6 +166,11 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
               <Plus size={14} /> No tasks yet for this period
             </div>
           )}
+
+          {/* Current time indicator */}
+          {isCurrentSection && (
+            <CurrentTimeIndicator hourHeight={hourHeight} sectionStart={section.start} />
+          )}
         </div>
       )}
     </div>
@@ -245,39 +253,33 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, i
             zoomFactor={zoomFactor}
             hourHeight={hourHeight}
             isFutureDate={isFutureDate}
+            isToday={!isFutureDate && date === format(new Date(), 'yyyy-MM-dd')}
             onUpdateStatus={handleUpdateStatus}
             onEditTask={onEditTask}
             onDragTime={handleDragTime}
           />
         ))}
-
-        {/* Global current-time indicator */}
-        {!isFutureDate && date === format(new Date(), 'yyyy-MM-dd') && (
-          <CurrentTimeIndicator hourHeight={hourHeight} />
-        )}
       </div>
     </div>
   );
 }
 
 // ── Current Time Indicator ────────────────────────────────────────────────────
-function CurrentTimeIndicator({ hourHeight }) {
+function CurrentTimeIndicator({ hourHeight, sectionStart }) {
   const [topPx, setTopPx] = useState(0);
   const [timeLabel, setTimeLabel] = useState('');
 
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      const mins = now.getHours() * 60 + now.getMinutes();
-      // Account for section headers: each section is ~42px tall + content
-      // Simple approach: calculate based purely on time
+      const mins = (now.getHours() * 60 + now.getMinutes()) - (sectionStart * 60);
       setTopPx(mins * (hourHeight / 60));
       setTimeLabel(now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
     };
     update();
     const id = setInterval(update, 30000);
     return () => clearInterval(id);
-  }, [hourHeight]);
+  }, [hourHeight, sectionStart]);
 
   return (
     <div className="current-time-line" style={{ top: `${topPx}px`, position: 'absolute' }}>

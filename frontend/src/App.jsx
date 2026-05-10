@@ -152,29 +152,6 @@ function App() {
               {user.firstName || 'User'}
             </span>
           </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button
-            onClick={logout}
-            title="Quit"
-            style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              color: '#fff',
-              background: '#ef4444', 
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontWeight: '700',
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
-            }}
-          >
-            <LogOut size={16} />
-            <span style={{ display: 'none' }}>Quit</span>
-          </button>
-        </div>
       </header>
 
       {/* ── Offline Banner ── */}

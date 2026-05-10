@@ -52,7 +52,7 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
   const firstDayOffset = startOfMonth(viewDate).getDay();
 
   return (
-    <div className="glass-card" style={{ padding: '24px', marginTop: 20 }}>
+    <div className="glass-card month-calendar-card">
       {/* Month navigation */}
       <div className="month-nav-header">
         <button className="month-nav-btn" onClick={() => setViewDate(d => subMonths(d, 1))}>
@@ -94,14 +94,14 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
       </div>
 
       {/* Grid header */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '6px', textAlign: 'center', marginBottom: 8 }}>
+      <div className="month-grid-header">
         {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-          <div key={d} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, paddingBottom: 4 }}>{d}</div>
+          <div key={d} className="month-grid-day">{d}</div>
         ))}
       </div>
 
       {/* Grid cells */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '6px' }}>
+      <div className="month-grid">
         {/* Empty slots */}
         {Array.from({ length: firstDayOffset }).map((_, i) => <div key={`e${i}`} />)}
 
@@ -115,29 +115,14 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
             <button
               key={dateStr}
               onClick={() => onSelectDate(dateStr)}
+              className={`month-cell ${today ? 'today' : ''}`}
               style={{
-                aspectRatio: '1',
-                padding: '4px 2px 6px',
-                background: today ? 'rgba(59,130,246,0.2)' : (heatBg || 'var(--tl-panel-bg)'),
-                border: today
-                  ? '1.5px solid var(--accent-blue)'
-                  : '1px solid var(--border)',
-                borderRadius: 12,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                cursor: 'pointer',
-                transition: 'all 0.18s',
-                gap: 2,
+                background: today ? 'rgba(59,130,246,0.2)' : (heatBg || 'var(--bg-card)'),
+                borderColor: today ? 'var(--accent-blue)' : 'var(--border)',
               }}
               title={data ? `${data.completed}/${data.total} completed (${data.pct}%)` : 'No tasks'}
             >
-              <span style={{
-                fontSize: '0.85rem',
-                fontWeight: today ? 800 : 500,
-                color: today ? 'var(--accent-blue)' : 'var(--text-primary)',
-              }}>
+              <span className="month-cell-date">
                 {format(date, 'd')}
               </span>
 
@@ -158,10 +143,12 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate }) {
 
               {/* % label */}
               {data && (
-                <span style={{
-                  fontSize: '0.58rem', fontWeight: 700,
-                  color: data.pct >= 80 ? STATUS_COLORS.Completed : data.pct >= 50 ? STATUS_COLORS.Delayed : STATUS_COLORS.Missed,
-                }}>
+                <span 
+                  className="month-pct-label"
+                  style={{
+                    color: data.pct >= 80 ? STATUS_COLORS.Completed : data.pct >= 50 ? STATUS_COLORS.Delayed : STATUS_COLORS.Missed,
+                  }}
+                >
                   {data.pct}%
                 </span>
               )}
