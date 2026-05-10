@@ -36,6 +36,7 @@ export default function TasksPage() {
   const [isSheetOpen,   setIsSheetOpen]   = useState(false);
   const [editingTask,   setEditingTask]   = useState(null);
   const [showFilters,   setShowFilters]   = useState(false);
+  const [suggestedHour, setSuggestedHour] = useState(null);
   const [filterStatus,  setFilterStatus]  = useState('all');
   const [filterPriority,setFilterPriority]= useState('all');
   const [filterCategory,setFilterCategory]= useState('all');
