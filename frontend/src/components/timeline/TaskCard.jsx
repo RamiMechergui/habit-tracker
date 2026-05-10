@@ -67,7 +67,7 @@ export default function TaskCard({
 
   // ── Swipe gestures ──────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e) => {
-    if (isFutureDate || isDraggingTime) return;
+    if (isDraggingTime) return;
     startX.current = e.touches[0].clientX;
     setIsSwiping(true);
     longPress.current = setTimeout(() => {
@@ -77,7 +77,7 @@ export default function TaskCard({
   }, [isFutureDate, isDraggingTime, onEdit]);
 
   const handleTouchMove = useCallback((e) => {
-    if (!isSwiping || isFutureDate || isDraggingTime) return;
+    if (!isSwiping || isDraggingTime) return;
     const diff = e.touches[0].clientX - startX.current;
     if (Math.abs(diff) > 10 && longPress.current) {
       clearTimeout(longPress.current);
@@ -96,7 +96,7 @@ export default function TaskCard({
 
   const handleTouchEnd = useCallback(() => {
     if (longPress.current) { clearTimeout(longPress.current); longPress.current = null; }
-    if (!isSwiping || isFutureDate) return;
+    if (!isSwiping) return;
     setIsSwiping(false);
     if      (swipeOffset >  80) triggerStatus('Completed');
     else if (swipeOffset < -80) triggerStatus('Missed');
@@ -105,14 +105,13 @@ export default function TaskCard({
 
   // ── Drag (time change) ──────────────────────────────────────────────────────
   const handleDragStart = useCallback((e) => {
-    if (isFutureDate) return;
     e.stopPropagation();
     setIsDraggingTime(true);
     startY.current = e.touches ? e.touches[0].clientY : e.clientY;
   }, [isFutureDate]);
 
   const handleDragMove = useCallback((e) => {
-    if (!isDraggingTime || isFutureDate) return;
+    if (!isDraggingTime) return;
     e.preventDefault();
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     setDragY(clientY - startY.current);
@@ -204,15 +203,15 @@ export default function TaskCard({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={() => { if (!isFutureDate && !isDraggingTime) onEdit?.(); }}
+        onClick={() => { if (!isDraggingTime) onEdit?.(); }}
         style={{
           boxShadow: isDraggingTime ? '0 12px 28px rgba(0,0,0,0.35)' : undefined,
-          cursor:    isFutureDate ? 'default' : 'pointer',
+          cursor:    'pointer',
         }}
         role="button"
-        tabIndex={isFutureDate ? -1 : 0}
+        tabIndex={0}
         aria-label={`Task: ${task.title}, Status: ${statusKey}`}
-        onKeyDown={e => { if (e.key === 'Enter' && !isFutureDate) onEdit?.(); }}
+        onKeyDown={e => { if (e.key === 'Enter') onEdit?.(); }}
       >
         {/* Priority stripe */}
         <div className="priority-stripe" style={{ background: priorityColor }} aria-hidden="true" />

@@ -161,7 +161,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
           })}
 
           {/* Empty section prompt */}
-          {sectionTasks.length === 0 && !isFutureDate && (
+          {sectionTasks.length === 0 && (
             <div className="tl-empty-section" style={{ position: 'absolute', top: 20, left: 'calc(var(--tl-axis-width) + 12px)', right: 0 }}>
               <Plus size={14} /> No tasks yet for this period
             </div>

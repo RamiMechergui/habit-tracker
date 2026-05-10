@@ -167,7 +167,7 @@ export default function TasksPage() {
       {/* Future date notice */}
       {isFuture && (
         <div className="future-date-banner">
-          <strong>📅 Future Date:</strong> Viewing {format(parseISO(date), 'MMMM d, yyyy')}. Task actions are disabled.
+          <strong>📅 Planning Mode:</strong> Viewing {format(parseISO(date), 'MMMM d, yyyy')}. You can pre-plan your tasks here.
         </div>
       )}
 
@@ -323,7 +323,6 @@ export default function TasksPage() {
         <button
           className="fab-button-v2"
           onClick={openAdd}
-          disabled={isFuture}
           aria-label="Add new task"
         >
           <Plus size={20} aria-hidden="true" />
