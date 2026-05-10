@@ -3820,9 +3820,6 @@ label {
   background: linear-gradient(135deg, #1f2937 0%, #4b5563 100%);
   box-shadow: 0 12px 32px rgba(0,0,0,0.3);
 }
-  --tl-panel-bg: rgba(255, 255, 255, 0.02);
-  --tl-chart-bg: rgba(255, 255, 255, 0.06);
-}
 
 /* ---------------------------------------------------
    TIMELINE � Rebuilt Component Styles (B&W)
