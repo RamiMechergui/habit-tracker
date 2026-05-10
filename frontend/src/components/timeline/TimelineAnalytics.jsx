@@ -99,33 +99,48 @@ export default function TimelineAnalytics({ date, tasks, logs }) {
   return (
     <div className="analytics-panel">
       {/* Header (always visible) */}
-      <div className={`analytics-panel-header ${open ? 'open' : ''}`} onClick={() => setOpen(o => !o)}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BarChart2 size={17} color="var(--accent-blue)" />
-          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Daily Analytics</span>
+      <div
+        className={`analytics-panel-header ${open ? 'open' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+          <BarChart2 size={16} color="var(--accent-blue)" aria-hidden="true" />
+          <span style={{ fontWeight: 700, fontSize: '0.88rem', whiteSpace: 'nowrap' }}>Daily Analytics</span>
           {streak > 0 && (
-            <span className="analytics-streak-badge">
-              <Flame size={13} /> {streak}-day streak
+            <span className="analytics-streak-badge" aria-label={`${streak}-day streak`}>
+              <Flame size={12} aria-hidden="true" /> {streak}d streak
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Mini inline summary */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {/* Mini inline summary — hidden via CSS on very narrow screens */}
           {!open && stats.total > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                {stats.completed}/{stats.total} done
+            <div
+              className="mini-bar"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              aria-label={`${stats.completed} of ${stats.total} tasks done, ${stats.pct}%`}
+            >
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {stats.completed}/{stats.total}
               </span>
-              <div style={{ width: 60, height: 6, borderRadius: 3, background: 'var(--tl-chart-bg)', overflow: 'hidden' }}>
+              <div style={{ width: 48, height: 5, borderRadius: 3, background: 'var(--tl-chart-bg)', overflow: 'hidden', flexShrink: 0 }}>
                 <div style={{
                   width: `${stats.pct}%`, height: '100%', borderRadius: 3,
-                  background: donutColor, transition: 'width 0.6s ease'
+                  background: donutColor, transition: 'width 0.6s ease',
                 }} />
               </div>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: donutColor }}>{stats.pct}%</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: donutColor, whiteSpace: 'nowrap' }}>{stats.pct}%</span>
             </div>
           )}
-          <ChevronDown size={16} style={{ transition: 'transform 0.25s', transform: open ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)' }} />
+          <ChevronDown
+            size={15}
+            style={{ transition: 'transform 0.25s', transform: open ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)', flexShrink: 0 }}
+            aria-hidden="true"
+          />
         </div>
       </div>
 

@@ -2777,7 +2777,11 @@ label {
   background: #e2e8f0;
   color: #1e293b;
 }
-border: 1px solid var(--border);
+.notif-card-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -4917,5 +4921,124 @@ border: 1px solid var(--border);
   .lfb-content {
     flex-direction: row;
     flex-wrap: nowrap;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FINAL MOBILE POLISH
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── iOS Safari: prevent auto-zoom on input focus (needs font-size ≥ 16px) ── */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important; /* iOS requires ≥ 16px to prevent zoom */
+  }
+
+  /* Restore smaller font for date/time inputs inside the hub toolbar */
+  .hub-toolbar-date {
+    font-size: 14px !important;
+  }
+}
+
+/* ── Smooth momentum scrolling on scrollable containers ── */
+.main-content,
+.evolvia-scrollbar,
+.tl-filter-group,
+.hub-toolbar-left,
+.month-filter-bar {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Remove tap highlight on interactive timeline elements ── */
+.tl-section-header,
+.month-cell,
+.hub-toggle-btn,
+.hub-filter-btn,
+.zoom-pill,
+.tl-filter-chip,
+.month-filter-chip,
+.alert-bar-v2,
+.fab-button-v2 {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── TaskBottomSheet: prevent textarea resize outside bounds on mobile ── */
+@media (max-width: 768px) {
+  .task-alert-textarea,
+  textarea.w-full {
+    resize: none;
+  }
+
+  /* Bottom sheet body: ensure it doesn't overflow viewport */
+  /* (the sheet itself is position:fixed, body is flex-column) */
+  [style*="overflowY: auto"][style*="flex: 1"] {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* ── Prevent horizontal page overflow at root level ── */
+@media (max-width: 768px) {
+  body,
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+
+/* ── MissedTasksBar: ensure alert list doesn't overflow on small screens ── */
+@media (max-width: 480px) {
+  .alert-card-list {
+    gap: 6px;
+  }
+
+  .task-alert-meta {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  /* Stack reason + actions more compactly */
+  .task-alert-reason {
+    margin-bottom: 8px;
+  }
+
+  /* Slightly smaller textarea on very small phones */
+  .task-alert-textarea {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 6px 8px;
+  }
+}
+
+/* ── LiveFocusBanner: truncate very long task titles ── */
+.lfb-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+@media (max-width: 480px) {
+  .lfb-title {
+    max-width: 200px;
+  }
+}
+
+/* ── Improve safe area handling on iOS notch/home indicator ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .fab-button-v2 {
+    /* Keep FAB above home indicator */
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 769px) {
+    .fab-button-v2 {
+      bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    }
+  }
+  @media (max-width: 768px) {
+    .fab-button-v2 {
+      bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    }
   }
 }

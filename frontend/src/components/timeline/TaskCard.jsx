@@ -177,6 +177,7 @@ export default function TaskCard({
         left:       `calc(var(--tl-axis-width) + 8px + (100% - var(--tl-axis-width) - 16px) * ${leftPct / 100})`,
         width:      `calc((100% - var(--tl-axis-width) - 16px) * ${widthPct / 100} - 4px)`,
         height:     `${durationH}px`,
+        minHeight:  '44px',   /* WCAG touch target minimum */
         zIndex:     isActive ? 10 : 1,
         transition: isActive ? 'none' : 'transform 0.3s ease, top 0.3s ease',
         transform:  `translateX(${swipeOffset}px)`,
@@ -207,6 +208,8 @@ export default function TaskCard({
         style={{
           boxShadow: isDraggingTime ? '0 12px 28px rgba(0,0,0,0.35)' : undefined,
           cursor:    'pointer',
+          touchAction: 'pan-y',
+          WebkitTapHighlightColor: 'transparent',
         }}
         role="button"
         tabIndex={0}
