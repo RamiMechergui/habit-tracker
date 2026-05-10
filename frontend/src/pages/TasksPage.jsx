@@ -140,12 +140,20 @@ export default function TasksPage() {
 
   const openAdd = useCallback(() => {
     setEditingTask(null);
+    setSuggestedHour(null);
+    setIsSheetOpen(true);
+  }, []);
+
+  const openAddAtHour = useCallback((h) => {
+    setEditingTask(null);
+    setSuggestedHour(h);
     setIsSheetOpen(true);
   }, []);
 
   const closeSheet = useCallback(() => {
     setIsSheetOpen(false);
     setEditingTask(null);
+    setSuggestedHour(null);
   }, []);
 
   const clearFilters = useCallback((e) => {
@@ -312,6 +320,7 @@ export default function TasksPage() {
             tasks={tasks}
             onUpdateTask={handleUpdateTasks}
             onEditTask={openEdit}
+            onAddClick={openAddAtHour}
             isFutureDate={isFuture}
             filters={activeFilters}
           />
@@ -339,6 +348,7 @@ export default function TasksPage() {
         onDuplicate={handleDuplicateTask}
         initialData={editingTask}
         isFutureDate={isFuture}
+        suggestedHour={suggestedHour}
       />
     </div>
   );

@@ -38,7 +38,7 @@ const REMINDER_OPTIONS = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function TaskBottomSheet({
-  isOpen, onClose, onSave, onDelete, onDuplicate, initialData, isFutureDate
+  isOpen, onClose, onSave, onDelete, onDuplicate, initialData, isFutureDate, suggestedHour
 }) {
   const [title,               setTitle]               = useState('');
   const [description,         setDescription]         = useState('');
@@ -79,7 +79,10 @@ export default function TaskBottomSheet({
       setReminderMinutes(initialData.reminderMinutes ?? 15);
     } else {
       // Reset
-      setTitle(''); setDescription(''); setTime('12:00'); setEndTime('12:30');
+      setTitle(''); setDescription('');
+      const defaultTime = suggestedHour !== null ? `${suggestedHour.toString().padStart(2,'0')}:00` : '12:00';
+      const defaultEnd  = suggestedHour !== null ? `${suggestedHour.toString().padStart(2,'0')}:30` : '12:30';
+      setTime(defaultTime); setEndTime(defaultEnd);
       setPriority('medium'); setCategory('Other'); setStatus('Pending');
       setDelayReason(''); setRecurrence('none');
       setNotificationEnabled(true); setReminderMinutes(15);
@@ -351,7 +354,7 @@ export default function TaskBottomSheet({
             className="btn w-full"
             style={{ background: 'var(--accent-blue)', color: '#fff', padding: '13px', fontWeight: 700, fontSize: '0.95rem' }}
             onClick={handleSave}
-            disabled={!title.trim() || !time || isFutureDate}
+            disabled={!title.trim() || !time}
           >
             {initialData ? 'Update Task' : 'Create Task'}
           </button>
@@ -361,7 +364,6 @@ export default function TaskBottomSheet({
               className="btn w-full"
               style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '11px', fontWeight: 600 }}
               onClick={() => { onDelete(initialData.id); onClose(); }}
-              disabled={isFutureDate}
             >
               <Trash2 size={15} /> Delete Task
             </button>

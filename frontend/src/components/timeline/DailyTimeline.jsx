@@ -61,7 +61,7 @@ function clusterTasks(tasks) {
 }
 
 // ── Section block component ───────────────────────────────────────────────────
-function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddTask }) {
+function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick }) {
   const [open, setOpen] = useState(section.key !== 'overnight');
 
   const sectionTasks = tasks.filter(t => {
@@ -162,7 +162,11 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 
           {/* Empty section prompt */}
           {sectionTasks.length === 0 && (
-            <div className="tl-empty-section" style={{ position: 'absolute', top: 20, left: 'calc(var(--tl-axis-width) + 12px)', right: 0 }}>
+            <div 
+              className="tl-empty-section" 
+              onClick={() => onAddClick?.(section.start)}
+              style={{ position: 'absolute', top: 20, left: 'calc(var(--tl-axis-width) + 12px)', right: 0, cursor: 'pointer' }}
+            >
               <Plus size={14} /> No tasks yet for this period
             </div>
           )}
@@ -178,7 +182,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, isFutureDate, filters = {} }) {
+export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, filters = {} }) {
   const [zoom, setZoom] = useState(0); // index into ZOOM_OPTIONS
   const timelineRef = useRef(null);
 
@@ -257,6 +261,7 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, i
             onUpdateStatus={handleUpdateStatus}
             onEditTask={onEditTask}
             onDragTime={handleDragTime}
+            onAddClick={onAddClick}
           />
         ))}
       </div>
