@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock
+  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -43,6 +43,7 @@ const NAV_LINKS = [
 function App() {
   const { loading, user, logout, isOnline, toasts, dismissToast } = useHabits();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -66,8 +67,17 @@ function App() {
   return (
     <div className="layout" style={{ display: 'flex', minHeight: '100vh' }}>
 
+      {/* ── Mobile Sidebar Overlay ── */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── Desktop sidebar (hidden on mobile via CSS) ── */}
-      <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem' }}>
           <div style={{ position: 'relative' }}>
             <AvatarUploader />
@@ -129,6 +139,30 @@ function App() {
 
         <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
           
+          {/* Mobile-only action buttons inside sidebar */}
+          <div className="sidebar-mobile-actions" style={{ display: 'none', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle-btn-header"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              style={{ width: '38px', height: '38px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              onClick={logout}
+              title="Quit"
+              className="sidebar-mobile-quit"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', background: '#ef4444', border: 'none',
+                width: '38px', height: '38px', borderRadius: '8px', cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              <LogOut size={16} style={{ marginLeft: '-2px' }} />
+            </button>
+          </div>
 
           <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
             <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
@@ -139,45 +173,25 @@ function App() {
 
       {/* ── Mobile top header (visible only on mobile via CSS) ── */}
       <header className="mobile-header" style={{ display: 'none' }}>
-          {/* Left: Brand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
-            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-              Evolvia
+          {/* Left: Hamburger & Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1 }}>
+            <button 
+              className="mobile-menu-btn" 
+              onClick={() => setIsSidebarOpen(true)}
+              aria-label="Open Sidebar"
+            >
+              <Menu size={22} color="var(--text-primary)" />
+            </button>
+            <img src="/logo.png" alt="Logo" style={{ width: '22px', height: '22px', borderRadius: '4px' }} />
+            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+              EVOLVIA
             </span>
             <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block' }} />
           </div>
 
-          {/* Center: Profile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 2, justifyContent: 'center' }}>
-            <AvatarUploader />
-            <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user.lastName || user.firstName || 'User'}
-            </span>
-          </div>
-
-          {/* Right: Actions */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={logout}
-              title="Quit"
-              className="mobile-quit-btn"
-              style={{ 
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                background: '#ef4444',
-                border: 'none',
-                width: '30px',
-                height: '30px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
-              }}
-            >
-              <LogOut size={14} />
-            </button>
+          {/* Right: Notification */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <NotificationBar />
           </div>
       </header>
 

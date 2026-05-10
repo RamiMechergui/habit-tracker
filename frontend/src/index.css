@@ -849,22 +849,7 @@ label {
 
 @media (max-width: 768px) {
   .action-controls-container {
-    position: absolute;
-    top: 6.2rem;
-    right: 1.5rem;
-    padding: 0;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    gap: 1.2rem;
-    z-index: 50;
-  }
-  
-  .desktop-quit-btn { display: none !important; }
-  .action-divider {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -1111,7 +1096,7 @@ label {
     display: flex !important;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
+    padding: max(env(safe-area-inset-top, 0px), 0.75rem) 1rem 0.75rem 1rem;
     background: rgba(15, 17, 21, 0.97);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -1123,6 +1108,64 @@ label {
 
   [data-theme='light'] .mobile-header {
     background: rgba(248, 250, 252, 0.97);
+  }
+
+  /* Mobile menu button */
+  .mobile-menu-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    margin-left: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-menu-btn:active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  [data-theme='light'] .mobile-menu-btn:active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  /* ── Mobile Sidebar Drawer ── */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9998;
+    animation: fadeIn 0.2s ease-out forwards;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: -100%;
+    width: 280px;
+    max-width: 85vw;
+    z-index: 9999;
+    background: var(--bg-card);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid var(--border);
+    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex !important; /* overrides hidden state */
+    padding-top: max(env(safe-area-inset-top, 0px), 1rem) !important;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem) !important;
+  }
+
+  .sidebar.mobile-open {
+    left: 0;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar-mobile-actions {
+    display: flex !important;
   }
 
   /* ── Main content ── */
@@ -5042,3 +5085,5 @@ label {
     }
   }
 }
+
+@media (max-width: 768px) { .notif-bell-btn { border: none; width: 32px; height: 32px; -webkit-tap-highlight-color: transparent; } .notif-bell-btn:active { background: rgba(255,255,255,0.1); } }
