@@ -5492,3 +5492,23 @@ label {
 @media (min-width: 769px) {
   .desktop-quit-btn--hidden { display: none !important; }
 }
+/* ── Daily Notes ─────────────────────────────────────────────── */
+.note-card {
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+.note-card:hover {
+  transform: translateY(-2px);
+  border-left-color: var(--accent-blue);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.note-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.note-card:hover .note-actions {
+  opacity: 1;
+}
+@media (max-width: 768px) {
+  .note-actions { opacity: 1; }
+}

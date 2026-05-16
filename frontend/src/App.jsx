@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X
+  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
@@ -12,6 +12,7 @@ import MonthlyReview from './pages/MonthlyReview';
 import BookArchive from './pages/BookArchive';
 import Settings from './pages/Settings';
 import Splash from './pages/Splash';
+import DailyNotes from './pages/DailyNotes';
 import TasksPage from './pages/TasksPage';
 import Auth from './pages/Auth';
 import ExpenseTracker from './pages/ExpenseTracker';
@@ -30,6 +31,7 @@ const NAV_LINKS = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/daily',         icon: CheckSquare,     label: 'Daily Log' },
   { to: '/tasks',         icon: Clock,           label: 'Timeline' },
+  { to: '/notes',         icon: StickyNote,      label: 'Daily Notes' },
   { to: '/weekly',        icon: CalendarDays,    label: 'Weekly' },
   { to: '/monthly',       icon: CalendarRange,   label: 'Monthly' },
   { to: '/archive',       icon: BookOpen,        label: 'Archive' },
@@ -222,6 +224,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/daily"     element={<DailyLog />} />
             <Route path="/tasks"     element={<TasksPage />} />
+            <Route path="/notes"     element={<DailyNotes />} />
             <Route path="/weekly"    element={<WeeklyReview />} />
             <Route path="/monthly"   element={<MonthlyReview />} />
             <Route path="/archive"   element={<BookArchive />} />

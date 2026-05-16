@@ -46,6 +46,9 @@ export const HabitProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);            // live SSE toasts
   const sseRef = useRef(null);                         // EventSource reference
 
+  // ── Daily Notes state ─────────────────────────────────────────
+  const [dailyNotes, setDailyNotes] = useState({}); // { 'YYYY-MM-DD': [notes] }
+
   // Daily Defaults - Memoized to prevent unnecessary re-renders
   const createEmptyDay = useCallback((dateStr) => ({
     date: dateStr,
@@ -1038,6 +1041,88 @@ export const HabitProvider = ({ children }) => {
     });
   };
 
+  // ── Daily Notes API Calls ────────────────────────────────────────
+  const fetchNotesForDate = async (date) => {
+    if (!navigator.onLine) return dailyNotes[date] || [];
+    try {
+      const res = await fetch(`${API_URL}/api/notes?date=${date}`, { credentials: 'include' });
+      if (res.ok) {
+        const notes = await res.json();
+        setDailyNotes(prev => ({ ...prev, [date]: notes }));
+        return notes;
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+    }
+    return dailyNotes[date] || [];
+  };
+
+  const addDailyNote = async (date, content) => {
+    if (!navigator.onLine) return null;
+    try {
+      const res = await fetch(`${API_URL}/api/notes`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, content })
+      });
+      if (res.ok) {
+        const newNote = await res.json();
+        setDailyNotes(prev => ({
+          ...prev,
+          [date]: [...(prev[date] || []), newNote]
+        }));
+        return newNote;
+      }
+    } catch (error) {
+      console.error('Error adding note:', error);
+    }
+    return null;
+  };
+
+  const updateDailyNote = async (id, date, content) => {
+    if (!navigator.onLine) return null;
+    try {
+      const res = await fetch(`${API_URL}/api/notes/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      if (res.ok) {
+        const updatedNote = await res.json();
+        setDailyNotes(prev => ({
+          ...prev,
+          [date]: (prev[date] || []).map(n => n._id === id ? updatedNote : n)
+        }));
+        return updatedNote;
+      }
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
+    return null;
+  };
+
+  const deleteDailyNote = async (id, date) => {
+    if (!navigator.onLine) return false;
+    try {
+      const res = await fetch(`${API_URL}/api/notes/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setDailyNotes(prev => ({
+          ...prev,
+          [date]: (prev[date] || []).filter(n => n._id !== id)
+        }));
+        return true;
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+    return false;
+  };
+
   return (
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData,
@@ -1053,6 +1138,8 @@ export const HabitProvider = ({ children }) => {
       scheduleTaskReminder, cancelTaskReminder,
       // Timeline preferences
       timelinePrefs, setTimelinePrefs,
+      // Daily Notes
+      dailyNotes, fetchNotesForDate, addDailyNote, updateDailyNote, deleteDailyNote,
     }}>
       {children}
     </HabitContext.Provider>
