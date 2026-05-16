@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const dailyNoteSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  userId: { type: String, required: true },
   date: { type: String, required: true }, // Format: YYYY-MM-DD
   content: { type: String, required: true },
 }, { timestamps: true });
