@@ -5483,7 +5483,7 @@ label {
   background: #fecaca;
 }
 
-/* Hide on mobile — sidebar-mobile-actions handles it there */
+/* Hide on mobile ï¿½ sidebar-mobile-actions handles it there */
 @media (max-width: 768px) {
   .sidebar-quit-btn { display: none; }
 }
