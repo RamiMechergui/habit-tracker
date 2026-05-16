@@ -75,6 +75,8 @@ server {
     }
     location /api/delivery { proxy_pass http://127.0.0.1:5129; }
     location /api/user-prefs { proxy_pass http://127.0.0.1:5130; }
+    location /api/tasks { proxy_pass http://127.0.0.1:5131; }
+    location /api/notes { proxy_pass http://127.0.0.1:5132; }
 
     # Enable large uploads
     client_max_body_size 10M;
