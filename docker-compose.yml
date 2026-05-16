@@ -249,6 +249,16 @@ services:
     depends_on: [mongo, kafka]
     networks: [habit-network]
 
+  notes-service:
+    build: ./backend/User/Habits/notes-service
+    hostname: notes-service
+    environment:
+      - PORT=5132
+      - MONGO_URI=mongodb://mongo:27017/notes_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on: [mongo]
+    networks: [habit-network]
+
   mongo:
     image: mongo:6.0
     hostname: mongo

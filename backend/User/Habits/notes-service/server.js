@@ -1,10 +1,30 @@
 const express = require('express');
-const router = express.Router();
-const DailyNote = require('../models/DailyNote');
-const auth = require('../middleware/auth');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const auth = require('./middleware/auth');
+const DailyNote = require('./models/DailyNote');
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
+
+// Connect to MongoDB
+const mongoURI = process.env.MONGO_URI || 'mongodb://mongo:27017/notes_db';
+mongoose.connect(mongoURI)
+  .then(() => console.log('Notes Service: Connected to MongoDB'))
+  .catch(err => console.error('Notes Service: MongoDB connection error:', err));
+
+// ── API Routes ───────────────────────────────────────────────
 
 // Get notes for a specific date
-router.get('/', auth, async (req, res) => {
+app.get('/api/notes', auth, async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) return res.status(400).json({ message: 'Date parameter is required' });
@@ -12,13 +32,13 @@ router.get('/', auth, async (req, res) => {
     const notes = await DailyNote.find({ userId: req.user.id, date }).sort({ createdAt: 1 });
     res.json(notes);
   } catch (error) {
-    console.error('[GET /api/notes] Error:', error);
+    console.error('[GET /api/notes] Error:', error.message);
     res.status(500).json({ message: 'Server error fetching notes' });
   }
 });
 
 // Add a new note
-router.post('/', auth, async (req, res) => {
+app.post('/api/notes', auth, async (req, res) => {
   try {
     const { date, content } = req.body;
     if (!date || !content) return res.status(400).json({ message: 'Date and content are required' });
@@ -32,13 +52,13 @@ router.post('/', auth, async (req, res) => {
     await note.save();
     res.status(201).json(note);
   } catch (error) {
-    console.error('[POST /api/notes] Error:', error);
+    console.error('[POST /api/notes] Error:', error.message);
     res.status(500).json({ message: 'Server error adding note' });
   }
 });
 
 // Update a note
-router.put('/:id', auth, async (req, res) => {
+app.put('/api/notes/:id', auth, async (req, res) => {
   try {
     const { content } = req.body;
     if (!content) return res.status(400).json({ message: 'Content is required' });
@@ -52,21 +72,29 @@ router.put('/:id', auth, async (req, res) => {
     if (!note) return res.status(404).json({ message: 'Note not found' });
     res.json(note);
   } catch (error) {
-    console.error('[PUT /api/notes] Error:', error);
+    console.error('[PUT /api/notes] Error:', error.message);
     res.status(500).json({ message: 'Server error updating note' });
   }
 });
 
 // Delete a note
-router.delete('/:id', auth, async (req, res) => {
+app.delete('/api/notes/:id', auth, async (req, res) => {
   try {
     const note = await DailyNote.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
     if (!note) return res.status(404).json({ message: 'Note not found' });
     res.json({ message: 'Note deleted successfully' });
   } catch (error) {
-    console.error('[DELETE /api/notes] Error:', error);
+    console.error('[DELETE /api/notes] Error:', error.message);
     res.status(500).json({ message: 'Server error deleting note' });
   }
 });
 
-module.exports = router;
+// Health check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'notes-service' });
+});
+
+const PORT = process.env.PORT || 5132;
+app.listen(PORT, () => {
+  console.log(`Notes Service running on port ${PORT}`);
+});

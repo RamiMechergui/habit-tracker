@@ -9,11 +9,13 @@ export default function DailyNotes() {
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const notesForDate = dailyNotes[dateStr] || [];
 
@@ -34,9 +36,16 @@ export default function DailyNotes() {
     e.preventDefault();
     if (!newNoteContent.trim()) return;
     
-    await addDailyNote(dateStr, newNoteContent.trim());
-    setNewNoteContent('');
-    setIsAdding(false);
+    setSaving(true);
+    try {
+      await addDailyNote(dateStr, newNoteContent.trim());
+      setNewNoteContent('');
+      setIsAdding(false);
+    } catch (error) {
+      alert(error.message || 'Failed to save note.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleStartEdit = (note) => {
@@ -46,9 +55,16 @@ export default function DailyNotes() {
 
   const handleSaveEdit = async () => {
     if (!editContent.trim()) return;
-    await updateDailyNote(editingId, dateStr, editContent.trim());
-    setEditingId(null);
-    setEditContent('');
+    setEditSaving(true);
+    try {
+      await updateDailyNote(editingId, dateStr, editContent.trim());
+      setEditingId(null);
+      setEditContent('');
+    } catch (error) {
+      alert(error.message || 'Failed to update note.');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -58,7 +74,11 @@ export default function DailyNotes() {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this note?')) {
-      await deleteDailyNote(id, dateStr);
+      try {
+        await deleteDailyNote(id, dateStr);
+      } catch (error) {
+        alert(error.message || 'Failed to delete note.');
+      }
     }
   };
 
@@ -116,11 +136,12 @@ export default function DailyNotes() {
               autoFocus
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
-              <button className="btn" onClick={() => setIsAdding(false)} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
+              <button className="btn" onClick={() => setIsAdding(false)} disabled={saving} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
                 Cancel
               </button>
-              <button className="btn" onClick={handleAddNote} disabled={!newNoteContent.trim()} style={{ background: 'var(--accent-blue)', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Plus size={16} /> Save Note
+              <button className="btn" onClick={handleAddNote} disabled={!newNoteContent.trim() || saving} style={{ background: 'var(--accent-blue)', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', opacity: saving ? 0.7 : 1 }}>
+                {saving ? <div className="spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Plus size={16} />} 
+                {saving ? 'Saving...' : 'Save Note'}
               </button>
             </div>
           </div>
@@ -162,11 +183,12 @@ export default function DailyNotes() {
                       autoFocus
                     />
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
-                      <button className="btn" onClick={handleCancelEdit} style={{ background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <button className="btn" onClick={handleCancelEdit} disabled={editSaving} style={{ background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <X size={14} /> Cancel
                       </button>
-                      <button className="btn" onClick={handleSaveEdit} disabled={!editContent.trim() || editContent === note.content} style={{ background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Check size={14} /> Save
+                      <button className="btn" onClick={handleSaveEdit} disabled={!editContent.trim() || editContent === note.content || editSaving} style={{ background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px', opacity: editSaving ? 0.7 : 1 }}>
+                        {editSaving ? <div className="spinner" style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Check size={14} />} 
+                        {editSaving ? 'Saving...' : 'Save'}
                       </button>
                     </div>
                   </div>

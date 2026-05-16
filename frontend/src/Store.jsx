@@ -1058,69 +1058,69 @@ export const HabitProvider = ({ children }) => {
   };
 
   const addDailyNote = async (date, content) => {
-    if (!navigator.onLine) return null;
-    try {
-      const res = await fetch(`${API_URL}/api/notes`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, content })
-      });
-      if (res.ok) {
-        const newNote = await res.json();
-        setDailyNotes(prev => ({
-          ...prev,
-          [date]: [...(prev[date] || []), newNote]
-        }));
-        return newNote;
-      }
-    } catch (error) {
-      console.error('Error adding note:', error);
+    if (!navigator.onLine) throw new Error('Cannot add note while offline');
+    
+    const res = await fetch(`${API_URL}/api/notes`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, content })
+    });
+    
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to add note');
     }
-    return null;
+    
+    const newNote = await res.json();
+    setDailyNotes(prev => ({
+      ...prev,
+      [date]: [...(prev[date] || []), newNote]
+    }));
+    return newNote;
   };
 
   const updateDailyNote = async (id, date, content) => {
-    if (!navigator.onLine) return null;
-    try {
-      const res = await fetch(`${API_URL}/api/notes/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-      });
-      if (res.ok) {
-        const updatedNote = await res.json();
-        setDailyNotes(prev => ({
-          ...prev,
-          [date]: (prev[date] || []).map(n => n._id === id ? updatedNote : n)
-        }));
-        return updatedNote;
-      }
-    } catch (error) {
-      console.error('Error updating note:', error);
+    if (!navigator.onLine) throw new Error('Cannot update note while offline');
+    
+    const res = await fetch(`${API_URL}/api/notes/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update note');
     }
-    return null;
+
+    const updatedNote = await res.json();
+    setDailyNotes(prev => ({
+      ...prev,
+      [date]: (prev[date] || []).map(n => n._id === id ? updatedNote : n)
+    }));
+    return updatedNote;
   };
 
   const deleteDailyNote = async (id, date) => {
-    if (!navigator.onLine) return false;
-    try {
-      const res = await fetch(`${API_URL}/api/notes/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (res.ok) {
-        setDailyNotes(prev => ({
-          ...prev,
-          [date]: (prev[date] || []).filter(n => n._id !== id)
-        }));
-        return true;
-      }
-    } catch (error) {
-      console.error('Error deleting note:', error);
+    if (!navigator.onLine) throw new Error('Cannot delete note while offline');
+    
+    const res = await fetch(`${API_URL}/api/notes/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to delete note');
     }
-    return false;
+
+    setDailyNotes(prev => ({
+      ...prev,
+      [date]: (prev[date] || []).filter(n => n._id !== id)
+    }));
+    return true;
   };
 
   return (
