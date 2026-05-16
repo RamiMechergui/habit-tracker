@@ -16,6 +16,14 @@ export default function DailyNotes() {
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [localMessage, setLocalMessage] = useState({ text: '', type: '' });
+
+  const showMessage = (text, type = 'success') => {
+    setLocalMessage({ text, type });
+    setTimeout(() => setLocalMessage({ text: '', type: '' }), 4000);
+  };
 
   const notesForDate = dailyNotes[dateStr] || [];
 
@@ -41,8 +49,9 @@ export default function DailyNotes() {
       await addDailyNote(dateStr, newNoteContent.trim());
       setNewNoteContent('');
       setIsAdding(false);
+      showMessage('Note saved successfully');
     } catch (error) {
-      alert(error.message || 'Failed to save note.');
+      showMessage(error.message || 'Failed to save note.', 'error');
     } finally {
       setSaving(false);
     }
@@ -60,8 +69,9 @@ export default function DailyNotes() {
       await updateDailyNote(editingId, dateStr, editContent.trim());
       setEditingId(null);
       setEditContent('');
+      showMessage('Note updated successfully');
     } catch (error) {
-      alert(error.message || 'Failed to update note.');
+      showMessage(error.message || 'Failed to update note.', 'error');
     } finally {
       setEditSaving(false);
     }
@@ -72,13 +82,14 @@ export default function DailyNotes() {
     setEditContent('');
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this note?')) {
-      try {
-        await deleteDailyNote(id, dateStr);
-      } catch (error) {
-        alert(error.message || 'Failed to delete note.');
-      }
+  const confirmDelete = async (id) => {
+    try {
+      await deleteDailyNote(id, dateStr);
+      showMessage('Note deleted successfully');
+    } catch (error) {
+      showMessage(error.message || 'Failed to delete note.', 'error');
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -120,6 +131,23 @@ export default function DailyNotes() {
           )}
         </div>
       </div>
+
+      {/* ── Local Messages ── */}
+      {localMessage.text && (
+        <div style={{
+          padding: '12px 16px', borderRadius: '8px', marginBottom: '16px',
+          background: localMessage.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+          color: localMessage.type === 'error' ? '#ef4444' : '#10b981',
+          border: `1px solid ${localMessage.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          animation: 'fadeInDown 0.3s ease'
+        }}>
+          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{localMessage.text}</span>
+          <button onClick={() => setLocalMessage({ text: '', type: '' })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* ── Main Content Area ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -173,7 +201,19 @@ export default function DailyNotes() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {notesForDate.map(note => (
               <div key={note._id} className="glass-card note-card" style={{ padding: '16px' }}>
-                {editingId === note._id ? (
+                {deleteConfirmId === note._id ? (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    <p style={{ margin: '0 0 12px 0', color: 'var(--text-primary)', fontWeight: 600 }}>Are you sure you want to delete this note?</p>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button className="btn" onClick={() => setDeleteConfirmId(null)} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
+                        Cancel
+                      </button>
+                      <button className="btn" onClick={() => confirmDelete(note._id)} style={{ background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ) : editingId === note._id ? (
                   <div>
                     <textarea
                       className="w-full"
@@ -204,7 +244,7 @@ export default function DailyNotes() {
                         <button className="btn-icon" onClick={() => handleStartEdit(note)} title="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
                           <Edit2 size={14} />
                         </button>
-                        <button className="btn-icon" onClick={() => handleDelete(note._id)} title="Delete" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
+                        <button className="btn-icon" onClick={() => setDeleteConfirmId(note._id)} title="Delete" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
                           <Trash2 size={14} />
                         </button>
                       </div>
