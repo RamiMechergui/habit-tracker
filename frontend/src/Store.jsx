@@ -8,6 +8,15 @@ const HabitContext = createContext();
 
 export const useHabits = () => useContext(HabitContext);
 
+// ── Timeline prefs helpers ────────────────────────────────────
+const DEFAULT_TIMELINE_PREFS = { defaultDuration: 30, intervalGranularity: 30 };
+const loadTimelinePrefs = () => {
+  try {
+    const raw = localStorage.getItem('timelinePrefs');
+    return raw ? { ...DEFAULT_TIMELINE_PREFS, ...JSON.parse(raw) } : DEFAULT_TIMELINE_PREFS;
+  } catch { return DEFAULT_TIMELINE_PREFS; }
+};
+
 export const HabitProvider = ({ children }) => {
   const [logs, setLogs] = useState({});
   const [user, setUser] = useState(null);
@@ -17,6 +26,15 @@ export const HabitProvider = ({ children }) => {
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
+  const [timelinePrefs, setTimelinePrefsState] = useState(loadTimelinePrefs);
+
+  const setTimelinePrefs = useCallback((updates) => {
+    setTimelinePrefsState(prev => {
+      const next = { ...prev, ...updates };
+      try { localStorage.setItem('timelinePrefs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // ── Essentials state ──────────────────────────────────────────
   const [essentials, setEssentials] = useState([]);
@@ -1032,7 +1050,9 @@ export const HabitProvider = ({ children }) => {
       // Notifications
       notifications, unreadCount, toasts, dismissToast,
       markNotificationRead, markAllNotificationsRead, deleteNotification,
-      scheduleTaskReminder, cancelTaskReminder
+      scheduleTaskReminder, cancelTaskReminder,
+      // Timeline preferences
+      timelinePrefs, setTimelinePrefs,
     }}>
       {children}
     </HabitContext.Provider>

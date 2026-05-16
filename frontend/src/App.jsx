@@ -137,8 +137,8 @@ function App() {
           ))}
         </nav>
 
-        <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
-          
+        <div className="sidebar-footer">
+
           {/* Mobile-only action buttons inside sidebar */}
           <div className="sidebar-mobile-actions" style={{ display: 'none', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <button
@@ -164,7 +164,18 @@ function App() {
             </button>
           </div>
 
-          <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+          {/* Desktop-only: Quit button pinned at sidebar bottom */}
+          <button
+            className="sidebar-quit-btn"
+            onClick={logout}
+            aria-label="Sign out and quit"
+            title="Quit / Sign Out"
+          >
+            <LogOut size={16} />
+            <span>Quit</span>
+          </button>
+
+          <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
             <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
             <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>EVOLVIA</span>
           </div>
@@ -252,7 +263,7 @@ function App() {
         <button
           onClick={logout}
           title="Quit"
-          className="desktop-quit-btn"
+          className="desktop-quit-btn desktop-quit-btn--hidden"
           style={{ 
             display: 'flex',
             alignItems: 'center',

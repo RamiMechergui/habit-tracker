@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
-import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut, Clock, Timer, Layers } from 'lucide-react';
 
 export default function Settings() {
-  const { user, updateProfile, changePassword, logout } = useHabits();
+  const { user, updateProfile, changePassword, logout, timelinePrefs, setTimelinePrefs } = useHabits();
 
   // Profile fields
   const [firstName, setFirstName] = useState(user?.firstName || '');
@@ -289,6 +289,83 @@ export default function Settings() {
             </div>
           </form>
         )}
+      </div>
+      {/* ─── Timeline Preferences Card ─── */}
+      <div className="glass-card settings-card">
+        <div className="settings-card-header">
+          <div className="settings-icon-badge" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05))', color: 'var(--accent-blue)' }}>
+            <Timer size={22} />
+          </div>
+          <div>
+            <h3>Timeline Preferences</h3>
+            <p className="settings-subtitle">Customize your scheduling experience</p>
+          </div>
+        </div>
+
+        <div className="settings-form">
+          {/* Default Task Duration */}
+          <div className="settings-field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Clock size={14} style={{ color: 'var(--accent-blue)' }} />
+              Default Task Duration
+            </label>
+            <p className="settings-hint" style={{ marginBottom: '0.6rem' }}>Auto-fill end time when creating a new task</p>
+            <div className="tl-pref-group" role="group" aria-label="Default task duration">
+              {[15, 30, 60].map(d => (
+                <button
+                  key={d}
+                  className={`tl-pref-btn ${timelinePrefs.defaultDuration === d ? 'tl-pref-btn--active' : ''}`}
+                  onClick={() => setTimelinePrefs({ defaultDuration: d })}
+                  aria-pressed={timelinePrefs.defaultDuration === d}
+                >
+                  {d} min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Timeline Interval */}
+          <div className="settings-field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Layers size={14} style={{ color: 'var(--accent-blue)' }} />
+              Timeline Interval Granularity
+            </label>
+            <p className="settings-hint" style={{ marginBottom: '0.6rem' }}>Controls time grid snapping and minute step in task creation</p>
+            <div className="tl-pref-group" role="group" aria-label="Timeline interval">
+              {[15, 30, 60].map(g => (
+                <button
+                  key={g}
+                  className={`tl-pref-btn ${timelinePrefs.intervalGranularity === g ? 'tl-pref-btn--active' : ''}`}
+                  onClick={() => setTimelinePrefs({ intervalGranularity: g })}
+                  aria-pressed={timelinePrefs.intervalGranularity === g}
+                >
+                  {g} min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Preview */}
+          <div style={{
+            background: 'var(--tl-panel-bg, rgba(99,102,241,0.06))',
+            border: '1px solid var(--border)',
+            borderRadius: '10px',
+            padding: '12px 14px',
+            fontSize: '0.8rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.6,
+          }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Preview: </strong>
+            New task at <strong>14:00</strong> → end time auto-set to{' '}
+            <strong style={{ color: 'var(--accent-blue)' }}>
+              {(() => {
+                const total = 14 * 60 + timelinePrefs.defaultDuration;
+                return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+              })()}
+            </strong>
+            {' · '}Minute steps: <strong style={{ color: 'var(--accent-blue)' }}>:{String(timelinePrefs.intervalGranularity).padStart(2,'0')}</strong>
+          </div>
+        </div>
       </div>
     </div>
   );

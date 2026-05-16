@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { format } from 'date-fns';
 import { ChevronDown, Plus, ZoomIn, ZoomOut } from 'lucide-react';
 import TaskCard from './TaskCard';
+import { useHabits } from '../../Store';
 
 // ── Mobile detection hook ─────────────────────────────────────────────────────
 function useIsMobile(breakpoint = 768) {
@@ -19,10 +20,17 @@ function useIsMobile(breakpoint = 768) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ZOOM_OPTIONS = [
-  { label: '60m', factor: 1   },
-  { label: '30m', factor: 1.5 },
-  { label: '15m', factor: 2   },
+  { label: '60m', factor: 1,   granularity: 60 },
+  { label: '30m', factor: 1.5, granularity: 30 },
+  { label: '15m', factor: 2,   granularity: 15 },
 ];
+
+// Map granularity pref → zoom index
+const granularityToZoom = (g) => {
+  if (g <= 15) return 2;
+  if (g <= 30) return 1;
+  return 0;
+};
 
 // Base hour heights — desktop uses 90px, mobile 68px
 const BASE_HOUR_DESKTOP = 90;
@@ -147,6 +155,23 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                   width: 6, height: 1, background: 'var(--tl-tick-maj)',
                 }} />
               )}
+              {/* 15-min label at half-hour mark */}
+              {zoomFactor >= 1.5 && (
+                <div style={{
+                  position: 'absolute',
+                  top: `${hourHeight / 2}px`,
+                  left: 0,
+                  width: 'calc(var(--tl-axis-width) - 8px)',
+                  textAlign: 'right',
+                  fontSize: '0.6rem',
+                  color: 'var(--tl-tick-maj)',
+                  lineHeight: 1,
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                }}>
+                  :{String(30).padStart(2,'0')}
+                </div>
+              )}
               {/* 15min ticks */}
               {zoomFactor >= 2 && [1, 2, 3].map(q => (
                 <div key={q} style={{
@@ -212,9 +237,16 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, filters = {} }) {
-  const [zoom, setZoom] = useState(0); // index into ZOOM_OPTIONS
+  const { timelinePrefs } = useHabits();
+  const initialZoom = granularityToZoom(timelinePrefs.intervalGranularity);
+  const [zoom, setZoom] = useState(initialZoom);
   const timelineRef = useRef(null);
   const isMobile = useIsMobile();
+
+  // Sync zoom if preference changes externally
+  useEffect(() => {
+    setZoom(granularityToZoom(timelinePrefs.intervalGranularity));
+  }, [timelinePrefs.intervalGranularity]);
 
   const zoomFactor = ZOOM_OPTIONS[zoom].factor;
   // Use a smaller base hour-height on mobile to reduce vertical scroll
