@@ -23,9 +23,13 @@ if (!fs.existsSync(uploadDir)) {
 app.use('/uploads', express.static(uploadDir));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI || 'mongodb://mongo:27017/habittracker')
+const mongoURI = process.env.MONGO_URI || 
+                 process.env.MONGO_URL || 
+                 (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/habittracker?authSource=admin` : 'mongodb://mongo:27017/habittracker');
+
+mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error(err));
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 const authRoutes         = require('./routes/auth');
