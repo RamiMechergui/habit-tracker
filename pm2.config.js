@@ -32,6 +32,7 @@ module.exports = {
     { name: 'video-editing', port: 5123, path: 'backend/User/Habits/video-editing' },
     { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
     { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
+    { name: 'notes-service', port: 5132, path: 'backend/User/Habits/notes-service' },
 
     // --- FINANCES & ANALYTICS ---
     { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
