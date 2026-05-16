@@ -1050,9 +1050,13 @@ export const HabitProvider = ({ children }) => {
         const notes = await res.json();
         setDailyNotes(prev => ({ ...prev, [date]: notes }));
         return notes;
+      } else {
+        // Mark as loaded even on failure to avoid infinite spinner
+        setDailyNotes(prev => ({ ...prev, [date]: prev[date] || [] }));
       }
     } catch (error) {
       console.error('Error fetching notes:', error);
+      setDailyNotes(prev => ({ ...prev, [date]: prev[date] || [] }));
     }
     return dailyNotes[date] || [];
   };

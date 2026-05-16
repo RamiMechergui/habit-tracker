@@ -190,7 +190,7 @@ export default function DailyNotes() {
         )}
 
         {/* Notes List */}
-        {loading && notesForDate.length === 0 ? (
+        {(loading || dailyNotes[dateStr] === undefined) && notesForDate.length === 0 ? (
           <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading notes...</div>
         ) : notesForDate.length === 0 ? (
           <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
