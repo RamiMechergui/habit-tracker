@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useHabits } from '../Store';
-import { Plus, Trash2, Edit2, Check, X, Clock, StickyNote } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Clock, StickyNote, WifiOff, CloudOff } from 'lucide-react';
 
 // Format: HH:mm MM/DD/YYYY
 const formatTimestamp = (iso) => {
@@ -19,7 +19,7 @@ const formatTimestamp = (iso) => {
 };
 
 export default function DailyNotes() {
-  const { allNotes, fetchAllNotes, addDailyNote, updateDailyNote, deleteDailyNote } = useHabits();
+  const { allNotes, fetchAllNotes, addDailyNote, updateDailyNote, deleteDailyNote, isOnline } = useHabits();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -112,7 +112,14 @@ export default function DailyNotes() {
             <StickyNote size={22} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.2rem' }}>All Notes</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem' }}>All Notes</h2>
+              {!isOnline && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px' }}>
+                  <WifiOff size={12} /> Offline Mode
+                </span>
+              )}
+            </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               {loading ? 'Loading…' : `${allNotes.length} note${allNotes.length !== 1 ? 's' : ''} — newest first`}
             </span>
@@ -225,6 +232,11 @@ export default function DailyNotes() {
                       {formatTimestamp(note.createdAt)}
                       {note.createdAt !== note.updatedAt && (
                         <span style={{ fontStyle: 'italic', opacity: 0.65, marginLeft: '4px', fontFamily: 'inherit' }}>(edited)</span>
+                      )}
+                      {note.pendingSync && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px', marginLeft: '6px', color: '#eab308', opacity: 0.8 }} title="Pending Sync">
+                          <CloudOff size={12} /> Pending Sync
+                        </span>
                       )}
                     </div>
                     <div className="note-actions" style={{ display: 'flex', gap: '4px' }}>

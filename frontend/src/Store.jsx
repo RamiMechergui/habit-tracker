@@ -28,10 +28,101 @@ export const HabitProvider = ({ children }) => {
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
   const [timelinePrefs, setTimelinePrefsState] = useState(loadTimelinePrefs);
 
+  // ── Recurring tasks state ─────────────────────────────────────
+  const [recurringTasks, setRecurringTasksState] = useState(() => {
+    try {
+      const raw = localStorage.getItem('recurringTasks');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+
   const setTimelinePrefs = useCallback((updates) => {
     setTimelinePrefsState(prev => {
       const next = { ...prev, ...updates };
       try { localStorage.setItem('timelinePrefs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  // ── Recurring task helpers ────────────────────────────────────
+  const WEEKDAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+  // Does a recurring task definition apply on a given dateStr?
+  const recurringMatchesDate = useCallback((def, dateStr) => {
+    if (def.isDisabled) return false;
+    if (def.startDate && dateStr < def.startDate) return false;
+    if (def.endDate   && dateStr > def.endDate)   return false;
+    const dow = new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun
+    switch (def.recurrence) {
+      case 'daily':    return true;
+      case 'weekdays': return dow >= 1 && dow <= 5;
+      case 'weekly':   return dow === new Date((def.startDate || def.createdAt?.slice(0,10) || dateStr) + 'T12:00:00').getDay();
+      case 'monthly':  return new Date(dateStr + 'T12:00:00').getDate() === new Date((def.startDate || def.createdAt?.slice(0,10) || dateStr) + 'T12:00:00').getDate();
+      case 'custom':   return Array.isArray(def.customDays) && def.customDays.includes(WEEKDAY_NAMES[dow]);
+      default:         return false;
+    }
+  }, []);
+
+  // Get virtual recurring task instances that apply to a date, merged with real log overrides
+  const getVirtualTasksForDate = useCallback((dateStr) => {
+    return Object.values(recurringTasks)
+      .filter(def => recurringMatchesDate(def, dateStr))
+      .map(def => {
+        const instanceId = `rec_${def.id}_${dateStr}`;
+        // If there is a real saved override for this date's log, use it
+        const existingTasks = logs[dateStr]?.tasks ?? [];
+        const override = existingTasks.find(t => t.recurringId === def.id);
+        if (override) return null; // already persisted, don't create virtual duplicate
+        return {
+          ...def,
+          id:          instanceId,
+          recurringId: def.id,
+          status:      'Pending',
+          isVirtual:   true,
+          createdAt:   new Date().toISOString(),
+        };
+      })
+      .filter(Boolean);
+  }, [recurringTasks, logs, recurringMatchesDate]);
+
+  // Persist a recurring task definition
+  const saveRecurringTask = useCallback((taskDef) => {
+    const id = taskDef.id && !taskDef.id.startsWith('task_') ? taskDef.id : `rec_${Date.now()}`;
+    const def = { ...taskDef, id, isDisabled: false, startDate: taskDef.startDate || format(new Date(), 'yyyy-MM-dd'), createdAt: new Date().toISOString() };
+    setRecurringTasksState(prev => {
+      const next = { ...prev, [id]: def };
+      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    return def;
+  }, []);
+
+  // Update a recurring task definition (future occurrences only)
+  const updateRecurringTask = useCallback((id, updates) => {
+    setRecurringTasksState(prev => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: { ...prev[id], ...updates } };
+      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  // Disable (soft-delete) a recurring task
+  const disableRecurringTask = useCallback((id) => {
+    setRecurringTasksState(prev => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: { ...prev[id], isDisabled: true } };
+      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  // Delete a recurring task definition entirely
+  const deleteRecurringTask = useCallback((id) => {
+    setRecurringTasksState(prev => {
+      const next = { ...prev };
+      delete next[id];
+      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
       return next;
     });
   }, []);
@@ -156,6 +247,11 @@ export const HabitProvider = ({ children }) => {
       try {
         // Step 1: Load everything from IndexedDB instantly
         await loadOfflineData();
+        
+        // Load offline notes
+        const offlineNotes = await db.loadAllNotes();
+        offlineNotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setAllNotes(offlineNotes);
 
         // Step 2: If online, verify session and sync with server
         if (navigator.onLine) {
@@ -1052,105 +1148,212 @@ export const HabitProvider = ({ children }) => {
 
   // ── Daily Notes API Calls ────────────────────────────────────────
   const fetchNotesForDate = async (date) => {
-    if (!navigator.onLine) return dailyNotes[date] || [];
+    if (!navigator.onLine) {
+      const offlineNotes = await db.loadNotesByDate(date);
+      setDailyNotes(prev => ({ ...prev, [date]: offlineNotes }));
+      return offlineNotes;
+    }
     try {
       const res = await fetch(`${API_URL}/api/notes?date=${date}`, { credentials: 'include' });
       if (res.ok) {
         const notes = await res.json();
         setDailyNotes(prev => ({ ...prev, [date]: notes }));
+        for (const note of notes) await db.saveNote(note);
         return notes;
       } else {
-        setDailyNotes(prev => ({ ...prev, [date]: prev[date] || [] }));
+        const offlineNotes = await db.loadNotesByDate(date);
+        setDailyNotes(prev => ({ ...prev, [date]: offlineNotes }));
+        return offlineNotes;
       }
     } catch (error) {
       console.error('Error fetching notes:', error);
-      setDailyNotes(prev => ({ ...prev, [date]: prev[date] || [] }));
+      const offlineNotes = await db.loadNotesByDate(date);
+      setDailyNotes(prev => ({ ...prev, [date]: offlineNotes }));
+      return offlineNotes;
     }
-    return dailyNotes[date] || [];
   };
 
   const fetchAllNotes = async () => {
-    if (!navigator.onLine) return allNotes;
+    if (!navigator.onLine) {
+      const offlineNotes = await db.loadAllNotes();
+      // sort newest first
+      offlineNotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setAllNotes(offlineNotes);
+      return offlineNotes;
+    }
     try {
       const res = await fetch(`${API_URL}/api/notes`, { credentials: 'include' });
       if (res.ok) {
         const notes = await res.json();
         setAllNotes(notes);
+        await db.replaceAllNotes(notes);
         return notes;
       }
     } catch (error) {
       console.error('Error fetching all notes:', error);
+      const offlineNotes = await db.loadAllNotes();
+      offlineNotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setAllNotes(offlineNotes);
+      return offlineNotes;
     }
     return allNotes;
   };
 
   const addDailyNote = async (date, content) => {
-    if (!navigator.onLine) throw new Error('Cannot add note while offline');
+    const tempId = 'temp_' + Date.now();
+    const nowStr = new Date().toISOString();
     
-    const res = await fetch(`${API_URL}/api/notes`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, content })
-    });
+    // Optimistic Update
+    const newNote = {
+      _id: tempId,
+      date,
+      content,
+      createdAt: nowStr,
+      updatedAt: nowStr,
+      pendingSync: true
+    };
     
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to add note');
+    setDailyNotes(prev => ({ ...prev, [date]: [...(prev[date] || []), newNote] }));
+    setAllNotes(prev => [newNote, ...prev]);
+    await db.saveNote(newNote);
+
+    if (!navigator.onLine) {
+      await db.enqueueSync({
+        method: 'POST',
+        url: '/api/notes',
+        body: { date, content, localId: tempId }
+      });
+      requestBackgroundSync();
+      return newNote;
     }
     
-    const newNote = await res.json();
-    setDailyNotes(prev => ({
-      ...prev,
-      [date]: [...(prev[date] || []), newNote]
-    }));
-    setAllNotes(prev => [newNote, ...prev]);
-    return newNote;
+    try {
+      const res = await fetch(`${API_URL}/api/notes`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, content, localId: tempId })
+      });
+      
+      if (!res.ok) throw new Error('API failed');
+      
+      const serverNote = await res.json();
+      
+      // Update UI with real server note
+      setDailyNotes(prev => ({
+        ...prev,
+        [date]: (prev[date] || []).map(n => n._id === tempId ? serverNote : n)
+      }));
+      setAllNotes(prev => prev.map(n => n._id === tempId ? serverNote : n));
+      
+      await db.deleteNote(tempId);
+      await db.saveNote(serverNote);
+      
+      return serverNote;
+    } catch (error) {
+      console.warn('addDailyNote failed, queuing sync', error);
+      await db.enqueueSync({
+        method: 'POST',
+        url: '/api/notes',
+        body: { date, content, localId: tempId }
+      });
+      requestBackgroundSync();
+      return newNote;
+    }
   };
 
   const updateDailyNote = async (id, date, content) => {
-    if (!navigator.onLine) throw new Error('Cannot update note while offline');
+    const nowStr = new Date().toISOString();
     
-    const res = await fetch(`${API_URL}/api/notes/${id}`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content })
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to update note');
-    }
-
-    const updatedNote = await res.json();
+    // Optimistic Update
     setDailyNotes(prev => ({
       ...prev,
-      [date]: (prev[date] || []).map(n => n._id === id ? updatedNote : n)
+      [date]: (prev[date] || []).map(n => n._id === id ? { ...n, content, updatedAt: nowStr, pendingSync: true } : n)
     }));
-    setAllNotes(prev => prev.map(n => n._id === id ? updatedNote : n));
-    return updatedNote;
+    setAllNotes(prev => prev.map(n => n._id === id ? { ...n, content, updatedAt: nowStr, pendingSync: true } : n));
+    
+    const existing = allNotes.find(n => n._id === id) || { _id: id, date, createdAt: nowStr };
+    const updatedNote = { ...existing, content, updatedAt: nowStr, pendingSync: true };
+    await db.saveNote(updatedNote);
+
+    if (!navigator.onLine || id.startsWith('temp_')) {
+      // If it's a temp ID, the original POST is in the queue, we just enqueue the PUT (backend needs to handle tempId resolution or we just wait for sync.
+      // Usually better to let the backend resolve it, but for simplicity, just enqueue the PUT.
+      await db.enqueueSync({
+        method: 'PUT',
+        url: `/api/notes/${id}`,
+        body: { content }
+      });
+      requestBackgroundSync();
+      return updatedNote;
+    }
+    
+    try {
+      const res = await fetch(`${API_URL}/api/notes/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+
+      if (!res.ok) throw new Error('API failed');
+
+      const serverNote = await res.json();
+      setDailyNotes(prev => ({
+        ...prev,
+        [date]: (prev[date] || []).map(n => n._id === id ? serverNote : n)
+      }));
+      setAllNotes(prev => prev.map(n => n._id === id ? serverNote : n));
+      await db.saveNote(serverNote);
+      
+      return serverNote;
+    } catch (error) {
+      console.warn('updateDailyNote failed, queuing sync', error);
+      await db.enqueueSync({
+        method: 'PUT',
+        url: `/api/notes/${id}`,
+        body: { content }
+      });
+      requestBackgroundSync();
+      return updatedNote;
+    }
   };
 
   const deleteDailyNote = async (id, date) => {
-    if (!navigator.onLine) throw new Error('Cannot delete note while offline');
-    
-    const res = await fetch(`${API_URL}/api/notes/${id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to delete note');
-    }
-
+    // Optimistic Update
     setDailyNotes(prev => ({
       ...prev,
       [date]: (prev[date] || []).filter(n => n._id !== id)
     }));
     setAllNotes(prev => prev.filter(n => n._id !== id));
-    return true;
+    await db.deleteNote(id);
+
+    if (!navigator.onLine || id.startsWith('temp_')) {
+      await db.enqueueSync({
+        method: 'DELETE',
+        url: `/api/notes/${id}`
+      });
+      requestBackgroundSync();
+      return true;
+    }
+    
+    try {
+      const res = await fetch(`${API_URL}/api/notes/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!res.ok) throw new Error('API failed');
+      return true;
+    } catch (error) {
+      console.warn('deleteDailyNote failed, queuing sync', error);
+      await db.enqueueSync({
+        method: 'DELETE',
+        url: `/api/notes/${id}`
+      });
+      requestBackgroundSync();
+      return true;
+    }
   };
 
   return (
@@ -1171,6 +1374,9 @@ export const HabitProvider = ({ children }) => {
       // Daily Notes
       dailyNotes, fetchNotesForDate, addDailyNote, updateDailyNote, deleteDailyNote,
       allNotes, setAllNotes, fetchAllNotes,
+      // Recurring tasks
+      recurringTasks, getVirtualTasksForDate,
+      saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
     }}>
       {children}
     </HabitContext.Provider>

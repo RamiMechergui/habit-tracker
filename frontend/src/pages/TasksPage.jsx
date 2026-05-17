@@ -13,6 +13,7 @@ import MissedTasksBar    from '../components/timeline/MissedTasksBar';
 import MonthlyCalendar   from '../components/timeline/MonthlyCalendar';
 import TimelineAnalytics from '../components/timeline/TimelineAnalytics';
 import LiveFocusBanner   from '../components/timeline/LiveFocusBanner';
+import SmartAlerts       from '../components/timeline/SmartAlerts';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ const VIEW_OPTIONS = [
 
 // ── Page Component ────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  const { getLog, saveLog, logs, scheduleTaskReminder, cancelTaskReminder } = useHabits();
+  const { getLog, saveLog, logs, scheduleTaskReminder, cancelTaskReminder, getVirtualTasksForDate, recurringTasks } = useHabits();
 
   const [date,          setDate]          = useState(format(new Date(), 'yyyy-MM-dd'));
   const [log,           setLog]           = useState(() => logs[format(new Date(), 'yyyy-MM-dd')] || { date: format(new Date(), 'yyyy-MM-dd'), tasks: [] });
@@ -76,7 +77,13 @@ export default function TasksPage() {
     [date]
   );
 
-  const tasks = log.tasks ?? [];
+  // Merge persisted tasks with virtual recurring instances
+  const tasks = useMemo(() => {
+    const real = log.tasks ?? [];
+    const virtual = getVirtualTasksForDate(date);
+    // Deduplicate: virtual instances are only added if no real entry with the same recurringId exists
+    return [...real, ...virtual];
+  }, [log.tasks, date, getVirtualTasksForDate]);
 
   // #1 — Progress pill stats
   const progressStats = useMemo(() => {
@@ -419,9 +426,11 @@ export default function TasksPage() {
           currentDate={date}
           logs={logs}
           onSelectDate={handleSelectDate}
+          onAddClick={openAdd}
         />
       ) : (
         <div className="timeline-view-wrap">
+          <SmartAlerts date={date} tasks={tasks} logs={logs} recurringTasks={recurringTasks} />
           <MissedTasksBar tasks={tasks} onUpdateTaskStatus={handleUpdateTaskStatus} />
           <LiveFocusBanner tasks={tasks} onUpdateStatus={handleUpdateTaskStatus} />
           <TimelineAnalytics date={date} tasks={tasks} logs={logs} />

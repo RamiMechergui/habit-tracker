@@ -6,16 +6,17 @@
  */
 
 const DB_NAME = 'evolvia_offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Object store names
 const STORES = {
-  LOGS: 'logs',          // Daily habit logs keyed by date
-  USER: 'user',          // Single-row user profile
-  CATEGORIES: 'categories', // Expense categories
-  BOOK: 'currentBook',   // Current book state
-  ARCHIVES: 'archives',  // Archived books
-  SYNC_QUEUE: 'syncQueue' // Pending mutations to replay when back online
+  LOGS:       'logs',
+  USER:       'user',
+  CATEGORIES: 'categories',
+  BOOK:       'currentBook',
+  ARCHIVES:   'archives',
+  SYNC_QUEUE: 'syncQueue',
+  NOTES:      'notes',         // Daily notes keyed by _id
 };
 
 let dbInstance = null;
@@ -62,6 +63,12 @@ function openDb() {
       if (!db.objectStoreNames.contains(STORES.SYNC_QUEUE)) {
         const store = db.createObjectStore(STORES.SYNC_QUEUE, { keyPath: 'id', autoIncrement: true });
         store.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+
+      // Daily notes — key = _id (string). Created in v2.
+      if (!db.objectStoreNames.contains(STORES.NOTES)) {
+        const notesStore = db.createObjectStore(STORES.NOTES, { keyPath: '_id' });
+        notesStore.createIndex('date', 'date', { unique: false });
       }
     };
 
@@ -227,6 +234,37 @@ export async function clearSyncQueue() {
   await clearStore(STORES.SYNC_QUEUE);
 }
 
+// ── Notes ────────────────────────────────────────────────────────
+
+export async function saveNote(note) {
+  // note must have _id, date, content, createdAt, updatedAt
+  await putItem(STORES.NOTES, note);
+}
+
+export async function loadAllNotes() {
+  return getAllItems(STORES.NOTES);
+}
+
+export async function loadNotesByDate(dateStr) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction(STORES.NOTES, 'readonly');
+    const index = tx.objectStore(STORES.NOTES).index('date');
+    const req   = index.getAll(dateStr);
+    req.onsuccess = () => resolve(req.result ?? []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+export async function deleteNote(id) {
+  await deleteItem(STORES.NOTES, id);
+}
+
+export async function replaceAllNotes(notes) {
+  await clearStore(STORES.NOTES);
+  for (const note of notes) await putItem(STORES.NOTES, note);
+}
+
 // ── Full wipe (logout) ──────────────────────────────────────────
 
 export async function clearAllOfflineData() {
@@ -236,4 +274,5 @@ export async function clearAllOfflineData() {
   await clearStore(STORES.BOOK);
   await clearStore(STORES.ARCHIVES);
   await clearStore(STORES.SYNC_QUEUE);
+  await clearStore(STORES.NOTES);
 }
