@@ -7,7 +7,8 @@ const expenseSchema = new mongoose.Schema({
     desc: String,
     category: String,
     amount: { type: Number, default: 0 },
-    time: String
+    time: String,
+    cigarettesCount: { type: Number, default: 0 }
   }]
 }, { timestamps: true });
 

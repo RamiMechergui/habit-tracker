@@ -193,7 +193,7 @@ export default function DailyLog() {
       const newEx = expenses.filter((_, i) => i !== idx);
       return {
         ...prev,
-        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm') }]
+        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }]
       };
     });
     setLocalDirty(true);
@@ -980,7 +980,7 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{ padding: '0.5rem' }} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || 'Other', amount: 0, time: format(new Date(), 'HH:mm') }] }))} disabled={isFuture}>
+            <button className="btn btn-secondary w-full mt-2" style={{ padding: '0.5rem' }} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] }))} disabled={isFuture}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{ borderTop: '1px solid var(--border)' }}>

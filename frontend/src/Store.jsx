@@ -62,7 +62,7 @@ export const HabitProvider = ({ children }) => {
     video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
     system: { todo: false, money: false },
     tasks: [],
-    expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime }],
+    expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime, cigarettesCount: 0 }],
     morningScore: 0,
     badScore: 0,
     nightScore: 0,
@@ -639,7 +639,15 @@ export const HabitProvider = ({ children }) => {
       if (filledLog.hustle && typeof filledLog.hustle.lessons === 'string') {
         filledLog.hustle.lessons = filledLog.hustle.lessons.trim() ? [filledLog.hustle.lessons] : [];
       }
-      
+
+      // Ensure all expenses have cigarettesCount field for smoking category
+      if (Array.isArray(filledLog.expenses)) {
+        filledLog.expenses = filledLog.expenses.map(exp => ({
+          ...exp,
+          cigarettesCount: exp.cigarettesCount !== undefined ? exp.cigarettesCount : 0
+        }));
+      }
+
       // Sync book name if tracking is active
       if (isWithinCurrentBook && filledLog.books.name !== currentBook.bookName) {
         filledLog.books.name = currentBook.bookName;
