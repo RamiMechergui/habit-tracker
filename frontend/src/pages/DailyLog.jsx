@@ -379,12 +379,28 @@ export default function DailyLog() {
                   </div>
                   <div className="flex items-center gap-2">
                     {item.extra && (
-                      <input 
-                        type="number" 
-                        min={item.id === 'smoking' ? expenseCigs : 0}
-                        placeholder={item.id === 'smoking' ? 'Total Cigs' : item.placeholder} 
-                        style={{ width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
-                        value={item.id === 'smoking' ? (totalCigarettes || '') : (log.bad[item.id][item.extra] || '')} 
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        {item.id === 'smoking' && <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>}
+                        <input 
+                          type="number" 
+                          min={item.id === 'smoking' ? expenseCigs : 0}
+                          placeholder={item.id === 'smoking' ? 'Total' : item.placeholder} 
+                          style={item.id === 'smoking' ? {
+                            width: '85px',
+                            padding: '0.4rem 0.4rem 0.4rem 28px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            color: '#ef4444',
+                            boxShadow: '0 2px 10px rgba(239, 68, 68, 0.15)',
+                            outline: 'none',
+                            transition: 'all 0.2s ease'
+                          } : { 
+                            width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
+                          }}
+                          value={item.id === 'smoking' ? (totalCigarettes || '') : (log.bad[item.id][item.extra] || '')} 
                         onChange={e => {
                           const val = e.target.value;
                           if (val === '' || Number(val) >= 0) {
@@ -398,6 +414,7 @@ export default function DailyLog() {
                         }} 
                         disabled={isFuture} 
                       />
+                      </div>
                     )}
                     <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
                   </div>
@@ -913,15 +930,31 @@ export default function DailyLog() {
                   </select>
 
                   {(exp.category?.toLowerCase() === 'smoking' || exp.category?.toLowerCase() === 'smocking') && (
-                    <input
-                      style={{ flex: '0 1 75px', minWidth: '70px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-amber)', borderRadius: '6px', fontSize: '0.85rem', color: '#fff', animation: 'pageSlideIn 0.2s ease' }}
-                      type="number"
-                      min="0"
-                      placeholder="Qty Cigs"
-                      value={exp.cigarettesCount || ''}
-                      onChange={e => updateExpense(i, 'cigarettesCount', e.target.value)}
-                      disabled={isFuture}
-                    />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', animation: 'pageSlideIn 0.2s ease' }}>
+                      <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>
+                      <input
+                        style={{
+                          flex: '0 1 85px',
+                          minWidth: '85px',
+                          padding: '0.4rem 0.4rem 0.4rem 28px',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: 'bold',
+                          color: '#ef4444',
+                          boxShadow: '0 2px 10px rgba(239, 68, 68, 0.15)',
+                          outline: 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                        type="number"
+                        min="0"
+                        placeholder="Qty"
+                        value={exp.cigarettesCount || ''}
+                        onChange={e => updateExpense(i, 'cigarettesCount', e.target.value)}
+                        disabled={isFuture}
+                      />
+                    </div>
                   )}
 
                   <div style={{ display: 'flex', gap: '0.5rem', flex: '2 1 90px', minWidth: '90px', alignItems: 'center' }}>
