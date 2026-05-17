@@ -48,6 +48,7 @@ export const HabitProvider = ({ children }) => {
 
   // ── Daily Notes state ─────────────────────────────────────────
   const [dailyNotes, setDailyNotes] = useState({}); // { 'YYYY-MM-DD': [notes] }
+  const [allNotes, setAllNotes] = useState([]);        // flat list sorted by createdAt desc
 
   // Daily Defaults - Memoized to prevent unnecessary re-renders
   const createEmptyDay = useCallback((dateStr) => ({
@@ -1051,7 +1052,6 @@ export const HabitProvider = ({ children }) => {
         setDailyNotes(prev => ({ ...prev, [date]: notes }));
         return notes;
       } else {
-        // Mark as loaded even on failure to avoid infinite spinner
         setDailyNotes(prev => ({ ...prev, [date]: prev[date] || [] }));
       }
     } catch (error) {
@@ -1059,6 +1059,21 @@ export const HabitProvider = ({ children }) => {
       setDailyNotes(prev => ({ ...prev, [date]: prev[date] || [] }));
     }
     return dailyNotes[date] || [];
+  };
+
+  const fetchAllNotes = async () => {
+    if (!navigator.onLine) return allNotes;
+    try {
+      const res = await fetch(`${API_URL}/api/notes`, { credentials: 'include' });
+      if (res.ok) {
+        const notes = await res.json();
+        setAllNotes(notes);
+        return notes;
+      }
+    } catch (error) {
+      console.error('Error fetching all notes:', error);
+    }
+    return allNotes;
   };
 
   const addDailyNote = async (date, content) => {
@@ -1081,6 +1096,7 @@ export const HabitProvider = ({ children }) => {
       ...prev,
       [date]: [...(prev[date] || []), newNote]
     }));
+    setAllNotes(prev => [newNote, ...prev]);
     return newNote;
   };
 
@@ -1104,6 +1120,7 @@ export const HabitProvider = ({ children }) => {
       ...prev,
       [date]: (prev[date] || []).map(n => n._id === id ? updatedNote : n)
     }));
+    setAllNotes(prev => prev.map(n => n._id === id ? updatedNote : n));
     return updatedNote;
   };
 
@@ -1124,6 +1141,7 @@ export const HabitProvider = ({ children }) => {
       ...prev,
       [date]: (prev[date] || []).filter(n => n._id !== id)
     }));
+    setAllNotes(prev => prev.filter(n => n._id !== id));
     return true;
   };
 
@@ -1144,6 +1162,7 @@ export const HabitProvider = ({ children }) => {
       timelinePrefs, setTimelinePrefs,
       // Daily Notes
       dailyNotes, fetchNotesForDate, addDailyNote, updateDailyNote, deleteDailyNote,
+      allNotes, setAllNotes, fetchAllNotes,
     }}>
       {children}
     </HabitContext.Provider>
