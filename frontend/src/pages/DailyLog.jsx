@@ -902,7 +902,7 @@ export default function DailyLog() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <select
-                    style={{ flex: '1 1 120px', minWidth: '120px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem' }}
+                    style={{ flex: '1 1 90px', minWidth: '90px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem', transition: 'all 0.2s ease' }}
                     value={exp.category || 'Other'}
                     onChange={e => updateExpense(i, 'category', e.target.value)}
                     disabled={isFuture}
@@ -911,7 +911,20 @@ export default function DailyLog() {
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
-                  <div style={{ display: 'flex', gap: '0.5rem', flex: '1 1 100px', minWidth: '100px', alignItems: 'center' }}>
+
+                  {(exp.category?.toLowerCase() === 'smoking' || exp.category?.toLowerCase() === 'smocking') && (
+                    <input
+                      style={{ flex: '0 1 75px', minWidth: '70px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--accent-amber)', borderRadius: '6px', fontSize: '0.85rem', color: '#fff', animation: 'pageSlideIn 0.2s ease' }}
+                      type="number"
+                      min="0"
+                      placeholder="Qty Cigs"
+                      value={exp.cigarettesCount || ''}
+                      onChange={e => updateExpense(i, 'cigarettesCount', e.target.value)}
+                      disabled={isFuture}
+                    />
+                  )}
+
+                  <div style={{ display: 'flex', gap: '0.5rem', flex: '2 1 90px', minWidth: '90px', alignItems: 'center' }}>
                     <input
                       style={{ flex: 1, minWidth: '60px' }}
                       type="number"
@@ -920,23 +933,12 @@ export default function DailyLog() {
                       onChange={e => updateExpense(i, 'amount', e.target.value)}
                       disabled={isFuture}
                     />
-                    {(exp.category?.toLowerCase() === 'smoking' || exp.category?.toLowerCase() === 'smocking') && (
-                      <input
-                        style={{ flex: 1, minWidth: '60px', animation: 'pageSlideIn 0.2s ease' }}
-                        type="number"
-                        min="0"
-                        placeholder="Qty Cigs"
-                        value={exp.cigarettesCount || ''}
-                        onChange={e => updateExpense(i, 'cigarettesCount', e.target.value)}
-                        disabled={isFuture}
-                      />
-                    )}
                     <button
                       type="button"
                       className="expense-delete-btn"
                       onClick={() => deleteExpense(i)}
                       title="Delete expense"
-                      style={{ flexShrink: 0, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ flexShrink: 0, padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
                       disabled={isFuture}
                     >
                       <Trash2 size={16} />
