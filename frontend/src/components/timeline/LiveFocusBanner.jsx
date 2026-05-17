@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { PlayCircle, CheckCircle, Clock } from 'lucide-react';
+import { PlayCircle, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function getActiveTask(tasks) {
-  if (!Array.isArray(tasks) || tasks.length === 0) return null;
+function getActiveTasks(tasks) {
+  if (!Array.isArray(tasks) || tasks.length === 0) return [];
 
   const now = new Date();
+  const active = [];
 
   for (const task of tasks) {
     if (task.status !== 'Pending' || !task.time || !task.duration) continue;
@@ -15,36 +16,46 @@ function getActiveTask(tasks) {
     start.setHours(h, m, 0, 0);
     const end = new Date(start.getTime() + parseInt(task.duration) * 60_000);
 
-    if (now >= start && now <= end) return { task, start, end };
+    if (now >= start && now <= end) active.push({ task, start, end });
   }
 
-  return null;
+  return active;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function LiveFocusBanner({ tasks, onUpdateStatus }) {
-  const [activeInfo, setActiveInfo] = useState(() => getActiveTask(tasks));
-  const [now, setNow] = useState(new Date());
+  const [activeList, setActiveList] = useState(() => getActiveTasks(tasks));
+  const [now,        setNow]        = useState(new Date());
+  const [activeIdx,  setActiveIdx]  = useState(0);   // which active task is shown
 
   useEffect(() => {
     const timer = setInterval(() => {
       const next = new Date();
       setNow(next);
-      setActiveInfo(getActiveTask(tasks));
+      setActiveList(getActiveTasks(tasks));
     }, 1000);
     return () => clearInterval(timer);
   }, [tasks]);
 
-  if (!activeInfo) return null;
+  // Keep index in bounds when list changes
+  useEffect(() => {
+    setActiveIdx(i => Math.min(i, Math.max(0, activeList.length - 1)));
+  }, [activeList.length]);
 
-  const { task, start, end } = activeInfo;
+  if (activeList.length === 0) return null;
+
+  const { task, start, end } = activeList[activeIdx] ?? activeList[0];
   const totalMs       = end - start;
   const elapsedMs     = now - start;
   const progressPct   = Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
   const remainingMins = Math.max(0, Math.ceil((end - now) / 60_000));
+  const count         = activeList.length;
 
   const handleComplete = () => onUpdateStatus(task.id, 'Completed');
   const handleDelay    = () => onUpdateStatus(task.id, 'Delayed');
+
+  const prevTask = () => setActiveIdx(i => (i - 1 + count) % count);
+  const nextTask = () => setActiveIdx(i => (i + 1) % count);
 
   return (
     <div className="live-focus-banner">
@@ -69,6 +80,11 @@ export default function LiveFocusBanner({ tasks, onUpdateStatus }) {
           <div className="lfb-info">
             <span className="lfb-label">
               LIVE FOCUS · {remainingMins} MIN LEFT
+              {count > 1 && (
+                <span className="lfb-multi-badge" aria-label={`Task ${activeIdx + 1} of ${count} active tasks`}>
+                  {' '}· {activeIdx + 1}/{count}
+                </span>
+              )}
             </span>
             <h3 className="lfb-title">{task.title}</h3>
             <div className="lfb-meta">
@@ -79,24 +95,48 @@ export default function LiveFocusBanner({ tasks, onUpdateStatus }) {
           </div>
         </div>
 
-        {/* Right: actions */}
-        <div className="lfb-actions">
-          <button
-            className="lfb-btn lfb-btn--complete"
-            onClick={handleComplete}
-            title="Mark Completed"
-            aria-label="Mark task as completed"
-          >
-            <CheckCircle size={18} />
-          </button>
-          <button
-            className="lfb-btn lfb-btn--delay"
-            onClick={handleDelay}
-            title="Delay Task"
-            aria-label="Delay task"
-          >
-            <Clock size={18} />
-          </button>
+        {/* Right: multi-nav + actions */}
+        <div className="lfb-right">
+          {/* Navigation arrows when multiple tasks overlap */}
+          {count > 1 && (
+            <div className="lfb-nav" aria-label="Navigate active tasks">
+              <button
+                className="lfb-nav-btn"
+                onClick={prevTask}
+                aria-label="Previous active task"
+                title="Previous active task"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <button
+                className="lfb-nav-btn"
+                onClick={nextTask}
+                aria-label="Next active task"
+                title="Next active task"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+
+          <div className="lfb-actions">
+            <button
+              className="lfb-btn lfb-btn--complete"
+              onClick={handleComplete}
+              title="Mark Completed"
+              aria-label="Mark task as completed"
+            >
+              <CheckCircle size={18} />
+            </button>
+            <button
+              className="lfb-btn lfb-btn--delay"
+              onClick={handleDelay}
+              title="Delay Task"
+              aria-label="Delay task"
+            >
+              <Clock size={18} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

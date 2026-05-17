@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, Plus, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronDown, Plus, ZoomIn, ZoomOut, GripVertical } from 'lucide-react';
 import TaskCard from './TaskCard';
 import { useHabits } from '../../Store';
 
@@ -25,14 +25,12 @@ const ZOOM_OPTIONS = [
   { label: '15m', factor: 2,   granularity: 15 },
 ];
 
-// Map granularity pref → zoom index
 const granularityToZoom = (g) => {
   if (g <= 15) return 2;
   if (g <= 30) return 1;
   return 0;
 };
 
-// Base hour heights — desktop uses 90px, mobile 68px
 const BASE_HOUR_DESKTOP = 90;
 const BASE_HOUR_MOBILE  = 68;
 
@@ -44,6 +42,23 @@ const TIME_SECTIONS = [
 ];
 
 const getMins = (t) => { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; };
+
+// ── #8: Persist section collapse state ────────────────────────────────────────
+const COLLAPSE_KEY = 'tl_section_collapse';
+
+function loadCollapseState() {
+  try {
+    const raw = localStorage.getItem(COLLAPSE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveCollapseState(state) {
+  try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(state)); } catch {}
+}
+
+// Default: overnight closed, others open
+const DEFAULT_COLLAPSE = { morning: true, afternoon: true, evening: true, overnight: false };
 
 // ── Layout clustering ─────────────────────────────────────────────────────────
 function clusterTasks(tasks) {
@@ -87,18 +102,20 @@ function clusterTasks(tasks) {
 }
 
 // ── Section block component ───────────────────────────────────────────────────
-function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick }) {
-  const [open, setOpen] = useState(section.key !== 'overnight');
+function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick, openState, onToggle }) {
+  const open = openState;
 
   const sectionTasks = tasks.filter(t => {
     const h = parseInt((t.time || '00:00').split(':')[0]);
     return h >= section.start && h <= section.end;
   });
 
+  // #10 — Hide Overnight section if it has no tasks
+  if (section.key === 'overnight' && sectionTasks.length === 0) return null;
+
   const spanHours = section.end - section.start + 1;
   const heightPx  = spanHours * hourHeight;
-
-  const hours = Array.from({ length: spanHours + 1 }, (_, i) => section.start + i);
+  const hours     = Array.from({ length: spanHours + 1 }, (_, i) => section.start + i);
 
   const now = new Date();
   const currentHour = now.getHours();
@@ -109,10 +126,10 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
       {/* Section header */}
       <div
         className="tl-section-header"
-        onClick={() => setOpen(o => !o)}
+        onClick={onToggle}
         role="button"
         tabIndex={0}
-        onKeyDown={e => e.key === 'Enter' && setOpen(o => !o)}
+        onKeyDown={e => e.key === 'Enter' && onToggle()}
         aria-expanded={open}
       >
         <span className="tl-section-icon">{section.icon}</span>
@@ -146,7 +163,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 {`${h.toString().padStart(2,'0')}:00`}
               </div>
               <div style={{ width: 8, height: 1, background: 'var(--border)', flexShrink: 0 }} />
-              {/* Half-hour tick if zoom allows */}
+              {/* Half-hour tick */}
               {zoomFactor >= 1.5 && (
                 <div style={{
                   position: 'absolute',
@@ -155,7 +172,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                   width: 6, height: 1, background: 'var(--tl-tick-maj)',
                 }} />
               )}
-              {/* 15-min label at half-hour mark */}
+              {/* Half-hour label */}
               {zoomFactor >= 1.5 && (
                 <div style={{
                   position: 'absolute',
@@ -185,7 +202,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
             </div>
           ))}
 
-          {/* Tasks in this section (positioned relative to section top) */}
+          {/* Tasks in this section */}
           {clustered.filter(t => {
             const h = parseInt((t.time || '00:00').split(':')[0]);
             return h >= section.start && h <= section.end;
@@ -243,22 +260,33 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
   const timelineRef = useRef(null);
   const isMobile = useIsMobile();
 
+  // #8 — Persist section collapse state
+  const [sectionOpen, setSectionOpen] = useState(() => loadCollapseState() ?? DEFAULT_COLLAPSE);
+
+  const toggleSection = useCallback((key) => {
+    setSectionOpen(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveCollapseState(next);
+      return next;
+    });
+  }, []);
+
   // Sync zoom if preference changes externally
   useEffect(() => {
     setZoom(granularityToZoom(timelinePrefs.intervalGranularity));
   }, [timelinePrefs.intervalGranularity]);
 
   const zoomFactor = ZOOM_OPTIONS[zoom].factor;
-  // Use a smaller base hour-height on mobile to reduce vertical scroll
   const baseHour   = isMobile ? BASE_HOUR_MOBILE : BASE_HOUR_DESKTOP;
   const hourHeight = baseHour * zoomFactor;
 
-  // Apply filters
+  // Apply filters (including #11 search)
   const filteredTasks = useMemo(() => {
     let t = tasks || [];
     if (filters.status   && filters.status   !== 'all') t = t.filter(x => x.status   === filters.status);
     if (filters.priority && filters.priority !== 'all') t = t.filter(x => x.priority === filters.priority);
     if (filters.category && filters.category !== 'all') t = t.filter(x => x.category === filters.category);
+    if (filters.search   && filters.search.trim())      t = t.filter(x => x.title?.toLowerCase().includes(filters.search.toLowerCase()));
     return t;
   }, [tasks, filters]);
 
@@ -293,6 +321,18 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
     }, 400);
   }, [date, isFutureDate, hourHeight]);
 
+  // #9 — Drag affordance hint (shown once, then dismissed)
+  const [showDragHint, setShowDragHint] = useState(() => {
+    try { return !localStorage.getItem('tl_drag_hint_seen'); } catch { return true; }
+  });
+
+  const dismissDragHint = () => {
+    try { localStorage.setItem('tl_drag_hint_seen', '1'); } catch {}
+    setShowDragHint(false);
+  };
+
+  const hasTasks = tasks.length > 0;
+
   return (
     <div style={{ marginTop: 12 }}>
       {/* Toolbar row */}
@@ -321,7 +361,6 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
 
         {/* Zoom controls */}
         {isMobile ? (
-          /* On mobile: compact +/- buttons to save toolbar space */
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
             <button
               className="zoom-pill"
@@ -361,7 +400,16 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
         )}
       </div>
 
-      {/* Timeline sections — no horizontal overflow */}
+      {/* #9 — Drag-to-reschedule affordance hint */}
+      {showDragHint && hasTasks && !isFutureDate && (
+        <div className="tl-drag-hint" role="status">
+          <GripVertical size={13} aria-hidden="true" />
+          <span>Drag the <strong>⠿</strong> handle on any task to reschedule it</span>
+          <button className="tl-drag-hint-dismiss" onClick={dismissDragHint} aria-label="Dismiss tip">✕</button>
+        </div>
+      )}
+
+      {/* Timeline sections */}
       <div
         ref={timelineRef}
         style={{ position: 'relative', overflowX: 'hidden' }}
@@ -380,6 +428,8 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             onEditTask={onEditTask}
             onDragTime={handleDragTime}
             onAddClick={onAddClick}
+            openState={sectionOpen[section.key] ?? true}
+            onToggle={() => toggleSection(section.key)}
           />
         ))}
       </div>
@@ -397,10 +447,8 @@ function CurrentTimeIndicator({ hourHeight, sectionStart }) {
       const now = new Date();
       const h = now.getHours();
       const m = now.getMinutes();
-      // Calculate minutes since the start of the section
       const minsSinceStart = (h * 60 + m) - (sectionStart * 60);
       setTopPx(minsSinceStart * (hourHeight / 60));
-      
       const hh = h.toString().padStart(2, '0');
       const mm = m.toString().padStart(2, '0');
       setTimeLabel(`${hh}:${mm}`);

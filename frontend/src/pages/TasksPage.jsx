@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHabits } from '../Store';
-import { format, isAfter, startOfDay, parseISO } from 'date-fns';
+import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday } from 'date-fns';
 import {
   Plus, Loader2, Bell,
   List, CalendarDays, CheckCircle2, Target, Filter, X,
+  ChevronLeft, ChevronRight, Search,
 } from 'lucide-react';
 
 import DailyTimeline     from '../components/timeline/DailyTimeline';
@@ -17,7 +18,8 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PRIORITY_FILTERS = ['all', 'low', 'medium', 'high', 'critical'];
 const STATUS_FILTERS   = ['all', 'Pending', 'Completed', 'Delayed', 'Missed'];
-const CATEGORY_FILTERS = ['all', 'Work', 'Health', 'Personal', 'Learning', 'Finance', 'Social', 'Other'];
+
+const BASE_CATEGORIES = ['Work', 'Health', 'Personal', 'Learning', 'Finance', 'Social', 'Other'];
 
 const VIEW_OPTIONS = [
   { key: 'daily',   icon: <List size={14} />,         label: 'Timeline' },
@@ -40,6 +42,8 @@ export default function TasksPage() {
   const [filterStatus,  setFilterStatus]  = useState('all');
   const [filterPriority,setFilterPriority]= useState('all');
   const [filterCategory,setFilterCategory]= useState('all');
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [showSearch,    setShowSearch]    = useState(false);
 
   const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
 
@@ -74,12 +78,35 @@ export default function TasksPage() {
 
   const tasks = log.tasks ?? [];
 
+  // #1 — Progress pill stats
+  const progressStats = useMemo(() => {
+    const total     = tasks.length;
+    const completed = tasks.filter(t => t.status === 'Completed').length;
+    const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pct };
+  }, [tasks]);
+
+  // #12 — Derive categories dynamically from all logs + base set
+  const categoryFilters = useMemo(() => {
+    const cats = new Set(BASE_CATEGORIES);
+    Object.values(logs).forEach(log => {
+      (log?.tasks ?? []).forEach(t => { if (t.category) cats.add(t.category); });
+    });
+    return ['all', ...Array.from(cats)];
+  }, [logs]);
+
   const activeFilters = useMemo(
-    () => ({ status: filterStatus, priority: filterPriority, category: filterCategory }),
-    [filterStatus, filterPriority, filterCategory]
+    () => ({ status: filterStatus, priority: filterPriority, category: filterCategory, search: searchQuery }),
+    [filterStatus, filterPriority, filterCategory, searchQuery]
   );
 
-  const hasActiveFilter = filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all';
+  const hasActiveFilter = filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all' || searchQuery !== '';
+
+  // ── Date navigation ──────────────────────────────────────────────────────────
+  const goToPrevDay  = useCallback(() => setDate(d => format(subDays(parseISO(d), 1), 'yyyy-MM-dd')), []);
+  const goToNextDay  = useCallback(() => setDate(d => format(addDays(parseISO(d), 1), 'yyyy-MM-dd')), []);
+  const goToToday    = useCallback(() => setDate(format(new Date(), 'yyyy-MM-dd')), []);
+  const isOnToday    = date === format(new Date(), 'yyyy-MM-dd');
 
   // ── Task handlers ────────────────────────────────────────────────────────────
   const markDirty = useCallback((updater) => {
@@ -162,6 +189,7 @@ export default function TasksPage() {
     setFilterStatus('all');
     setFilterPriority('all');
     setFilterCategory('all');
+    setSearchQuery('');
   }, []);
 
   const handleSelectDate = useCallback((d) => {
@@ -228,17 +256,73 @@ export default function TasksPage() {
             ))}
           </div>
 
-          {/* Date picker */}
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="hub-toolbar-date"
-            aria-label="Select date"
-          />
+          {/* #2 ── Custom date navigator (replaces raw date input) */}
+          <div className="hub-date-nav" role="group" aria-label="Date navigation">
+            <button
+              className="hub-date-nav-btn"
+              onClick={goToPrevDay}
+              aria-label="Previous day"
+            >
+              <ChevronLeft size={15} />
+            </button>
+
+            <button
+              className={`hub-date-display ${isOnToday ? 'hub-date-display--today' : ''}`}
+              onClick={goToToday}
+              title="Click to jump to today"
+              aria-label={isOnToday ? 'Today' : `Go to today (currently viewing ${format(parseISO(date), 'MMM d')})`}
+            >
+              <span className="hub-date-label">
+                {isOnToday ? 'Today' : format(parseISO(date), 'MMM d')}
+              </span>
+              {!isOnToday && (
+                <span className="hub-date-year">{format(parseISO(date), 'yyyy')}</span>
+              )}
+            </button>
+
+            <button
+              className="hub-date-nav-btn"
+              onClick={goToNextDay}
+              aria-label="Next day"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
         </div>
 
         <div className="hub-toolbar-right">
+
+          {/* #1 ── Progress pill */}
+          {timelineView === 'daily' && progressStats.total > 0 && (
+            <div
+              className="hub-progress-pill"
+              aria-label={`${progressStats.completed} of ${progressStats.total} tasks completed`}
+              title={`${progressStats.pct}% complete`}
+            >
+              <div className="hub-progress-track">
+                <div
+                  className="hub-progress-fill"
+                  style={{ width: `${progressStats.pct}%` }}
+                />
+              </div>
+              <span className="hub-progress-label">
+                {progressStats.completed}<span className="hub-progress-sep">/</span>{progressStats.total}
+              </span>
+            </div>
+          )}
+
+          {/* #11 ── Search toggle */}
+          {timelineView === 'daily' && (
+            <button
+              className={`hub-filter-btn ${showSearch ? 'hub-filter-btn--active' : ''}`}
+              onClick={() => setShowSearch(s => !s)}
+              aria-label="Toggle task search"
+              title="Search tasks"
+            >
+              <Search size={13} aria-hidden="true" />
+            </button>
+          )}
+
           {/* Filter toggle */}
           {timelineView === 'daily' && (
             <button
@@ -275,6 +359,31 @@ export default function TasksPage() {
         </div>
       </div>
 
+      {/* ── Search bar ─────────────────────────────────────────────────────── */}
+      {showSearch && timelineView === 'daily' && (
+        <div className="tl-search-bar" role="search">
+          <Search size={14} className="tl-search-icon" aria-hidden="true" />
+          <input
+            type="text"
+            className="tl-search-input"
+            placeholder="Search tasks by name…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            autoFocus
+            aria-label="Search tasks"
+          />
+          {searchQuery && (
+            <button
+              className="tl-search-clear"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Filter bar ─────────────────────────────────────────────────────── */}
       {showFilters && timelineView === 'daily' && (
         <div className="tl-filter-bar">
@@ -296,7 +405,7 @@ export default function TasksPage() {
           <span className="tl-filter-divider" aria-hidden="true" />
           <FilterGroup
             label="Category"
-            options={CATEGORY_FILTERS}
+            options={categoryFilters}
             value={filterCategory}
             onChange={setFilterCategory}
             display={c => c === 'all' ? 'All' : c}

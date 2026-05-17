@@ -33,15 +33,19 @@ function computeDayStats(tasks = []) {
   return { total, completed, delayed, missed, pending, pct, productivityScore };
 }
 
+// #13 — Fixed streak: only resets if tasks exist AND none were completed.
+// A day with zero tasks is treated as a rest day (streak continues).
 function computeStreak(logs, today) {
   let streak = 0;
   let d = today;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 90; i++) {
     const tasks = logs[d]?.tasks || [];
-    if (tasks.length === 0) break;
-    const completed = tasks.filter(t => t.status === 'Completed').length;
-    if (completed === 0) break;
-    streak++;
+    if (tasks.length > 0) {
+      const completed = tasks.filter(t => t.status === 'Completed').length;
+      if (completed === 0) break; // had tasks but completed none — streak ends
+      streak++;
+    }
+    // tasks.length === 0 → rest day, do NOT break, just don't increment
     d = format(subDays(new Date(d + 'T12:00:00'), 1), 'yyyy-MM-dd');
   }
   return streak;
@@ -54,7 +58,7 @@ function computeWeekBars(logs, today) {
     const tasks = logs[d]?.tasks || [];
     const stats = computeDayStats(tasks);
     const isToday = d === today;
-    return { d, pct: stats.productivityScore, day: days[new Date(d + 'T12:00:00').getDay()], isToday };
+    return { d, pct: stats.productivityScore, total: stats.total, completed: stats.completed, day: days[new Date(d + 'T12:00:00').getDay()], isToday };
   });
 }
 
@@ -84,12 +88,48 @@ function StatCard({ number, label, color }) {
   );
 }
 
+// #7 — Bar with tooltip ───────────────────────────────────────────────────────
+function WeekBar({ bar }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      className="week-bar-col"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ position: 'relative' }}
+    >
+      {/* Tooltip */}
+      {hovered && (
+        <div className="week-bar-tooltip" role="tooltip">
+          <span className="week-bar-tooltip-date">{format(new Date(bar.d + 'T12:00:00'), 'EEE, MMM d')}</span>
+          {bar.total > 0 ? (
+            <>
+              <span className="week-bar-tooltip-stat">{bar.completed}/{bar.total} done</span>
+              <span className="week-bar-tooltip-pct">{bar.pct}%</span>
+            </>
+          ) : (
+            <span className="week-bar-tooltip-stat" style={{ opacity: 0.6 }}>No tasks</span>
+          )}
+        </div>
+      )}
+      <div
+        className={`week-bar ${bar.isToday ? 'today' : ''}`}
+        style={{ height: `${Math.max(4, bar.pct * 0.6)}px` }}
+        aria-label={`${bar.d}: ${bar.total > 0 ? `${bar.completed}/${bar.total} done, ${bar.pct}%` : 'no tasks'}`}
+      />
+      <span className="week-bar-day">{bar.day}</span>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TimelineAnalytics({ date, tasks, logs }) {
-  const [open, setOpen] = useState(false);
+  // #4 — Open by default
+  const [open, setOpen] = useState(true);
 
-  const stats  = useMemo(() => computeDayStats(tasks), [tasks]);
-  const streak = useMemo(() => computeStreak(logs, date), [logs, date]);
+  const stats    = useMemo(() => computeDayStats(tasks), [tasks]);
+  const streak   = useMemo(() => computeStreak(logs, date), [logs, date]);
   const weekBars = useMemo(() => computeWeekBars(logs, date), [logs, date]);
 
   const donutColor = stats.pct >= 80 ? 'var(--status-completed)'
@@ -117,7 +157,7 @@ export default function TimelineAnalytics({ date, tasks, logs }) {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {/* Mini inline summary — hidden via CSS on very narrow screens */}
+          {/* Mini inline summary — shown when collapsed */}
           {!open && stats.total > 0 && (
             <div
               className="mini-bar"
@@ -175,14 +215,7 @@ export default function TimelineAnalytics({ date, tasks, logs }) {
             <div className="week-chart-label">📊 Last 7 Days</div>
             <div className="week-bars">
               {weekBars.map(bar => (
-                <div key={bar.d} className="week-bar-col">
-                  <div
-                    className={`week-bar ${bar.isToday ? 'today' : ''}`}
-                    style={{ height: `${Math.max(4, bar.pct * 0.6)}px` }}
-                    title={`${bar.d}: ${bar.pct}%`}
-                  />
-                  <span className="week-bar-day">{bar.day}</span>
-                </div>
+                <WeekBar key={bar.d} bar={bar} />
               ))}
             </div>
           </div>

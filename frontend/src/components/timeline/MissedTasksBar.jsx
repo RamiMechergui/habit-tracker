@@ -143,7 +143,7 @@ function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMa
         <div className="task-alert-meta">
           <span className="task-alert-time">
             <Clock size={11} aria-hidden="true" />
-            Scheduled {task.time}
+            {task.time}{task.duration ? ` · ${task.duration}m` : ''}
           </span>
           {task.category && (
             <span
