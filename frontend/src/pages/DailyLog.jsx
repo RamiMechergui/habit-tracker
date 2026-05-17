@@ -262,7 +262,7 @@ export default function DailyLog() {
   const isFuture = date > todayStr;
 
   const expenseCigs = Array.isArray(log.expenses) 
-    ? log.expenses.filter(e => e.category === 'Smoking').reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0)
+    ? log.expenses.filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking').reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0)
     : 0;
   
   const manualCigs = parseInt(log.bad?.smoking?.count) || 0;
@@ -381,14 +381,19 @@ export default function DailyLog() {
                     {item.extra && (
                       <input 
                         type="number" 
-                        min="0"
-                        placeholder={item.placeholder} 
+                        min={item.id === 'smoking' ? expenseCigs : 0}
+                        placeholder={item.id === 'smoking' ? 'Total Cigs' : item.placeholder} 
                         style={{ width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
-                        value={log.bad[item.id][item.extra] || ''} 
+                        value={item.id === 'smoking' ? (totalCigarettes || '') : (log.bad[item.id][item.extra] || '')} 
                         onChange={e => {
                           const val = e.target.value;
                           if (val === '' || Number(val) >= 0) {
-                            updateBad(item.id, item.extra, val);
+                            if (item.id === 'smoking') {
+                              const parsed = parseInt(val) || 0;
+                              updateBad(item.id, item.extra, Math.max(0, parsed - expenseCigs));
+                            } else {
+                              updateBad(item.id, item.extra, val);
+                            }
                           }
                         }} 
                         disabled={isFuture} 
@@ -399,14 +404,6 @@ export default function DailyLog() {
                 </div>
               ))}
             </div>
-
-            {/* Dynamic totals section */}
-            {totalCigarettes > 0 && (
-              <div className="mt-4 p-3 rounded-xl flex items-center justify-between" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', animation: 'pageSlideIn 0.3s ease' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>Total Cigarettes (Manual + Expenses)</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{totalCigarettes}</span>
-              </div>
-            )}
           </div>
 
           {/* Night Habits */}
@@ -923,7 +920,7 @@ export default function DailyLog() {
                       onChange={e => updateExpense(i, 'amount', e.target.value)}
                       disabled={isFuture}
                     />
-                    {exp.category === 'Smoking' && (
+                    {(exp.category?.toLowerCase() === 'smoking' || exp.category?.toLowerCase() === 'smocking') && (
                       <input
                         style={{ flex: 1, minWidth: '60px', animation: 'pageSlideIn 0.2s ease' }}
                         type="number"
