@@ -92,7 +92,7 @@ export default function MonthlyReview() {
         min: 0, 
         max: 24, 
         ticks: { 
-          stepSize: 2,
+          stepSize: 1,
           callback: function(value) {
             if (value === 24) return '00:00';
             const h = Math.floor(value);
