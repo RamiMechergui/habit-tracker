@@ -22,7 +22,7 @@ export const HabitProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [expenseCategories, setExpenseCategories] = useState(['Food', 'Transportation', 'Entertainment']);
+  const [expenseCategories, setExpenseCategories] = useState(['Food', 'Transportation', 'Entertainment', 'Smoking']);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
@@ -469,8 +469,8 @@ export const HabitProvider = ({ children }) => {
     setUser(userData);
     db.saveUser(userData);
     
-    setExpenseCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment']);
-    db.saveCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment']);
+    setExpenseCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment', 'Smoking']);
+    db.saveCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment', 'Smoking']);
     
     // Fetch logs and settings after login
     const [logsRes, settingsRes, avatarRes] = await Promise.all([

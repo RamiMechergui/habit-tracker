@@ -99,7 +99,7 @@ export default function MonthlyReview() {
   });
 
   const systemData = {
-    labels: ['EVLVIO TIMELINE Updated', 'Evolvio Expense Tracker updated'],
+    labels: ['EVLVIO TIMELINE Updated', '2. Evolvio Expense Tracker updated'],
     datasets: [{
       label: 'Total Completions in Month',
       data: [todoCount, moneyCount],

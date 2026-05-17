@@ -5,7 +5,7 @@ import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, V
 import { useSearchParams } from 'react-router-dom';
 
 export default function DailyLog() {
-  const { getLog, saveLog, expenseCategories = ['Food', 'Transportation', 'Entertainment'], currentBook, getBookProgress, logs } = useHabits();
+  const { getLog, saveLog, expenseCategories = ['Food', 'Transportation', 'Entertainment', 'Smoking'], currentBook, getBookProgress, logs } = useHabits();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialDate = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
   const [date, setDate] = useState(initialDate);
@@ -261,6 +261,13 @@ export default function DailyLog() {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isFuture = date > todayStr;
 
+  const expenseCigs = Array.isArray(log.expenses) 
+    ? log.expenses.filter(e => e.category === 'Smoking').reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0)
+    : 0;
+  
+  const manualCigs = parseInt(log.bad?.smoking?.count) || 0;
+  const totalCigarettes = manualCigs + expenseCigs;
+
   return (
     <div>
       {/* Future Date Warning */}
@@ -353,16 +360,7 @@ export default function DailyLog() {
 
             <div className="flex-col gap-3">
               {[
-                { 
-                  id: 'smoking', 
-                  label: '1. Smoking', 
-                  pts: '10pts', 
-                  extra: 'expenses', 
-                  placeholder: 'Exp ($)',
-                  dynamicFields: [
-                    { key: 'count', dependsOn: 'expenses', placeholder: 'No. Cigs' }
-                  ]
-                },
+                { id: 'smoking', label: '1. Smoking', pts: '10pts', extra: 'count', placeholder: 'Manual Qty' },
                 { id: 'sexual', label: '2. Sexual discipline', pts: '4pts' },
                 { id: 'social', label: '3. Social Media', pts: '2pts', extra: 'min', placeholder: 'Min' },
                 { id: 'phone', label: '4. Phone Usage', pts: '6pts', extra: 'min', placeholder: 'Min' },
@@ -380,35 +378,12 @@ export default function DailyLog() {
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Render dynamic fields dependent on other fields */}
-                    {item.dynamicFields && item.dynamicFields.map(df => {
-                      const parentVal = log.bad[item.id][df.dependsOn];
-                      if (!parentVal || Number(parentVal) <= 0) return null;
-                      return (
-                        <input 
-                          key={df.key}
-                          type="number" 
-                          min="0"
-                          placeholder={df.placeholder} 
-                          style={{ width: '75px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff', animation: 'pageSlideIn 0.2s ease' }}
-                          value={log.bad[item.id][df.key] || ''} 
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (val === '' || Number(val) >= 0) {
-                              updateBad(item.id, df.key, val);
-                            }
-                          }} 
-                          disabled={isFuture} 
-                        />
-                      );
-                    })}
-
                     {item.extra && (
                       <input 
                         type="number" 
                         min="0"
                         placeholder={item.placeholder} 
-                        style={{ width: '65px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
+                        style={{ width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
                         value={log.bad[item.id][item.extra] || ''} 
                         onChange={e => {
                           const val = e.target.value;
@@ -426,10 +401,10 @@ export default function DailyLog() {
             </div>
 
             {/* Dynamic totals section */}
-            {Number(log.bad?.smoking?.count) > 0 && (
+            {totalCigarettes > 0 && (
               <div className="mt-4 p-3 rounded-xl flex items-center justify-between" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', animation: 'pageSlideIn 0.3s ease' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>Total Cigarettes Smoked</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{log.bad.smoking.count}</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>Total Cigarettes (Manual + Expenses)</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{totalCigarettes}</span>
               </div>
             )}
           </div>
@@ -882,7 +857,7 @@ export default function DailyLog() {
                 border: `1px solid ${log.system?.money ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
                 <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>Evolvio Expense Tracker updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Evolvio Expense Tracker updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
@@ -948,6 +923,17 @@ export default function DailyLog() {
                       onChange={e => updateExpense(i, 'amount', e.target.value)}
                       disabled={isFuture}
                     />
+                    {exp.category === 'Smoking' && (
+                      <input
+                        style={{ flex: 1, minWidth: '60px', animation: 'pageSlideIn 0.2s ease' }}
+                        type="number"
+                        min="0"
+                        placeholder="Qty Cigs"
+                        value={exp.cigarettesCount || ''}
+                        onChange={e => updateExpense(i, 'cigarettesCount', e.target.value)}
+                        disabled={isFuture}
+                      />
+                    )}
                     <button
                       type="button"
                       className="expense-delete-btn"
