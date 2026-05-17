@@ -12,7 +12,10 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer — store to disk with original extension, no size limit
+// Configure multer — store to disk with original extension, with size limit and MIME type validation
+const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -23,7 +26,18 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  if (!ALLOWED_MIMES.includes(file.mimetype)) {
+    return cb(new Error('Only image files are allowed (JPEG, PNG, WebP, GIF)'));
+  }
+  cb(null, true);
+};
+
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter
+});
 
 // POST /api/user/profile-picture  (multipart/form-data, field: "image")
 router.post('/profile-picture', protect, upload.single('image'), async (req, res) => {
@@ -40,8 +54,15 @@ router.post('/profile-picture', protect, upload.single('image'), async (req, res
 
     res.json({ profilePicture: picturePath });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: error.message });
+  }
+}, (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File size exceeds 5MB limit' });
+    }
+  } else if (err) {
+    return res.status(400).json({ message: err.message });
   }
 });
 

@@ -428,7 +428,7 @@ export const HabitProvider = ({ children }) => {
       connectSSE();
     }
     return () => {
-      if (!user && sseRef.current) {
+      if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;
       }

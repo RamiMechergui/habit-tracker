@@ -381,10 +381,11 @@ export default function DailyLog() {
                     {item.extra && (
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         {item.id === 'smoking' && <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>}
-                        <input 
-                          type="number" 
-                          min={item.id === 'smoking' ? expenseCigs : 0}
-                          placeholder={item.id === 'smoking' ? 'Total' : item.placeholder} 
+                        <input
+                          type="number"
+                          min="0"
+                          max="999"
+                          placeholder={item.id === 'smoking' ? 'Total' : item.placeholder}
                           style={item.id === 'smoking' ? {
                             width: '85px',
                             padding: '0.4rem 0.4rem 0.4rem 28px',

@@ -14,7 +14,11 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod');
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return res.status(500).json({ message: 'JWT_SECRET not configured' });
+    }
+    const decoded = jwt.verify(token, jwtSecret);
     req.user = { _id: decoded.id };
     next();
   } catch (error) {
