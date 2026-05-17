@@ -709,13 +709,13 @@ export const HabitProvider = ({ children }) => {
 
     // Bad Habits (28 pts)
     let bScore = 0;
-    const b = data.bad;
-    if(b.smoking.checked) bScore += 10;
-    if(b.sexual.checked) bScore += 4;
-    if(b.social.checked) bScore += 2;
-    if(b.phone.checked) bScore += 6;
-    if(b.coffee.checked) bScore += 2;
-    if(b.eating.checked) bScore += 2;
+    const b = data.bad || {};
+    if(b.smoking?.checked) bScore += 10;
+    if(b.sexual?.checked) bScore += 4;
+    if(b.social?.checked) bScore += 2;
+    if(b.phone?.checked) bScore += 6;
+    if(b.coffee?.checked) bScore += 2;
+    if(b.eating?.checked) bScore += 2;
     if(b.noSugar?.checked) bScore += 2;
 
     // Extra Tasks (10 pts) + System Check (2 pts)

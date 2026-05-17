@@ -240,14 +240,14 @@ export default function DailyLog() {
   const sysScore = (log.system?.todo ? 1 : 0) + (log.system?.money ? 1 : 0);
 
   // Bad Habits — checked = avoided = GAIN points (positive scoring)
-  let b = log.bad;
+  let b = log.bad || {};
   let dynamicBadScore = 0;
-  if (b.smoking.checked) dynamicBadScore += 10;
-  if (b.sexual.checked) dynamicBadScore += 4;
-  if (b.social.checked) dynamicBadScore += 2;
-  if (b.phone.checked) dynamicBadScore += 6;
-  if (b.coffee.checked) dynamicBadScore += 2;
-  if (b.eating.checked) dynamicBadScore += 2;
+  if (b.smoking?.checked) dynamicBadScore += 10;
+  if (b.sexual?.checked) dynamicBadScore += 4;
+  if (b.social?.checked) dynamicBadScore += 2;
+  if (b.phone?.checked) dynamicBadScore += 6;
+  if (b.coffee?.checked) dynamicBadScore += 2;
+  if (b.eating?.checked) dynamicBadScore += 2;
   if (b.noSugar?.checked) dynamicBadScore += 2;
 
   let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + sysScore + hScore + vScore));
@@ -369,12 +369,12 @@ export default function DailyLog() {
                 { id: 'noSugar', label: '7. No sugar', pts: '2pts' },
               ].map(item => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
-                  background: log.bad[item.id].checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${log.bad[item.id].checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                  background: log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
                 }}>
                   <div className="flex flex-col">
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.bad[item.id].checked ? '#10b981' : 'var(--text-primary)' }}>{item.label}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.bad?.[item.id]?.checked ? '#10b981' : 'var(--text-primary)' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -400,7 +400,7 @@ export default function DailyLog() {
                           } : { 
                             width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
                           }}
-                          value={item.id === 'smoking' ? (totalCigarettes || '') : (log.bad[item.id][item.extra] || '')} 
+                          value={item.id === 'smoking' ? (totalCigarettes || '') : (log.bad?.[item.id]?.[item.extra] || '')} 
                         onChange={e => {
                           const val = e.target.value;
                           if (val === '' || Number(val) >= 0) {
@@ -416,7 +416,7 @@ export default function DailyLog() {
                       />
                       </div>
                     )}
-                    <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
+                    <input type="checkbox" className="habit-checkbox" checked={log.bad?.[item.id]?.checked || false} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
                   </div>
                 </div>
               ))}
