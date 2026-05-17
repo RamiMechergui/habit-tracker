@@ -65,6 +65,45 @@ export default function MonthlyReview() {
 
   const totalMonthlySpend = monthlyData.reduce((t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3);
 
+  // Waking Time Data
+  const parseWakeTime = (timeStr) => {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(':');
+    return parseInt(h, 10) + parseInt(m, 10) / 60;
+  };
+
+  const wakingData = {
+    labels,
+    datasets: [{
+      label: 'Wake Up Time',
+      data: monthlyData.map(d => parseWakeTime(d.log.morning.wakeTime)),
+      borderColor: '#8b5cf6',
+      backgroundColor: 'rgba(139, 92, 246, 0.2)',
+      tension: 0.3,
+      pointBackgroundColor: '#8b5cf6',
+      pointRadius: 3
+    }]
+  };
+
+  const wakingOptions = {
+    scales: {
+      y: { 
+        reverse: true, 
+        min: 0, 
+        max: 24, 
+        ticks: { 
+          stepSize: 2,
+          callback: function(value) {
+            if (value === 24) return '00:00';
+            const h = Math.floor(value);
+            const m = Math.round((value - h) * 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          }
+        } 
+      }
+    }
+  };
+
   // Weekend Duties Aggregation for the Month
   let preLaundryCount = 0;
   let cleanRoomCount = 0;
@@ -143,9 +182,18 @@ export default function MonthlyReview() {
         <h3>Total Monthly Expense: {totalMonthlySpend} TND</h3>
       </div>
 
+      <div className="glass-card mb-6" style={{border: '2px solid #8b5cf6', overflow: 'hidden'}}>
+        <div style={{background: '#8b5cf6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
+          3. WAKING UP TIME (24H FORMAT)
+        </div>
+        <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Line data={wakingData} options={{...wakingOptions, maintainAspectRatio: false}} />
+        </div>
+      </div>
+
       <div className="glass-card mb-6" style={{border: '2px solid #10b981', overflow: 'hidden'}}>
         <div style={{background: '#10b981', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          3. WEEKEND DUTIES COMPLETION
+          4. WEEKEND DUTIES COMPLETION
         </div>
         <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />
@@ -154,7 +202,7 @@ export default function MonthlyReview() {
 
       <div className="glass-card mb-6" style={{border: '2px solid #3b82f6', overflow: 'hidden'}}>
         <div style={{background: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          4. SYSTEM CHECK COMPLETION
+          5. SYSTEM CHECK COMPLETION
         </div>
         <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={systemData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />

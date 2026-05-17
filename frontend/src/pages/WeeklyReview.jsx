@@ -71,11 +71,12 @@ export default function WeeklyReview() {
     scales: {
       y: { 
         reverse: true, 
-        min: 4, 
-        max: 10, 
+        min: 0, 
+        max: 24, 
         ticks: { 
-          stepSize: 1,
+          stepSize: 2,
           callback: function(value) {
+            if (value === 24) return '00:00';
             const h = Math.floor(value);
             const m = Math.round((value - h) * 60);
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
