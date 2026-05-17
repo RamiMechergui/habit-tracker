@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { Preferences } from '@capacitor/preferences';
 import * as db from './offlineDb.js';
 import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
 import { API_URL } from './config'; 
@@ -245,7 +246,20 @@ export const HabitProvider = ({ children }) => {
     const initApp = async () => {
       const startTime = Date.now();
       try {
-        // Step 1: Load everything from IndexedDB instantly
+        // Step 1: Load session securely via Capacitor Preferences
+        const { value } = await Preferences.get({ key: 'user_session' });
+        if (value) {
+          try {
+            const cachedUser = JSON.parse(value);
+            setUser(cachedUser);
+            // Also sync to IndexedDB as fallback
+            db.saveUser(cachedUser);
+          } catch (e) {
+            console.warn('Failed to parse cached user session');
+          }
+        }
+
+        // Load other state from IndexedDB instantly
         await loadOfflineData();
         
         // Load offline notes
@@ -269,11 +283,20 @@ export const HabitProvider = ({ children }) => {
               lastName: null,
               profilePicture: null
             };
-            setUser(mockUser);
-            db.saveUser(mockUser);
+            // Only override if we don't have local user data, to prevent flickering names
+            setUser(prev => {
+              const updated = prev ? { ...prev, _id: mockUser._id, email: mockUser.email } : mockUser;
+              Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
+              db.saveUser(updated);
+              return updated;
+            });
 
             // Fetch everything from server and merge
             await refreshFromServer();
+          } else if (res.status === 401) {
+            // Unauthorized - backend rejected cookie, clear session
+            await Preferences.remove({ key: 'user_session' });
+            setUser(null);
           }
         }
         
@@ -309,7 +332,16 @@ export const HabitProvider = ({ children }) => {
         db.loadArchives()
       ]);
 
-      if (offUser) setUser(offUser);
+      // Only fallback to IndexedDB user if Preferences didn't load one
+      if (offUser) {
+        setUser(prev => {
+          if (!prev) {
+            Preferences.set({ key: 'user_session', value: JSON.stringify(offUser) });
+            return offUser;
+          }
+          return prev;
+        });
+      }
       if (offLogs && Object.keys(offLogs).length > 0) setLogs(offLogs);
       if (offCats && offCats.length > 0) setExpenseCategories(offCats);
       if (offBook) setCurrentBookState(offBook);
@@ -563,6 +595,7 @@ export const HabitProvider = ({ children }) => {
       profilePicture: data.profilePicture
     };
     setUser(userData);
+    await Preferences.set({ key: 'user_session', value: JSON.stringify(userData) });
     db.saveUser(userData);
     
     setExpenseCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment', 'Smoking']);
@@ -587,6 +620,7 @@ export const HabitProvider = ({ children }) => {
 
     setUser(prev => {
       const updated = { ...prev, ...profileData };
+      Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
       db.saveUser(updated);
       return updated;
     });
@@ -641,6 +675,7 @@ export const HabitProvider = ({ children }) => {
     if (!res.ok) throw new Error(data.message);
     const updated = { ...user, firstName: data.firstName, lastName: data.lastName };
     setUser(updated);
+    await Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
     db.saveUser(updated);
   };
 
@@ -671,6 +706,10 @@ export const HabitProvider = ({ children }) => {
       sseRef.current.close();
       sseRef.current = null;
     }
+    
+    // Clear secure local storage
+    await Preferences.remove({ key: 'user_session' });
+    
     setUser(null);
     setLogs({});
     setExpenseCategories([]);
@@ -696,6 +735,7 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     const updated = { ...user, profilePicture: data.profilePicture };
     setUser(updated);
+    await Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
     db.saveUser(updated);
   };
 
