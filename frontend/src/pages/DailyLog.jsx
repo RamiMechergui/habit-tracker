@@ -353,7 +353,16 @@ export default function DailyLog() {
 
             <div className="flex-col gap-3">
               {[
-                { id: 'smoking', label: '1. Smoking', pts: '10pts', extra: 'count', placeholder: 'Qty' },
+                { 
+                  id: 'smoking', 
+                  label: '1. Smoking', 
+                  pts: '10pts', 
+                  extra: 'expenses', 
+                  placeholder: 'Exp ($)',
+                  dynamicFields: [
+                    { key: 'count', dependsOn: 'expenses', placeholder: 'No. Cigs' }
+                  ]
+                },
                 { id: 'sexual', label: '2. Sexual discipline', pts: '4pts' },
                 { id: 'social', label: '3. Social Media', pts: '2pts', extra: 'min', placeholder: 'Min' },
                 { id: 'phone', label: '4. Phone Usage', pts: '6pts', extra: 'min', placeholder: 'Min' },
@@ -371,15 +380,58 @@ export default function DailyLog() {
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Render dynamic fields dependent on other fields */}
+                    {item.dynamicFields && item.dynamicFields.map(df => {
+                      const parentVal = log.bad[item.id][df.dependsOn];
+                      if (!parentVal || Number(parentVal) <= 0) return null;
+                      return (
+                        <input 
+                          key={df.key}
+                          type="number" 
+                          min="0"
+                          placeholder={df.placeholder} 
+                          style={{ width: '75px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff', animation: 'pageSlideIn 0.2s ease' }}
+                          value={log.bad[item.id][df.key] || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val === '' || Number(val) >= 0) {
+                              updateBad(item.id, df.key, val);
+                            }
+                          }} 
+                          disabled={isFuture} 
+                        />
+                      );
+                    })}
+
                     {item.extra && (
-                      <input type="number" placeholder={item.placeholder} style={{ width: '65px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
-                        value={log.bad[item.id][item.extra] || ''} onChange={e => updateBad(item.id, item.extra, e.target.value)} disabled={isFuture} />
+                      <input 
+                        type="number" 
+                        min="0"
+                        placeholder={item.placeholder} 
+                        style={{ width: '65px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' }}
+                        value={log.bad[item.id][item.extra] || ''} 
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '' || Number(val) >= 0) {
+                            updateBad(item.id, item.extra, val);
+                          }
+                        }} 
+                        disabled={isFuture} 
+                      />
                     )}
                     <input type="checkbox" className="habit-checkbox" checked={log.bad[item.id].checked} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Dynamic totals section */}
+            {Number(log.bad?.smoking?.count) > 0 && (
+              <div className="mt-4 p-3 rounded-xl flex items-center justify-between" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', animation: 'pageSlideIn 0.3s ease' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>Total Cigarettes Smoked</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{log.bad.smoking.count}</span>
+              </div>
+            )}
           </div>
 
           {/* Night Habits */}
@@ -814,7 +866,7 @@ export default function DailyLog() {
                 border: `1px solid ${log.system?.todo ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
                 <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. ToDo App Updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. EVLVIO TIMELINE Updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
@@ -830,7 +882,7 @@ export default function DailyLog() {
                 border: `1px solid ${log.system?.money ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
                 <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Money Tracker Updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>Evolvio Expense Tracker updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
