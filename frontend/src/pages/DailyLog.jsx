@@ -16,6 +16,7 @@ export default function DailyLog() {
   const [saveStatus, setSaveStatus] = useState('Saved'); // 'Saved', 'Saving...', 'Error'
   const [submitError, setSubmitError] = useState('');
   const [localDirty, setLocalDirty] = useState(false);
+  const [expenseErrorIdx, setExpenseErrorIdx] = useState(null);
 
   // Side Hustle Lessons State
   const [newLesson, setNewLesson] = useState('');
@@ -177,6 +178,7 @@ export default function DailyLog() {
   };
 
   const updateExpense = (idx, field, val) => {
+    setExpenseErrorIdx(null); // Clear error on change
     setLog(prev => {
       const expenses = Array.isArray(prev.expenses) ? [...prev.expenses] : [];
       if (expenses[idx]) {
@@ -184,6 +186,23 @@ export default function DailyLog() {
       }
       return { ...prev, expenses };
     });
+    setLocalDirty(true);
+  };
+
+  const handleAddExpense = () => {
+    const expenses = Array.isArray(log.expenses) ? log.expenses : [];
+    if (expenses.length > 0) {
+      const lastExp = expenses[expenses.length - 1];
+      if (!lastExp.desc.trim() || !lastExp.amount || parseFloat(lastExp.amount) <= 0) {
+        setExpenseErrorIdx(expenses.length - 1);
+        return;
+      }
+    }
+    setExpenseErrorIdx(null);
+    setLog(prev => ({
+      ...prev,
+      expenses: [...expenses, { desc: '', category: expenseCategories[0] || 'Other', amount: '', time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }]
+    }));
     setLocalDirty(true);
   };
 
@@ -265,8 +284,8 @@ export default function DailyLog() {
     ? log.expenses.filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking').reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0)
     : 0;
   
-  const manualCigs = parseInt(log.bad?.smoking?.count) || 0;
-  const totalCigarettes = manualCigs + expenseCigs;
+  // Now strictly read-only based on expense entries
+  const totalCigarettes = expenseCigs;
 
   return (
     <div>
@@ -405,15 +424,13 @@ export default function DailyLog() {
                         onChange={e => {
                           const val = e.target.value;
                           if (val === '' || Number(val) >= 0) {
-                            if (item.id === 'smoking') {
-                              const parsed = parseInt(val) || 0;
-                              updateBad(item.id, item.extra, Math.max(0, parsed - expenseCigs));
-                            } else {
+                            if (item.id !== 'smoking') {
                               updateBad(item.id, item.extra, val);
                             }
                           }
                         }} 
-                        disabled={isFuture} 
+                        disabled={isFuture || item.id === 'smoking'} 
+                        readOnly={item.id === 'smoking'}
                       />
                       </div>
                     )}
@@ -893,17 +910,18 @@ export default function DailyLog() {
             {Array.isArray(log.expenses) && log.expenses.map((exp, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < (Array.isArray(log.expenses) ? log.expenses.length : 0) - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div className="flex gap-2 items-center">
-                  <input
-                    className="flex-1"
-                    placeholder={`Expense ${i + 1} description`}
-                    value={exp.desc}
-                    onChange={e => updateExpense(i, 'desc', e.target.value)}
-                    disabled={isFuture}
-                  />
-                  <div style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    color: 'var(--text-muted)',
+                    <input
+                      className="flex-1"
+                      style={expenseErrorIdx === i && !exp.desc.trim() ? { border: '1px solid #ef4444', boxShadow: '0 0 5px rgba(239, 68, 68, 0.4)' } : {}}
+                      placeholder={`Expense ${i + 1} description`}
+                      value={exp.desc}
+                      onChange={e => updateExpense(i, 'desc', e.target.value)}
+                      disabled={isFuture}
+                    />
+                    <div style={{
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      color: 'var(--text-muted)',
                     background: 'rgba(255,255,255,0.03)',
                     padding: '8px 12px',
                     borderRadius: '8px',
@@ -958,16 +976,16 @@ export default function DailyLog() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: '0.5rem', flex: '2 1 90px', minWidth: '90px', alignItems: 'center' }}>
-                    <input
-                      style={{ flex: 1, minWidth: '60px' }}
-                      type="number"
-                      placeholder="TND"
-                      value={exp.amount || ''}
-                      onChange={e => updateExpense(i, 'amount', e.target.value)}
-                      disabled={isFuture}
-                    />
-                    <button
+                    <div style={{ display: 'flex', gap: '0.5rem', flex: '2 1 90px', minWidth: '90px', alignItems: 'center' }}>
+                      <input
+                        style={expenseErrorIdx === i && (!exp.amount || parseFloat(exp.amount) <= 0) ? { flex: 1, minWidth: '60px', border: '1px solid #ef4444', boxShadow: '0 0 5px rgba(239, 68, 68, 0.4)' } : { flex: 1, minWidth: '60px' }}
+                        type="number"
+                        placeholder="TND"
+                        value={exp.amount || ''}
+                        onChange={e => updateExpense(i, 'amount', e.target.value)}
+                        disabled={isFuture}
+                      />
+                      <button
                       type="button"
                       className="expense-delete-btn"
                       onClick={() => deleteExpense(i)}
@@ -981,7 +999,12 @@ export default function DailyLog() {
                 </div>
               </div>
             ))}
-            <button className="btn btn-secondary w-full mt-2" style={{ padding: '0.5rem' }} onClick={() => setLog(prev => ({ ...prev, expenses: [...(Array.isArray(prev.expenses) ? prev.expenses : []), { desc: '', category: expenseCategories[0] || 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] }))} disabled={isFuture}>
+            {expenseErrorIdx !== null && (
+              <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '8px', animation: 'adm-shake 0.3s ease' }}>
+                ⚠️ Please complete the current expense (Description and Amount) before adding a new one.
+              </div>
+            )}
+            <button className="btn btn-secondary w-full mt-2" style={{ padding: '0.5rem' }} onClick={handleAddExpense} disabled={isFuture}>
               + Add Expense
             </button>
             <div className="mt-4 pt-4 flex justify-between" style={{ borderTop: '1px solid var(--border)' }}>
