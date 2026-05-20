@@ -135,6 +135,10 @@ app.post('/api/tasks/:date', verifyToken, async (req, res) => {
     } else {
       log = await TaskLog.create({ userId: req.user._id, date, tasks: tasks || [] });
     }
+    res.json(log);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+});
+
 app.post('/api/tasks/action', verifyToken, async (req, res) => {
   try {
     const { taskId, action } = req.body;
