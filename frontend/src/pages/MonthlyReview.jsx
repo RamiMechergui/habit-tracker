@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import CircularTracker from '../components/CircularTracker';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+  const goPrevMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
+  const goNextMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1));
+  const goToday = () => setDate(new Date());
 
 export default function MonthlyReview() {
   const { getMonthlyData } = useHabits();
@@ -149,6 +153,11 @@ export default function MonthlyReview() {
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <button onClick={goPrevMonth} className="nav-btn"><ChevronLeft size={24} /></button>
+        <button onClick={goToday} className="nav-btn">Today</button>
+        <button onClick={goNextMonth} className="nav-btn"><ChevronRight size={24} /></button>
+      </div>
       <h2 className="mb-6 text-center">MONTHLY REPORT</h2>
       <div className="mb-6 text-center">
         <h3 className="text-amber" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{format(date, 'MMMM yyyy')}</h3>

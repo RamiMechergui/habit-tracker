@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import CircularTracker from '../components/CircularTracker';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 export default function WeeklyReview() {
   const { getWeeklyData } = useHabits();
   const [date, setDate] = useState(new Date());
-  
+
+  // Navigation handlers
+  const goPrevWeek = () => setDate(new Date(date.getFullYear(), date.getMonth(), date.getDate() - 7));
+  const goNextWeek = () => setDate(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7));
+  const goToday = () => setDate(new Date());
+
   const weeklyData = getWeeklyData(date);
   const labels = weeklyData.map(d => d.dayName);
+
+  
   
   // Weekly Discipline Score Data
   const disciplineData = {
@@ -128,6 +137,11 @@ export default function WeeklyReview() {
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <button onClick={goPrevWeek} className="nav-btn"><ChevronLeft size={24} /></button>
+        <button onClick={goToday} className="nav-btn">Today</button>
+        <button onClick={goNextWeek} className="nav-btn"><ChevronRight size={24} /></button>
+      </div>
       <h2 className="mb-6 text-center">Weekly Discipline Report</h2>
       
       <div className="glass-card mb-6" style={{overflowX: 'auto'}}>
