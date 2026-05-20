@@ -1,20 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import CircularTracker from '../components/CircularTracker';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { format, parseISO, addDays, subDays, startOfWeek, isToday } from 'date-fns';
 
 export default function WeeklyReview() {
   const { getWeeklyData } = useHabits();
   const [date, setDate] = useState(new Date());
 
+  // Safe startOfWeek fallback
+  const safeStartOfWeek = (d) => {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
+  };
+
   // Navigation handlers
-  const goPrevWeek = () => setDate(new Date(date.getFullYear(), date.getMonth(), date.getDate() - 7));
-  const goNextWeek = () => setDate(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7));
+  const goPrevWeek = () => setDate(d => subDays(d, 7));
+  const goNextWeek = () => setDate(d => addDays(d, 7));
   const goToday = () => setDate(new Date());
 
+  const weekStart = safeStartOfWeek(date);
+  const weekEnd = addDays(weekStart, 6);
+  
   const weeklyData = getWeeklyData(date);
   const labels = weeklyData.map(d => d.dayName);
+  
+  const isCurrentWeek = useMemo(() => {
+    const today = new Date();
+    const todayWeekStart = safeStartOfWeek(today);
+    return format(weekStart, 'yyyy-MM-dd') === format(todayWeekStart, 'yyyy-MM-dd');
+  }, [weekStart]);
 
   
   
@@ -136,30 +154,195 @@ export default function WeeklyReview() {
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <button onClick={goPrevWeek} className="nav-btn"><ChevronLeft size={24} /></button>
-        <button onClick={goToday} className="nav-btn">Today</button>
-        <button onClick={goNextWeek} className="nav-btn"><ChevronRight size={24} /></button>
+    <div style={{ paddingBottom: '2rem' }}>
+      {/* Enhanced Week Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '16px',
+        padding: '2rem',
+        marginBottom: '2rem',
+        backdropFilter: 'blur(10px)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <button 
+            onClick={goPrevWeek}
+            style={{
+              background: 'rgba(59, 130, 246, 0.2)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '12px',
+              padding: '0.75rem 1rem',
+              color: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.3s ease',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+            }}
+            onMouseEnter={e => { e.target.style.background = 'rgba(59, 130, 246, 0.3)'; e.target.style.transform = 'translateX(-4px)'; }}
+            onMouseLeave={e => { e.target.style.background = 'rgba(59, 130, 246, 0.2)'; e.target.style.transform = 'translateX(0)'; }}
+            aria-label="Previous week"
+          >
+            <ChevronLeft size={18} /> Prev Week
+          </button>
+
+          <div style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <Calendar size={20} style={{ color: 'rgba(245, 158, 11, 0.8)' }} />
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', background: 'linear-gradient(135deg, #3b82f6 0%, #f59e0b 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+              </h2>
+            </div>
+            {isCurrentWeek && <span style={{ color: 'rgba(16, 185, 129, 0.8)', fontSize: '0.85rem', fontWeight: '600' }}>📍 This Week</span>}
+          </div>
+
+          <button 
+            onClick={goNextWeek}
+            style={{
+              background: 'rgba(245, 158, 11, 0.2)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '12px',
+              padding: '0.75rem 1rem',
+              color: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.3s ease',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+            }}
+            onMouseEnter={e => { e.target.style.background = 'rgba(245, 158, 11, 0.3)'; e.target.style.transform = 'translateX(4px)'; }}
+            onMouseLeave={e => { e.target.style.background = 'rgba(245, 158, 11, 0.2)'; e.target.style.transform = 'translateX(0)'; }}
+            aria-label="Next week"
+          >
+            Next Week <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <button 
+          onClick={goToday}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%)',
+            border: '2px solid rgba(16, 185, 129, 0.4)',
+            borderRadius: '10px',
+            padding: '0.75rem',
+            color: '#fff',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            fontSize: '0.95rem',
+            fontWeight: '600',
+          }}
+          onMouseEnter={e => { e.target.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0.2) 100%)'; }}
+          onMouseLeave={e => { e.target.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%)'; }}
+          aria-label="Jump to today"
+        >
+          ✨ Jump to Today
+        </button>
       </div>
-      <h2 className="mb-6 text-center">Weekly Discipline Report</h2>
-      
+
+      {/* Day Pills with Dates */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+        gap: '0.75rem',
+        marginBottom: '2rem',
+      }}>
+        {weeklyData.map((d, i) => {
+          const dayDate = addDays(weekStart, i);
+          const isDayToday = isToday(dayDate);
+          return (
+            <div
+              key={i}
+              style={{
+                background: isDayToday 
+                  ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%)'
+                  : 'rgba(255, 255, 255, 0.05)',
+                border: isDayToday 
+                  ? '2px solid rgba(16, 185, 129, 0.5)'
+                  : '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '12px',
+                padding: '1rem 0.75rem',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = isDayToday ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%)' : 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <div style={{ fontSize: '0.85rem', fontWeight: '700', color: isDayToday ? '#10b981' : 'rgba(255, 255, 255, 0.7)', marginBottom: '0.5rem' }}>
+                {d.dayName}
+              </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#fff', marginBottom: '0.5rem' }}>
+                {format(dayDate, 'd')}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                {format(dayDate, 'MMM')}
+              </div>
+              {isDayToday && <div style={{ fontSize: '1.5rem', marginTop: '0.5rem' }}>●</div>}
+            </div>
+          );
+        })}
+      </div>
       <div className="glass-card mb-6" style={{overflowX: 'auto'}}>
         <table style={{width: '100%', textAlign: 'center', borderCollapse: 'collapse'}}>
           <thead>
             <tr style={{background: 'rgba(0,0,0,0.4)'}}>
-              <th className="p-4" style={{textAlign: 'left'}}>Metric</th>
-              {labels.map(L => <th key={L} className="p-4">{L}</th>)}
+              <th className="p-4" style={{textAlign: 'left', fontWeight: '700', color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem'}}>Metric</th>
+              {weeklyData.map((d, i) => {
+                const dayDate = addDays(weekStart, i);
+                const isDayToday = isToday(dayDate);
+                return (
+                  <th 
+                    key={i} 
+                    className="p-4" 
+                    style={{
+                      background: isDayToday ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                      borderBottom: isDayToday ? '2px solid rgba(16, 185, 129, 0.4)' : 'none',
+                      fontWeight: '700',
+                      color: isDayToday ? '#10b981' : 'rgba(255,255,255,0.8)',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>{d.dayName}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: '800' }}>{format(dayDate, 'd')}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem' }}>{format(dayDate, 'MMM')}</div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             <tr style={{borderTop: '1px solid var(--border)'}}>
-              <td className="p-4" style={{textAlign: 'left'}}>Daily Score</td>
-              {weeklyData.map((d, i) => <td key={i} className="p-4">{d.log.totalScore}</td>)}
+              <td className="p-4" style={{textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.8)'}}>Daily Score</td>
+              {weeklyData.map((d, i) => (
+                <td key={i} className="p-4" style={{ fontWeight: '700', fontSize: '1.05rem', color: d.log.totalScore >= 80 ? '#10b981' : d.log.totalScore >= 60 ? '#f59e0b' : '#ef4444' }}>
+                  {d.log.totalScore}
+                </td>
+              ))}
             </tr>
             <tr style={{borderTop: '1px solid var(--border)'}}>
-              <td className="p-4" style={{textAlign: 'left'}}>Rank</td>
-              {weeklyData.map((d, i) => <td key={i} className="p-4"><span className={`grade-pill grade-${d.log.rank.toLowerCase()}`}>{d.log.rank}</span></td>)}
+              <td className="p-4" style={{textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.8)'}}>Rank</td>
+              {weeklyData.map((d, i) => (
+                <td key={i} className="p-4">
+                  <span 
+                    className={`grade-pill grade-${d.log.rank.toLowerCase()}`}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontWeight: '700',
+                      background: d.log.rank === 'S' ? 'rgba(16, 185, 129, 0.2)' : d.log.rank === 'A' ? 'rgba(59, 130, 246, 0.2)' : d.log.rank === 'B' ? 'rgba(245, 158, 11, 0.2)' : d.log.rank === 'C' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.2)',
+                      color: d.log.rank === 'S' ? '#10b981' : d.log.rank === 'A' ? '#3b82f6' : d.log.rank === 'B' ? '#f59e0b' : d.log.rank === 'C' ? '#fb923c' : '#ef4444',
+                      border: d.log.rank === 'S' ? '1px solid rgba(16, 185, 129, 0.4)' : d.log.rank === 'A' ? '1px solid rgba(59, 130, 246, 0.4)' : d.log.rank === 'B' ? '1px solid rgba(245, 158, 11, 0.4)' : d.log.rank === 'C' ? '1px solid rgba(251, 146, 60, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                    }}
+                  >
+                    {d.log.rank}
+                  </span>
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
@@ -172,21 +355,45 @@ export default function WeeklyReview() {
       </div>
 
       <div className="glass-card p-6 mb-6">
-        <h3 className="mb-4 text-center">Discipline Tracker (0 - 100)</h3>
+        <h3 className="mb-4" style={{
+          textAlign: 'center',
+          fontSize: '1.3rem',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          marginBottom: '1.5rem'
+        }}>📊 Discipline Tracker (0 - 100)</h3>
         <div style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Line data={disciplineData} options={{...disciplineOptions, maintainAspectRatio: false}} />
         </div>
       </div>
 
       <div className="glass-card p-6 mb-6">
-        <h3 className="mb-4 text-center" style={{color: '#3b82f6'}}>Weekly Waking Time</h3>
+        <h3 className="mb-4" style={{
+          textAlign: 'center',
+          fontSize: '1.3rem',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          marginBottom: '1.5rem'
+        }}>⏰ Weekly Waking Time</h3>
         <div style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Line data={wakingData} options={{...wakingOptions, maintainAspectRatio: false}} />
         </div>
       </div>
 
       <div className="glass-card p-6 mb-6">
-        <h3 className="mb-4 text-center text-amber">Weekly Expenses Graph</h3>
+        <h3 className="mb-4" style={{
+          textAlign: 'center',
+          fontSize: '1.3rem',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          marginBottom: '1.5rem'
+        }}>💰 Weekly Expenses</h3>
         <div style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={expensesData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
         </div>
@@ -196,14 +403,30 @@ export default function WeeklyReview() {
       </div>
 
       <div className="glass-card p-6 mb-6">
-        <h3 className="mb-4 text-center" style={{color: '#10b981'}}>Weekend Duties Completion</h3>
+        <h3 className="mb-4" style={{
+          textAlign: 'center',
+          fontSize: '1.3rem',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          marginBottom: '1.5rem'
+        }}>✅ Weekend Duties Completion</h3>
         <div style={{ position: 'relative', height: '250px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { min: 0, max: 1, ticks: { stepSize: 1, callback: (v) => v === 1 ? 'Done' : 'Not Done' } } }, plugins: { legend: { display: false } } }} />
         </div>
       </div>
 
       <div className="glass-card p-6 mb-6">
-        <h3 className="mb-4 text-center text-amber">System Check Completion</h3>
+        <h3 className="mb-4" style={{
+          textAlign: 'center',
+          fontSize: '1.3rem',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          marginBottom: '1.5rem'
+        }}>⚙️ System Check Completion</h3>
         <div style={{ position: 'relative', height: '250px', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Bar data={systemData} options={{ maintainAspectRatio: false, scales: { y: { min: 0, max: 1, ticks: { stepSize: 1, callback: (v) => v === 1 ? 'Done' : 'Not Done' } } } }} />
         </div>
