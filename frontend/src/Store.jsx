@@ -1,5 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+
+// Safe fallback for startOfWeek in case the build/runtime environment
+// doesn't provide it (some bundlers or versions may tree-shake it).
+const safeStartOfWeek = typeof startOfWeek === 'function'
+  ? startOfWeek
+  : (date, opts = {}) => {
+      const d = new Date(date);
+      const weekStartsOn = opts.weekStartsOn ?? 0; // 0 = Sunday
+      const day = d.getDay();
+      const diff = (day < weekStartsOn ? 7 : 0) + day - weekStartsOn;
+      d.setDate(d.getDate() - diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
 import { Preferences } from '@capacitor/preferences';
 import * as db from './offlineDb.js';
 import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
@@ -1175,8 +1189,8 @@ export const HabitProvider = ({ children }) => {
   };
 
   const getWeeklyData = (date) => {
-    const start = startOfWeek(date, { weekStartsOn: 1 });
-    const end = endOfWeek(date, { weekStartsOn: 1 });
+      const start = safeStartOfWeek(date, { weekStartsOn: 1 });
+      const end = endOfWeek(date, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start, end });
     
     return days.map(d => {

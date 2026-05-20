@@ -1,7 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useHabits } from '../Store';
-import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday } from 'date-fns';
+import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday, startOfWeek, endOfWeek } from 'date-fns';
+
+// Fallback for startOfWeek in case the imported symbol is undefined at runtime
+const safeStartOfWeek = typeof startOfWeek === 'function'
+  ? startOfWeek
+  : (date, opts = {}) => {
+      const d = new Date(date);
+      const weekStartsOn = opts.weekStartsOn ?? 0;
+      const day = d.getDay();
+      const diff = (day < weekStartsOn ? 7 : 0) + day - weekStartsOn;
+      d.setDate(d.getDate() - diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
 import {
   Plus, Loader2, Bell,
   List, CalendarDays, CheckCircle2, Target, Filter, X,
@@ -282,10 +295,6 @@ export default function TasksPage() {
             ))}
           </div>
 
-import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday, startOfWeek, endOfWeek } from 'date-fns';
-
-// ... existing code above ...
-
           {/* Week navigation */}
           <div className="hub-week-nav" role="group" aria-label="Week navigation">
             <button
@@ -296,7 +305,7 @@ import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday, start
               <ChevronLeft size={15} />
             </button>
             <span className="hub-week-label">
-              {format(startOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
+              {format(safeStartOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
               {' – '}
               {format(endOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
             </span>
