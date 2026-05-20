@@ -5,9 +5,16 @@ const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: '' },
   time: { type: String, required: true },
+  endTime: { type: String, default: '' },
   duration: { type: String, default: '30' },
+  priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+  category: { type: String, default: 'Other' },
+  delayReason: { type: String, default: '' },
+  recurrence: { type: String, enum: ['none', 'daily', 'weekly', 'custom'], default: 'none' },
+  customDays: { type: [String], default: [] },
+  reminderMinutes: { type: Number, default: 15 },
   notificationEnabled: { type: Boolean, default: false },
-  status: { type: String, enum: ['Pending', 'Completed', 'Missed'], default: 'Pending' },
+  status: { type: String, enum: ['Pending', 'Completed', 'Delayed', 'Missed'], default: 'Pending' },
   notificationSent: { type: Boolean, default: false }
 });
 

@@ -70,9 +70,11 @@ app.get('/api/daily', verifyToken, async (req, res) => {
         const items = result.value.data;
         items.forEach(item => {
           if (!logsByDate[item.date]) logsByDate[item.date] = { date: item.date };
-          // If expenses, we want just the array
+          // If expenses or tasks, we want just the array
           if (key === 'expenses' && item.expenses) {
             logsByDate[item.date][key] = item.expenses;
+          } else if (key === 'tasks' && item.tasks) {
+            logsByDate[item.date][key] = item.tasks;
           } else {
             logsByDate[item.date][key] = item;
           }
@@ -110,6 +112,8 @@ app.get('/api/daily/:date', verifyToken, async (req, res) => {
         const item = result.value.data;
         if (key === 'expenses' && item.expenses) {
           fullLog[key] = item.expenses;
+        } else if (key === 'tasks' && item.tasks) {
+          fullLog[key] = item.tasks;
         } else {
           fullLog[key] = item;
         }

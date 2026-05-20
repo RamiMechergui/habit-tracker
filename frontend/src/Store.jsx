@@ -71,7 +71,15 @@ export const HabitProvider = ({ children }) => {
       .map(def => {
         const instanceId = `rec_${def.id}_${dateStr}`;
         // If there is a real saved override for this date's log, use it
-        const existingTasks = logs[dateStr]?.tasks ?? [];
+        const existingLog = logs[dateStr];
+        let existingTasks = [];
+        if (existingLog && existingLog.tasks) {
+          if (Array.isArray(existingLog.tasks)) {
+            existingTasks = existingLog.tasks;
+          } else if (existingLog.tasks.tasks && Array.isArray(existingLog.tasks.tasks)) {
+            existingTasks = existingLog.tasks.tasks;
+          }
+        }
         const override = existingTasks.find(t => t.recurringId === def.id);
         if (override) return null; // already persisted, don't create virtual duplicate
         return {
@@ -747,6 +755,16 @@ export const HabitProvider = ({ children }) => {
     const emptyLog = createEmptyDay(dateStr);
 
     if (existingLog) {
+      // Normalize tasks defensively in case of non-array or object wrap
+      let normalizedTasks = emptyLog.tasks;
+      if (existingLog.tasks) {
+        if (Array.isArray(existingLog.tasks)) {
+          normalizedTasks = existingLog.tasks;
+        } else if (existingLog.tasks.tasks && Array.isArray(existingLog.tasks.tasks)) {
+          normalizedTasks = existingLog.tasks.tasks;
+        }
+      }
+
       // Deep merge existingLog into emptyLog to ensure all keys are present
       const filledLog = {
         ...emptyLog,
@@ -767,7 +785,7 @@ export const HabitProvider = ({ children }) => {
         hustle: { ...emptyLog.hustle, ...(existingLog.hustle || {}) },
         video: { ...emptyLog.video, ...(existingLog.video || {}) },
         system: { ...emptyLog.system, ...(existingLog.system || {}) },
-        tasks: Array.isArray(existingLog.tasks) ? existingLog.tasks : emptyLog.tasks,
+        tasks: normalizedTasks,
         expenses: Array.isArray(existingLog.expenses) && existingLog.expenses.length > 0 ? existingLog.expenses : emptyLog.expenses
       };
 

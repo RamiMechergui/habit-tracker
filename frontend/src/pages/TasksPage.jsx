@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useHabits } from '../Store';
 import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday } from 'date-fns';
 import {
@@ -31,8 +32,24 @@ const VIEW_OPTIONS = [
 export default function TasksPage() {
   const { getLog, saveLog, logs, scheduleTaskReminder, cancelTaskReminder, getVirtualTasksForDate, recurringTasks } = useHabits();
 
-  const [date,          setDate]          = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [log,           setLog]           = useState(() => logs[format(new Date(), 'yyyy-MM-dd')] || { date: format(new Date(), 'yyyy-MM-dd'), tasks: [] });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryDate = searchParams.get('date');
+
+  const [date,          setDate]          = useState(() => {
+    if (queryDate && /^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+      return queryDate;
+    }
+    return format(new Date(), 'yyyy-MM-dd');
+  });
+
+  // Sync date when URL search parameter changes
+  useEffect(() => {
+    if (queryDate && /^\d{4}-\d{2}-\d{2}$/.test(queryDate) && queryDate !== date) {
+      setDate(queryDate);
+    }
+  }, [queryDate]);
+
+  const [log,           setLog]           = useState(() => logs[date] || { date, tasks: [] });
   const [saveStatus,    setSaveStatus]    = useState('');
   const [localDirty,    setLocalDirty]    = useState(false);
   const [timelineView,  setTimelineView]  = useState('daily');

@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useHabits } from '../Store';
 import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X } from 'lucide-react';
+import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user, getLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
   
   const displayName = user?.firstName || user?.lastName
     ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
@@ -20,6 +20,172 @@ export default function Dashboard() {
   const [categoryMessage, setCategoryMessage] = useState({ text: '', type: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: '', category: '' });
   const [calendarDate, setCalendarDate] = useState(new Date());
+
+  // ── Tasks List State ────────────────────────────────────────────────────────
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskStatusFilter, setTaskStatusFilter] = useState('all');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState('all');
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState('all');
+  const [taskSortBy, setTaskSortBy] = useState('date-desc');
+  const [editingTaskId, setEditingTaskId] = useState(null);
+
+  // Inline edit state
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  const [editPriority, setEditPriority] = useState('medium');
+  const [editStatus, setEditStatus] = useState('Pending');
+  const [editCategory, setEditCategory] = useState('Other');
+  const [editError, setEditError] = useState('');
+
+  // Gather all tasks
+  const allTasks = React.useMemo(() => {
+    const list = [];
+    Object.entries(logs || {}).forEach(([dateStr, logData]) => {
+      let tasksForDate = [];
+      if (logData && logData.tasks) {
+        if (Array.isArray(logData.tasks)) {
+          tasksForDate = logData.tasks;
+        } else if (logData.tasks.tasks && Array.isArray(logData.tasks.tasks)) {
+          tasksForDate = logData.tasks.tasks;
+        }
+      }
+      tasksForDate.forEach(task => {
+        list.push({
+          ...task,
+          date: dateStr
+        });
+      });
+    });
+    return list;
+  }, [logs]);
+
+  // Derived Categories
+  const allCategories = React.useMemo(() => {
+    const cats = new Set(['Work', 'Health', 'Personal', 'Learning', 'Finance', 'Social', 'Other']);
+    allTasks.forEach(t => {
+      if (t.category) cats.add(t.category);
+    });
+    return Array.from(cats);
+  }, [allTasks]);
+
+  // Filtered & Sorted Tasks
+  const filteredTasks = React.useMemo(() => {
+    return allTasks
+      .filter(t => {
+        if (taskSearch.trim()) {
+          const q = taskSearch.toLowerCase();
+          const titleMatch = t.title?.toLowerCase().includes(q);
+          const descMatch = t.description?.toLowerCase().includes(q);
+          if (!titleMatch && !descMatch) return false;
+        }
+        if (taskStatusFilter !== 'all' && t.status !== taskStatusFilter) return false;
+        if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
+        if (taskCategoryFilter !== 'all' && t.category !== taskCategoryFilter) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (taskSortBy === 'date-desc') {
+          const dateComp = b.date.localeCompare(a.date);
+          if (dateComp !== 0) return dateComp;
+          return (b.time || '').localeCompare(a.time || '');
+        }
+        if (taskSortBy === 'date-asc') {
+          const dateComp = a.date.localeCompare(b.date);
+          if (dateComp !== 0) return dateComp;
+          return (a.time || '').localeCompare(b.time || '');
+        }
+        if (taskSortBy === 'priority-desc') {
+          const weight = { critical: 4, high: 3, medium: 2, low: 1 };
+          return (weight[b.priority] || 0) - (weight[a.priority] || 0);
+        }
+        if (taskSortBy === 'priority-asc') {
+          const weight = { critical: 4, high: 3, medium: 2, low: 1 };
+          return (weight[a.priority] || 0) - (weight[b.priority] || 0);
+        }
+        if (taskSortBy === 'title-asc') {
+          return (a.title || '').localeCompare(b.title || '');
+        }
+        return 0;
+      });
+  }, [allTasks, taskSearch, taskStatusFilter, taskPriorityFilter, taskCategoryFilter, taskSortBy]);
+
+  const startEditTask = (task) => {
+    setEditingTaskId(task.id);
+    setEditTitle(task.title || '');
+    setEditDesc(task.description || '');
+    setEditTime(task.time || '');
+    setEditEndTime(task.endTime || '');
+    setEditPriority(task.priority || 'medium');
+    setEditStatus(task.status || 'Pending');
+    setEditCategory(task.category || 'Other');
+    setEditError('');
+  };
+
+  const saveEditedTask = async (task) => {
+    if (!editTitle.trim()) {
+      setEditError('Title is required');
+      return;
+    }
+    if (!editTime.trim()) {
+      setEditError('Start time is required');
+      return;
+    }
+    if (editEndTime && editEndTime < editTime) {
+      setEditError('End time must be after start time');
+      return;
+    }
+
+    const updatedFields = {
+      title: editTitle.trim(),
+      description: editDesc.trim(),
+      time: editTime,
+      endTime: editEndTime,
+      priority: editPriority,
+      status: editStatus,
+      category: editCategory
+    };
+
+    const logData = getLog(task.date);
+    let tasksForDate = [];
+    if (logData.tasks) {
+      if (Array.isArray(logData.tasks)) {
+        tasksForDate = [...logData.tasks];
+      } else if (logData.tasks.tasks && Array.isArray(logData.tasks.tasks)) {
+        tasksForDate = [...logData.tasks.tasks];
+      }
+    }
+
+    const idx = tasksForDate.findIndex(t => t.id === task.id);
+    if (idx !== -1) {
+      tasksForDate[idx] = { ...tasksForDate[idx], ...updatedFields };
+    }
+
+    const updatedLog = { ...logData, tasks: tasksForDate };
+    await saveLog(task.date, updatedLog);
+    setEditingTaskId(null);
+    showMessage('Task updated successfully!');
+  };
+
+  const deleteDashboardTask = async (task) => {
+    if (window.confirm(`Are you sure you want to delete "${task.title}"?`)) {
+      const logData = getLog(task.date);
+      let tasksForDate = [];
+      if (logData.tasks) {
+        if (Array.isArray(logData.tasks)) {
+          tasksForDate = [...logData.tasks];
+        } else if (logData.tasks.tasks && Array.isArray(logData.tasks.tasks)) {
+          tasksForDate = [...logData.tasks.tasks];
+        }
+      }
+
+      const updatedTasks = tasksForDate.filter(t => t.id !== task.id);
+      const updatedLog = { ...logData, tasks: updatedTasks };
+      await saveLog(task.date, updatedLog);
+      showMessage('Task deleted successfully!');
+    }
+  };
 
   const showMessage = (text, type = 'success') => {
     setCategoryMessage({ text, type });
@@ -225,6 +391,595 @@ export default function Dashboard() {
                 {bookReadingStatus}
               </strong>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scope-styled Premium Tasks List Card */}
+      <div className="glass-card p-6 mb-6">
+        <style dangerouslySetInnerHTML={{ __html: `
+          .dashboard-tasks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+          }
+          .tasks-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem;
+          }
+          .filter-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+          .filter-row label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+          }
+          .filter-row input, .filter-row select {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+          }
+          .filter-row input:focus, .filter-row select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+          }
+          .filter-chips-outer {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+          }
+          .filter-chips-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .filter-chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          }
+          .filter-chip-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .filter-chip-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+          }
+          .filter-chip-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+          }
+          .tasks-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 6px;
+          }
+          /* Custom sleek scrollbar for items list */
+          .tasks-items-list::-webkit-scrollbar {
+            width: 6px;
+          }
+          .tasks-items-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 3px;
+          }
+          .tasks-items-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+          }
+          .tasks-items-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+          }
+          .task-item-row {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+          }
+          .task-item-row:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+          }
+          .task-item-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .task-item-left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            min-width: 120px;
+          }
+          .task-item-date {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .task-item-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .task-item-middle {
+            flex: 1 1 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+          .task-item-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .task-item-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+          }
+          .task-item-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0;
+            line-height: 1.4;
+          }
+          .task-badges-flex {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+          }
+          .badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+          }
+          .badge-priority-critical {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+          }
+          .badge-priority-high {
+            background: rgba(249, 115, 22, 0.12);
+            color: #fb923c;
+            border: 1px solid rgba(249, 115, 22, 0.25);
+          }
+          .badge-priority-medium {
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+          }
+          .badge-priority-low {
+            background: rgba(148, 163, 184, 0.12);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+          }
+          .badge-status-completed {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+          }
+          .badge-status-pending {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+          }
+          .badge-status-delayed {
+            background: rgba(139, 92, 246, 0.12);
+            color: #a78bfa;
+            border: 1px solid rgba(139, 92, 246, 0.25);
+          }
+          .badge-status-missed {
+            background: rgba(220, 38, 38, 0.12);
+            color: #f87171;
+            border: 1px solid rgba(220, 38, 38, 0.25);
+          }
+          .badge-category {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+          }
+          .task-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .action-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+          }
+          .action-btn-edit:hover {
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+          }
+          .action-btn-delete:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+          }
+          .action-btn-navigate:hover {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+          }
+          .task-inline-edit-form {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-top: 0.75rem;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+            animation: evolvia-down 0.2s ease-out;
+          }
+          .edit-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+          }
+          .edit-form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+          }
+          .edit-form-row label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin: 0;
+          }
+          .edit-form-row input, .edit-form-row select, .edit-form-row textarea {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+          }
+          .edit-form-row textarea {
+            resize: vertical;
+            min-height: 50px;
+          }
+          .edit-form-row input:focus, .edit-form-row select:focus, .edit-form-row textarea:focus {
+            border-color: var(--accent-blue);
+            background: rgba(0, 0, 0, 0.5);
+          }
+          .edit-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+          }
+          .edit-error-msg {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+          }
+        ` }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <SlidersHorizontal size={24} style={{ color: 'var(--accent-blue)' }} />
+            <h3 style={{ margin: 0 }}>Protocol Tasks Hub</h3>
+          </div>
+          <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+            {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+          </span>
+        </div>
+
+        <div className="dashboard-tasks-list">
+          {/* Filters Grid */}
+          <div className="tasks-filter-grid">
+            <div className="filter-row">
+              <label>Search Tasks</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Search title/description..."
+                  value={taskSearch}
+                  onChange={e => setTaskSearch(e.target.value)}
+                  style={{ paddingLeft: '32px', width: '100%' }}
+                />
+                {taskSearch && (
+                  <button
+                    onClick={() => setTaskSearch('')}
+                    style={{ position: 'absolute', right: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="filter-row">
+              <label>Category</label>
+              <select value={taskCategoryFilter} onChange={e => setTaskCategoryFilter(e.target.value)}>
+                <option value="all">All Categories</option>
+                {allCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-row">
+              <label>Sort By</label>
+              <select value={taskSortBy} onChange={e => setTaskSortBy(e.target.value)}>
+                <option value="date-desc">Newest First</option>
+                <option value="date-asc">Oldest First</option>
+                <option value="priority-desc">Priority: High to Low</option>
+                <option value="priority-asc">Priority: Low to High</option>
+                <option value="title-asc">Alphabetical (A-Z)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quick Filter Buttons */}
+          <div className="grid-2" style={{ gap: '0.75rem' }}>
+            <div className="filter-chips-outer">
+              <span className="filter-chips-label">Priority Filter</span>
+              <div className="filter-chips-container">
+                {['all', 'low', 'medium', 'high', 'critical'].map(p => (
+                  <button
+                    key={p}
+                    className={`filter-chip-btn ${taskPriorityFilter === p ? 'active' : ''}`}
+                    onClick={() => setTaskPriorityFilter(p)}
+                  >
+                    {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-chips-outer">
+              <span className="filter-chips-label">Status Filter</span>
+              <div className="filter-chips-container">
+                {['all', 'Pending', 'Completed', 'Delayed', 'Missed'].map(s => (
+                  <button
+                    key={s}
+                    className={`filter-chip-btn ${taskStatusFilter === s ? 'active' : ''}`}
+                    onClick={() => setTaskStatusFilter(s)}
+                  >
+                    {s === 'all' ? 'All' : s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Tasks List */}
+          <div className="tasks-items-list evolvia-scrollbar">
+            {filteredTasks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border)', borderRadius: '12px' }}>
+                <p className="text-muted" style={{ margin: 0, fontSize: '0.95rem' }}>No tasks found matching your filter selections.</p>
+                <p className="text-muted" style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>Use the Tasks Hub to monitor or pre-plan upcoming items.</p>
+              </div>
+            ) : (
+              filteredTasks.map(task => {
+                const isEditing = editingTaskId === task.id;
+                return (
+                  <div key={task.id} className="task-item-row">
+                    <div className="task-item-layout">
+                      <div className="task-item-left">
+                        <div className="task-item-date" title="Task Date">
+                          <Calendar size={13} />
+                          {task.date}
+                        </div>
+                        <div className="task-item-time" title="Task Start / End">
+                          <Clock size={13} />
+                          {task.time}{task.endTime ? ` - ${task.endTime}` : ''}
+                        </div>
+                      </div>
+
+                      <div className="task-item-middle">
+                        <div className="task-item-title-wrap">
+                          <h4 className="task-item-title">{task.title}</h4>
+                        </div>
+                        {task.description && (
+                          <p className="task-item-desc text-sm">{task.description}</p>
+                        )}
+                        <div className="task-badges-flex">
+                          <span className={`badge badge-priority-${task.priority || 'medium'}`}>
+                            {task.priority || 'medium'}
+                          </span>
+                          <span className={`badge badge-status-${(task.status || 'Pending').toLowerCase()}`}>
+                            {task.status || 'Pending'}
+                          </span>
+                          {task.category && (
+                            <span className="badge badge-category">
+                              {task.category}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="task-item-actions">
+                        <button
+                          className="action-btn action-btn-edit"
+                          onClick={() => isEditing ? setEditingTaskId(null) : startEditTask(task)}
+                          title="Edit Task Details"
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          className="action-btn action-btn-delete"
+                          onClick={() => deleteDashboardTask(task)}
+                          title="Delete Task"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                        <button
+                          className="action-btn action-btn-navigate"
+                          onClick={() => navigate(`/tasks?date=${task.date}`)}
+                          title="Navigate to Timeline entry"
+                        >
+                          <ExternalLink size={15} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Inline Edit Form */}
+                    {isEditing && (
+                      <div className="task-inline-edit-form">
+                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-blue)' }}>Quick Inline Editor</h4>
+                        {editError && (
+                          <div className="edit-error-msg">{editError}</div>
+                        )}
+                        <div className="edit-form-grid">
+                          <div className="edit-form-row">
+                            <label>Title</label>
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={e => setEditTitle(e.target.value)}
+                              placeholder="Task title..."
+                            />
+                          </div>
+
+                          <div className="edit-form-row">
+                            <label>Description</label>
+                            <textarea
+                              value={editDesc}
+                              onChange={e => setEditDesc(e.target.value)}
+                              placeholder="Brief description..."
+                            />
+                          </div>
+
+                          <div className="edit-form-row">
+                            <label>Start Time</label>
+                            <input
+                              type="time"
+                              value={editTime}
+                              onChange={e => setEditTime(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="edit-form-row">
+                            <label>End Time</label>
+                            <input
+                              type="time"
+                              value={editEndTime}
+                              onChange={e => setEditEndTime(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="edit-form-row">
+                            <label>Priority</label>
+                            <select value={editPriority} onChange={e => setEditPriority(e.target.value)}>
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                              <option value="critical">Critical</option>
+                            </select>
+                          </div>
+
+                          <div className="edit-form-row">
+                            <label>Status</label>
+                            <select value={editStatus} onChange={e => setEditStatus(e.target.value)}>
+                              <option value="Pending">Pending</option>
+                              <option value="Completed">Completed</option>
+                              <option value="Delayed">Delayed</option>
+                              <option value="Missed">Missed</option>
+                            </select>
+                          </div>
+
+                          <div className="edit-form-row">
+                            <label>Category</label>
+                            <select value={editCategory} onChange={e => setEditCategory(e.target.value)}>
+                              {allCategories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="edit-form-actions">
+                          <button
+                            className="btn"
+                            style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                            onClick={() => setEditingTaskId(null)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => saveEditedTask(task)}
+                          >
+                            Save Updates
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
