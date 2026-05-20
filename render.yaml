@@ -12,13 +12,19 @@ services:
         sync: false # Set your MongoDB Atlas string in Render UI
       - key: MONGO_URL
         sync: false # Mirror MongoDB connection source if needed
-      - key: MONGOHOST
+      - key: MONGO_PUBLIC_URL
         sync: false
-      - key: MONGOPORT
+      - key: MONGO_INITDB_ROOT_USERNAME
+        sync: false
+      - key: MONGO_INITDB_ROOT_PASSWORD
         sync: false
       - key: MONGOUSER
         sync: false
       - key: MONGOPASSWORD
+        sync: false
+      - key: MONGOHOST
+        sync: false
+      - key: MONGOPORT
         sync: false
       - key: JWT_SECRET
         sync: false # Set a secure secret in Render UI
