@@ -657,6 +657,15 @@ export const HabitProvider = ({ children }) => {
     startSyncListener();
   };
 
+  const parseJsonResponse = async (res) => {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      throw new Error(`Expected JSON response but received: ${text.slice(0, 200)}`);
+    }
+  };
+
   const register = async (email, password, confirmPassword, firstName = '', lastName = '') => {
     const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
@@ -664,8 +673,8 @@ export const HabitProvider = ({ children }) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, confirmPassword })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    const data = await parseJsonResponse(res);
+    if (!res.ok) throw new Error(data.message || `Registration failed with status ${res.status}`);
 
     // Cookie is now set — immediately persist the name in the settings service
     if (firstName || lastName) {
