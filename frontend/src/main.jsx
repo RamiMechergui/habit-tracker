@@ -11,6 +11,7 @@ import annotationPlugin from 'chartjs-plugin-annotation';
 Chart.register(annotationPlugin);
 
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { API_URL } from './config.js';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -26,6 +27,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
 
 // ── Service Worker Registration ──────────────────────────────────
+// Log resolved API URL at startup to help debug deployment/runtime issues
+console.log('[App] Resolved API_URL =', API_URL);
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
