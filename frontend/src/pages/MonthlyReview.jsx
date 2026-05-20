@@ -3,15 +3,16 @@ import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import CircularTracker from '../components/CircularTracker';
+
+export default function MonthlyReview() {
+  const { getMonthlyData } = useHabits();
+  const [date, setDate] = useState(new Date());
 
   const goPrevMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
   const goNextMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1));
   const goToday = () => setDate(new Date());
 
-export default function MonthlyReview() {
-  const { getMonthlyData } = useHabits();
-  const [date, setDate] = useState(new Date());
-  
   const monthlyData = getMonthlyData(date);
   const labels = monthlyData.map(d => d.dayNum);
   
