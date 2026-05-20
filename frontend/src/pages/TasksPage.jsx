@@ -129,6 +129,8 @@ export default function TasksPage() {
   // ── Date navigation ──────────────────────────────────────────────────────────
   const goToPrevDay  = useCallback(() => setDate(d => format(subDays(parseISO(d), 1), 'yyyy-MM-dd')), []);
   const goToNextDay  = useCallback(() => setDate(d => format(addDays(parseISO(d), 1), 'yyyy-MM-dd')), []);
+  const goToPrevWeek = useCallback(() => setDate(d => format(subDays(parseISO(d), 7), 'yyyy-MM-dd')), []);
+  const goToNextWeek = useCallback(() => setDate(d => format(addDays(parseISO(d), 7), 'yyyy-MM-dd')), []);
   const goToToday    = useCallback(() => setDate(format(new Date(), 'yyyy-MM-dd')), []);
   const isOnToday    = date === format(new Date(), 'yyyy-MM-dd');
 
@@ -280,34 +282,28 @@ export default function TasksPage() {
             ))}
           </div>
 
-          {/* #2 ── Custom date navigator (replaces raw date input) */}
-          <div className="hub-date-nav" role="group" aria-label="Date navigation">
+import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday, startOfWeek, endOfWeek } from 'date-fns';
+
+// ... existing code above ...
+
+          {/* Week navigation */}
+          <div className="hub-week-nav" role="group" aria-label="Week navigation">
             <button
-              className="hub-date-nav-btn"
-              onClick={goToPrevDay}
-              aria-label="Previous day"
+              className="hub-week-nav-btn"
+              onClick={goToPrevWeek}
+              aria-label="Previous week"
             >
               <ChevronLeft size={15} />
             </button>
-
+            <span className="hub-week-label">
+              {format(startOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
+              {' – '}
+              {format(endOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
+            </span>
             <button
-              className={`hub-date-display ${isOnToday ? 'hub-date-display--today' : ''}`}
-              onClick={goToToday}
-              title="Click to jump to today"
-              aria-label={isOnToday ? 'Today' : `Go to today (currently viewing ${format(parseISO(date), 'MMM d')})`}
-            >
-              <span className="hub-date-label">
-                {isOnToday ? 'Today' : format(parseISO(date), 'MMM d')}
-              </span>
-              {!isOnToday && (
-                <span className="hub-date-year">{format(parseISO(date), 'yyyy')}</span>
-              )}
-            </button>
-
-            <button
-              className="hub-date-nav-btn"
-              onClick={goToNextDay}
-              aria-label="Next day"
+              className="hub-week-nav-btn"
+              onClick={goToNextWeek}
+              aria-label="Next week"
             >
               <ChevronRight size={15} />
             </button>
