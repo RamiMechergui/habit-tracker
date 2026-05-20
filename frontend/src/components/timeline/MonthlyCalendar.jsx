@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO, addMonths, subMonths, addDays, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, X, BarChart2 } from 'lucide-react';
 import HeatmapTooltip from './HeatmapTooltip';
 import StatisticsPanel from './StatisticsPanel';
