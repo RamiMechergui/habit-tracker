@@ -90,9 +90,10 @@ nginx -t
 chown -R nginx:nginx /var/www/html || chown -R root:root /var/www/html
 chmod -R 755 /var/www/html
 
-# 6. Start PM2 services in the background
-pm2 start pm2.config.js
+# 6. Start Nginx in the background
+nginx
 
-# 7. Start Nginx in the foreground
+# 7. Start PM2 services and tail logs in the foreground
 echo "🚀 Evolvia is live on port $PORT!"
-exec nginx -g "daemon off;"
+pm2 start pm2.config.js
+exec pm2 logs
