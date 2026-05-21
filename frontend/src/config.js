@@ -8,6 +8,5 @@ if (!envApiUrl && !import.meta.env.DEV) {
 }
 
 // Prefer an explicit VITE_API_URL when provided.
-// In development, allow relative `/api` so local dev with a proxy works.
-// In production, an unset VITE_API_URL means the frontend may not be able to reach the backend.
-export const API_URL = envApiUrl || (import.meta.env.DEV ? '/api' : `${origin}/api`);
+// If not provided, default to an empty string so requests use relative paths (e.g. /api/login).
+export const API_URL = envApiUrl || '';
