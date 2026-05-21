@@ -60,14 +60,14 @@ const getScoreColor = (score) => {
 // ── Sub-components ───────────────────────────────────────────────
 function StatBadge({ icon: Icon, label, value, colorRgb }) {
   return (
-    <div style={{
+    <div className="review-stat-badge" style={{
       background: `rgba(${colorRgb},0.08)`,
       border: `1px solid rgba(${colorRgb},0.2)`,
       borderRadius: '14px', padding: '1rem 1.25rem',
       display: 'flex', alignItems: 'center', gap: '0.75rem',
       flex: '1 1 0', minWidth: 0,
     }}>
-      <div style={{
+      <div className="stat-icon-wrap" style={{
         width: 36, height: 36, borderRadius: '10px',
         background: `rgba(${colorRgb},0.15)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -75,8 +75,8 @@ function StatBadge({ icon: Icon, label, value, colorRgb }) {
         <Icon size={17} style={{ color: `rgb(${colorRgb})` }} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: `rgb(${colorRgb})`, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: '800', color: `rgb(${colorRgb})`, lineHeight: 1.1 }}>{value}</div>
+        <div className="stat-label" style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
       </div>
     </div>
   );
@@ -84,21 +84,21 @@ function StatBadge({ icon: Icon, label, value, colorRgb }) {
 
 function ChartCard({ title, colorGradient, icon, borderColor, height = 320, children }) {
   return (
-    <div className="glass-card mb-6" style={{ overflow: 'hidden', padding: 0, border: `1px solid ${borderColor}` }}>
-      <div style={{
+    <div className="glass-card mb-6 review-chart-card" style={{ overflow: 'hidden', padding: 0, border: `1px solid ${borderColor}` }}>
+      <div className="chart-header" style={{
         padding: '0.85rem 1.5rem',
         background: `linear-gradient(135deg, ${borderColor}22 0%, transparent 100%)`,
         borderBottom: `1px solid ${borderColor}33`,
         display: 'flex', alignItems: 'center', gap: '0.6rem',
       }}>
-        <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+        <span className="chart-icon" style={{ fontSize: '1.1rem' }}>{icon}</span>
         <h3 style={{
           margin: 0, fontSize: '0.92rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em',
           background: colorGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>{title}</h3>
       </div>
-      <div style={{ padding: '1.25rem 1.5rem' }}>
-        <div style={{ position: 'relative', height, width: '100%' }}>
+      <div className="chart-body" style={{ padding: '1.25rem 1.5rem' }}>
+        <div className={`chart-container ${height >= 250 ? 'chart-container--tall' : ''}`} style={{ position: 'relative', height, width: '100%' }}>
           {children}
         </div>
       </div>
@@ -301,20 +301,20 @@ export default function MonthlyReview() {
   });
 
   return (
-    <div style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
+    <div className="review-page" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
       {/* ── Header Navigation ─────────────────────────────────── */}
-      <div style={{
+      <div className="review-header" style={{
         background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(139,92,246,0.07) 100%)',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '20px', padding: '1.5rem', marginBottom: '1.5rem',
         backdropFilter: 'blur(12px)',
       }}>
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+        <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
             <Calendar size={18} style={{ color: 'rgba(139,92,246,0.9)' }} />
-            <h2 style={{
+            <h2 className="review-title" style={{
               margin: 0, fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.03em',
               background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -323,11 +323,11 @@ export default function MonthlyReview() {
             </h2>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span className="review-subtitle" style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Monthly Report
             </span>
             {isCurrentMonth && (
-              <span style={{
+               <span className="review-badge" style={{
                 background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)',
                 borderRadius: '20px', padding: '0.15rem 0.65rem',
                 color: '#8b5cf6', fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.04em',
@@ -337,9 +337,10 @@ export default function MonthlyReview() {
         </div>
 
         {/* Nav Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
           <button
             id="monthly-prev-btn"
+            className="review-nav-btn"
             onClick={goPrevMonth}
             style={{
               background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)',
@@ -356,12 +357,13 @@ export default function MonthlyReview() {
 
           <button
             id="monthly-today-btn"
+            className="review-nav-btn review-nav-btn--center"
             onClick={goToday}
             style={{
               flex: 1,
               background: isCurrentMonth
                 ? 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.1) 100%)'
-                : 'rgba(255,255,255,0.05)',
+                 : 'rgba(255,255,255,0.05)',
               border: isCurrentMonth ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
               borderRadius: '12px', padding: '0.65rem 1rem', color: '#fff',
               cursor: 'pointer', transition: 'all 0.25s ease',
@@ -371,7 +373,7 @@ export default function MonthlyReview() {
             onMouseLeave={e => {
               e.currentTarget.style.background = isCurrentMonth
                 ? 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.1) 100%)'
-                : 'rgba(255,255,255,0.05)';
+                 : 'rgba(255,255,255,0.05)';
               e.currentTarget.style.border = isCurrentMonth ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.1)';
             }}
             aria-label="Jump to current month"
@@ -381,6 +383,7 @@ export default function MonthlyReview() {
 
           <button
             id="monthly-next-btn"
+            className="review-nav-btn"
             onClick={goNextMonth}
             style={{
               background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)',
@@ -398,7 +401,7 @@ export default function MonthlyReview() {
       </div>
 
       {/* ── Summary Stats Row ─────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="review-stats-row" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} colorRgb="59,130,246" />
         <StatBadge icon={Star} label="Best Day" value={`${bestScore}`} colorRgb="16,185,129" />
         <StatBadge icon={BarChart2} label="Elite Days (90+)" value={`${eliteDays}`} colorRgb="139,92,246" />
@@ -406,14 +409,14 @@ export default function MonthlyReview() {
       </div>
 
       {/* ── Mini Calendar Heatmap Strip ──────────────────────── */}
-      <div className="glass-card mb-6" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
+      <div className="glass-card mb-6 monthly-heatmap-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="heatmap-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>
             🗓️ {format(date, 'MMMM')} Score Heatmap
           </h3>
         </div>
-        <div style={{ padding: '1.25rem 1rem', overflowX: 'auto' }}>
-          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', minWidth: 300 }}>
+        <div className="heatmap-body" style={{ padding: '1.25rem 1rem', overflowX: 'auto' }}>
+          <div className="heatmap-strip" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', minWidth: 300 }}>
             {monthlyData.map((d, i) => {
               const score = d.log.totalScore;
               const hasData = d.log.isSubmitted || score > 0;
@@ -422,6 +425,7 @@ export default function MonthlyReview() {
               return (
                 <div
                   key={i}
+                  className="heatmap-cell"
                   title={`${format(new Date(d.date + 'T12:00:00'), 'EEE, MMM d')}: ${score} pts`}
                   style={{
                     width: 36, height: 44, borderRadius: '8px',
@@ -444,39 +448,39 @@ export default function MonthlyReview() {
                     cursor: 'default',
                   }}
                 >
-                  <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', fontWeight: '600' }}>{dayNames[dayOfWeek]}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(255,255,255,0.25)' }}>{d.dayNum}</span>
-                  {hasData && <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.5)' }}>{score}</span>}
+                  <span className="cell-weekday" style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', fontWeight: '600' }}>{dayNames[dayOfWeek]}</span>
+                  <span className="cell-day" style={{ fontSize: '0.75rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(255,255,255,0.25)' }}>{d.dayNum}</span>
+                  {hasData && <span className="cell-score" style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.5)' }}>{score}</span>}
                 </div>
               );
             })}
           </div>
           {/* Legend */}
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+          <div className="heatmap-legend" style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
             {[
               { color: 'rgba(16,185,129,0.3)', border: 'rgba(16,185,129,0.4)', label: '90–100 (Elite)' },
               { color: 'rgba(59,130,246,0.25)', border: 'rgba(59,130,246,0.35)', label: '80–89 (A)' },
               { color: 'rgba(245,158,11,0.2)', border: 'rgba(245,158,11,0.3)', label: '60–79 (B/C)' },
               { color: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.25)', label: '0–59 (F)' },
             ].map(({ color, border, label }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <div style={{ width: 12, height: 12, borderRadius: '3px', background: color, border: `1px solid ${border}` }} />
-                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: '500' }}>{label}</span>
+              <div key={label} className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div className="legend-dot" style={{ width: 12, height: 12, borderRadius: '3px', background: color, border: `1px solid ${border}` }} />
+                <span className="legend-text" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: '500' }}>{label}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Circular Tracker ──────────────────────────────────── */}
-      <div className="glass-card mb-6" style={{ overflow: 'hidden', padding: 0 }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>🎯 Monthly Habit Completion</h3>
-        </div>
-        <div style={{ padding: '1rem', background: 'var(--bg-card)' }}>
-          <CircularTracker data={monthlyData} />
-        </div>
+    {/* ── Circular Tracker ──────────────────────────────────── */}
+    <div className="glass-card mb-6 review-rings-card" style={{ overflow: 'hidden', padding: 0 }}>
+      <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>🎯 Monthly Habit Completion</h3>
       </div>
+      <div className="rings-body" style={{ padding: '1rem', background: 'var(--bg-card)' }}>
+        <CircularTracker data={monthlyData} />
+      </div>
+    </div>
 
       {/* ── Charts ───────────────────────────────────────────── */}
       <ChartCard title="Discipline Index Evolution (0–100 pts)" colorGradient="linear-gradient(135deg,#3b82f6,#06b6d4)" icon="📊" borderColor="#3b82f6" height={320}>
@@ -487,48 +491,48 @@ export default function MonthlyReview() {
         <Bar data={expensesData} options={expensesOptions} />
       </ChartCard>
 
-      {/* ── Expense Total Banner ─────────────────────────────── */}
-      <div style={{
-        background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)',
-        borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {format(date, 'MMMM')} Expenses</span>
-        <span style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.25rem' }}>{totalMonthlySpend} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
-      </div>
+    {/* ── Expense Total Banner ─────────────────────────────── */}
+    <div className="review-expense-banner" style={{
+      background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)',
+      borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    }}>
+      <span className="expense-label" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {format(date, 'MMMM')} Expenses</span>
+      <span className="expense-value" style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.25rem' }}>{totalMonthlySpend} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
+    </div>
 
-      <ChartCard title="Waking Up Time (24h Format)" colorGradient="linear-gradient(135deg,#8b5cf6,#7c3aed)" icon="⏰" borderColor="#8b5cf6" height={290}>
-        <Line data={wakingData} options={wakingOptions} />
-      </ChartCard>
+    <ChartCard title="Waking Up Time (24h Format)" colorGradient="linear-gradient(135deg,#8b5cf6,#7c3aed)" icon="⏰" borderColor="#8b5cf6" height={290}>
+      <Line data={wakingData} options={wakingOptions} />
+    </ChartCard>
 
-      <ChartCard title="Weekend Duties Completion" colorGradient="linear-gradient(135deg,#10b981,#059669)" icon="✅" borderColor="#10b981" height={250}>
-        <Bar data={weekendData} options={weekendOptions} />
-      </ChartCard>
+    <ChartCard title="Weekend Duties Completion" colorGradient="linear-gradient(135deg,#10b981,#059669)" icon="✅" borderColor="#10b981" height={250}>
+      <Bar data={weekendData} options={weekendOptions} />
+    </ChartCard>
 
-      {/* ── Weekend Completion Rate ───────────────────────────── */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
-        gap: '0.6rem', marginBottom: '1.5rem',
-      }}>
-        {[
-          { label: 'Pre-laundry', done: preLaundryCount, total: totalSats },
-          { label: 'Clean Room', done: cleanRoomCount, total: totalSuns },
-          { label: 'Laundry', done: regularLaundryCount, total: totalSuns },
-          { label: 'Share Bought', done: shareBoughtCount, total: totalSuns },
-        ].map(({ label, done, total }) => {
-          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-          return (
-            <div key={label} style={{
-              background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
-              borderRadius: '12px', padding: '0.85rem', textAlign: 'center',
-            }}>
-              <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#10b981' }}>{pct}%</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500' }}>{label}</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.1rem' }}>{done}/{total}</div>
-            </div>
-          );
-        })}
-      </div>
+    {/* ── Weekend Completion Rate ───────────────────────────── */}
+    <div className="monthly-weekend-grid" style={{
+      display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+      gap: '0.6rem', marginBottom: '1.5rem',
+    }}>
+      {[
+        { label: 'Pre-laundry', done: preLaundryCount, total: totalSats },
+        { label: 'Clean Room', done: cleanRoomCount, total: totalSuns },
+        { label: 'Laundry', done: regularLaundryCount, total: totalSuns },
+        { label: 'Share Bought', done: shareBoughtCount, total: totalSuns },
+      ].map(({ label, done, total }) => {
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        return (
+          <div key={label} className="weekend-cell" style={{
+            background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
+            borderRadius: '12px', padding: '0.85rem', textAlign: 'center',
+          }}>
+            <div className="weekend-pct" style={{ fontSize: '1.15rem', fontWeight: '800', color: '#10b981' }}>{pct}%</div>
+            <div className="weekend-label" style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500' }}>{label}</div>
+            <div className="weekend-count" style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.1rem' }}>{done}/{total}</div>
+          </div>
+        );
+      })}
+    </div>
 
       <ChartCard title="System Check Completion" colorGradient="linear-gradient(135deg,#3b82f6,#2563eb)" icon="⚙️" borderColor="#3b82f6" height={220}>
         <Bar data={systemData} options={systemOptions} />

@@ -83,7 +83,7 @@ const getScoreColor = (score) => {
 // ── Summary Stat Card ────────────────────────────────────────────
 function StatBadge({ icon: Icon, label, value, color }) {
   return (
-    <div style={{
+    <div className="review-stat-badge" style={{
       background: `rgba(${color},0.08)`,
       border: `1px solid rgba(${color},0.2)`,
       borderRadius: '14px',
@@ -94,7 +94,7 @@ function StatBadge({ icon: Icon, label, value, color }) {
       flex: '1 1 0',
       minWidth: 0,
     }}>
-      <div style={{
+      <div className="stat-icon-wrap" style={{
         width: 36, height: 36, borderRadius: '10px',
         background: `rgba(${color},0.15)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -102,8 +102,8 @@ function StatBadge({ icon: Icon, label, value, color }) {
         <Icon size={18} style={{ color: `rgb(${color})` }} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '1.25rem', fontWeight: '800', color: `rgb(${color})`, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: '800', color: `rgb(${color})`, lineHeight: 1.1 }}>{value}</div>
+        <div className="stat-label" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
       </div>
     </div>
   );
@@ -112,21 +112,21 @@ function StatBadge({ icon: Icon, label, value, color }) {
 // ── Chart Section Wrapper ────────────────────────────────────────
 function ChartCard({ title, color, icon, height = 300, children }) {
   return (
-    <div className="glass-card mb-6" style={{ overflow: 'hidden', padding: 0 }}>
-      <div style={{
+    <div className="glass-card mb-6 review-chart-card" style={{ overflow: 'hidden', padding: 0 }}>
+      <div className="chart-header" style={{
         padding: '1rem 1.5rem',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
         display: 'flex', alignItems: 'center', gap: '0.65rem',
         background: 'rgba(0,0,0,0.15)',
       }}>
-        <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+        <span className="chart-icon" style={{ fontSize: '1.2rem' }}>{icon}</span>
         <h3 style={{
           margin: 0, fontSize: '1rem', fontWeight: '700',
           background: color, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>{title}</h3>
       </div>
-      <div style={{ padding: '1.5rem' }}>
-        <div style={{ position: 'relative', height, width: '100%' }}>
+      <div className="chart-body" style={{ padding: '1.5rem' }}>
+        <div className={`chart-container ${height >= 250 ? 'chart-container--tall' : ''}`} style={{ position: 'relative', height, width: '100%' }}>
           {children}
         </div>
       </div>
@@ -334,10 +334,10 @@ export default function WeeklyReview() {
   });
 
   return (
-    <div style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
+    <div className="review-page" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
       {/* ── Header Navigation ─────────────────────────────────── */}
-      <div style={{
+      <div className="review-header" style={{
         background: 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(245,158,11,0.08) 100%)',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '20px',
@@ -346,10 +346,10 @@ export default function WeeklyReview() {
         backdropFilter: 'blur(12px)',
       }}>
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+        <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
             <Calendar size={18} style={{ color: 'rgba(245,158,11,0.85)' }} />
-            <h2 style={{
+            <h2 className="review-title" style={{
               margin: 0, fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.02em',
               background: 'linear-gradient(135deg, #3b82f6 0%, #f59e0b 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -358,11 +358,11 @@ export default function WeeklyReview() {
             </h2>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: '500', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <span className="review-subtitle" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: '500', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Weekly Review
             </span>
             {isCurrentWeek && (
-              <span style={{
+              <span className="review-badge" style={{
                 background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)',
                 borderRadius: '20px', padding: '0.15rem 0.65rem',
                 color: '#10b981', fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em',
@@ -372,9 +372,10 @@ export default function WeeklyReview() {
         </div>
 
         {/* Navigation row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
           <button
             id="weekly-prev-btn"
+            className="review-nav-btn"
             onClick={goPrevWeek}
             style={{
               background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)',
@@ -392,11 +393,12 @@ export default function WeeklyReview() {
 
           <button
             id="weekly-today-btn"
+            className="review-nav-btn review-nav-btn--center"
             onClick={goToday}
             style={{
               flex: 1,
               background: isCurrentWeek
-                ? 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0.1) 100%)'
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.08) 100%)'
                 : 'rgba(255,255,255,0.05)',
               border: isCurrentWeek ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(255,255,255,0.1)',
               borderRadius: '12px', padding: '0.65rem 1rem', color: '#fff',
@@ -406,7 +408,7 @@ export default function WeeklyReview() {
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.25)'; e.currentTarget.style.border = '1px solid rgba(16,185,129,0.5)'; }}
             onMouseLeave={e => {
               e.currentTarget.style.background = isCurrentWeek
-                ? 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0.1) 100%)'
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.08) 100%)'
                 : 'rgba(255,255,255,0.05)';
               e.currentTarget.style.border = isCurrentWeek ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(255,255,255,0.1)';
             }}
@@ -417,6 +419,7 @@ export default function WeeklyReview() {
 
           <button
             id="weekly-next-btn"
+            className="review-nav-btn"
             onClick={goNextWeek}
             style={{
               background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.25)',
@@ -435,7 +438,7 @@ export default function WeeklyReview() {
       </div>
 
       {/* ── Summary Stats Row ─────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="review-stats-row" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} color="245,158,11" />
         <StatBadge icon={TrendingUp} label="Best Score" value={`${bestScore}`} color="16,185,129" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalExpenses} color="59,130,246" />
@@ -443,7 +446,7 @@ export default function WeeklyReview() {
       </div>
 
       {/* ── Day Pills ─────────────────────────────────────────── */}
-      <div style={{
+      <div className="weekly-day-pills" style={{
         display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
         gap: '0.5rem', marginBottom: '1.5rem',
       }}>
@@ -455,6 +458,7 @@ export default function WeeklyReview() {
           return (
             <div
               key={i}
+              className="day-pill"
               style={{
                 background: isDayToday
                   ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.08) 100%)'
@@ -467,14 +471,14 @@ export default function WeeklyReview() {
                 cursor: 'default',
               }}
             >
-              <div style={{ fontSize: '0.7rem', fontWeight: '700', color: isDayToday ? '#10b981' : 'rgba(255,255,255,0.5)', marginBottom: '0.3rem', letterSpacing: '0.05em' }}>
+              <div className="day-name" style={{ fontSize: '0.7rem', fontWeight: '700', color: isDayToday ? '#10b981' : 'rgba(255,255,255,0.5)', marginBottom: '0.3rem', letterSpacing: '0.05em' }}>
                 {d.dayName.toUpperCase()}
               </div>
-              <div style={{ fontSize: '1.05rem', fontWeight: '800', color: isDayToday ? '#fff' : 'rgba(255,255,255,0.85)', marginBottom: '0.3rem' }}>
+              <div className="day-num" style={{ fontSize: '1.05rem', fontWeight: '800', color: isDayToday ? '#fff' : 'rgba(255,255,255,0.85)', marginBottom: '0.3rem' }}>
                 {format(dayDate, 'd')}
               </div>
               {hasData ? (
-                <div style={{
+                <div className="day-score-chip" style={{
                   fontSize: '0.7rem', fontWeight: '700',
                   color: getScoreColor(score),
                   background: `${getScoreColor(score)}18`,
@@ -491,15 +495,15 @@ export default function WeeklyReview() {
       </div>
 
       {/* ── Score Table ───────────────────────────────────────── */}
-      <div className="glass-card mb-6" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
+      <div className="glass-card mb-6 weekly-score-table-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="table-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>📋 Weekly Score Table</h3>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-scroll" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: 520 }}>
             <thead>
               <tr style={{ background: 'rgba(0,0,0,0.25)' }}>
-                <th style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '700', color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Metric</th>
+                <th className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '700', color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Metric</th>
                 {weeklyData.map((d, i) => {
                   const dayDate = addDays(weekStart, i);
                   const isDayToday = isToday(dayDate);
@@ -510,8 +514,8 @@ export default function WeeklyReview() {
                       borderBottom: isDayToday ? '2px solid rgba(16,185,129,0.4)' : '2px solid transparent',
                       fontWeight: '700', color: isDayToday ? '#10b981' : 'rgba(255,255,255,0.7)',
                     }}>
-                      <div style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>{d.dayName.toUpperCase()}</div>
-                      <div style={{ fontSize: '1rem', fontWeight: '800', marginTop: '0.2rem' }}>{format(dayDate, 'd')}</div>
+                      <div className="day-label" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>{d.dayName.toUpperCase()}</div>
+                      <div className="date-label" style={{ fontSize: '1rem', fontWeight: '800', marginTop: '0.2rem' }}>{format(dayDate, 'd')}</div>
                     </th>
                   );
                 })}
@@ -519,7 +523,7 @@ export default function WeeklyReview() {
             </thead>
             <tbody>
               <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <td style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Score</td>
+                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Score</td>
                 {weeklyData.map((d, i) => (
                   <td key={i} style={{ padding: '0.85rem 0.6rem', fontWeight: '700', fontSize: '1rem', color: getScoreColor(d.log.totalScore) }}>
                     {d.log.totalScore}
@@ -527,10 +531,10 @@ export default function WeeklyReview() {
                 ))}
               </tr>
               <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <td style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Rank</td>
+                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Rank</td>
                 {weeklyData.map((d, i) => (
                   <td key={i} style={{ padding: '0.75rem 0.6rem' }}>
-                    <span style={{
+                    <span className="rank-badge" style={{
                       padding: '0.35rem 0.6rem', borderRadius: '8px',
                       fontSize: '0.85rem', fontWeight: '800',
                       background: `${getRankColor(d.log.rank)}1a`,
@@ -543,7 +547,7 @@ export default function WeeklyReview() {
                 ))}
               </tr>
               <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <td style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Wake-Up</td>
+                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Wake-Up</td>
                 {weeklyData.map((d, i) => (
                   <td key={i} style={{ padding: '0.85rem 0.6rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
                     {d.log.morning.wakeTime || '—'}
@@ -556,11 +560,11 @@ export default function WeeklyReview() {
       </div>
 
       {/* ── Circular Tracker ─────────────────────────────────── */}
-      <div className="glass-card mb-6" style={{ overflow: 'hidden', padding: 0 }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
+      <div className="glass-card mb-6 review-rings-card" style={{ overflow: 'hidden', padding: 0 }}>
+        <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>🎯 Habit Completion Rings</h3>
         </div>
-        <div style={{ padding: '1rem', background: 'var(--bg-card)' }}>
+        <div className="rings-body" style={{ padding: '1rem', background: 'var(--bg-card)' }}>
           <CircularTracker data={weeklyData} />
         </div>
       </div>
@@ -579,13 +583,13 @@ export default function WeeklyReview() {
       </ChartCard>
 
       {/* ── Expense Total Banner ─────────────────────────────── */}
-      <div style={{
+      <div className="review-expense-banner" style={{
         background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
         borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total Weekly Expenses</span>
-        <span style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.2rem' }}>{totalExpenses} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
+        <span className="expense-label" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total Weekly Expenses</span>
+        <span className="expense-value" style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.2rem' }}>{totalExpenses} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
       </div>
 
       <ChartCard title="Weekend Duties Completion" color="linear-gradient(135deg,#10b981,#059669)" icon="✅" height={220}>
