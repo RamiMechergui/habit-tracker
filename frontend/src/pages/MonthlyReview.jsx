@@ -1,10 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2 } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
 
+// ── Shared chart defaults (dark-mode) ───────────────────────────
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      labels: {
+        color: 'rgba(255,255,255,0.7)',
+        font: { family: 'Inter, sans-serif', size: 12 },
+        boxWidth: 12, boxHeight: 12, borderRadius: 4,
+      }
+    },
+    tooltip: {
+      backgroundColor: 'rgba(15,15,20,0.95)',
+      titleColor: '#fff',
+      bodyColor: 'rgba(255,255,255,0.8)',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1, cornerRadius: 8, padding: 10,
+    }
+  },
+  scales: {
+    x: {
+      ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 }, maxTicksLimit: 16 },
+      grid: { color: 'rgba(255,255,255,0.04)' }
+    },
+    y: {
+      ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 } },
+      grid: { color: 'rgba(255,255,255,0.04)' }
+    }
+  }
+};
+
+const mergeChartOptions = (extra) => ({
+  ...CHART_DEFAULTS,
+  plugins: {
+    ...CHART_DEFAULTS.plugins,
+    ...(extra.plugins || {}),
+    legend: { ...CHART_DEFAULTS.plugins.legend, ...(extra.plugins?.legend || {}) },
+    tooltip: { ...CHART_DEFAULTS.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
+  },
+  scales: {
+    x: { ...CHART_DEFAULTS.scales.x, ...(extra.scales?.x || {}) },
+    y: { ...CHART_DEFAULTS.scales.y, ...(extra.scales?.y || {}) },
+  }
+});
+
+const getScoreColor = (score) => {
+  if (score >= 80) return '#10b981';
+  if (score >= 60) return '#f59e0b';
+  return '#ef4444';
+};
+
+// ── Sub-components ───────────────────────────────────────────────
+function StatBadge({ icon: Icon, label, value, colorRgb }) {
+  return (
+    <div style={{
+      background: `rgba(${colorRgb},0.08)`,
+      border: `1px solid rgba(${colorRgb},0.2)`,
+      borderRadius: '14px', padding: '1rem 1.25rem',
+      display: 'flex', alignItems: 'center', gap: '0.75rem',
+      flex: '1 1 0', minWidth: 0,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: '10px',
+        background: `rgba(${colorRgb},0.15)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Icon size={17} style={{ color: `rgb(${colorRgb})` }} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: `rgb(${colorRgb})`, lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({ title, colorGradient, icon, borderColor, height = 320, children }) {
+  return (
+    <div className="glass-card mb-6" style={{ overflow: 'hidden', padding: 0, border: `1px solid ${borderColor}` }}>
+      <div style={{
+        padding: '0.85rem 1.5rem',
+        background: `linear-gradient(135deg, ${borderColor}22 0%, transparent 100%)`,
+        borderBottom: `1px solid ${borderColor}33`,
+        display: 'flex', alignItems: 'center', gap: '0.6rem',
+      }}>
+        <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+        <h3 style={{
+          margin: 0, fontSize: '0.92rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em',
+          background: colorGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        }}>{title}</h3>
+      </div>
+      <div style={{ padding: '1.25rem 1.5rem' }}>
+        <div style={{ position: 'relative', height, width: '100%' }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────
 export default function MonthlyReview() {
   const { getMonthlyData } = useHabits();
   const [date, setDate] = useState(new Date());
@@ -15,62 +117,90 @@ export default function MonthlyReview() {
 
   const monthlyData = getMonthlyData(date);
   const labels = monthlyData.map(d => d.dayNum);
-  
-  // Discipline Index Evolution
+
+  const isCurrentMonth = useMemo(() => {
+    const now = new Date();
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }, [date]);
+
+  // ── Summary Stats ───────────────────────────────────────────
+  const submittedDays = monthlyData.filter(d => d.log.isSubmitted || d.log.totalScore > 0);
+  const avgScore = submittedDays.length
+    ? Math.round(submittedDays.reduce((s, d) => s + d.log.totalScore, 0) / submittedDays.length)
+    : 0;
+  const bestScore = Math.max(...monthlyData.map(d => d.log.totalScore), 0);
+  const totalMonthlySpend = monthlyData.reduce(
+    (t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0),
+    0
+  ).toFixed(3);
+  const eliteDays = submittedDays.filter(d => d.log.totalScore >= 90).length;
+
+  // ── Chart Datasets ──────────────────────────────────────────
   const disciplineData = {
     labels,
     datasets: [{
-      label: 'Score',
+      label: 'Daily Score',
       data: monthlyData.map(d => d.log.totalScore),
       borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
-      tension: 0.2,
-      fill: true
+      backgroundColor: 'rgba(59,130,246,0.08)',
+      tension: 0.35,
+      fill: true,
+      pointBackgroundColor: monthlyData.map(d => getScoreColor(d.log.totalScore)),
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      spanGaps: false,
     }]
   };
 
-  const disciplineOptions = {
+  const disciplineOptions = mergeChartOptions({
     scales: {
-      y: { min: 0, max: 100, ticks: { stepSize: 10 } }
+      x: { ...CHART_DEFAULTS.scales.x },
+      y: {
+        ...CHART_DEFAULTS.scales.y,
+        min: 0, max: 100,
+        ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 20 }
+      }
     },
     plugins: {
       annotation: {
         annotations: {
           eliteZone: {
-            type: 'box',
-            yMin: 90,
-            yMax: 100,
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 0,
-            label: { content: 'ELITE ZONE', display: true, position: 'right', color: '#10b981' }
+            type: 'box', yMin: 90, yMax: 100,
+            backgroundColor: 'rgba(16,185,129,0.06)', borderWidth: 0,
+            label: { content: 'ELITE ZONE', display: true, position: 'end', color: 'rgba(16,185,129,0.6)', font: { size: 10, weight: '700' } }
           },
           minLine: {
-            type: 'line',
-            yMin: 50,
-            yMax: 50,
-            borderColor: '#ef4444',
-            borderWidth: 2,
-            borderDash: [5, 5]
+            type: 'line', yMin: 50, yMax: 50,
+            borderColor: 'rgba(239,68,68,0.5)', borderWidth: 1.5, borderDash: [5, 5]
           }
         }
       }
     }
-  };
+  });
 
-  // Financial Outflow Data
   const expensesData = {
     labels,
     datasets: [{
       label: 'Daily Spend (TND)',
-      data: monthlyData.map(d => parseFloat((Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3))),
-      backgroundColor: '#F5A623',
-      barPercentage: 0.5
+      data: monthlyData.map(d =>
+        parseFloat((Array.isArray(d.log.expenses) ? d.log.expenses : [])
+          .reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3))
+      ),
+      backgroundColor: 'rgba(245,158,11,0.55)',
+      borderColor: 'rgba(245,158,11,0.8)',
+      borderWidth: 1, borderRadius: 4,
+      barPercentage: 0.6,
     }]
   };
 
-  const totalMonthlySpend = monthlyData.reduce((t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((st, e) => st + (parseFloat(e.amount)||0), 0), 0).toFixed(3);
+  const expensesOptions = mergeChartOptions({
+    scales: {
+      x: { ...CHART_DEFAULTS.scales.x },
+      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true }
+    },
+    plugins: { legend: { display: false } }
+  });
 
-  // Waking Time Data
   const parseWakeTime = (timeStr) => {
     if (!timeStr) return null;
     const [h, m] = timeStr.split(':');
@@ -80,41 +210,40 @@ export default function MonthlyReview() {
   const wakingData = {
     labels,
     datasets: [{
-      label: 'Wake Up Time',
+      label: 'Wake-Up Time',
       data: monthlyData.map(d => parseWakeTime(d.log.morning.wakeTime)),
       borderColor: '#8b5cf6',
-      backgroundColor: 'rgba(139, 92, 246, 0.2)',
-      tension: 0.3,
+      backgroundColor: 'rgba(139,92,246,0.1)',
+      tension: 0.35,
+      fill: true,
       pointBackgroundColor: '#8b5cf6',
-      pointRadius: 3
+      pointRadius: 2.5,
+      pointHoverRadius: 5,
+      spanGaps: true,
     }]
   };
 
-  const wakingOptions = {
+  const wakingOptions = mergeChartOptions({
     scales: {
-      y: { 
-        reverse: true, 
-        min: 0, 
-        max: 24, 
-        ticks: { 
+      x: { ...CHART_DEFAULTS.scales.x },
+      y: {
+        ...CHART_DEFAULTS.scales.y,
+        reverse: true, min: 3, max: 12,
+        ticks: {
+          ...CHART_DEFAULTS.scales.y.ticks,
           stepSize: 1,
-          callback: function(value) {
-            if (value === 24) return '00:00';
+          callback: (value) => {
             const h = Math.floor(value);
             const m = Math.round((value - h) * 60);
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
           }
-        } 
+        }
       }
     }
-  };
+  });
 
-  // Weekend Duties Aggregation for the Month
-  let preLaundryCount = 0;
-  let cleanRoomCount = 0;
-  let regularLaundryCount = 0;
-  let shareBoughtCount = 0;
-
+  // ── Weekend Duties Aggregation ──────────────────────────────
+  let preLaundryCount = 0, cleanRoomCount = 0, regularLaundryCount = 0, shareBoughtCount = 0;
   monthlyData.forEach(d => {
     const w = d.log.weekend;
     if (w?.saturday?.preLaundry) preLaundryCount++;
@@ -123,102 +252,288 @@ export default function MonthlyReview() {
     if (w?.sunday?.shareBought) shareBoughtCount++;
   });
 
+  const totalSats = monthlyData.filter(d => new Date(d.date + 'T12:00:00').getDay() === 6).length;
+  const totalSuns = monthlyData.filter(d => new Date(d.date + 'T12:00:00').getDay() === 0).length;
+
   const weekendData = {
-    labels: ['Pre-laundry (Sat)', 'Cleaning Room (Sun)', 'Regular Laundry (Sun)', '1 Share Bought (Sun)'],
+    labels: ['Pre-laundry (Sat)', 'Clean Room (Sun)', 'Laundry (Sun)', 'Share Bought (Sun)'],
     datasets: [{
-      label: 'Total Completions in Month',
+      label: 'Times Completed',
       data: [preLaundryCount, cleanRoomCount, regularLaundryCount, shareBoughtCount],
-      backgroundColor: '#10b981',
-      barPercentage: 0.5
+      backgroundColor: ['rgba(16,185,129,0.6)', 'rgba(16,185,129,0.6)', 'rgba(16,185,129,0.6)', 'rgba(16,185,129,0.6)'],
+      borderColor: ['rgba(16,185,129,0.9)', 'rgba(16,185,129,0.9)', 'rgba(16,185,129,0.9)', 'rgba(16,185,129,0.9)'],
+      borderWidth: 1, borderRadius: 6, barPercentage: 0.55,
     }]
   };
 
-  // System Check Aggregation for the Month
-  let todoCount = 0;
-  let moneyCount = 0;
-  
+  const weekendOptions = mergeChartOptions({
+    scales: {
+      x: { ...CHART_DEFAULTS.scales.x },
+      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true, ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 1 } }
+    },
+    plugins: { legend: { display: false } }
+  });
+
+  // ── System Check Aggregation ────────────────────────────────
+  let todoCount = 0, moneyCount = 0;
   monthlyData.forEach(d => {
     if (d.log.system?.todo) todoCount++;
     if (d.log.system?.money) moneyCount++;
   });
 
   const systemData = {
-    labels: ['EVLVIO TIMELINE Updated', '2. Evolvio Expense Tracker updated'],
+    labels: ['Timeline Updated', 'Expense Tracker'],
     datasets: [{
-      label: 'Total Completions in Month',
+      label: 'Times Completed',
       data: [todoCount, moneyCount],
-      backgroundColor: '#3b82f6',
-      barPercentage: 0.5
+      backgroundColor: ['rgba(59,130,246,0.6)', 'rgba(16,185,129,0.6)'],
+      borderColor: ['rgba(59,130,246,0.9)', 'rgba(16,185,129,0.9)'],
+      borderWidth: 1, borderRadius: 6, barPercentage: 0.45,
     }]
   };
 
+  const systemOptions = mergeChartOptions({
+    scales: {
+      x: { ...CHART_DEFAULTS.scales.x },
+      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true, ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 1 } }
+    },
+    plugins: { legend: { display: false } }
+  });
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <button onClick={goPrevMonth} className="nav-btn"><ChevronLeft size={24} /></button>
-        <button onClick={goToday} className="nav-btn">Today</button>
-        <button onClick={goNextMonth} className="nav-btn"><ChevronRight size={24} /></button>
-      </div>
-      <h2 className="mb-6 text-center">MONTHLY REPORT</h2>
-      <div className="mb-6 text-center">
-        <h3 className="text-amber" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{format(date, 'MMMM yyyy')}</h3>
+    <div style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
+
+      {/* ── Header Navigation ─────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(139,92,246,0.07) 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '20px', padding: '1.5rem', marginBottom: '1.5rem',
+        backdropFilter: 'blur(12px)',
+      }}>
+        {/* Title */}
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+            <Calendar size={18} style={{ color: 'rgba(139,92,246,0.9)' }} />
+            <h2 style={{
+              margin: 0, fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.03em',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
+              {format(date, 'MMMM yyyy')}
+            </h2>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Monthly Report
+            </span>
+            {isCurrentMonth && (
+              <span style={{
+                background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)',
+                borderRadius: '20px', padding: '0.15rem 0.65rem',
+                color: '#8b5cf6', fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.04em',
+              }}>● CURRENT MONTH</span>
+            )}
+          </div>
+        </div>
+
+        {/* Nav Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            id="monthly-prev-btn"
+            onClick={goPrevMonth}
+            style={{
+              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)',
+              borderRadius: '12px', padding: '0.65rem 1.1rem', color: '#fff',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
+              transition: 'all 0.25s ease', fontSize: '0.88rem', fontWeight: '600', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.28)'; e.currentTarget.style.transform = 'translateX(-3px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            aria-label="Previous month"
+          >
+            <ChevronLeft size={16} /> Prev
+          </button>
+
+          <button
+            id="monthly-today-btn"
+            onClick={goToday}
+            style={{
+              flex: 1,
+              background: isCurrentMonth
+                ? 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.1) 100%)'
+                : 'rgba(255,255,255,0.05)',
+              border: isCurrentMonth ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '12px', padding: '0.65rem 1rem', color: '#fff',
+              cursor: 'pointer', transition: 'all 0.25s ease',
+              fontSize: '0.88rem', fontWeight: '600',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.25)'; e.currentTarget.style.border = '1px solid rgba(139,92,246,0.5)'; }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = isCurrentMonth
+                ? 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.1) 100%)'
+                : 'rgba(255,255,255,0.05)';
+              e.currentTarget.style.border = isCurrentMonth ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.1)';
+            }}
+            aria-label="Jump to current month"
+          >
+            ✨ Current Month
+          </button>
+
+          <button
+            id="monthly-next-btn"
+            onClick={goNextMonth}
+            style={{
+              background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)',
+              borderRadius: '12px', padding: '0.65rem 1.1rem', color: '#fff',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
+              transition: 'all 0.25s ease', fontSize: '0.88rem', fontWeight: '600', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.28)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            aria-label="Next month"
+          >
+            Next <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
 
-      <div className="glass-card mb-6" style={{overflow: 'hidden'}}>
-        <div className="p-4" style={{background: 'var(--bg-card)'}}>
+      {/* ── Summary Stats Row ─────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} colorRgb="59,130,246" />
+        <StatBadge icon={Star} label="Best Day" value={`${bestScore}`} colorRgb="16,185,129" />
+        <StatBadge icon={BarChart2} label="Elite Days (90+)" value={`${eliteDays}`} colorRgb="139,92,246" />
+        <StatBadge icon={DollarSign} label="Total (TND)" value={totalMonthlySpend} colorRgb="245,158,11" />
+      </div>
+
+      {/* ── Mini Calendar Heatmap Strip ──────────────────────── */}
+      <div className="glass-card mb-6" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>
+            🗓️ {format(date, 'MMMM')} Score Heatmap
+          </h3>
+        </div>
+        <div style={{ padding: '1.25rem 1rem', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', minWidth: 300 }}>
+            {monthlyData.map((d, i) => {
+              const score = d.log.totalScore;
+              const hasData = d.log.isSubmitted || score > 0;
+              const dayOfWeek = new Date(d.date + 'T12:00:00').getDay();
+              const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+              return (
+                <div
+                  key={i}
+                  title={`${format(new Date(d.date + 'T12:00:00'), 'EEE, MMM d')}: ${score} pts`}
+                  style={{
+                    width: 36, height: 44, borderRadius: '8px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                    background: hasData
+                      ? score >= 90 ? 'rgba(16,185,129,0.3)'
+                        : score >= 80 ? 'rgba(59,130,246,0.25)'
+                        : score >= 60 ? 'rgba(245,158,11,0.2)'
+                        : 'rgba(239,68,68,0.15)'
+                      : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${
+                      hasData
+                        ? score >= 90 ? 'rgba(16,185,129,0.4)'
+                          : score >= 80 ? 'rgba(59,130,246,0.35)'
+                          : score >= 60 ? 'rgba(245,158,11,0.3)'
+                          : 'rgba(239,68,68,0.25)'
+                        : 'rgba(255,255,255,0.05)'
+                    }`,
+                    flexShrink: 0,
+                    cursor: 'default',
+                  }}
+                >
+                  <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', fontWeight: '600' }}>{dayNames[dayOfWeek]}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(255,255,255,0.25)' }}>{d.dayNum}</span>
+                  {hasData && <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.5)' }}>{score}</span>}
+                </div>
+              );
+            })}
+          </div>
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            {[
+              { color: 'rgba(16,185,129,0.3)', border: 'rgba(16,185,129,0.4)', label: '90–100 (Elite)' },
+              { color: 'rgba(59,130,246,0.25)', border: 'rgba(59,130,246,0.35)', label: '80–89 (A)' },
+              { color: 'rgba(245,158,11,0.2)', border: 'rgba(245,158,11,0.3)', label: '60–79 (B/C)' },
+              { color: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.25)', label: '0–59 (F)' },
+            ].map(({ color, border, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ width: 12, height: 12, borderRadius: '3px', background: color, border: `1px solid ${border}` }} />
+                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: '500' }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Circular Tracker ──────────────────────────────────── */}
+      <div className="glass-card mb-6" style={{ overflow: 'hidden', padding: 0 }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>🎯 Monthly Habit Completion</h3>
+        </div>
+        <div style={{ padding: '1rem', background: 'var(--bg-card)' }}>
           <CircularTracker data={monthlyData} />
         </div>
       </div>
 
-      <div className="glass-card mb-6" style={{border: '2px solid #3b82f6', overflow: 'hidden'}}>
-        <div style={{background: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          1. DISCIPLINE INDEX EVOLUTION (0 - 100 PTS)
-        </div>
-        <div className="p-4" style={{ position: 'relative', height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <Line data={disciplineData} options={{...disciplineOptions, maintainAspectRatio: false}} />
-        </div>
+      {/* ── Charts ───────────────────────────────────────────── */}
+      <ChartCard title="Discipline Index Evolution (0–100 pts)" colorGradient="linear-gradient(135deg,#3b82f6,#06b6d4)" icon="📊" borderColor="#3b82f6" height={320}>
+        <Line data={disciplineData} options={disciplineOptions} />
+      </ChartCard>
+
+      <ChartCard title="Financial Outflow – Daily Spend (TND)" colorGradient="linear-gradient(135deg,#f59e0b,#d97706)" icon="💰" borderColor="#f59e0b" height={300}>
+        <Bar data={expensesData} options={expensesOptions} />
+      </ChartCard>
+
+      {/* ── Expense Total Banner ─────────────────────────────── */}
+      <div style={{
+        background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)',
+        borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {format(date, 'MMMM')} Expenses</span>
+        <span style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.25rem' }}>{totalMonthlySpend} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
       </div>
 
-      <div className="glass-card mb-6" style={{border: '2px solid #F5A623', overflow: 'hidden'}}>
-        <div style={{background: '#F5A623', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          2. FINANCIAL OUTFLOW (DAILY SPEND IN TND)
-        </div>
-        <div className="p-4" style={{ position: 'relative', height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <Bar data={expensesData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
-        </div>
+      <ChartCard title="Waking Up Time (24h Format)" colorGradient="linear-gradient(135deg,#8b5cf6,#7c3aed)" icon="⏰" borderColor="#8b5cf6" height={290}>
+        <Line data={wakingData} options={wakingOptions} />
+      </ChartCard>
+
+      <ChartCard title="Weekend Duties Completion" colorGradient="linear-gradient(135deg,#10b981,#059669)" icon="✅" borderColor="#10b981" height={250}>
+        <Bar data={weekendData} options={weekendOptions} />
+      </ChartCard>
+
+      {/* ── Weekend Completion Rate ───────────────────────────── */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+        gap: '0.6rem', marginBottom: '1.5rem',
+      }}>
+        {[
+          { label: 'Pre-laundry', done: preLaundryCount, total: totalSats },
+          { label: 'Clean Room', done: cleanRoomCount, total: totalSuns },
+          { label: 'Laundry', done: regularLaundryCount, total: totalSuns },
+          { label: 'Share Bought', done: shareBoughtCount, total: totalSuns },
+        ].map(({ label, done, total }) => {
+          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          return (
+            <div key={label} style={{
+              background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
+              borderRadius: '12px', padding: '0.85rem', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#10b981' }}>{pct}%</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500' }}>{label}</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.1rem' }}>{done}/{total}</div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="text-center mb-6 p-4" style={{background: 'rgba(245, 166, 35, 0.1)', border: '1px solid var(--accent-amber)', borderRadius: '8px'}}>
-        <h3>Total Monthly Expense: {totalMonthlySpend} TND</h3>
-      </div>
+      <ChartCard title="System Check Completion" colorGradient="linear-gradient(135deg,#3b82f6,#2563eb)" icon="⚙️" borderColor="#3b82f6" height={220}>
+        <Bar data={systemData} options={systemOptions} />
+      </ChartCard>
 
-      <div className="glass-card mb-6" style={{border: '2px solid #8b5cf6', overflow: 'hidden'}}>
-        <div style={{background: '#8b5cf6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          3. WAKING UP TIME (24H FORMAT)
-        </div>
-        <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <Line data={wakingData} options={{...wakingOptions, maintainAspectRatio: false}} />
-        </div>
-      </div>
-
-      <div className="glass-card mb-6" style={{border: '2px solid #10b981', overflow: 'hidden'}}>
-        <div style={{background: '#10b981', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          4. WEEKEND DUTIES COMPLETION
-        </div>
-        <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <Bar data={weekendData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />
-        </div>
-      </div>
-
-      <div className="glass-card mb-6" style={{border: '2px solid #3b82f6', overflow: 'hidden'}}>
-        <div style={{background: '#3b82f6', color: '#fff', padding: '0.5rem 1rem', fontWeight: 'bold', textAlign: 'center'}}>
-          5. SYSTEM CHECK COMPLETION
-        </div>
-        <div className="p-4" style={{ position: 'relative', height: '300px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <Bar data={systemData} options={{ maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />
-        </div>
-      </div>
-      
     </div>
   );
 }
