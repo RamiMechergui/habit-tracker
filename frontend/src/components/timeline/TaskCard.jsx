@@ -51,7 +51,7 @@ const PRIORITY_VISUALS = {
 };
 
 export default function TaskCard({
-  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, zoomFactor = 1, sectionOffsetMins = 0,
+  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, zoomFactor = 1, sectionOffsetMins = 0, hourHeight = 90,
 }) {
   const [swipeOffset,    setSwipeOffset]    = useState(0);
   const [dragY,          setDragY]          = useState(0);
@@ -112,9 +112,10 @@ export default function TaskCard({
   const handleDragEnd = useCallback(() => {
     if (!isDraggingTime || isFutureDate) return;
     setIsDraggingTime(false);
+    const pxPerMin  = hourHeight / 60;
     const [hours, minutes] = (task.time || '00:00').split(':').map(Number);
-    const baseTop   = (hours * 60 + minutes) * 1.5 * zoomFactor;
-    const totalMins = Math.round((baseTop + dragY) / (1.5 * zoomFactor));
+    const baseTop   = (hours * 60 + minutes) * pxPerMin;
+    const totalMins = Math.round((baseTop + dragY) / pxPerMin);
     const snapped   = Math.round(totalMins / 15) * 15;
     const safe      = Math.max(0, Math.min(24 * 60 - 15, snapped));
     const hh = Math.floor(safe / 60).toString().padStart(2, '0');
@@ -122,7 +123,7 @@ export default function TaskCard({
     const newTime = `${hh}:${mm}`;
     if (newTime !== task.time) onDragTime(newTime);
     setDragY(0);
-  }, [isDraggingTime, isFutureDate, task.time, dragY, zoomFactor, onDragTime]);
+  }, [isDraggingTime, isFutureDate, task.time, dragY, hourHeight, onDragTime]);
 
   useEffect(() => {
     if (!isDraggingTime) return;
@@ -139,7 +140,6 @@ export default function TaskCard({
   }, [isDraggingTime, handleDragMove, handleDragEnd]);
 
   const [h, m]       = (task.time || '00:00').split(':').map(Number);
-  const hourHeight   = 90 * zoomFactor;
   const absTop       = (h * 60 + m) * (hourHeight / 60);
   const sectionTopPx = sectionOffsetMins * (hourHeight / 60);
   const topPosition  = absTop - sectionTopPx + dragY;

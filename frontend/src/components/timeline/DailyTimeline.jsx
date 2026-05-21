@@ -216,6 +216,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 task={{ ...task, _relativeTop: relativeTop }}
                 isFutureDate={isFutureDate}
                 zoomFactor={zoomFactor}
+                hourHeight={hourHeight}
                 onUpdateStatus={s => onUpdateStatus(task.id, s)}
                 onEdit={() => onEditTask && onEditTask(task)}
                 onDragTime={t => onDragTime(task.id, t)}
