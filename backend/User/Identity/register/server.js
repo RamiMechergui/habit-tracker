@@ -102,5 +102,11 @@ app.post('/api/register', async (req, res) => {
 const PORT = process.env.PORT || 5102;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/auth_db';
 
-mongoose.connect(MONGO_URI).then(() => console.log('Register Service: MongoDB connected')).catch(err => console.error(err));
+const maskedURI = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@');
+console.log(`[Register Service] Attempting connection to MongoDB at: ${maskedURI}`);
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('Register Service: MongoDB connected successfully'))
+  .catch(err => console.error('Register Service: MongoDB connection failed:', err));
+
 app.listen(PORT, () => console.log(`Register Service running on port ${PORT}`));
