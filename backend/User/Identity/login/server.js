@@ -253,8 +253,25 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/auth_db';
 const maskedURI = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@');
 console.log(`[Login Service] Attempting connection to MongoDB at: ${maskedURI}`);
 
+// Explicit connection event listeners for logging detailed state
+mongoose.connection.on('connecting', () => {
+  console.log('[Login Service: Mongoose] Connecting to MongoDB...');
+});
+
+mongoose.connection.on('connected', () => {
+  console.log('[Login Service: Mongoose] Connected successfully to database:', mongoose.connection.name);
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('[Login Service: Mongoose] Connection error encountered:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('[Login Service: Mongoose] Disconnected from MongoDB');
+});
+
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Login Service: MongoDB connected successfully'))
-  .catch(err => console.error('Login Service: MongoDB connection failed:', err));
+  .then(() => console.log('Login Service: Initial connection call completed'))
+  .catch(err => console.error('Login Service: Initial connection failed:', err));
 
 app.listen(PORT, () => console.log(`Login Service running on port ${PORT}`));

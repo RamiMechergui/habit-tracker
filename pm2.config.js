@@ -33,10 +33,43 @@ function getServiceMongoUri(baseUri, serviceDbName) {
   try {
     const parsed = new URL(baseUri);
     parsed.pathname = '/' + serviceDbName;
+    
+    // Add critical connection options
+    // 1. authSource=admin: Railway's credentials are created on the 'admin' database.
+    //    When we specify a custom serviceDbName (like identity_db), we must tell MongoDB to
+    //    authenticate against 'admin' instead of the service-specific DB.
+    if (parsed.username && parsed.password) {
+      parsed.searchParams.set('authSource', 'admin');
+    }
+    
+    // 2. serverSelectionTimeoutMS & connectTimeoutMS: fail fast (5 seconds) instead of
+    //    hanging indefinitely, so connection failures are logged immediately.
+    parsed.searchParams.set('serverSelectionTimeoutMS', '5000');
+    parsed.searchParams.set('connectTimeoutMS', '5000');
+    
     return parsed.toString();
   } catch (e) {
     console.error(`Failed to parse base URI for database rewriting: ${e.message}`);
-    return baseUri;
+    // Fallback safe string builder if standard URL parsing fails (e.g. unresolved variables)
+    const hasQuery = baseUri.includes('?');
+    const baseWithoutQuery = hasQuery ? baseUri.split('?')[0] : baseUri;
+    const existingQuery = hasQuery ? baseUri.split('?')[1] : '';
+    
+    let newUri = baseWithoutQuery;
+    if (newUri.endsWith('/')) {
+      newUri += serviceDbName;
+    } else {
+      newUri += '/' + serviceDbName;
+    }
+    
+    const params = new URLSearchParams(existingQuery);
+    if (baseUri.includes('@')) {
+      params.set('authSource', 'admin');
+    }
+    params.set('serverSelectionTimeoutMS', '5000');
+    params.set('connectTimeoutMS', '5000');
+    
+    return `${newUri}?${params.toString()}`;
   }
 }
 

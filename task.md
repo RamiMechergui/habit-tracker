@@ -6,6 +6,7 @@
   - `[ ]` Create `docker-compose.yml`.
 
 - `[ ]` **Backend (Node/Express)**
+  - `[x]` Update `pm2.config.js` with robust query parameter enrichment (`authSource=admin`, `serverSelectionTimeoutMS=5000`, `connectTimeoutMS=5000`).
   - `[ ]` Initialize `package.json` and install dependencies (`express`, `mongoose`, `bcryptjs`, `jsonwebtoken`, `cors`).
   - `[ ]` Create MongoDB models (`User.js`, `Log.js`).
   - `[ ]` Create authentication controllers (Register, Login).
