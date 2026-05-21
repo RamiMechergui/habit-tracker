@@ -1,5 +1,14 @@
 #!/bin/sh
 echo "🚀 --- EVOLVIA NATIVE STARTUP ---"
+echo "🔍 --- DATABASE ENVIRONMENT DIAGNOSTICS ---"
+echo "MONGOHOST: $MONGOHOST"
+echo "MONGOPORT: $MONGOPORT"
+echo "MONGOUSER: $MONGOUSER"
+if [ -n "$MONGO_URI" ]; then echo "MONGO_URI: SET"; else echo "MONGO_URI: NOT SET"; fi
+if [ -n "$MONGO_URL" ]; then echo "MONGO_URL: SET"; else echo "MONGO_URL: NOT SET"; fi
+if [ -n "$MONGODB_URL" ]; then echo "MONGODB_URL: SET"; else echo "MONGO_URL: NOT SET"; fi
+echo "PORT: $PORT"
+echo "-------------------------------------------"
 
 # 1. Prepare Nginx Environment
 echo "📂 Preparing Nginx directories..."

@@ -1,5 +1,46 @@
+// --- ENVIRONMENT & DB DIAGNOSTICS ---
+console.log("=== DB Connection Resolution Debug ===");
+console.log("Keys starting with MONGO in process.env:", Object.keys(process.env).filter(k => k.startsWith('MONGO')));
+console.log("process.env.MONGO_URI:", process.env.MONGO_URI ? "DEFINED" : "UNDEFINED");
+console.log("process.env.MONGO_URL:", process.env.MONGO_URL ? "DEFINED" : "UNDEFINED");
+console.log("process.env.MONGODB_URL:", process.env.MONGODB_URL ? "DEFINED" : "UNDEFINED");
+console.log("process.env.MONGOHOST:", process.env.MONGOHOST);
+console.log("process.env.MONGOPORT:", process.env.MONGOPORT);
+console.log("process.env.MONGOUSER:", process.env.MONGOUSER);
+
+// Resolve the base connection URI
+let baseMongoUri = process.env.MONGO_URI || process.env.MONGO_URL || process.env.MONGODB_URL;
+
+if (!baseMongoUri && process.env.MONGOHOST) {
+  const host = process.env.MONGOHOST;
+  const port = process.env.MONGOPORT || '27017';
+  const user = process.env.MONGOUSER;
+  const pass = process.env.MONGOPASSWORD;
+  const dbName = process.env.MONGODATABASE || 'habit-db';
+  
+  if (user && pass) {
+    baseMongoUri = `mongodb://${user}:${pass}@${host}:${port}/${dbName}?authSource=admin`;
+  } else {
+    baseMongoUri = `mongodb://${host}:${port}/${dbName}`;
+  }
+}
+
+console.log("Base Resolved MONGO_URI:", baseMongoUri ? baseMongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@') : "UNDEFINED");
+
+// Helper function to rewrite the database name in the connection string
+function getServiceMongoUri(baseUri, serviceDbName) {
+  if (!baseUri) return undefined;
+  try {
+    const parsed = new URL(baseUri);
+    parsed.pathname = '/' + serviceDbName;
+    return parsed.toString();
+  } catch (e) {
+    console.error(`Failed to parse base URI for database rewriting: ${e.message}`);
+    return baseUri;
+  }
+}
+
 const commonEnv = {
-  MONGO_URI: process.env.MONGO_URI || process.env.MONGO_URL || process.env.MONGODB_URL,
   JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'admin123',
   NODE_ENV: 'production',
@@ -33,6 +74,7 @@ module.exports = {
     { name: 'book-reading', port: 5124, path: 'backend/User/Habits/book-reading' },
     { name: 'system-check', port: 5125, path: 'backend/User/Habits/system-check' },
     { name: 'notes-service', port: 5132, path: 'backend/User/Habits/notes-service' },
+    { name: 'tasks-service', port: 5131, path: 'backend/User/Habits/tasks-service' },
 
     // --- FINANCES & ANALYTICS ---
     { name: 'expenses', port: 5126, path: 'backend/User/Finances/expenses' },
@@ -42,9 +84,41 @@ module.exports = {
     // --- ESSENTIALS MICROSERVICES ---
     { name: 'essentials',    port: 5127, path: 'backend/User/Essentials/item-service' },
     { name: 'notifications', port: 5128, path: 'backend/User/Essentials/notification-service' },
-
+    { name: 'delivery-service', port: 5129, path: 'backend/User/Essentials/delivery-service' },
     { name: 'user-prefs',    port: 5130, path: 'backend/User/Essentials/user-prefs-service' }
   ].map(service => {
+    // Dynamically resolve service-specific database names to preserve isolation
+    let serviceDbName = service.name + '_db';
+    if (service.name === 'login' || service.name === 'register') {
+      serviceDbName = 'identity_db';
+    } else if (service.name === 'side-hustle') {
+      serviceDbName = 'hustle_db';
+    } else if (service.name === 'video-editing') {
+      serviceDbName = 'video_db';
+    } else if (service.name === 'system-check') {
+      serviceDbName = 'system_db';
+    } else if (service.name === 'morning-habits') {
+      serviceDbName = 'morning_db';
+    } else if (service.name === 'bad-habits') {
+      serviceDbName = 'bad_db';
+    } else if (service.name === 'night-habits') {
+      serviceDbName = 'night_db';
+    } else if (service.name === 'weekend-duties') {
+      serviceDbName = 'weekend_db';
+    } else if (service.name === 'book-reading') {
+      serviceDbName = 'book_reading_db';
+    } else if (service.name === 'notes-service') {
+      serviceDbName = 'notes_db';
+    } else if (service.name === 'tasks-service') {
+      serviceDbName = 'tasks_db';
+    } else if (service.name === 'delivery-service') {
+      serviceDbName = 'delivery_db';
+    } else if (service.name === 'user-prefs') {
+      serviceDbName = 'user_prefs_db';
+    }
+
+    const serviceMongoUri = getServiceMongoUri(baseMongoUri, serviceDbName);
+
     return {
       name: service.name,
       script: 'server.js',
@@ -52,6 +126,7 @@ module.exports = {
       node_args: '--max-old-space-size=64',
       env: {
         ...commonEnv,
+        MONGO_URI: serviceMongoUri,
         PORT: service.port,
         MORNING_SERVICE_URL: 'http://127.0.0.1:5118',
         BAD_SERVICE_URL: 'http://127.0.0.1:5119',
@@ -62,7 +137,9 @@ module.exports = {
         BOOK_LOG_SERVICE_URL: 'http://127.0.0.1:5124',
         SYSTEM_SERVICE_URL: 'http://127.0.0.1:5125',
         EXPENSES_SERVICE_URL: 'http://127.0.0.1:5126',
-        ANALYTICS_SERVICE_URL: 'http://127.0.0.1:5113'
+        ANALYTICS_SERVICE_URL: 'http://127.0.0.1:5113',
+        TASKS_SERVICE_URL: 'http://127.0.0.1:5131',
+        KAFKA_BROKER: process.env.KAFKA_BROKER || '127.0.0.1:9092'
       }
     };
   })
