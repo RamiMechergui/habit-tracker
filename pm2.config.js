@@ -156,7 +156,7 @@ module.exports = {
       name: service.name,
       script: 'server.js',
       cwd: service.path,
-      node_args: '--max-old-space-size=64',
+      node_args: '--require /app/backend/global-error-handler.js --max-old-space-size=96',
       env: {
         ...commonEnv,
         MONGO_URI: serviceMongoUri,
