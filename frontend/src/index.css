@@ -1499,6 +1499,8 @@ label {
   background: #2563eb;
 }
 
+/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n/* \u2500\u2500 LIGHT THEME - Review Pages (Weekly & Monthly) */\n/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n[data-theme='light'] .review-page {\n  color: #0f172a;\n}\n\n[data-theme='light'] .review-header {\n  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%) !important;\n  border: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .review-header .review-subtitle {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .review-header .review-badge {\n  background: rgba(139, 92, 246, 0.1);\n  border: 1px solid rgba(139, 92, 246, 0.25);\n}\n\n[data-theme='light'] .review-nav-btn {\n  background: rgba(59, 130, 246, 0.1) !important;\n  border: 1px solid rgba(59, 130, 246, 0.2) !important;\n  color: #2563eb !important;\n}\n\n[data-theme='light'] .review-nav-btn:hover {\n  background: rgba(59, 130, 246, 0.18) !important;\n}\n\n[data-theme='light'] .review-nav-btn--center {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border: 1px solid rgba(0, 0, 0, 0.08) !important;\n  color: #0f172a !important;\n}\n\n[data-theme='light'] .review-nav-btn--center.active,\n[data-theme='light'] .review-nav-btn--center[aria-current=\"page\"] {\n  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%) !important;\n  border: 1px solid rgba(139, 92, 246, 0.3) !important;\n  color: #8b5cf6 !important;\n}\n\n[data-theme='light'] .review-stat-badge {\n  background: rgba(0, 0, 0, 0.02);\n  border: 1px solid rgba(0, 0, 0, 0.06);\n}\n\n[data-theme='light'] .review-stat-badge .stat-label {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .review-chart-card {\n  background: #ffffff;\n  border: 1px solid rgba(0, 0, 0, 0.08);\n}\n\n[data-theme='light'] .review-chart-card .chart-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .day-pill {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .day-pill .day-name {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .day-pill .day-num {\n  color: rgba(0, 0, 0, 0.85);\n}\n\n[data-theme='light'] .table-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .table-header h3 {\n  color: rgba(0, 0, 0, 0.9);\n}\n\n[data-theme='light'] .weekly-score-table-card table thead tr {\n  background: rgba(0, 0, 0, 0.03) !important;\n}\n\n[data-theme='light'] .weekly-score-table-card table thead th {\n  color: rgba(0, 0, 0, 0.7);\n  border-bottom: 2px solid rgba(0, 0, 0, 0.08);\n}\n\n[data-theme='light'] .weekly-score-table-card table tbody td {\n  color: rgba(0, 0, 0, 0.7);\n  border-top: 1px solid rgba(0, 0, 0, 0.05);\n}\n\n[data-theme='light'] .rank-badge {\n  background: rgba(0, 0, 0, 0.02);\n  border: 1px solid rgba(0, 0, 0, 0.08);\n}\n\n[data-theme='light'] .rings-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .rings-header h3 {\n  color: rgba(0, 0, 0, 0.9);\n}\n\n[data-theme='light'] .heatmap-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .heatmap-header h3 {\n  color: rgba(0, 0, 0, 0.9);\n}\n\n[data-theme='light'] .heatmap-cell {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border: 1px solid rgba(0, 0, 0, 0.06) !important;\n}\n\n[data-theme='light'] .heatmap-cell .cell-weekday {\n  color: rgba(0, 0, 0, 0.5);\n}\n\n[data-theme='light'] .heatmap-cell .cell-score {\n  color: rgba(0, 0, 0, 0.5);\n}\n\n[data-theme='light'] .legend-text {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .review-expense-banner {\n  background: rgba(245, 158, 11, 0.06) !important;\n  border: 1px solid rgba(245, 158, 11, 0.15) !important;\n}\n\n[data-theme='light'] .review-expense-banner .expense-label {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .weekend-cell {\n  background: rgba(16, 185, 129, 0.05) !important;\n  border: 1px solid rgba(16, 185, 129, 0.12) !important;\n}\n\n[data-theme='light'] .weekend-cell .weekend-label {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .weekend-cell .weekend-count {\n  color: rgba(0, 0, 0, 0.4);\n}
+
 [data-theme='light'] .grade-pill {
   font-weight: 700;
   border: 1px solid currentColor;
@@ -6400,6 +6402,49 @@ label {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Enhanced Review Navigation - Animation & Theme Styles */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.review-header {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.review-nav-row {
+  animation: slideInUp 0.4s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced button styling for improved UX */
+.review-nav-row button {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Light theme enhancements for navigation buttons */
+[data-theme='light'] .review-nav-row button {
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='light'] .review-nav-row button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Date card styling */
+[data-theme='light'] .review-nav-row > div {
+  animation: slideInUp 0.4s ease-out 0.05s both;
+  font-weight: 700;
+}
+
 /* ── Extra small screens (≤ 380px) ────────────────────────────────────── */
 @media (max-width: 380px) {
   .review-header .review-title {
@@ -6431,6 +6476,282 @@ label {
     width: 26px !important;
     height: 34px !important;
   }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MOBILE - STATS BADGES (better grid layout for mobile)
+     ═══════════════════════════════════════════════════════════════ */
+  .review-stats-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.6rem !important;
+    margin-bottom: 1.2rem !important;
+  }
+
+  .review-stat-badge {
+    padding: 0.8rem !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 0.5rem !important;
+  }
+
+  .review-stat-badge .stat-icon-wrap {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .review-stat-badge .stat-icon-wrap svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .review-stat-badge .stat-value {
+    font-size: 0.9rem !important;
+  }
+
+  .review-stat-badge .stat-label {
+    font-size: 0.65rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MOBILE - IMPROVED GENERAL SPACING
+     ═══════════════════════════════════════════════════════════════ */
+  .review-page {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+
+  .glass-card {
+    margin-bottom: 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MOBILE - RESPONSIVE CHART SIZING
+     ═══════════════════════════════════════════════════════════════ */
+  .chart-container {
+    height: 200px !important;
+  }
+
+  .chart-container--tall {
+    height: 240px !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MOBILE - WEEKEND GRID (2x2 layout instead of 4x1)
+     ═══════════════════════════════════════════════════════════════ */
+  .monthly-weekend-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  .weekend-cell {
+    padding: 0.7rem !important;
+  }
 }
 
-
+/* ────────────────────────────────────────────────────────────────────────────
+   TABLET - 768px to 1024px
+──────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .review-stats-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+    margin-bottom: 1.75rem !important;
+  }
+
+  .review-stat-badge {
+    flex-direction: row !important;
+  }
+
+  .chart-container {
+    height: 280px !important;
+  }
+
+  .chart-container--tall {
+    height: 320px !important;
+  }
+
+  .monthly-weekend-grid {
+    grid-template-columns: 1fr 1fr 1fr 1fr !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   DESKTOP - 1024px and above
+──────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .review-page {
+    padding: 2rem 4rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - STATS BADGES (4 columns for full layout)
+     ═══════════════════════════════════════════════════════════════ */
+  .review-stats-row {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.25rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .review-stat-badge {
+    padding: 1.5rem !important;
+    flex-direction: row !important;
+    gap: 1rem !important;
+  }
+
+  .review-stat-badge .stat-icon-wrap {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .review-stat-badge .stat-icon-wrap svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .review-stat-badge .stat-value {
+    font-size: 1.5rem !important;
+  }
+
+  .review-stat-badge .stat-label {
+    font-size: 0.75rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - IMPROVED CHART SIZING
+     ═══════════════════════════════════════════════════════════════ */
+  .chart-container {
+    height: 320px !important;
+  }
+
+  .chart-container--tall {
+    height: 380px !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - BETTER HEADER SIZING
+     ═══════════════════════════════════════════════════════════════ */
+  .review-header {
+    padding: 2rem !important;
+    margin-bottom: 2rem !important;
+    border-radius: 24px !important;
+  }
+
+  .review-header .review-title {
+    font-size: 2rem !important;
+  }
+
+  .review-header .review-subtitle {
+    font-size: 0.9rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - TABLE IMPROVEMENTS
+     ═══════════════════════════════════════════════════════════════ */
+  .table-header {
+    padding: 1.25rem 1.75rem !important;
+  }
+
+  .table-header h3 {
+    font-size: 1.1rem !important;
+  }
+
+  table th, table td {
+    padding: 1rem 0.75rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .metric-label {
+    padding: 1rem 1.25rem !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - DAY PILLS (better sizing)
+     ═══════════════════════════════════════════════════════════════ */
+  .weekly-day-pills .day-pill {
+    padding: 1rem !important;
+    border-radius: 14px !important;
+  }
+
+  .weekly-day-pills .day-name {
+    font-size: 0.8rem !important;
+  }
+
+  .weekly-day-pills .day-num {
+    font-size: 1.25rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - WEEKEND GRID (full 4 column layout)
+     ═══════════════════════════════════════════════════════════════ */
+  .monthly-weekend-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .weekend-cell {
+    padding: 1rem !important;
+    border-radius: 14px !important;
+  }
+
+  .weekend-cell .weekend-pct {
+    font-size: 1.35rem !important;
+  }
+
+  .weekend-cell .weekend-label {
+    font-size: 0.75rem !important;
+  }
+
+  .weekend-cell .weekend-count {
+    font-size: 0.7rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - HEATMAP IMPROVEMENTS
+     ═══════════════════════════════════════════════════════════════ */
+  .monthly-heatmap-card {
+    margin-bottom: 2rem !important;
+  }
+
+  .heatmap-header {
+    padding: 1.5rem 1.75rem !important;
+  }
+
+  .heatmap-header h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .heatmap-cell {
+    width: 40px !important;
+    height: 48px !important;
+  }
+
+  .heatmap-legend {
+    gap: 1.5rem !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     DESKTOP - BETTER VISUAL SPACING
+     ═══════════════════════════════════════════════════════════════ */
+  .review-expense-banner {
+    padding: 1.5rem 2rem !important;
+    margin-bottom: 2rem !important;
+    font-size: 1.05rem !important;
+    gap: 2rem !important;
+  }
+
+  .expense-label {
+    font-size: 1rem !important;
+  }
+
+  .expense-value {
+    font-size: 1.5rem !important;
+  }
+}
+
+

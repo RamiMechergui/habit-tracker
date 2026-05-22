@@ -5,51 +5,65 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2 } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
 
-// ── Shared chart defaults (dark-mode) ───────────────────────────
-const CHART_DEFAULTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      labels: {
-        color: 'rgba(255,255,255,0.7)',
-        font: { family: 'Inter, sans-serif', size: 12 },
-        boxWidth: 12, boxHeight: 12, borderRadius: 4,
+// ── Shared chart defaults (theme-aware) ───────────────────────────
+const getChartDefaults = () => {
+  const isDarkTheme = !document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDarkTheme ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.7)';
+  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+  const tooltipBg = isDarkTheme ? 'rgba(15,15,20,0.95)' : '#ffffff';
+  const tooltipText = isDarkTheme ? '#fff' : '#0f172a';
+  const tooltipBorder = isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: textColor,
+          font: { family: 'Inter, sans-serif', size: 12 },
+          boxWidth: 12, boxHeight: 12, borderRadius: 4,
+        }
+      },
+      tooltip: {
+        backgroundColor: tooltipBg,
+        titleColor: tooltipText,
+        bodyColor: isDarkTheme ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)',
+        borderColor: tooltipBorder,
+        borderWidth: 1, cornerRadius: 8, padding: 10,
       }
     },
-    tooltip: {
-      backgroundColor: 'rgba(15,15,20,0.95)',
-      titleColor: '#fff',
-      bodyColor: 'rgba(255,255,255,0.8)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      borderWidth: 1, cornerRadius: 8, padding: 10,
+    scales: {
+      x: {
+        ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 16 },
+        grid: { color: gridColor }
+      },
+      y: {
+        ticks: { color: textColor, font: { size: 11 } },
+        grid: { color: gridColor }
+      }
     }
-  },
-  scales: {
-    x: {
-      ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 }, maxTicksLimit: 16 },
-      grid: { color: 'rgba(255,255,255,0.04)' }
-    },
-    y: {
-      ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 } },
-      grid: { color: 'rgba(255,255,255,0.04)' }
-    }
-  }
+  };
 };
 
-const mergeChartOptions = (extra) => ({
-  ...CHART_DEFAULTS,
-  plugins: {
-    ...CHART_DEFAULTS.plugins,
-    ...(extra.plugins || {}),
-    legend: { ...CHART_DEFAULTS.plugins.legend, ...(extra.plugins?.legend || {}) },
-    tooltip: { ...CHART_DEFAULTS.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
-  },
-  scales: {
-    x: { ...CHART_DEFAULTS.scales.x, ...(extra.scales?.x || {}) },
-    y: { ...CHART_DEFAULTS.scales.y, ...(extra.scales?.y || {}) },
-  }
-});
+const CHART_DEFAULTS = getChartDefaults();
+
+const mergeChartOptions = (extra) => {
+  const defaults = getChartDefaults();
+  return {
+    ...defaults,
+    plugins: {
+      ...defaults.plugins,
+      ...(extra.plugins || {}),
+      legend: { ...defaults.plugins.legend, ...(extra.plugins?.legend || {}) },
+      tooltip: { ...defaults.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
+    },
+    scales: {
+      x: { ...defaults.scales.x, ...(extra.scales?.x || {}) },
+      y: { ...defaults.scales.y, ...(extra.scales?.y || {}) },
+    }
+  };
+};
 
 const getScoreColor = (score) => {
   if (score >= 80) return '#10b981';
@@ -305,80 +319,104 @@ export default function MonthlyReview() {
 
       {/* ── Header Navigation ─────────────────────────────────── */}
       <div className="review-header" style={{
-        background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(139,92,246,0.07) 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '20px', padding: '1.5rem', marginBottom: '1.5rem',
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(139,92,246,0.05) 100%)',
+        border: '1px solid rgba(0,0,0,0.08)',
+        borderRadius: '20px', padding: '1.75rem', marginBottom: '1.75rem',
         backdropFilter: 'blur(12px)',
       }}>
         {/* Title */}
-        <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-            <Calendar size={18} style={{ color: 'rgba(139,92,246,0.9)' }} />
+        <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+            <Calendar size={20} style={{ color: '#8b5cf6' }} />
             <h2 className="review-title" style={{
-              margin: 0, fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.03em',
+              margin: 0, fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em',
               background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
               {format(date, 'MMMM yyyy')}
             </h2>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="review-subtitle" style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              Monthly Report
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span className="review-subtitle" style={{ fontSize: '0.8rem', color: 'rgba(0,0,0,0.6)', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              📊 Monthly Analytics
             </span>
             {isCurrentMonth && (
                <span className="review-badge" style={{
-                background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)',
-                borderRadius: '20px', padding: '0.15rem 0.65rem',
-                color: '#8b5cf6', fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.04em',
-              }}>● CURRENT MONTH</span>
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(139,92,246,0.05) 100%)',
+                border: '1px solid rgba(139,92,246,0.3)',
+                borderRadius: '20px', padding: '0.25rem 0.75rem',
+                color: '#8b5cf6', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
+              }}>🎯 CURRENT MONTH</span>
             )}
           </div>
         </div>
 
-        {/* Nav Buttons */}
-        <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Enhanced Date Navigation */}
+        <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
           <button
             id="monthly-prev-btn"
             className="review-nav-btn"
             onClick={goPrevMonth}
             style={{
-              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)',
-              borderRadius: '12px', padding: '0.65rem 1.1rem', color: '#fff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-              transition: 'all 0.25s ease', fontSize: '0.88rem', fontWeight: '600', whiteSpace: 'nowrap',
+              background: 'rgba(59,130,246,0.12)', border: '1.5px solid rgba(59,130,246,0.22)',
+              borderRadius: '12px', padding: '0.7rem 1rem', color: '#2563eb',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+              transition: 'all 0.3s ease', fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap',
+              minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.28)'; e.currentTarget.style.transform = 'translateX(-3px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.22)'; e.currentTarget.style.transform = 'translateX(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
             aria-label="Previous month"
           >
-            <ChevronLeft size={16} /> Prev
+            <ChevronLeft size={18} /> <span>Previous</span>
           </button>
+
+          {/* Date Display Card */}
+          <div style={{
+            background: '#ffffff',
+            border: '1.5px solid rgba(139,92,246,0.2)',
+            borderRadius: '12px',
+            padding: '0.7rem 1.5rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+            minHeight: '40px',
+            boxShadow: '0 2px 8px rgba(139,92,246,0.1)',
+          }}>
+            <Calendar size={16} style={{ color: '#8b5cf6' }} />
+            <span style={{
+              fontSize: '0.95rem', fontWeight: '700', color: '#0f172a',
+              letterSpacing: '0.3px',
+            }}>
+              {format(date, 'MMM')} {format(date, 'yyyy')}
+            </span>
+          </div>
 
           <button
             id="monthly-today-btn"
             className="review-nav-btn review-nav-btn--center"
             onClick={goToday}
             style={{
-              flex: 1,
               background: isCurrentMonth
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.1) 100%)'
-                 : 'rgba(255,255,255,0.05)',
-              border: isCurrentMonth ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '12px', padding: '0.65rem 1rem', color: '#fff',
-              cursor: 'pointer', transition: 'all 0.25s ease',
-              fontSize: '0.88rem', fontWeight: '600',
+                ? 'linear-gradient(135deg, rgba(139,92,246,0.2) 0%, rgba(139,92,246,0.1) 100%)'
+                : 'rgba(139,92,246,0.08)',
+              border: isCurrentMonth ? '1.5px solid rgba(139,92,246,0.35)' : '1.5px solid rgba(139,92,246,0.15)',
+              borderRadius: '12px', padding: '0.7rem 1.2rem', color: '#8b5cf6',
+              cursor: 'pointer', transition: 'all 0.3s ease',
+              fontSize: '0.9rem', fontWeight: '700', whiteSpace: 'nowrap',
+              minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.25)'; e.currentTarget.style.border = '1px solid rgba(139,92,246,0.5)'; }}
+            onMouseEnter={e => { 
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.15) 100%)';
+              e.currentTarget.style.transform = 'scale(1.02)';
+            }}
             onMouseLeave={e => {
               e.currentTarget.style.background = isCurrentMonth
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.1) 100%)'
-                 : 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.border = isCurrentMonth ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.1)';
+                ? 'linear-gradient(135deg, rgba(139,92,246,0.2) 0%, rgba(139,92,246,0.1) 100%)'
+                : 'rgba(139,92,246,0.08)';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
             aria-label="Jump to current month"
           >
-            ✨ Current Month
+            🎯 Today
           </button>
 
           <button
@@ -386,22 +424,28 @@ export default function MonthlyReview() {
             className="review-nav-btn"
             onClick={goNextMonth}
             style={{
-              background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)',
-              borderRadius: '12px', padding: '0.65rem 1.1rem', color: '#fff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-              transition: 'all 0.25s ease', fontSize: '0.88rem', fontWeight: '600', whiteSpace: 'nowrap',
+              background: 'rgba(139,92,246,0.12)', border: '1.5px solid rgba(139,92,246,0.22)',
+              borderRadius: '12px', padding: '0.7rem 1rem', color: '#8b5cf6',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+              transition: 'all 0.3s ease', fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap',
+              minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.28)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.22)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
             aria-label="Next month"
           >
-            Next <ChevronRight size={16} />
+            <span>Next</span> <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
       {/* ── Summary Stats Row ─────────────────────────────────── */}
-      <div className="review-stats-row" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="review-stats-row" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: '0.85rem', 
+        marginBottom: '1.75rem',
+      }}>
         <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} colorRgb="59,130,246" />
         <StatBadge icon={Star} label="Best Day" value={`${bestScore}`} colorRgb="16,185,129" />
         <StatBadge icon={BarChart2} label="Elite Days (90+)" value={`${eliteDays}`} colorRgb="139,92,246" />
@@ -410,8 +454,8 @@ export default function MonthlyReview() {
 
       {/* ── Mini Calendar Heatmap Strip ──────────────────────── */}
       <div className="glass-card mb-6 monthly-heatmap-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="heatmap-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>
+        <div className="heatmap-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>
             🗓️ {format(date, 'MMMM')} Score Heatmap
           </h3>
         </div>
@@ -431,26 +475,26 @@ export default function MonthlyReview() {
                     width: 36, height: 44, borderRadius: '8px',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
                     background: hasData
-                      ? score >= 90 ? 'rgba(16,185,129,0.3)'
-                        : score >= 80 ? 'rgba(59,130,246,0.25)'
-                        : score >= 60 ? 'rgba(245,158,11,0.2)'
-                        : 'rgba(239,68,68,0.15)'
-                      : 'rgba(255,255,255,0.03)',
+                      ? score >= 90 ? 'rgba(16,185,129,0.2)'
+                        : score >= 80 ? 'rgba(59,130,246,0.15)'
+                        : score >= 60 ? 'rgba(245,158,11,0.12)'
+                        : 'rgba(239,68,68,0.1)'
+                      : 'rgba(0,0,0,0.02)',
                     border: `1px solid ${
                       hasData
-                        ? score >= 90 ? 'rgba(16,185,129,0.4)'
-                          : score >= 80 ? 'rgba(59,130,246,0.35)'
-                          : score >= 60 ? 'rgba(245,158,11,0.3)'
-                          : 'rgba(239,68,68,0.25)'
-                        : 'rgba(255,255,255,0.05)'
+                        ? score >= 90 ? 'rgba(16,185,129,0.3)'
+                          : score >= 80 ? 'rgba(59,130,246,0.25)'
+                          : score >= 60 ? 'rgba(245,158,11,0.2)'
+                          : 'rgba(239,68,68,0.2)'
+                        : 'rgba(0,0,0,0.06)'
                     }`,
                     flexShrink: 0,
                     cursor: 'default',
                   }}
                 >
-                  <span className="cell-weekday" style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', fontWeight: '600' }}>{dayNames[dayOfWeek]}</span>
-                  <span className="cell-day" style={{ fontSize: '0.75rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(255,255,255,0.25)' }}>{d.dayNum}</span>
-                  {hasData && <span className="cell-score" style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.5)' }}>{score}</span>}
+                  <span className="cell-weekday" style={{ fontSize: '0.55rem', color: 'rgba(0,0,0,0.5)', fontWeight: '600' }}>{dayNames[dayOfWeek]}</span>
+                  <span className="cell-day" style={{ fontSize: '0.75rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(0,0,0,0.35)' }}>{d.dayNum}</span>
+                  {hasData && <span className="cell-score" style={{ fontSize: '0.5rem', color: 'rgba(0,0,0,0.5)' }}>{score}</span>}
                 </div>
               );
             })}
@@ -458,14 +502,14 @@ export default function MonthlyReview() {
           {/* Legend */}
           <div className="heatmap-legend" style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
             {[
-              { color: 'rgba(16,185,129,0.3)', border: 'rgba(16,185,129,0.4)', label: '90–100 (Elite)' },
-              { color: 'rgba(59,130,246,0.25)', border: 'rgba(59,130,246,0.35)', label: '80–89 (A)' },
-              { color: 'rgba(245,158,11,0.2)', border: 'rgba(245,158,11,0.3)', label: '60–79 (B/C)' },
-              { color: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.25)', label: '0–59 (F)' },
+              { color: 'rgba(16,185,129,0.2)', border: 'rgba(16,185,129,0.3)', label: '90–100 (Elite)' },
+              { color: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.25)', label: '80–89 (A)' },
+              { color: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)', label: '60–79 (B/C)' },
+              { color: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', label: '0–59 (F)' },
             ].map(({ color, border, label }) => (
               <div key={label} className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <div className="legend-dot" style={{ width: 12, height: 12, borderRadius: '3px', background: color, border: `1px solid ${border}` }} />
-                <span className="legend-text" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: '500' }}>{label}</span>
+                <span className="legend-text" style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.6)', fontWeight: '500' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -474,8 +518,8 @@ export default function MonthlyReview() {
 
     {/* ── Circular Tracker ──────────────────────────────────── */}
     <div className="glass-card mb-6 review-rings-card" style={{ overflow: 'hidden', padding: 0 }}>
-      <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>🎯 Monthly Habit Completion</h3>
+      <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>🎯 Monthly Habit Completion</h3>
       </div>
       <div className="rings-body" style={{ padding: '1rem', background: 'var(--bg-card)' }}>
         <CircularTracker data={monthlyData} />
@@ -493,11 +537,11 @@ export default function MonthlyReview() {
 
     {/* ── Expense Total Banner ─────────────────────────────── */}
     <div className="review-expense-banner" style={{
-      background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)',
+      background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
       borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     }}>
-      <span className="expense-label" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {format(date, 'MMMM')} Expenses</span>
+      <span className="expense-label" style={{ color: 'rgba(0,0,0,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {format(date, 'MMMM')} Expenses</span>
       <span className="expense-value" style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.25rem' }}>{totalMonthlySpend} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
     </div>
 

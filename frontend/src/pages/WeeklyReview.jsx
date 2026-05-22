@@ -5,54 +5,66 @@ import CircularTracker from '../components/CircularTracker';
 import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Clock, CheckSquare } from 'lucide-react';
 import { format, addDays, subDays, isToday } from 'date-fns';
 
-// ── Shared chart defaults (dark-mode aware) ──────────────────────
-const CHART_DEFAULTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      labels: {
-        color: 'rgba(255,255,255,0.7)',
-        font: { family: 'Inter, sans-serif', size: 12 },
-        boxWidth: 12,
-        boxHeight: 12,
-        borderRadius: 4,
+// ── Shared chart defaults (theme-aware) ──────────────────────
+const getChartDefaults = () => {
+  const isDarkTheme = !document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDarkTheme ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
+  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)';
+  const tooltipBg = isDarkTheme ? 'rgba(15,15,20,0.95)' : '#ffffff';
+  const tooltipText = isDarkTheme ? '#fff' : '#0f172a';
+  const tooltipBorder = isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: textColor,
+          font: { family: 'Inter, sans-serif', size: 12 },
+          boxWidth: 12,
+          boxHeight: 12,
+          borderRadius: 4,
+        }
+      },
+      tooltip: {
+        backgroundColor: tooltipBg,
+        titleColor: tooltipText,
+        bodyColor: isDarkTheme ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)',
+        borderColor: tooltipBorder,
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 10,
       }
     },
-    tooltip: {
-      backgroundColor: 'rgba(15,15,20,0.95)',
-      titleColor: '#fff',
-      bodyColor: 'rgba(255,255,255,0.8)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      borderWidth: 1,
-      cornerRadius: 8,
-      padding: 10,
+    scales: {
+      x: {
+        ticks: { color: textColor, font: { size: 12 } },
+        grid: { color: gridColor }
+      },
+      y: {
+        ticks: { color: textColor, font: { size: 12 } },
+        grid: { color: gridColor }
+      }
     }
-  },
-  scales: {
-    x: {
-      ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } },
-      grid: { color: 'rgba(255,255,255,0.05)' }
-    },
-    y: {
-      ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } },
-      grid: { color: 'rgba(255,255,255,0.05)' }
-    }
-  }
+  };
 };
 
+const CHART_DEFAULTS = getChartDefaults();
+
 const mergeChartOptions = (extra) => {
+  const defaults = getChartDefaults();
   const merged = {
-    ...CHART_DEFAULTS,
+    ...defaults,
     plugins: {
-      ...CHART_DEFAULTS.plugins,
+      ...defaults.plugins,
       ...(extra.plugins || {}),
-      legend: { ...CHART_DEFAULTS.plugins.legend, ...(extra.plugins?.legend || {}) },
-      tooltip: { ...CHART_DEFAULTS.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
+      legend: { ...defaults.plugins.legend, ...(extra.plugins?.legend || {}) },
+      tooltip: { ...defaults.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
     },
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x, ...(extra.scales?.x || {}) },
-      y: { ...CHART_DEFAULTS.scales.y, ...(extra.scales?.y || {}) },
+      x: { ...defaults.scales.x, ...(extra.scales?.x || {}) },
+      y: { ...defaults.scales.y, ...(extra.scales?.y || {}) },
     }
   };
   return merged;
@@ -82,10 +94,13 @@ const getScoreColor = (score) => {
 
 // ── Summary Stat Card ────────────────────────────────────────────
 function StatBadge({ icon: Icon, label, value, color }) {
+  const isDarkTheme = !document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme') === 'dark';
+  const labelColor = isDarkTheme ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)';
+  
   return (
     <div className="review-stat-badge" style={{
-      background: `rgba(${color},0.08)`,
-      border: `1px solid rgba(${color},0.2)`,
+      background: isDarkTheme ? `rgba(${color},0.08)` : `rgba(${color},0.06)`,
+      border: isDarkTheme ? `1px solid rgba(${color},0.2)` : `1px solid rgba(${color},0.15)`,
       borderRadius: '14px',
       padding: '1rem 1.25rem',
       display: 'flex',
@@ -96,14 +111,14 @@ function StatBadge({ icon: Icon, label, value, color }) {
     }}>
       <div className="stat-icon-wrap" style={{
         width: 36, height: 36, borderRadius: '10px',
-        background: `rgba(${color},0.15)`,
+        background: isDarkTheme ? `rgba(${color},0.15)` : `rgba(${color},0.12)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
         <Icon size={18} style={{ color: `rgb(${color})` }} />
       </div>
       <div style={{ minWidth: 0 }}>
         <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: '800', color: `rgb(${color})`, lineHeight: 1.1 }}>{value}</div>
-        <div className="stat-label" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div className="stat-label" style={{ fontSize: '0.72rem', color: labelColor, marginTop: '0.2rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
       </div>
     </div>
   );
@@ -111,13 +126,15 @@ function StatBadge({ icon: Icon, label, value, color }) {
 
 // ── Chart Section Wrapper ────────────────────────────────────────
 function ChartCard({ title, color, icon, height = 300, children }) {
+  const isDarkTheme = !document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme') === 'dark';
+  
   return (
     <div className="glass-card mb-6 review-chart-card" style={{ overflow: 'hidden', padding: 0 }}>
       <div className="chart-header" style={{
         padding: '1rem 1.5rem',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        borderBottom: isDarkTheme ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.08)',
         display: 'flex', alignItems: 'center', gap: '0.65rem',
-        background: 'rgba(0,0,0,0.15)',
+        background: isDarkTheme ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.02)',
       }}>
         <span className="chart-icon" style={{ fontSize: '1.2rem' }}>{icon}</span>
         <h3 style={{
@@ -338,83 +355,106 @@ export default function WeeklyReview() {
 
       {/* ── Header Navigation ─────────────────────────────────── */}
       <div className="review-header" style={{
-        background: 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(245,158,11,0.08) 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(245,158,11,0.05) 100%)',
+        border: '1px solid rgba(0,0,0,0.08)',
         borderRadius: '20px',
-        padding: '1.5rem',
-        marginBottom: '1.5rem',
+        padding: '1.75rem',
+        marginBottom: '1.75rem',
         backdropFilter: 'blur(12px)',
       }}>
         {/* Title */}
-        <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-            <Calendar size={18} style={{ color: 'rgba(245,158,11,0.85)' }} />
+        <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+            <Calendar size={20} style={{ color: '#f59e0b' }} />
             <h2 className="review-title" style={{
-              margin: 0, fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.02em',
+              margin: 0, fontSize: '1.65rem', fontWeight: '900', letterSpacing: '-0.02em',
               background: 'linear-gradient(135deg, #3b82f6 0%, #f59e0b 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
-              {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
+              {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
             </h2>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="review-subtitle" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: '500', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Weekly Review
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span className="review-subtitle" style={{ fontSize: '0.8rem', color: 'rgba(0,0,0,0.6)', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              📅 Weekly Review
             </span>
             {isCurrentWeek && (
               <span className="review-badge" style={{
-                background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)',
-                borderRadius: '20px', padding: '0.15rem 0.65rem',
-                color: '#10b981', fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em',
-              }}>● THIS WEEK</span>
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.05) 100%)',
+                border: '1px solid rgba(16,185,129,0.3)',
+                borderRadius: '20px', padding: '0.25rem 0.75rem',
+                color: '#10b981', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
+              }}>🎯 THIS WEEK</span>
             )}
           </div>
         </div>
 
-        {/* Navigation row */}
-        <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Enhanced Navigation */}
+        <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
           <button
             id="weekly-prev-btn"
             className="review-nav-btn"
             onClick={goPrevWeek}
             style={{
-              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.25)',
-              borderRadius: '12px', padding: '0.65rem 1.1rem', color: '#fff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-              transition: 'all 0.25s ease', fontSize: '0.88rem', fontWeight: '600',
-              whiteSpace: 'nowrap',
+              background: 'rgba(59,130,246,0.12)', border: '1.5px solid rgba(59,130,246,0.22)',
+              borderRadius: '12px', padding: '0.7rem 1rem', color: '#2563eb',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+              transition: 'all 0.3s ease', fontSize: '0.9rem', fontWeight: '600',
+              whiteSpace: 'nowrap', minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.28)'; e.currentTarget.style.transform = 'translateX(-3px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.22)'; e.currentTarget.style.transform = 'translateX(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
             aria-label="Previous week"
           >
-            <ChevronLeft size={16} /> Prev
+            <ChevronLeft size={18} /> <span>Previous</span>
           </button>
+
+          {/* Date Display Card */}
+          <div style={{
+            background: '#ffffff',
+            border: '1.5px solid rgba(245,158,11,0.2)',
+            borderRadius: '12px',
+            padding: '0.7rem 1.5rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+            minHeight: '40px',
+            boxShadow: '0 2px 8px rgba(245,158,11,0.1)',
+          }}>
+            <Calendar size={16} style={{ color: '#f59e0b' }} />
+            <span style={{
+              fontSize: '0.95rem', fontWeight: '700', color: '#0f172a',
+              letterSpacing: '0.3px',
+            }}>
+              Week of {format(weekStart, 'MMM d')}
+            </span>
+          </div>
 
           <button
             id="weekly-today-btn"
             className="review-nav-btn review-nav-btn--center"
             onClick={goToday}
             style={{
-              flex: 1,
               background: isCurrentWeek
-                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.08) 100%)'
-                : 'rgba(255,255,255,0.05)',
-              border: isCurrentWeek ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '12px', padding: '0.65rem 1rem', color: '#fff',
-              cursor: 'pointer', transition: 'all 0.25s ease',
-              fontSize: '0.88rem', fontWeight: '600',
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.1) 100%)'
+                : 'rgba(16,185,129,0.08)',
+              border: isCurrentWeek ? '1.5px solid rgba(16,185,129,0.35)' : '1.5px solid rgba(16,185,129,0.15)',
+              borderRadius: '12px', padding: '0.7rem 1.2rem', color: '#10b981',
+              cursor: 'pointer', transition: 'all 0.3s ease',
+              fontSize: '0.9rem', fontWeight: '700', whiteSpace: 'nowrap',
+              minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.25)'; e.currentTarget.style.border = '1px solid rgba(16,185,129,0.5)'; }}
+            onMouseEnter={e => { 
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0.15) 100%)';
+              e.currentTarget.style.transform = 'scale(1.02)';
+            }}
             onMouseLeave={e => {
               e.currentTarget.style.background = isCurrentWeek
-                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.08) 100%)'
-                : 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.border = isCurrentWeek ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(255,255,255,0.1)';
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.1) 100%)'
+                : 'rgba(16,185,129,0.08)';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
             aria-label="Jump to today"
           >
-            ✨ Today
+            🎯 Today
           </button>
 
           <button
@@ -422,23 +462,28 @@ export default function WeeklyReview() {
             className="review-nav-btn"
             onClick={goNextWeek}
             style={{
-              background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.25)',
-              borderRadius: '12px', padding: '0.65rem 1.1rem', color: '#fff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-              transition: 'all 0.25s ease', fontSize: '0.88rem', fontWeight: '600',
-              whiteSpace: 'nowrap',
+              background: 'rgba(245,158,11,0.12)', border: '1.5px solid rgba(245,158,11,0.22)',
+              borderRadius: '12px', padding: '0.7rem 1rem', color: '#f59e0b',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+              transition: 'all 0.3s ease', fontSize: '0.9rem', fontWeight: '600',
+              whiteSpace: 'nowrap', minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.28)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.15)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.22)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
             aria-label="Next week"
           >
-            Next <ChevronRight size={16} />
+            <span>Next</span> <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
       {/* ── Summary Stats Row ─────────────────────────────────── */}
-      <div className="review-stats-row" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="review-stats-row" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: '0.85rem', 
+        marginBottom: '1.75rem',
+      }}>
         <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} color="245,158,11" />
         <StatBadge icon={TrendingUp} label="Best Score" value={`${bestScore}`} color="16,185,129" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalExpenses} color="59,130,246" />
@@ -496,23 +541,23 @@ export default function WeeklyReview() {
 
       {/* ── Score Table ───────────────────────────────────────── */}
       <div className="glass-card mb-6 weekly-score-table-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>📋 Weekly Score Table</h3>
+        <div className="table-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>📋 Weekly Score Table</h3>
         </div>
         <div className="table-scroll" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: 520 }}>
             <thead>
-              <tr style={{ background: 'rgba(0,0,0,0.25)' }}>
-                <th className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '700', color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Metric</th>
+              <tr style={{ background: 'rgba(0,0,0,0.03)' }}>
+                <th className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '700', color: 'rgba(0,0,0,0.6)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Metric</th>
                 {weeklyData.map((d, i) => {
                   const dayDate = addDays(weekStart, i);
                   const isDayToday = isToday(dayDate);
                   return (
                     <th key={i} style={{
                       padding: '0.85rem 0.6rem',
-                      background: isDayToday ? 'rgba(16,185,129,0.1)' : 'transparent',
-                      borderBottom: isDayToday ? '2px solid rgba(16,185,129,0.4)' : '2px solid transparent',
-                      fontWeight: '700', color: isDayToday ? '#10b981' : 'rgba(255,255,255,0.7)',
+                      background: isDayToday ? 'rgba(16,185,129,0.05)' : 'transparent',
+                      borderBottom: isDayToday ? '2px solid rgba(16,185,129,0.3)' : '2px solid transparent',
+                      fontWeight: '700', color: isDayToday ? '#10b981' : 'rgba(0,0,0,0.7)',
                     }}>
                       <div className="day-label" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>{d.dayName.toUpperCase()}</div>
                       <div className="date-label" style={{ fontSize: '1rem', fontWeight: '800', marginTop: '0.2rem' }}>{format(dayDate, 'd')}</div>
@@ -522,34 +567,34 @@ export default function WeeklyReview() {
               </tr>
             </thead>
             <tbody>
-              <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Score</td>
+              <tr style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>Score</td>
                 {weeklyData.map((d, i) => (
                   <td key={i} style={{ padding: '0.85rem 0.6rem', fontWeight: '700', fontSize: '1rem', color: getScoreColor(d.log.totalScore) }}>
                     {d.log.totalScore}
                   </td>
                 ))}
               </tr>
-              <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Rank</td>
+              <tr style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>Rank</td>
                 {weeklyData.map((d, i) => (
                   <td key={i} style={{ padding: '0.75rem 0.6rem' }}>
                     <span className="rank-badge" style={{
                       padding: '0.35rem 0.6rem', borderRadius: '8px',
                       fontSize: '0.85rem', fontWeight: '800',
-                      background: `${getRankColor(d.log.rank)}1a`,
+                      background: `${getRankColor(d.log.rank)}15`,
                       color: getRankColor(d.log.rank),
-                      border: `1px solid ${getRankColor(d.log.rank)}40`,
+                      border: `1px solid ${getRankColor(d.log.rank)}30`,
                     }}>
                       {d.log.rank}
                     </span>
                   </td>
                 ))}
               </tr>
-              <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Wake-Up</td>
+              <tr style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>Wake-Up</td>
                 {weeklyData.map((d, i) => (
-                  <td key={i} style={{ padding: '0.85rem 0.6rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                  <td key={i} style={{ padding: '0.85rem 0.6rem', fontSize: '0.85rem', color: 'rgba(0,0,0,0.7)', fontWeight: '500' }}>
                     {d.log.morning.wakeTime || '—'}
                   </td>
                 ))}
@@ -561,8 +606,8 @@ export default function WeeklyReview() {
 
       {/* ── Circular Tracker ─────────────────────────────────── */}
       <div className="glass-card mb-6 review-rings-card" style={{ overflow: 'hidden', padding: 0 }}>
-        <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(0,0,0,0.15)' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>🎯 Habit Completion Rings</h3>
+        <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>🎯 Habit Completion Rings</h3>
         </div>
         <div className="rings-body" style={{ padding: '1rem', background: 'var(--bg-card)' }}>
           <CircularTracker data={weeklyData} />
@@ -584,11 +629,11 @@ export default function WeeklyReview() {
 
       {/* ── Expense Total Banner ─────────────────────────────── */}
       <div className="review-expense-banner" style={{
-        background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+        background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
         borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <span className="expense-label" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total Weekly Expenses</span>
+        <span className="expense-label" style={{ color: 'rgba(0,0,0,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total Weekly Expenses</span>
         <span className="expense-value" style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.2rem' }}>{totalExpenses} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
       </div>
 
