@@ -1499,7 +1499,166 @@ label {
   background: #2563eb;
 }
 
-/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n/* \u2500\u2500 LIGHT THEME - Review Pages (Weekly & Monthly) */\n/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n[data-theme='light'] .review-page {\n  color: #0f172a;\n}\n\n[data-theme='light'] .review-header {\n  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%) !important;\n  border: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .review-header .review-subtitle {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .review-header .review-badge {\n  background: rgba(139, 92, 246, 0.1);\n  border: 1px solid rgba(139, 92, 246, 0.25);\n}\n\n[data-theme='light'] .review-nav-btn {\n  background: rgba(59, 130, 246, 0.1) !important;\n  border: 1px solid rgba(59, 130, 246, 0.2) !important;\n  color: #2563eb !important;\n}\n\n[data-theme='light'] .review-nav-btn:hover {\n  background: rgba(59, 130, 246, 0.18) !important;\n}\n\n[data-theme='light'] .review-nav-btn--center {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border: 1px solid rgba(0, 0, 0, 0.08) !important;\n  color: #0f172a !important;\n}\n\n[data-theme='light'] .review-nav-btn--center.active,\n[data-theme='light'] .review-nav-btn--center[aria-current=\"page\"] {\n  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%) !important;\n  border: 1px solid rgba(139, 92, 246, 0.3) !important;\n  color: #8b5cf6 !important;\n}\n\n[data-theme='light'] .review-stat-badge {\n  background: rgba(0, 0, 0, 0.02);\n  border: 1px solid rgba(0, 0, 0, 0.06);\n}\n\n[data-theme='light'] .review-stat-badge .stat-label {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .review-chart-card {\n  background: #ffffff;\n  border: 1px solid rgba(0, 0, 0, 0.08);\n}\n\n[data-theme='light'] .review-chart-card .chart-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .day-pill {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .day-pill .day-name {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .day-pill .day-num {\n  color: rgba(0, 0, 0, 0.85);\n}\n\n[data-theme='light'] .table-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .table-header h3 {\n  color: rgba(0, 0, 0, 0.9);\n}\n\n[data-theme='light'] .weekly-score-table-card table thead tr {\n  background: rgba(0, 0, 0, 0.03) !important;\n}\n\n[data-theme='light'] .weekly-score-table-card table thead th {\n  color: rgba(0, 0, 0, 0.7);\n  border-bottom: 2px solid rgba(0, 0, 0, 0.08);\n}\n\n[data-theme='light'] .weekly-score-table-card table tbody td {\n  color: rgba(0, 0, 0, 0.7);\n  border-top: 1px solid rgba(0, 0, 0, 0.05);\n}\n\n[data-theme='light'] .rank-badge {\n  background: rgba(0, 0, 0, 0.02);\n  border: 1px solid rgba(0, 0, 0, 0.08);\n}\n\n[data-theme='light'] .rings-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .rings-header h3 {\n  color: rgba(0, 0, 0, 0.9);\n}\n\n[data-theme='light'] .heatmap-header {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;\n}\n\n[data-theme='light'] .heatmap-header h3 {\n  color: rgba(0, 0, 0, 0.9);\n}\n\n[data-theme='light'] .heatmap-cell {\n  background: rgba(0, 0, 0, 0.02) !important;\n  border: 1px solid rgba(0, 0, 0, 0.06) !important;\n}\n\n[data-theme='light'] .heatmap-cell .cell-weekday {\n  color: rgba(0, 0, 0, 0.5);\n}\n\n[data-theme='light'] .heatmap-cell .cell-score {\n  color: rgba(0, 0, 0, 0.5);\n}\n\n[data-theme='light'] .legend-text {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .review-expense-banner {\n  background: rgba(245, 158, 11, 0.06) !important;\n  border: 1px solid rgba(245, 158, 11, 0.15) !important;\n}\n\n[data-theme='light'] .review-expense-banner .expense-label {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .weekend-cell {\n  background: rgba(16, 185, 129, 0.05) !important;\n  border: 1px solid rgba(16, 185, 129, 0.12) !important;\n}\n\n[data-theme='light'] .weekend-cell .weekend-label {\n  color: rgba(0, 0, 0, 0.6);\n}\n\n[data-theme='light'] .weekend-cell .weekend-count {\n  color: rgba(0, 0, 0, 0.4);\n}
+/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* \u2500\u2500 LIGHT THEME - Review Pages (Weekly & Monthly) */
+/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+[data-theme='light'] .review-page {
+  color: #0f172a;
+}
+
+[data-theme='light'] .review-header {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .review-header .review-subtitle {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .review-header .review-badge {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+[data-theme='light'] .review-nav-btn {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+
+[data-theme='light'] .review-nav-btn:hover {
+  background: rgba(59, 130, 246, 0.18) !important;
+}
+
+[data-theme='light'] .review-nav-btn--center {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+[data-theme='light'] .review-nav-btn--center.active,
+[data-theme='light'] .review-nav-btn--center[aria-current=\"page\"] {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  color: #8b5cf6 !important;
+}
+
+[data-theme='light'] .review-stat-badge {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='light'] .review-stat-badge .stat-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .review-chart-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .review-chart-card .chart-header {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .day-pill {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .day-pill .day-name {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .day-pill .day-num {
+  color: rgba(0, 0, 0, 0.85);
+}
+
+[data-theme='light'] .table-header {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .table-header h3 {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme='light'] .weekly-score-table-card table thead tr {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme='light'] .weekly-score-table-card table thead th {
+  color: rgba(0, 0, 0, 0.7);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .weekly-score-table-card table tbody td {
+  color: rgba(0, 0, 0, 0.7);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='light'] .rank-badge {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .rings-header {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .rings-header h3 {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme='light'] .heatmap-header {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme='light'] .heatmap-header h3 {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme='light'] .heatmap-cell {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme='light'] .heatmap-cell .cell-weekday {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='light'] .heatmap-cell .cell-score {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='light'] .legend-text {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .review-expense-banner {
+  background: rgba(245, 158, 11, 0.06) !important;
+  border: 1px solid rgba(245, 158, 11, 0.15) !important;
+}
+
+[data-theme='light'] .review-expense-banner .expense-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .weekend-cell {
+  background: rgba(16, 185, 129, 0.05) !important;
+  border: 1px solid rgba(16, 185, 129, 0.12) !important;
+}
+
+[data-theme='light'] .weekend-cell .weekend-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .weekend-cell .weekend-count {
+  color: rgba(0, 0, 0, 0.4);
+}
 
 [data-theme='light'] .grade-pill {
   font-weight: 700;
