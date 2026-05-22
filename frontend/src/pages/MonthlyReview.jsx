@@ -46,9 +46,14 @@ const getChartDefaults = () => {
   };
 };
 
-const CHART_DEFAULTS = getChartDefaults();
+const mergeScaleOptions = (base, override = {}) => ({
+  ...base,
+  ...override,
+  ticks: { ...base.ticks, ...(override.ticks || {}) },
+  grid: { ...base.grid, ...(override.grid || {}) },
+});
 
-const mergeChartOptions = (extra) => {
+const mergeChartOptions = (extra = {}) => {
   const defaults = getChartDefaults();
   return {
     ...defaults,
@@ -59,8 +64,8 @@ const mergeChartOptions = (extra) => {
       tooltip: { ...defaults.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
     },
     scales: {
-      x: { ...defaults.scales.x, ...(extra.scales?.x || {}) },
-      y: { ...defaults.scales.y, ...(extra.scales?.y || {}) },
+      x: mergeScaleOptions(defaults.scales.x, extra.scales?.x),
+      y: mergeScaleOptions(defaults.scales.y, extra.scales?.y),
     }
   };
 };
@@ -69,6 +74,13 @@ const getScoreColor = (score) => {
   if (score >= 80) return '#10b981';
   if (score >= 60) return '#f59e0b';
   return '#ef4444';
+};
+
+const getScoreTone = (score) => {
+  if (score >= 90) return 'score-elite';
+  if (score >= 80) return 'score-high';
+  if (score >= 60) return 'score-mid';
+  return 'score-low';
 };
 
 // ── Sub-components ───────────────────────────────────────────────
@@ -168,11 +180,9 @@ export default function MonthlyReview() {
 
   const disciplineOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
       y: {
-        ...CHART_DEFAULTS.scales.y,
         min: 0, max: 100,
-        ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 20 }
+        ticks: { stepSize: 20 }
       }
     },
     plugins: {
@@ -209,8 +219,7 @@ export default function MonthlyReview() {
 
   const expensesOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
-      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true }
+      y: { beginAtZero: true }
     },
     plugins: { legend: { display: false } }
   });
@@ -239,12 +248,9 @@ export default function MonthlyReview() {
 
   const wakingOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
       y: {
-        ...CHART_DEFAULTS.scales.y,
         reverse: true, min: 3, max: 12,
         ticks: {
-          ...CHART_DEFAULTS.scales.y.ticks,
           stepSize: 1,
           callback: (value) => {
             const h = Math.floor(value);
@@ -282,8 +288,7 @@ export default function MonthlyReview() {
 
   const weekendOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
-      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true, ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 1 } }
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
     },
     plugins: { legend: { display: false } }
   });
@@ -308,17 +313,16 @@ export default function MonthlyReview() {
 
   const systemOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
-      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true, ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 1 } }
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
     },
     plugins: { legend: { display: false } }
   });
 
   return (
-    <div className="review-page" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
+    <div className="review-page review-page--monthly" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
       {/* ── Header Navigation ─────────────────────────────────── */}
-      <div className="review-header" style={{
+      <div className="review-header review-header--monthly" style={{
         background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(139,92,246,0.05) 100%)',
         border: '1px solid rgba(0,0,0,0.08)',
         borderRadius: '20px', padding: '1.75rem', marginBottom: '1.75rem',
@@ -372,7 +376,7 @@ export default function MonthlyReview() {
           </button>
 
           {/* Date Display Card */}
-          <div style={{
+          <div className="review-date-chip" style={{
             background: '#ffffff',
             border: '1.5px solid rgba(139,92,246,0.2)',
             borderRadius: '12px',
@@ -392,7 +396,7 @@ export default function MonthlyReview() {
 
           <button
             id="monthly-today-btn"
-            className="review-nav-btn review-nav-btn--center"
+            className={`review-nav-btn review-nav-btn--center ${isCurrentMonth ? 'is-active' : ''}`}
             onClick={goToday}
             style={{
               background: isCurrentMonth
@@ -469,7 +473,7 @@ export default function MonthlyReview() {
               return (
                 <div
                   key={i}
-                  className="heatmap-cell"
+                  className={`heatmap-cell ${hasData ? getScoreTone(score) : 'is-empty'}`}
                   title={`${format(new Date(d.date + 'T12:00:00'), 'EEE, MMM d')}: ${score} pts`}
                   style={{
                     width: 36, height: 44, borderRadius: '8px',

@@ -50,9 +50,14 @@ const getChartDefaults = () => {
   };
 };
 
-const CHART_DEFAULTS = getChartDefaults();
+const mergeScaleOptions = (base, override = {}) => ({
+  ...base,
+  ...override,
+  ticks: { ...base.ticks, ...(override.ticks || {}) },
+  grid: { ...base.grid, ...(override.grid || {}) },
+});
 
-const mergeChartOptions = (extra) => {
+const mergeChartOptions = (extra = {}) => {
   const defaults = getChartDefaults();
   const merged = {
     ...defaults,
@@ -63,8 +68,8 @@ const mergeChartOptions = (extra) => {
       tooltip: { ...defaults.plugins.tooltip, ...(extra.plugins?.tooltip || {}) },
     },
     scales: {
-      x: { ...defaults.scales.x, ...(extra.scales?.x || {}) },
-      y: { ...defaults.scales.y, ...(extra.scales?.y || {}) },
+      x: mergeScaleOptions(defaults.scales.x, extra.scales?.x),
+      y: mergeScaleOptions(defaults.scales.y, extra.scales?.y),
     }
   };
   return merged;
@@ -207,11 +212,9 @@ export default function WeeklyReview() {
 
   const disciplineOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
       y: {
-        ...CHART_DEFAULTS.scales.y,
         min: 0, max: 100,
-        ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 20 }
+        ticks: { stepSize: 20 }
       }
     }
   });
@@ -235,8 +238,7 @@ export default function WeeklyReview() {
 
   const expensesOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
-      y: { ...CHART_DEFAULTS.scales.y, beginAtZero: true }
+      y: { beginAtZero: true }
     },
     plugins: { legend: { display: false } }
   });
@@ -259,13 +261,10 @@ export default function WeeklyReview() {
 
   const wakingOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
       y: {
-        ...CHART_DEFAULTS.scales.y,
         reverse: true,
         min: 3, max: 12,
         ticks: {
-          ...CHART_DEFAULTS.scales.y.ticks,
           stepSize: 1,
           callback: (value) => {
             const h = Math.floor(value);
@@ -309,11 +308,9 @@ export default function WeeklyReview() {
 
   const weekendOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
       y: {
-        ...CHART_DEFAULTS.scales.y,
         min: 0, max: 1,
-        ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 1, callback: v => v === 1 ? '✓ Done' : '✗ Not Done' }
+        ticks: { stepSize: 1, callback: v => v === 1 ? '✓ Done' : '✗ Not Done' }
       }
     },
     plugins: { legend: { display: false } }
@@ -341,20 +338,18 @@ export default function WeeklyReview() {
 
   const systemOptions = mergeChartOptions({
     scales: {
-      x: { ...CHART_DEFAULTS.scales.x },
       y: {
-        ...CHART_DEFAULTS.scales.y,
         min: 0, max: 1,
-        ticks: { ...CHART_DEFAULTS.scales.y.ticks, stepSize: 1, callback: v => v === 1 ? 'Done' : '' }
+        ticks: { stepSize: 1, callback: v => v === 1 ? 'Done' : '' }
       }
     }
   });
 
   return (
-    <div className="review-page" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
+    <div className="review-page review-page--weekly" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
       {/* ── Header Navigation ─────────────────────────────────── */}
-      <div className="review-header" style={{
+      <div className="review-header review-header--weekly" style={{
         background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(245,158,11,0.05) 100%)',
         border: '1px solid rgba(0,0,0,0.08)',
         borderRadius: '20px',
@@ -410,7 +405,7 @@ export default function WeeklyReview() {
           </button>
 
           {/* Date Display Card */}
-          <div style={{
+          <div className="review-date-chip" style={{
             background: '#ffffff',
             border: '1.5px solid rgba(245,158,11,0.2)',
             borderRadius: '12px',
@@ -430,7 +425,7 @@ export default function WeeklyReview() {
 
           <button
             id="weekly-today-btn"
-            className="review-nav-btn review-nav-btn--center"
+            className={`review-nav-btn review-nav-btn--center ${isCurrentWeek ? 'is-active' : ''}`}
             onClick={goToday}
             style={{
               background: isCurrentWeek
@@ -503,7 +498,7 @@ export default function WeeklyReview() {
           return (
             <div
               key={i}
-              className="day-pill"
+              className={`day-pill ${isDayToday ? 'is-today' : ''} ${hasData ? 'has-data' : 'is-empty'}`}
               style={{
                 background: isDayToday
                   ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.08) 100%)'
@@ -532,7 +527,7 @@ export default function WeeklyReview() {
                   {score}
                 </div>
               ) : (
-                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>—</div>
+                <div className="day-empty-mark" style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>—</div>
               )}
             </div>
           );
@@ -553,7 +548,7 @@ export default function WeeklyReview() {
                   const dayDate = addDays(weekStart, i);
                   const isDayToday = isToday(dayDate);
                   return (
-                    <th key={i} style={{
+                    <th key={i} className={isDayToday ? 'is-today' : ''} style={{
                       padding: '0.85rem 0.6rem',
                       background: isDayToday ? 'rgba(16,185,129,0.05)' : 'transparent',
                       borderBottom: isDayToday ? '2px solid rgba(16,185,129,0.3)' : '2px solid transparent',
@@ -594,7 +589,7 @@ export default function WeeklyReview() {
               <tr style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
                 <td className="metric-label" style={{ padding: '0.85rem 1rem', textAlign: 'left', fontWeight: '600', color: 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>Wake-Up</td>
                 {weeklyData.map((d, i) => (
-                  <td key={i} style={{ padding: '0.85rem 0.6rem', fontSize: '0.85rem', color: 'rgba(0,0,0,0.7)', fontWeight: '500' }}>
+                  <td key={i} className="wake-time-cell" style={{ padding: '0.85rem 0.6rem', fontSize: '0.85rem', color: 'rgba(0,0,0,0.7)', fontWeight: '500' }}>
                     {d.log.morning.wakeTime || '—'}
                   </td>
                 ))}
