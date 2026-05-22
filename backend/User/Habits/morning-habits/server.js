@@ -66,7 +66,8 @@ app.post('/api/morning/:date', verifyToken, async (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const PORT = process.env.PORT || 5118;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/morning_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/morning_db?authSource=admin` : 'mongodb://mongo:27017/morning_db');
 
 mongoose.connect(MONGO_URI).then(() => console.log('Morning Habits Service: MongoDB connected')).catch(err => console.error(err));
 app.listen(PORT, () => console.log(`Morning Habits Service running on port ${PORT}`));

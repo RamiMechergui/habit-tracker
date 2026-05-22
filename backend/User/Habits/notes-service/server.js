@@ -16,7 +16,8 @@ app.use(cors({
 }));
 
 // Connect to MongoDB
-const mongoURI = process.env.MONGO_URI || 'mongodb://mongo:27017/notes_db';
+const mongoURI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/notes_db?authSource=admin` : 'mongodb://mongo:27017/notes_db');
 mongoose.connect(mongoURI)
   .then(() => console.log('Notes Service: Connected to MongoDB'))
   .catch(err => console.error('Notes Service: MongoDB connection error:', err));

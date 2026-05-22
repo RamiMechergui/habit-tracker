@@ -157,7 +157,8 @@ app.post('/api/delivery/webhook', async (req, res) => {
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5129;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/delivery_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/delivery_db?authSource=admin` : 'mongodb://mongo:27017/delivery_db');
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Delivery Service] Running on port ${PORT}`);

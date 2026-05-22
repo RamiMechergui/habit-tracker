@@ -99,7 +99,8 @@ app.post('/api/archives', verifyToken, async (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const PORT = process.env.PORT || 5108;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/archives_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/archives_db?authSource=admin` : 'mongodb://mongo:27017/archives_db');
 
 mongoose.connect(MONGO_URI).then(() => console.log('Archives Service: MongoDB connected')).catch(err => console.error(err));
 app.listen(PORT, () => console.log(`Archives Service running on port ${PORT}`));

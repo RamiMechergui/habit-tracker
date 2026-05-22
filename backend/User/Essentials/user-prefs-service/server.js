@@ -68,7 +68,8 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'user-prefs-
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5130;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/user_prefs_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/user_prefs_db?authSource=admin` : 'mongodb://mongo:27017/user_prefs_db');
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('[User Prefs Service] MongoDB connected'))

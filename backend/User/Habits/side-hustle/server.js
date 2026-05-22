@@ -58,7 +58,8 @@ app.post('/api/hustle/:date', verifyToken, async (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const PORT = process.env.PORT || 5122;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/hustle_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/hustle_db?authSource=admin` : 'mongodb://mongo:27017/hustle_db');
 
 mongoose.connect(MONGO_URI).then(() => console.log('Side Hustle Service: MongoDB connected')).catch(err => console.error(err));
 app.listen(PORT, () => console.log(`Side Hustle Service running on port ${PORT}`));

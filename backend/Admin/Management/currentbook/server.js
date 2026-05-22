@@ -148,7 +148,8 @@ app.put('/api/currentbook', verifyToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5107;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/currentbook_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/currentbook_db?authSource=admin` : 'mongodb://mongo:27017/currentbook_db');
 
 mongoose.connect(MONGO_URI).then(() => console.log('CurrentBook Service: MongoDB connected')).catch(err => console.error(err));
 app.listen(PORT, () => console.log(`CurrentBook Service running on port ${PORT}`));

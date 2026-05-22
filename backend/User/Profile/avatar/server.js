@@ -174,7 +174,8 @@ app.use((err, req, res, next) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5111;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/avatar_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/avatar_db?authSource=admin` : 'mongodb://mongo:27017/avatar_db');
 
 mongoose
   .connect(MONGO_URI)

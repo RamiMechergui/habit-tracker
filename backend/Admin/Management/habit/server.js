@@ -75,7 +75,8 @@ app.post('/api/habits/:date', verifyToken, async (req, res) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const PORT = process.env.PORT || 5002;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/habit_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/habit_db?authSource=admin` : 'mongodb://mongo:27017/habit_db');
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Habit Service: MongoDB connected'))

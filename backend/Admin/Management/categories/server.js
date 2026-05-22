@@ -177,7 +177,8 @@ app.put('/api/categories/:category', verifyToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5110;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/categories_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/categories_db?authSource=admin` : 'mongodb://mongo:27017/categories_db');
 
 mongoose.connect(MONGO_URI).then(() => console.log('Categories Service: MongoDB connected')).catch(err => console.error(err));
 app.listen(PORT, () => console.log(`Categories Service running on port ${PORT}`));

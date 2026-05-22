@@ -91,7 +91,8 @@ app.put('/api/settings', verifyToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5109;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/settings_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/settings_db?authSource=admin` : 'mongodb://mongo:27017/settings_db');
 
 mongoose.connect(MONGO_URI).then(() => console.log('Settings Service: MongoDB connected')).catch(err => console.error(err));
 app.listen(PORT, () => console.log(`Settings Service running on port ${PORT}`));
