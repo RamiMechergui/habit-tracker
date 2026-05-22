@@ -8,8 +8,9 @@ import CircularTracker from '../components/CircularTracker';
 // ── Shared chart defaults (theme-aware) ───────────────────────────
 const getChartDefaults = () => {
   const isDarkTheme = !document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme') === 'dark';
-  const textColor = isDarkTheme ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.7)';
-  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDarkTheme ? 'rgba(255,255,255,0.82)' : 'rgba(15,23,42,0.78)';
+  const gridColor = isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.1)';
+  const axisColor = isDarkTheme ? 'rgba(255,255,255,0.42)' : 'rgba(15,23,42,0.38)';
   const tooltipBg = isDarkTheme ? 'rgba(15,15,20,0.95)' : '#ffffff';
   const tooltipText = isDarkTheme ? '#fff' : '#0f172a';
   const tooltipBorder = isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
@@ -35,12 +36,14 @@ const getChartDefaults = () => {
     },
     scales: {
       x: {
-        ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 16 },
-        grid: { color: gridColor }
+        ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 16, padding: 8 },
+        grid: { color: gridColor, tickColor: axisColor, drawTicks: true },
+        border: { display: true, color: axisColor, width: 1 }
       },
       y: {
-        ticks: { color: textColor, font: { size: 11 } },
-        grid: { color: gridColor }
+        ticks: { color: textColor, font: { size: 11, weight: '600' }, padding: 10 },
+        grid: { color: gridColor, tickColor: axisColor, drawTicks: true, tickLength: 8 },
+        border: { display: true, color: axisColor, width: 2 }
       }
     }
   };
@@ -51,6 +54,7 @@ const mergeScaleOptions = (base, override = {}) => ({
   ...override,
   ticks: { ...base.ticks, ...(override.ticks || {}) },
   grid: { ...base.grid, ...(override.grid || {}) },
+  border: { ...base.border, ...(override.border || {}) },
 });
 
 const mergeChartOptions = (extra = {}) => {
