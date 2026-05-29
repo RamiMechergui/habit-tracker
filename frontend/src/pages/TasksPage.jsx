@@ -21,8 +21,8 @@ import {
   ChevronLeft, ChevronRight, Search, FileDown,
 } from 'lucide-react';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 
 import DailyTimeline     from '../components/timeline/DailyTimeline';
 import TaskBottomSheet   from '../components/timeline/TaskBottomSheet';
@@ -46,7 +46,7 @@ const VIEW_OPTIONS = [
 
 // ── Page Component ────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  const { getLog, saveLog, logs, scheduleTaskReminder, cancelTaskReminder, getVirtualTasksForDate, recurringTasks } = useHabits();
+  const { getLog, saveLog, logs, expenseCategories, scheduleTaskReminder, cancelTaskReminder, getVirtualTasksForDate, recurringTasks } = useHabits();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const queryDate = searchParams.get('date');
@@ -239,181 +239,334 @@ export default function TasksPage() {
     setTimelineView('daily');
   }, []);
 
-  const handleDownloadPDF = useCallback(() => {
+  const handleDownloadPDF = useCallback(async () => {
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const reportDateStr = format(parseISO(date), 'MMMM d, yyyy');
-      
-      // Theme colors (Midnight/Navy brand styles)
-      const primaryColor = [15, 23, 42]; // deep slate
-      const accentColor = [99, 102, 241]; // indigo
-      
-      // Page background
+
+      // ── Brand colours ─────────────────────────────────────────────
+      const C = {
+        navy:    [15,  23,  42],
+        indigo:  [99, 102, 241],
+        emerald: [16, 185, 129],
+        red:     [239, 68,  68],
+        amber:   [245,158,  11],
+        slate:   [71,  85, 105],
+        light:   [241,245, 249],
+        white:   [255,255, 255],
+        muted:   [148,163, 184],
+        border:  [226,232, 240],
+      };
+
+      // ── Helper: draw footer on current page ───────────────────────
+      const drawFooter = (pageNum, totalPages) => {
+        doc.setDrawColor(...C.border);
+        doc.line(14, 284, 196, 284);
+        doc.setFontSize(7.5);
+        doc.setTextColor(...C.muted);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Evolvio · Daily Habits Report · Generated ${new Date().toLocaleDateString()}`, 14, 289);
+        doc.text(`Page ${pageNum} of ${totalPages}`, 196, 289, { align: 'right' });
+      };
+
+      // ═══════════════════════════════════════════════════════════════
+      // PAGE 1 — HEADER
+      // ═══════════════════════════════════════════════════════════════
+
+      // Background
       doc.setFillColor(248, 250, 252);
       doc.rect(0, 0, 210, 297, 'F');
-      
-      // Header Banner
-      doc.setFillColor(...primaryColor);
-      doc.rect(0, 0, 210, 42, 'F');
-      
-      // Accent line
-      doc.setFillColor(...accentColor);
-      doc.rect(0, 42, 210, 4, 'F');
-      
-      // Brand Title
-      doc.setTextColor(255, 255, 255);
+
+      // Dark header band
+      doc.setFillColor(...C.navy);
+      doc.rect(0, 0, 210, 46, 'F');
+
+      // Indigo accent stripe
+      doc.setFillColor(...C.indigo);
+      doc.rect(0, 46, 210, 3.5, 'F');
+
+      // ── Logo (attempt to load /logo_circle.png) ────────────────────
+      try {
+        const imgData = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width  = img.naturalWidth  || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          };
+          img.onerror = reject;
+          img.src = '/logo_circle.png';
+        });
+        doc.addImage(imgData, 'PNG', 174, 6, 28, 28);
+      } catch {
+        // fallback – draw a simple circle badge
+        doc.setFillColor(...C.indigo);
+        doc.circle(188, 20, 13, 'F');
+        doc.setTextColor(...C.white);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('E', 188, 23, { align: 'center' });
+      }
+
+      // App name
+      doc.setTextColor(...C.white);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(22);
-      doc.text('HABIT TRACKER', 16, 20);
-      
+      doc.text('EVOLVIO', 14, 22);
+
       // Subtitle
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setTextColor(203, 213, 225);
-      doc.text('Daily Focus & Task Performance Report', 16, 28);
-      
-      // Date in Header (Right aligned)
-      doc.setTextColor(255, 255, 255);
+      doc.text('Daily Habits & Task Performance Report', 14, 30);
+
+      // Date chip (right side)
+      doc.setFillColor(255, 255, 255, 0.12);
+      doc.setDrawColor(255, 255, 255, 0.2);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(reportDateStr, 194, 25, { align: 'right' });
-      
-      // Summary Metrics Card
-      const cardY = 56;
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(16, cardY, 178, 30, 3, 3, 'FD');
-      
-      // Card vertical accent line
-      doc.setFillColor(...accentColor);
-      doc.rect(16, cardY, 3, 30, 'F');
-      
-      // Progress stats calculations
-      const total = tasks.length;
+      doc.setFontSize(10);
+      doc.setTextColor(...C.white);
+      doc.text(reportDateStr, 196, 38, { align: 'right' });
+
+      // ── STATS CARD ─────────────────────────────────────────────────
+      const statsY = 58;
+      const total     = tasks.length;
       const completed = tasks.filter(t => t.status === 'Completed').length;
-      const missed = tasks.filter(t => t.status === 'Missed').length;
-      const pending = tasks.filter(t => !t.status || t.status === 'Pending').length;
-      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-      
-      // Metrics text placement
-      doc.setTextColor(71, 85, 105);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('TOTAL TASKS', 26, cardY + 11);
+      const missed    = tasks.filter(t => t.status === 'Missed').length;
+      const delayed   = tasks.filter(t => t.status === 'Delayed').length;
+      const pending   = tasks.filter(t => !t.status || t.status === 'Pending').length;
+      const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      // White card
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.border);
+      doc.roundedRect(14, statsY, 182, 36, 3, 3, 'FD');
+
+      // Left accent bar
+      doc.setFillColor(...C.indigo);
+      doc.roundedRect(14, statsY, 4, 36, 2, 0, 'F');
+
+      // Stat columns
+      const stats = [
+        { label: 'TOTAL',     value: String(total),            color: C.navy    },
+        { label: 'DONE',      value: `${completed} (${pct}%)`, color: C.emerald },
+        { label: 'MISSED',    value: String(missed),           color: C.red     },
+        { label: 'DELAYED',   value: String(delayed),          color: C.indigo  },
+        { label: 'PENDING',   value: String(pending),          color: C.amber   },
+      ];
+      stats.forEach((s, i) => {
+        const x = 24 + i * 36;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...C.slate);
+        doc.text(s.label, x, statsY + 13);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(...s.color);
+        doc.text(s.value, x, statsY + 25);
+      });
+
+      // ── PROGRESS BAR ───────────────────────────────────────────────
+      const pbY = statsY + 43;
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(...primaryColor);
-      doc.text(String(total), 26, cardY + 22);
-      
-      doc.setTextColor(71, 85, 105);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('COMPLETED', 66, cardY + 11);
+      doc.setTextColor(...C.navy);
+      doc.text(`Completion: ${pct}%`, 14, pbY);
+      // Track
+      doc.setFillColor(...C.light);
+      doc.roundedRect(14, pbY + 3, 182, 5, 2, 2, 'F');
+      // Fill
+      if (pct > 0) {
+        doc.setFillColor(...C.indigo);
+        doc.roundedRect(14, pbY + 3, 182 * (pct / 100), 5, 2, 2, 'F');
+      }
+
+      // ── TASK TABLE ─────────────────────────────────────────────────
+      const tableStartY = pbY + 16;
+
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(16, 185, 129); // emerald
-      doc.text(`${completed} (${pct}%)`, 66, cardY + 22);
-      
-      doc.setTextColor(71, 85, 105);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('MISSED', 116, cardY + 11);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(239, 68, 68); // rose/red
-      doc.text(String(missed), 116, cardY + 22);
-      
-      doc.setTextColor(71, 85, 105);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('PENDING', 156, cardY + 11);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(245, 158, 11); // amber
-      doc.text(String(pending), 156, cardY + 22);
-      
-      // Section title: Tasks Table
-      doc.setTextColor(...primaryColor);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text('Detailed Task List', 16, cardY + 44);
-      
-      // Table data mapping
-      const tableRows = tasks.map((t, idx) => [
+      doc.setFontSize(11);
+      doc.setTextColor(...C.navy);
+      doc.text('Detailed Task Log', 14, tableStartY);
+
+      const taskRows = tasks.map(t => [
         t.time || '--:--',
         t.title || 'Untitled Task',
         t.category || 'Personal',
-        (t.priority || 'medium').toUpperCase(),
-        t.status || 'Pending'
+        (t.priority || 'medium').charAt(0).toUpperCase() + (t.priority || 'medium').slice(1),
+        t.status || 'Pending',
+        t.duration ? `${t.duration}m` : '—',
       ]);
-      
+
       autoTable(doc, {
-        startY: cardY + 48,
-        margin: { left: 16, right: 16 },
-        head: [['Time', 'Task Description', 'Category', 'Priority', 'Status']],
-        body: tableRows,
+        startY: tableStartY + 4,
+        margin: { left: 14, right: 14 },
+        head: [['Time', 'Task', 'Category', 'Priority', 'Status', 'Dur.']],
+        body: taskRows.length > 0 ? taskRows : [['—', 'No tasks logged for this day', '', '', '', '']],
         theme: 'grid',
         headStyles: {
-          fillColor: primaryColor,
-          textColor: [255, 255, 255],
+          fillColor: C.navy,
+          textColor: C.white,
           fontStyle: 'bold',
-          halign: 'left',
-          fontSize: 9,
-          cellPadding: 5
+          fontSize: 8.5,
+          cellPadding: 4,
         },
         bodyStyles: {
-          fontSize: 8.5,
+          fontSize: 8,
           textColor: [51, 65, 85],
-          cellPadding: 4
+          cellPadding: 3.5,
         },
-        alternateRowStyles: {
-          fillColor: [241, 245, 249]
-        },
+        alternateRowStyles: { fillColor: C.light },
         columnStyles: {
-          0: { cellWidth: 20 },
+          0: { cellWidth: 18 },
           1: { cellWidth: 'auto' },
-          2: { cellWidth: 32 },
+          2: { cellWidth: 28 },
           3: { cellWidth: 22 },
-          4: { cellWidth: 28, fontStyle: 'bold' }
+          4: { cellWidth: 24, fontStyle: 'bold' },
+          5: { cellWidth: 14, halign: 'center' },
         },
         didParseCell: (data) => {
           if (data.section === 'body' && data.column.index === 4) {
-            const status = data.cell.raw;
-            if (status === 'Completed') {
-              data.cell.styles.textColor = [16, 185, 129]; // emerald green
-            } else if (status === 'Missed') {
-              data.cell.styles.textColor = [239, 68, 68]; // red
-            } else if (status === 'Pending') {
-              data.cell.styles.textColor = [245, 158, 11]; // amber
-            } else if (status === 'Delayed') {
-              data.cell.styles.textColor = [99, 102, 241]; // indigo
-            }
+            const s = data.cell.raw;
+            if (s === 'Completed') data.cell.styles.textColor = C.emerald;
+            else if (s === 'Missed')    data.cell.styles.textColor = C.red;
+            else if (s === 'Pending')   data.cell.styles.textColor = C.amber;
+            else if (s === 'Delayed')   data.cell.styles.textColor = C.indigo;
           }
-        }
+          if (data.section === 'body' && data.column.index === 3) {
+            const p = data.cell.raw?.toLowerCase();
+            if (p === 'critical') data.cell.styles.textColor = C.red;
+            else if (p === 'High') data.cell.styles.textColor = C.amber;
+          }
+        },
       });
-      
-      // Footer text on every page
+
+      // ── DAILY EXPENSE SECTION ──────────────────────────────────────
+      const dailyLog    = logs[date] || {};
+      const expenses    = (dailyLog.expenses || []).filter(e => parseFloat(e.amount) > 0);
+      const totalSpent  = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+      // Category breakdown
+      const catMap = {};
+      expenses.forEach(e => {
+        const cat = e.category || 'Other';
+        catMap[cat] = (catMap[cat] || 0) + (parseFloat(e.amount) || 0);
+      });
+      const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+
+      const expY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : 180;
+
+      // Check if we need a new page for expense section
+      const needsNewPage = expY > 230;
+      if (needsNewPage) {
+        doc.addPage();
+        doc.setFillColor(248, 250, 252);
+        doc.rect(0, 0, 210, 297, 'F');
+      }
+
+      const expSectionY = needsNewPage ? 16 : expY;
+
+      // Section header bar
+      doc.setFillColor(...C.navy);
+      doc.roundedRect(14, expSectionY, 182, 9, 2, 2, 'F');
+      doc.setTextColor(...C.white);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('💰  Daily Expense Report', 18, expSectionY + 6.2);
+
+      // Total spent badge (right)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(`Total: ${totalSpent.toFixed(3)} TND`, 196, expSectionY + 6.2, { align: 'right' });
+
+      if (expenses.length === 0) {
+        // No expenses
+        doc.setFillColor(...C.white);
+        doc.setDrawColor(...C.border);
+        doc.roundedRect(14, expSectionY + 12, 182, 14, 2, 2, 'FD');
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(...C.muted);
+        doc.text('No expenses recorded for this day.', 105, expSectionY + 21, { align: 'center' });
+      } else {
+        // Category summary chips
+        let chipX = 14;
+        const chipY = expSectionY + 14;
+        catRows.slice(0, 6).forEach(([cat, amt]) => {
+          const label = `${cat}: ${amt.toFixed(3)} TND`;
+          const w = Math.min(doc.getTextWidth(label) + 8, 60);
+          if (chipX + w > 196) return; // skip if too wide
+          doc.setFillColor(...C.light);
+          doc.setDrawColor(...C.border);
+          doc.roundedRect(chipX, chipY, w, 7, 1.5, 1.5, 'FD');
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...C.slate);
+          doc.text(label, chipX + 4, chipY + 5);
+          chipX += w + 3;
+        });
+
+        // Expense detail table
+        const expenseRows = expenses.map(e => [
+          e.time || '--:--',
+          e.category || 'Other',
+          e.desc || 'No description',
+          `${parseFloat(e.amount).toFixed(3)} TND`,
+        ]);
+
+        autoTable(doc, {
+          startY: chipY + 11,
+          margin: { left: 14, right: 14 },
+          head: [['Time', 'Category', 'Description', 'Amount']],
+          body: expenseRows,
+          foot: [['', '', 'TOTAL', `${totalSpent.toFixed(3)} TND`]],
+          theme: 'grid',
+          headStyles: {
+            fillColor: [30, 41, 59],
+            textColor: C.white,
+            fontStyle: 'bold',
+            fontSize: 8.5,
+            cellPadding: 4,
+          },
+          bodyStyles: {
+            fontSize: 8,
+            textColor: [51, 65, 85],
+            cellPadding: 3.5,
+          },
+          footStyles: {
+            fillColor: C.navy,
+            textColor: C.white,
+            fontStyle: 'bold',
+            fontSize: 9,
+            cellPadding: 4,
+          },
+          alternateRowStyles: { fillColor: C.light },
+          columnStyles: {
+            0: { cellWidth: 18 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 'auto' },
+            3: { cellWidth: 36, halign: 'right', fontStyle: 'bold' },
+          },
+        });
+      }
+
+      // ── FOOTER ON ALL PAGES ────────────────────────────────────────
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184);
-        
-        // Footer divider
-        doc.setDrawColor(226, 232, 240);
-        doc.line(16, 285, 194, 285);
-        
-        // Page numbers & generated info
-        doc.text(`Generated by Habit Tracker • ${new Date().toLocaleDateString()}`, 16, 290);
-        doc.text(`Page ${i} of ${pageCount}`, 194, 290, { align: 'right' });
+        drawFooter(i, pageCount);
       }
-      
-      // Download file
-      doc.save(`HabitTracker_Report_${date}.pdf`);
+
+      // ── SAVE ───────────────────────────────────────────────────────
+      doc.save(`Evolvio_DailyReport_${date}.pdf`);
     } catch (err) {
-      console.error('Error generating PDF report:', err);
+      console.error('[PDF] Error generating report:', err);
+      alert('Could not generate PDF. Please try again.');
     }
-  }, [date, tasks]);
+  }, [date, tasks, logs]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
