@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar } from 'lucide-react';
+import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function DailyLog() {
   const { getLog, saveLog, expenseCategories = ['Food', 'Transportation', 'Entertainment', 'Smoking'], currentBook, getBookProgress, logs } = useHabits();
@@ -287,6 +290,291 @@ export default function DailyLog() {
   // Now strictly read-only based on expense entries
   const totalCigarettes = expenseCigs;
 
+  const handleDownloadPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const reportDateStr = format(new Date(date + 'T12:00:00'), 'EEEE, MMMM d, yyyy');
+      
+      // Theme colors
+      const primaryColor = [15, 23, 42]; // deep slate
+      const accentColor = [245, 158, 11]; // amber / sunset gold
+      
+      // Background
+      doc.setFillColor(248, 250, 252);
+      doc.rect(0, 0, 210, 297, 'F');
+      
+      // Top Header Banner
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 42, 'F');
+      doc.setFillColor(...accentColor);
+      doc.rect(0, 42, 210, 4, 'F');
+      
+      // Title
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('DAILY LOG REPORT', 16, 20);
+      
+      // Subtitle
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(203, 213, 225);
+      doc.text('Evolvia Daily Habits & Performance Analytics', 16, 28);
+      
+      // Date (Right-aligned)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(255, 255, 255);
+      doc.text(reportDateStr, 194, 25, { align: 'right' });
+      
+      // Metrics Card (Score & Rank)
+      const cardY = 54;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(16, cardY, 178, 24, 3, 3, 'FD');
+      
+      doc.setFillColor(...accentColor);
+      doc.rect(16, cardY, 3, 24, 'F');
+      
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('DAILY SCORE', 26, cardY + 9);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(...primaryColor);
+      doc.text(`${dynamicTotalScore} / 100`, 26, cardY + 18);
+      
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('DAILY RANK', 76, cardY + 9);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      const rankColor = dynamicRank === 'S' || dynamicRank === 'A' ? [16, 185, 129] : [245, 158, 11];
+      doc.setTextColor(...rankColor);
+      doc.text(dynamicRank, 76, cardY + 18);
+      
+      // Book progress info if present
+      let bookText = 'No Book Active';
+      if (log.books?.name) {
+        bookText = `${log.books.name} (${log.books.page ? `Page ${log.books.page}` : 'Active'})`;
+      }
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('BOOK PROGRESS', 116, cardY + 9);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...primaryColor);
+      doc.text(bookText, 116, cardY + 18, { maxWidth: 70 });
+      
+      // Habits and Avoided Bad Habits Table
+      const tableData = [];
+      
+      // Morning Section
+      tableData.push([{ content: '☀️ MORNING HABITS', colSpan: 3, styles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold' } }]);
+      const morningItems = [
+        { key: 'wakeTime', label: 'Wake up time', pts: '14pts' },
+        { key: 'meditate', label: 'Meditate 3 mins', pts: '1pt' },
+        { key: 'bed', label: 'Make bed', pts: '2pts' },
+        { key: 'teeth', label: 'Brush teeth & tongue', pts: '2pts' },
+        { key: 'shower', label: 'Scottish Shower', pts: '8pts' },
+        { key: 'gel', label: 'Apply hair gel', pts: '1pt' },
+        { key: 'perfume', label: 'Put on perfume', pts: '2pts' }
+      ];
+      morningItems.forEach(item => {
+        let status = 'Pending';
+        if (item.key === 'wakeTime') {
+          status = log.morning[item.key] ? `Completed (${log.morning[item.key]})` : 'Pending';
+        } else {
+          status = log.morning[item.key] ? 'Completed' : 'Pending';
+        }
+        tableData.push([item.label, item.pts, status]);
+      });
+      
+      // Night Section
+      tableData.push([{ content: '🌙 NIGHT HABITS', colSpan: 3, styles: { fillColor: [224, 231, 255], textColor: [55, 48, 163], fontStyle: 'bold' } }]);
+      const nightItems = [
+        { key: 'gym', label: 'Gym & Laundry', pts: '10pts' },
+        { key: 'cleanTable', label: 'Clean small table', pts: '1pt' },
+        { key: 'orgTable', label: 'Organize PC table', pts: '1pt' },
+        { key: 'teeth', label: 'Brush teeth & tongue', pts: '2pts' },
+        { key: 'shave', label: 'Shave beard', pts: '2pts' },
+        { key: 'washFace', label: 'Wash face', pts: '1pt' },
+        { key: 'hotShower', label: 'Hot shower', pts: '4pts' },
+        { key: 'hygiene', label: 'Hygiene areas', pts: '2pts' },
+        { key: 'fingerNails', label: 'Trim fingernails', pts: '1pt' },
+        { key: 'toeNails', label: 'Trim toenails', pts: '1pt' },
+        { key: 'wiseSpend', label: 'Wise spending', pts: '1pt' },
+        { key: 'saves', label: '1 TND Saved', pts: '1pt' },
+        { key: 'fillApp', label: 'Fill web app', pts: '3pts' }
+      ];
+      nightItems.forEach(item => {
+        tableData.push([item.label, item.pts, log.night[item.key] ? 'Completed' : 'Pending']);
+      });
+
+      // Avoided Bad Habits Section
+      tableData.push([{ content: '🛡️ BAD HABITS AVOIDED', colSpan: 3, styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold' } }]);
+      const badItems = [
+        { key: 'smoking', label: 'Smoking Avoided', pts: '10pts', extra: totalCigarettes ? `(${totalCigarettes} cigs)` : '' },
+        { key: 'sexual', label: 'Sexual discipline Avoided', pts: '4pts' },
+        { key: 'social', label: 'Social Media Avoided', pts: '2pts', extra: log.bad?.social?.min ? `(${log.bad.social.min} min)` : '' },
+        { key: 'phone', label: 'Phone Usage Avoided', pts: '6pts', extra: log.bad?.phone?.min ? `(${log.bad.phone.min} min)` : '' },
+        { key: 'coffee', label: 'Coffee Avoided', pts: '2pts' },
+        { key: 'eating', label: 'Eating out Avoided', pts: '2pts' },
+        { key: 'noSugar', label: 'No sugar Avoided', pts: '2pts' }
+      ];
+      badItems.forEach(item => {
+        const isAvoided = log.bad?.[item.key]?.checked;
+        const status = isAvoided ? `Avoided ${item.extra}`.trim() : `Not Avoided ${item.extra}`.trim();
+        tableData.push([item.label, item.pts, status]);
+      });
+      
+      // Focus: Side Hustle & Video Editing
+      tableData.push([{ content: '🚀 SIDE HUSTLE & WORK', colSpan: 3, styles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: 'bold' } }]);
+      tableData.push(['Side Hustle Task', log.hustle.time || '0h', log.hustle.achieved ? `Achieved: ${log.hustle.task}` : 'Not Achieved']);
+      tableData.push(['Video Editing Task', log.video.time || '0h', log.video.achieved ? `Achieved: ${log.video.task} (${log.video.progress || 'Same'})` : 'Not Achieved']);
+      
+      autoTable(doc, {
+        startY: cardY + 32,
+        margin: { left: 16, right: 16 },
+        head: [['Habit / Activity Detail', 'Weight', 'Status / Result']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 9,
+          cellPadding: 4
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [51, 65, 85],
+          cellPadding: 3
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 28 },
+          2: { cellWidth: 65 }
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 2) {
+            const val = String(data.cell.raw);
+            if (val.includes('Completed') || val.includes('Avoided') || val.includes('Achieved')) {
+              data.cell.styles.textColor = [16, 185, 129]; // emerald green
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val.includes('Not Avoided')) {
+              data.cell.styles.textColor = [239, 68, 68]; // red
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val === 'Pending' || val.includes('Not Achieved')) {
+              data.cell.styles.textColor = [100, 116, 139]; // gray
+            }
+          }
+        }
+      });
+      
+      // Let's add hustle and video lessons if any exist!
+      let currentY = doc.previousAutoTable.finalY + 12;
+      const allLessons = [];
+      if (Array.isArray(log.hustle.lessons)) {
+        log.hustle.lessons.forEach(l => allLessons.push({ type: 'Hustle', lesson: l }));
+      }
+      if (Array.isArray(log.video.lessons)) {
+        log.video.lessons.forEach(l => allLessons.push({ type: 'Video', lesson: l }));
+      }
+      
+      if (allLessons.length > 0) {
+        // Section title
+        doc.setTextColor(...primaryColor);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('Key Lessons Learned Today', 16, currentY);
+        currentY += 4;
+        
+        const lessonRows = allLessons.map((l, i) => [`${i + 1}`, l.type, l.lesson]);
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: 16, right: 16 },
+          head: [['#', 'Category', 'Lesson Description']],
+          body: lessonRows,
+          theme: 'striped',
+          headStyles: { fillColor: [100, 116, 139], textColor: [255, 255, 255] },
+          bodyStyles: { fontSize: 8, textColor: [51, 65, 85] },
+          columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 'auto' }
+          }
+        });
+        currentY = doc.previousAutoTable.finalY + 12;
+      }
+      
+      // Expenses table
+      const expenses = Array.isArray(log.expenses) ? log.expenses.filter(e => parseFloat(e.amount) > 0) : [];
+      if (expenses.length > 0) {
+        if (currentY > 230) {
+          doc.addPage();
+          currentY = 20;
+        }
+        
+        doc.setTextColor(...primaryColor);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('Detailed Expenses Log', 16, currentY);
+        currentY += 4;
+        
+        const expenseRows = expenses.map(e => [
+          e.time || '--:--',
+          e.desc || 'No description',
+          e.category || 'Other',
+          `${parseFloat(e.amount).toFixed(3)} TND`
+        ]);
+        
+        const totalSpent = expenses.reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3);
+        expenseRows.push([{ content: 'Total Spending Today', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `${totalSpent} TND`, styles: { fontStyle: 'bold', textColor: [245, 158, 11] } }]);
+        
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: 16, right: 16 },
+          head: [['Time', 'Expense Description', 'Category', 'Amount']],
+          body: expenseRows,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255] },
+          bodyStyles: { fontSize: 8, textColor: [51, 65, 85] },
+          columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 32 }
+          }
+        });
+      }
+      
+      // Footer text on every page
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        
+        // Footer divider
+        doc.setDrawColor(226, 232, 240);
+        doc.line(16, 285, 194, 285);
+        
+        // Page numbers & generated info
+        doc.text(`Generated by Evolvia Habit Tracker • ${new Date().toLocaleDateString()}`, 16, 290);
+        doc.text(`Page ${i} of ${pageCount}`, 194, 290, { align: 'right' });
+      }
+      
+      // Download file
+      doc.save(`Evolvia_DailyLog_${date}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF report:', err);
+    }
+  };
+
   return (
     <div>
       {/* Future Date Warning */}
@@ -317,6 +605,15 @@ export default function DailyLog() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: '140px' }} />
+          <button
+            className="hub-pdf-btn"
+            onClick={handleDownloadPDF}
+            title="Download Daily Log PDF Report"
+            style={{ height: '38px', padding: '0 12px' }}
+          >
+            <Download size={13} aria-hidden="true" />
+            <span>Export PDF</span>
+          </button>
           <div style={{ minWidth: '90px', textAlign: 'right', fontSize: '0.9rem', color: saveStatus === 'Error' ? '#ef4444' : saveStatus === 'Saved' ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
             {saveStatus === 'Saved' && <CheckCircle2 size={16} />}
             {saveStatus === 'Saving...' && <div style={{ width: 14, height: 14, border: '2px solid #94a3b8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'adm-spin 1s linear infinite' }} />}
