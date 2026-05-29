@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 
 export default function DailyLog() {
   const { getLog, saveLog, expenseCategories = ['Food', 'Transportation', 'Entertainment', 'Smoking'], currentBook, getBookProgress, logs } = useHabits();
@@ -293,7 +293,7 @@ export default function DailyLog() {
   const handleDownloadPDF = () => {
     try {
       const doc = new jsPDF();
-      const reportDateStr = format(new Date(date + 'T12:00:00'), 'EEEE, MMMM d, yyyy');
+      const reportDateStr = format(parseISO(date), 'EEEE, MMMM d, yyyy');
       
       // Theme colors
       const primaryColor = [15, 23, 42]; // deep slate
@@ -460,8 +460,8 @@ export default function DailyLog() {
           2: { cellWidth: 65 }
         },
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index === 2) {
-            const val = String(data.cell.raw);
+          if (data.section === 'body' && data.column.index === 2 && data.cell) {
+            const val = data.cell.raw ? String(data.cell.raw) : '';
             if (val.includes('Completed') || val.includes('Avoided') || val.includes('Achieved')) {
               data.cell.styles.textColor = [16, 185, 129]; // emerald green
               data.cell.styles.fontStyle = 'bold';
@@ -476,7 +476,7 @@ export default function DailyLog() {
       });
       
       // Let's add hustle and video lessons if any exist!
-      let currentY = doc.previousAutoTable.finalY + 12;
+      let currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : 180;
       const allLessons = [];
       if (Array.isArray(log.hustle.lessons)) {
         log.hustle.lessons.forEach(l => allLessons.push({ type: 'Hustle', lesson: l }));
@@ -508,7 +508,7 @@ export default function DailyLog() {
             2: { cellWidth: 'auto' }
           }
         });
-        currentY = doc.previousAutoTable.finalY + 12;
+        currentY = doc.lastAutoTable.finalY + 12;
       }
       
       // Expenses table
@@ -572,6 +572,7 @@ export default function DailyLog() {
       doc.save(`Evolvia_DailyLog_${date}.pdf`);
     } catch (err) {
       console.error('Error generating PDF report:', err);
+      alert('Could not generate PDF. Please try again.');
     }
   };
 
