@@ -18,8 +18,11 @@ const safeStartOfWeek = typeof startOfWeek === 'function'
 import {
   Plus, Loader2, Bell,
   List, CalendarDays, CheckCircle2, Target, Filter, X,
-  ChevronLeft, ChevronRight, Search,
+  ChevronLeft, ChevronRight, Search, FileDown,
 } from 'lucide-react';
+
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 import DailyTimeline     from '../components/timeline/DailyTimeline';
 import TaskBottomSheet   from '../components/timeline/TaskBottomSheet';
@@ -236,6 +239,182 @@ export default function TasksPage() {
     setTimelineView('daily');
   }, []);
 
+  const handleDownloadPDF = useCallback(() => {
+    try {
+      const doc = new jsPDF();
+      const reportDateStr = format(parseISO(date), 'MMMM d, yyyy');
+      
+      // Theme colors (Midnight/Navy brand styles)
+      const primaryColor = [15, 23, 42]; // deep slate
+      const accentColor = [99, 102, 241]; // indigo
+      
+      // Page background
+      doc.setFillColor(248, 250, 252);
+      doc.rect(0, 0, 210, 297, 'F');
+      
+      // Header Banner
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 42, 'F');
+      
+      // Accent line
+      doc.setFillColor(...accentColor);
+      doc.rect(0, 42, 210, 4, 'F');
+      
+      // Brand Title
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('HABIT TRACKER', 16, 20);
+      
+      // Subtitle
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(203, 213, 225);
+      doc.text('Daily Focus & Task Performance Report', 16, 28);
+      
+      // Date in Header (Right aligned)
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(reportDateStr, 194, 25, { align: 'right' });
+      
+      // Summary Metrics Card
+      const cardY = 56;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(16, cardY, 178, 30, 3, 3, 'FD');
+      
+      // Card vertical accent line
+      doc.setFillColor(...accentColor);
+      doc.rect(16, cardY, 3, 30, 'F');
+      
+      // Progress stats calculations
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.status === 'Completed').length;
+      const missed = tasks.filter(t => t.status === 'Missed').length;
+      const pending = tasks.filter(t => !t.status || t.status === 'Pending').length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+      
+      // Metrics text placement
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('TOTAL TASKS', 26, cardY + 11);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(...primaryColor);
+      doc.text(String(total), 26, cardY + 22);
+      
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('COMPLETED', 66, cardY + 11);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(16, 185, 129); // emerald
+      doc.text(`${completed} (${pct}%)`, 66, cardY + 22);
+      
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('MISSED', 116, cardY + 11);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(239, 68, 68); // rose/red
+      doc.text(String(missed), 116, cardY + 22);
+      
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('PENDING', 156, cardY + 11);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(245, 158, 11); // amber
+      doc.text(String(pending), 156, cardY + 22);
+      
+      // Section title: Tasks Table
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text('Detailed Task List', 16, cardY + 44);
+      
+      // Table data mapping
+      const tableRows = tasks.map((t, idx) => [
+        t.time || '--:--',
+        t.title || 'Untitled Task',
+        t.category || 'Personal',
+        (t.priority || 'medium').toUpperCase(),
+        t.status || 'Pending'
+      ]);
+      
+      doc.autoTable({
+        startY: cardY + 48,
+        margin: { left: 16, right: 16 },
+        head: [['Time', 'Task Description', 'Category', 'Priority', 'Status']],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'left',
+          fontSize: 9,
+          cellPadding: 5
+        },
+        bodyStyles: {
+          fontSize: 8.5,
+          textColor: [51, 65, 85],
+          cellPadding: 4
+        },
+        alternateRowStyles: {
+          fillColor: [241, 245, 249]
+        },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 32 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 28, fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 4) {
+            const status = data.cell.raw;
+            if (status === 'Completed') {
+              data.cell.styles.textColor = [16, 185, 129]; // emerald green
+            } else if (status === 'Missed') {
+              data.cell.styles.textColor = [239, 68, 68]; // red
+            } else if (status === 'Pending') {
+              data.cell.styles.textColor = [245, 158, 11]; // amber
+            } else if (status === 'Delayed') {
+              data.cell.styles.textColor = [99, 102, 241]; // indigo
+            }
+          }
+        }
+      });
+      
+      // Footer text on every page
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        
+        // Footer divider
+        doc.setDrawColor(226, 232, 240);
+        doc.line(16, 285, 194, 285);
+        
+        // Page numbers & generated info
+        doc.text(`Generated by Habit Tracker • ${new Date().toLocaleDateString()}`, 16, 290);
+        doc.text(`Page ${i} of ${pageCount}`, 194, 290, { align: 'right' });
+      }
+      
+      // Download file
+      doc.save(`HabitTracker_Report_${date}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF report:', err);
+    }
+  }, [date, tasks]);
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="tasks-page">
@@ -374,6 +553,19 @@ export default function TasksPage() {
                   <X size={12} aria-hidden="true" />
                 </span>
               )}
+            </button>
+          )}
+
+          {/* PDF export button */}
+          {timelineView === 'daily' && (
+            <button
+              className="hub-pdf-btn"
+              onClick={handleDownloadPDF}
+              aria-label="Download Daily PDF Report"
+              title="Download PDF Report"
+            >
+              <FileDown size={13} aria-hidden="true" />
+              <span>Export PDF</span>
             </button>
           )}
 

@@ -4478,6 +4478,50 @@ label {
 .task-alert-reason-label { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
 .task-alert-prev-reason { margin: 0 0 4px; font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
 .task-alert-textarea { resize: none; min-height: 52px; font-size: 0.82rem; padding: 8px 10px; border-radius: 8px; }
+.hub-filter-clear {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 3px;
+}
+.hub-filter-clear:hover { opacity: 0.7; }
+
+/* PDF export button */
+.hub-pdf-btn {
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #a5b4fc; /* Indigo light */
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--font-sans);
+}
+.hub-pdf-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  transform: translateY(-1px);
+}
+.hub-pdf-btn:active {
+  transform: translateY(0);
+}
+[data-theme='light'] .hub-pdf-btn {
+  background: rgba(79, 70, 229, 0.06);
+  border-color: rgba(79, 70, 229, 0.15);
+  color: #4f46e5;
+}
+[data-theme='light'] .hub-pdf-btn:hover {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.25);
+  color: #4338ca;
+}
 .task-alert-actions { display: flex; gap: 8px; }
 .task-alert-btn { flex: 1; padding: 8px; font-size: 0.8rem; font-weight: 700; }
 .task-alert-btn--complete { background: rgba(255,255,255,0.06); color: var(--status-completed); border: 1px solid rgba(255,255,255,0.1); }
