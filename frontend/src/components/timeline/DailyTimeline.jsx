@@ -125,7 +125,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
     <div style={{ marginBottom: 10 }}>
       {/* Section header */}
       <div
-        className="tl-section-header"
+        className={`tl-section-header tl-section-header--${section.key}`}
         onClick={onToggle}
         role="button"
         tabIndex={0}
@@ -337,32 +337,49 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
   return (
     <div style={{ marginTop: 12 }}>
       {/* Toolbar row */}
-      <div style={{
+      <div className="tl-toolbar-row" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 10,
+        marginBottom: 14,
         flexWrap: 'wrap',
         gap: 8,
+        padding: '8px 12px',
+        borderRadius: 12,
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid var(--border)',
       }}>
-        <h3 style={{
+        <h3 className="tl-date-heading" style={{
           margin: 0,
-          fontSize: isMobile ? '0.9rem' : '1rem',
+          fontSize: isMobile ? '0.88rem' : '1rem',
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 8,
           flex: 1,
           minWidth: 0,
+          fontFamily: 'var(--font-heading)',
+          letterSpacing: '-0.01em',
         }}>
-          <span aria-hidden="true">📅</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isMobile ? 'normal' : 'nowrap' }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: 'rgba(99,102,241,0.15)',
+            border: '1px solid rgba(99,102,241,0.25)',
+            fontSize: '0.9rem',
+            flexShrink: 0,
+          }} aria-hidden="true">📅</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isMobile ? 'normal' : 'nowrap', color: 'var(--text-primary)', fontWeight: 700 }}>
             {format(new Date(date + 'T12:00:00'), isMobile ? 'EEE, MMM d' : 'EEEE, MMMM d')}
           </span>
         </h3>
 
         {/* Zoom controls */}
         {isMobile ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, background: 'rgba(255,255,255,0.04)', borderRadius: 10, border: '1px solid var(--border)', padding: '2px 4px' }}>
             <button
               className="zoom-pill"
               style={{ padding: '5px 10px', minHeight: 32 }}
@@ -372,7 +389,7 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             >
               <ZoomOut size={14} />
             </button>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, minWidth: 30, textAlign: 'center' }}>
+            <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', fontWeight: 700, minWidth: 28, textAlign: 'center' }}>
               {ZOOM_OPTIONS[zoom].label}
             </span>
             <button
