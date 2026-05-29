@@ -21,8 +21,8 @@ import {
   ChevronLeft, ChevronRight, Search, FileDown,
 } from 'lucide-react';
 
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import DailyTimeline     from '../components/timeline/DailyTimeline';
 import TaskBottomSheet   from '../components/timeline/TaskBottomSheet';
@@ -347,7 +347,7 @@ export default function TasksPage() {
         t.status || 'Pending'
       ]);
       
-      doc.autoTable({
+      autoTable(doc, {
         startY: cardY + 48,
         margin: { left: 16, right: 16 },
         head: [['Time', 'Task Description', 'Category', 'Priority', 'Status']],
