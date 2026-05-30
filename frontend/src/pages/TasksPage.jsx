@@ -475,7 +475,7 @@ export default function TasksPage() {
       doc.setTextColor(...C.white);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text('💰  Daily Expense Report', 18, expSectionY + 6.2);
+      doc.text('Daily Expense Report', 18, expSectionY + 6.2);
 
       // Total spent badge (right)
       doc.setFont('helvetica', 'bold');

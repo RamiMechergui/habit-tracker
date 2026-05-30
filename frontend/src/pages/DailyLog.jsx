@@ -373,15 +373,15 @@ export default function DailyLog() {
       const tableData = [];
       
       // Morning Section
-      tableData.push([{ content: '☀️ MORNING HABITS', colSpan: 3, styles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold' } }]);
+      tableData.push([{ content: 'MORNING HABITS', colSpan: 3, styles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold' } }]);
       const morningItems = [
-        { key: 'wakeTime', label: 'Wake up time', pts: '14pts' },
-        { key: 'meditate', label: 'Meditate 3 mins', pts: '1pt' },
-        { key: 'bed', label: 'Make bed', pts: '2pts' },
-        { key: 'teeth', label: 'Brush teeth & tongue', pts: '2pts' },
-        { key: 'shower', label: 'Scottish Shower', pts: '8pts' },
-        { key: 'gel', label: 'Apply hair gel', pts: '1pt' },
-        { key: 'perfume', label: 'Put on perfume', pts: '2pts' }
+        { key: 'wakeTime', label: '[Time] Wake up time', pts: '14pts' },
+        { key: 'meditate', label: '[Mind] Meditate 3 mins', pts: '1pt' },
+        { key: 'bed', label: '[Home] Make bed', pts: '2pts' },
+        { key: 'teeth', label: '[Care] Brush teeth & tongue', pts: '2pts' },
+        { key: 'shower', label: '[Care] Scottish Shower', pts: '8pts' },
+        { key: 'gel', label: '[Groom] Apply hair gel', pts: '1pt' },
+        { key: 'perfume', label: '[Groom] Put on perfume', pts: '2pts' }
       ];
       morningItems.forEach(item => {
         let status = 'Pending';
@@ -394,36 +394,36 @@ export default function DailyLog() {
       });
       
       // Night Section
-      tableData.push([{ content: '🌙 NIGHT HABITS', colSpan: 3, styles: { fillColor: [224, 231, 255], textColor: [55, 48, 163], fontStyle: 'bold' } }]);
+      tableData.push([{ content: 'NIGHT HABITS', colSpan: 3, styles: { fillColor: [224, 231, 255], textColor: [55, 48, 163], fontStyle: 'bold' } }]);
       const nightItems = [
-        { key: 'gym', label: 'Gym & Laundry', pts: '10pts' },
-        { key: 'cleanTable', label: 'Clean small table', pts: '1pt' },
-        { key: 'orgTable', label: 'Organize PC table', pts: '1pt' },
-        { key: 'teeth', label: 'Brush teeth & tongue', pts: '2pts' },
-        { key: 'shave', label: 'Shave beard', pts: '2pts' },
-        { key: 'washFace', label: 'Wash face', pts: '1pt' },
-        { key: 'hotShower', label: 'Hot shower', pts: '4pts' },
-        { key: 'hygiene', label: 'Hygiene areas', pts: '2pts' },
-        { key: 'fingerNails', label: 'Trim fingernails', pts: '1pt' },
-        { key: 'toeNails', label: 'Trim toenails', pts: '1pt' },
-        { key: 'wiseSpend', label: 'Wise spending', pts: '1pt' },
-        { key: 'saves', label: '1 TND Saved', pts: '1pt' },
-        { key: 'fillApp', label: 'Fill web app', pts: '3pts' }
+        { key: 'gym', label: '[Gym] Gym & Laundry', pts: '10pts' },
+        { key: 'cleanTable', label: '[Home] Clean small table', pts: '1pt' },
+        { key: 'orgTable', label: '[Home] Organize PC table', pts: '1pt' },
+        { key: 'teeth', label: '[Care] Brush teeth & tongue', pts: '2pts' },
+        { key: 'shave', label: '[Groom] Shave beard', pts: '2pts' },
+        { key: 'washFace', label: '[Care] Wash face', pts: '1pt' },
+        { key: 'hotShower', label: '[Care] Hot shower', pts: '4pts' },
+        { key: 'hygiene', label: '[Care] Hygiene areas', pts: '2pts' },
+        { key: 'fingerNails', label: '[Care] Trim fingernails', pts: '1pt' },
+        { key: 'toeNails', label: '[Care] Trim toenails', pts: '1pt' },
+        { key: 'wiseSpend', label: '[Finance] Wise spending', pts: '1pt' },
+        { key: 'saves', label: '[Finance] 1 TND Saved', pts: '1pt' },
+        { key: 'fillApp', label: '[App] Fill web app', pts: '3pts' }
       ];
       nightItems.forEach(item => {
         tableData.push([item.label, item.pts, log.night[item.key] ? 'Completed' : 'Pending']);
       });
 
       // Avoided Bad Habits Section
-      tableData.push([{ content: '🛡️ BAD HABITS AVOIDED', colSpan: 3, styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold' } }]);
+      tableData.push([{ content: 'BAD HABITS AVOIDED', colSpan: 3, styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold' } }]);
       const badItems = [
-        { key: 'smoking', label: 'Smoking Avoided', pts: '10pts', extra: totalCigarettes ? `(${totalCigarettes} cigs)` : '' },
-        { key: 'sexual', label: 'Sexual discipline Avoided', pts: '4pts' },
-        { key: 'social', label: 'Social Media Avoided', pts: '2pts', extra: log.bad?.social?.min ? `(${log.bad.social.min} min)` : '' },
-        { key: 'phone', label: 'Phone Usage Avoided', pts: '6pts', extra: log.bad?.phone?.min ? `(${log.bad.phone.min} min)` : '' },
-        { key: 'coffee', label: 'Coffee Avoided', pts: '2pts' },
-        { key: 'eating', label: 'Eating out Avoided', pts: '2pts' },
-        { key: 'noSugar', label: 'No sugar Avoided', pts: '2pts' }
+        { key: 'smoking', label: '[Avoid] Smoking Avoided', pts: '10pts', extra: totalCigarettes ? `(${totalCigarettes} cigs)` : '' },
+        { key: 'sexual', label: '[Avoid] Sexual discipline Avoided', pts: '4pts' },
+        { key: 'social', label: '[Avoid] Social Media Avoided', pts: '2pts', extra: log.bad?.social?.min ? `(${log.bad.social.min} min)` : '' },
+        { key: 'phone', label: '[Avoid] Phone Usage Avoided', pts: '6pts', extra: log.bad?.phone?.min ? `(${log.bad.phone.min} min)` : '' },
+        { key: 'coffee', label: '[Avoid] Coffee Avoided', pts: '2pts' },
+        { key: 'eating', label: '[Avoid] Eating out Avoided', pts: '2pts' },
+        { key: 'noSugar', label: '[Avoid] No sugar Avoided', pts: '2pts' }
       ];
       badItems.forEach(item => {
         const isAvoided = log.bad?.[item.key]?.checked;
@@ -432,7 +432,7 @@ export default function DailyLog() {
       });
       
       // Focus: Side Hustle & Video Editing
-      tableData.push([{ content: '🚀 SIDE HUSTLE & WORK', colSpan: 3, styles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: 'bold' } }]);
+      tableData.push([{ content: 'SIDE HUSTLE & WORK', colSpan: 3, styles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: 'bold' } }]);
       tableData.push(['Side Hustle Task', log.hustle.time || '0h', log.hustle.achieved ? `Achieved: ${log.hustle.task}` : 'Not Achieved']);
       tableData.push(['Video Editing Task', log.video.time || '0h', log.video.achieved ? `Achieved: ${log.video.task} (${log.video.progress || 'Same'})` : 'Not Achieved']);
       
