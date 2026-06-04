@@ -14,14 +14,18 @@ const safeStartOfWeek = typeof startOfWeek === 'function'
       d.setHours(0, 0, 0, 0);
       return d;
     };
-import { Preferences } from '@capacitor/preferences';
 import * as db from './offlineDb.js';
 import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
-import { API_URL } from './config'; 
+import { API_URL, IS_NATIVE, nativeFetch, invalidateNativeTokenCache } from './config';
 
 const HabitContext = createContext();
 
 export const useHabits = () => useContext(HabitContext);
+
+// Shadow global fetch so all fetch calls in this file use the native-aware helper
+const fetch = nativeFetch;
+
+
 
 // ── Timeline prefs helpers ────────────────────────────────────
 const DEFAULT_TIMELINE_PREFS = { defaultDuration: 30, intervalGranularity: 30 };
@@ -262,6 +266,19 @@ export const HabitProvider = ({ children }) => {
   useEffect(() => {
     onSyncDone(refreshFromServer);
   }, [refreshFromServer]);
+
+  // ── Re-sync when app is foregrounded (tab focus / native resume) ─
+  // This ensures that changes made on another device (or the web app)
+  // appear immediately when the user switches back to this instance.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && user) {
+        refreshFromServer();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [user, refreshFromServer]);
 
   // ── Initialize app: ALWAYS load offline data first ─────────
   useEffect(() => {
@@ -740,6 +757,7 @@ export const HabitProvider = ({ children }) => {
     
     // Clear secure local storage
     await Preferences.remove({ key: 'user_session' });
+    invalidateNativeTokenCache();
     
     setUser(null);
     setLogs({});

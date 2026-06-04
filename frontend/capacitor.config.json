@@ -1,5 +1,21 @@
 {
   "appId": "com.evolvia.habittracker",
   "appName": "Evolvia",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "hostname": "app.evolvia.app",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorCookies": {
+      "enabled": true
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }
+

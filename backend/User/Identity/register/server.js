@@ -82,8 +82,8 @@ app.post('/api/register', async (req, res) => {
     const token = jwt.sign({ id: user.userId, email: user.email }, process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod', { expiresIn: '30d' });
     res.cookie('habitToken', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
     

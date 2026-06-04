@@ -7,7 +7,10 @@
 
 import { dequeueSyncAll, removeSyncItem, clearSyncQueue } from './offlineDb.js';
 
-import { API_URL } from './config.js';
+import { API_URL, nativeFetch } from './config.js';
+
+// Shadow global fetch so all sync operations use the native-aware helper
+const fetch = nativeFetch;
 
 let isSyncing = false;
 let onSyncComplete = null; // callback set by Store to refresh state
