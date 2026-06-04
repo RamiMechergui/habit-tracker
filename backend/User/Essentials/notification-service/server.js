@@ -287,7 +287,8 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', clients: sseClients.s
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5128;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/notifications_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/notifications_db?authSource=admin` : 'mongodb://mongo:27017/notifications_db');
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Essentials Service] Running on port ${PORT}`);

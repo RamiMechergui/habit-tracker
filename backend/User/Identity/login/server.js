@@ -248,7 +248,8 @@ app.delete('/api/login/admin/users/:userId', verifyAdmin, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5101;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/auth_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/auth_db?authSource=admin` : 'mongodb://mongo:27017/auth_db');
 
 const maskedURI = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@');
 console.log(`[Login Service] Attempting connection to MongoDB at: ${maskedURI}`);

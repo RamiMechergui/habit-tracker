@@ -178,7 +178,8 @@ app.get('/health', (req, res) => res.status(200).send('OK'));
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5131;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/tasks_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/tasks_db?authSource=admin` : 'mongodb://mongo:27017/tasks_db');
 
 mongoose.connect(MONGO_URI)
   .then(() => {

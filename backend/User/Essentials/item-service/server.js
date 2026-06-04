@@ -180,7 +180,8 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'item-servic
 
 // ── Start ──────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5127;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/essentials_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/essentials_db?authSource=admin` : 'mongodb://mongo:27017/essentials_db');
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('[Item Service] MongoDB connected'))

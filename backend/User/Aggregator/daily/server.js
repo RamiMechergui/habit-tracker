@@ -11,7 +11,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/daily_db';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGO_URI ||
+  (process.env.MONGOHOST ? `mongodb://${process.env.MONGOUSER}:${process.env.MONGOPASSWORD}@${process.env.MONGOHOST}:${process.env.MONGOPORT}/daily_db?authSource=admin` : 'mongodb://mongo:27017/daily_db');
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Daily Aggregator Service: MongoDB connected'))
   .catch(err => console.error('Daily Aggregator Service: MongoDB connection error:', err));
