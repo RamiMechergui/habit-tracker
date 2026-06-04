@@ -31,8 +31,9 @@ app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', creden
 const verifyToken = (req, res, next) => {
   let token;
   if (req.cookies.habitToken) token = req.cookies.habitToken;
-  else if (req.headers.authorization?.startsWith('Bearer '))
-    token = req.headers.authorization.split(' ')[1];
+  else if (req.headers.authorization?.startsWith('Bearer ')) token = req.headers.authorization.split(' ')[1];
+  else if (req.query.token) token = req.query.token;
+  
   if (!token) return res.status(401).json({ message: 'Not authorized' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod');

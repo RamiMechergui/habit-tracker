@@ -274,11 +274,12 @@ export const HabitProvider = ({ children }) => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && navigator.onLine && user) {
         refreshFromServer();
+        connectSSE();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [user, refreshFromServer]);
+  }, [user, refreshFromServer, connectSSE]);
 
   // ── Initialize app: ALWAYS load offline data first ─────────
   useEffect(() => {
@@ -554,7 +555,11 @@ export const HabitProvider = ({ children }) => {
     if (!navigator.onLine) return;
 
     try {
-      const es = new EventSource(`${API_URL}/api/delivery/stream`, { withCredentials: true });
+      let streamUrl = `${API_URL}/api/delivery/stream`;
+      if (IS_NATIVE && user?.token) {
+        streamUrl += `?token=${encodeURIComponent(user.token)}`;
+      }
+      const es = new EventSource(streamUrl, { withCredentials: true });
 
       es.onopen = () => console.log('[Store] SSE stream connected');
 
@@ -585,7 +590,7 @@ export const HabitProvider = ({ children }) => {
     } catch (e) {
       console.warn('[Store] Could not open SSE stream (delivery service may be offline):', e.message);
     }
-  }, [API_URL]);
+  }, [API_URL, IS_NATIVE, user]);
 
   // ── Essentials + notifications load after login ───────────────
   useEffect(() => {
@@ -627,11 +632,12 @@ export const HabitProvider = ({ children }) => {
     if (!res.ok) throw new Error(data.message);
     
     const userData = {
-      _id: data._id,
+      _id: data._id || data.userId,
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
-      profilePicture: data.profilePicture
+      profilePicture: data.profilePicture,
+      token: data.token
     };
     setUser(userData);
     await Preferences.set({ key: 'user_session', value: JSON.stringify(userData) });
