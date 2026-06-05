@@ -38,6 +38,7 @@ router.post('/register', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        profilePicture: user.profilePicture || null,
         expenseCategories: user.expenseCategories
       });
     } else {
@@ -68,6 +69,7 @@ router.post('/login', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        profilePicture: user.profilePicture || null,
         expenseCategories: user.expenseCategories
       });
     } else {

@@ -207,13 +207,12 @@ export const HabitProvider = ({ children }) => {
   const refreshFromServer = useCallback(async () => {
     if (!navigator.onLine) return;
     try {
-      const [catRes, bookRes, archiveRes, logsRes, settingsRes, avatarRes] = await Promise.all([
-        fetch(`${API_URL}/api/categories`, { credentials: 'include' }),
+      const [catRes, bookRes, archiveRes, logsRes, profileRes] = await Promise.all([
+        fetch(`${API_URL}/api/categories`,  { credentials: 'include' }),
         fetch(`${API_URL}/api/currentbook`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/archives`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/daily`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/settings`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/avatar`, { credentials: 'include' })
+        fetch(`${API_URL}/api/archives`,    { credentials: 'include' }),
+        fetch(`${API_URL}/api/daily`,       { credentials: 'include' }),
+        fetch(`${API_URL}/api/user/me`,     { credentials: 'include' }),
       ]);
 
       if (catRes.ok) {
@@ -234,23 +233,19 @@ export const HabitProvider = ({ children }) => {
       if (logsRes.ok) {
         const logsData = await logsRes.json();
         setLogs(prev => {
-          // Merge logic: prefer server data for conflicts but keep local-only dates
           const merged = { ...prev, ...logsData };
           db.saveLogs(merged);
           return merged;
         });
       }
-
-      let profileData = {};
-      if (settingsRes.ok) {
-        const s = await settingsRes.json();
-        profileData = { ...profileData, firstName: s.firstName, lastName: s.lastName };
-      }
-      if (avatarRes.ok) {
-        const a = await avatarRes.json();
-        profileData = { ...profileData, profilePicture: a.profilePicture };
-      }
-      if (Object.keys(profileData).length > 0) {
+      // /api/user/me returns firstName, lastName, email, profilePicture
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        const profileData = {
+          firstName:      profile.firstName,
+          lastName:       profile.lastName,
+          profilePicture: profile.profilePicture,
+        };
         setUser(prev => {
           const updated = { ...prev, ...profileData };
           db.saveUser(updated);
@@ -631,46 +626,29 @@ export const HabitProvider = ({ children }) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
-    
+
+    // Login response already includes firstName, lastName, profilePicture, expenseCategories
+    // Set the complete user in ONE call — no follow-up fetch needed for the name
     const userData = {
       _id: data._id || data.userId,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      profilePicture: data.profilePicture,
-      token: data.token
+      firstName:      data.firstName      || '',
+      lastName:       data.lastName       || '',
+      email:          data.email,
+      profilePicture: data.profilePicture || null,
+      token:          data.token          || null,
     };
     setUser(userData);
     await Preferences.set({ key: 'user_session', value: JSON.stringify(userData) });
     db.saveUser(userData);
-    
-    setExpenseCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment', 'Smoking']);
-    db.saveCategories(data.expenseCategories && data.expenseCategories.length > 0 ? data.expenseCategories : ['Food', 'Transportation', 'Entertainment', 'Smoking']);
-    
-    // Fetch logs and settings after login
-    const [logsRes, settingsRes, avatarRes] = await Promise.all([
-      fetch(`${API_URL}/api/daily`, { credentials: 'include' }),
-      fetch(`${API_URL}/api/settings`, { credentials: 'include' }),
-      fetch(`${API_URL}/api/avatar`, { credentials: 'include' })
-    ]);
 
-    let profileData = {};
-    if (settingsRes.ok) {
-      const s = await settingsRes.json();
-      profileData = { ...profileData, firstName: s.firstName, lastName: s.lastName };
-    }
-    if (avatarRes.ok) {
-      const a = await avatarRes.json();
-      profileData = { ...profileData, profilePicture: a.profilePicture };
-    }
+    const categories = data.expenseCategories && data.expenseCategories.length > 0
+      ? data.expenseCategories
+      : ['Food', 'Transportation', 'Entertainment', 'Smoking'];
+    setExpenseCategories(categories);
+    db.saveCategories(categories);
 
-    setUser(prev => {
-      const updated = { ...prev, ...profileData };
-      Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
-      db.saveUser(updated);
-      return updated;
-    });
-
+    // Only fetch logs — profile data is already complete from the login response
+    const logsRes = await fetch(`${API_URL}/api/daily`, { credentials: 'include' });
     if (logsRes.ok) {
       const logsData = await logsRes.json();
       setLogs(logsData);
