@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { Preferences } from '@capacitor/preferences';
 
 // Safe fallback for startOfWeek in case the build/runtime environment
 // doesn't provide it (some bundlers or versions may tree-shake it).
