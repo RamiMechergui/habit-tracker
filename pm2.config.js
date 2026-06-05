@@ -8,8 +8,36 @@ console.log("process.env.MONGOHOST:", process.env.MONGOHOST);
 console.log("process.env.MONGOPORT:", process.env.MONGOPORT);
 console.log("process.env.MONGOUSER:", process.env.MONGOUSER);
 
-// Resolve the base connection URI
-let baseMongoUri = process.env.MONGO_URI || process.env.MONGO_URL || process.env.MONGODB_URL;
+const isRailway = Object.keys(process.env).some(key => key.startsWith('RAILWAY_'));
+
+function isDockerComposeMongoUri(uri) {
+  return /^mongodb(?:\+srv)?:\/\/(?:[^@]+@)?mongo(?::|\/|$)/i.test(uri || '');
+}
+
+function isUnresolvedRailwayReference(value) {
+  return /\$\{\{[^}]+\}\}/.test(value || '');
+}
+
+// Resolve the base connection URI. On Railway, ignore the Docker Compose
+// placeholder from .env.example if Railway also supplied a real Mongo URL.
+const mongoCandidates = [
+  { key: 'MONGO_URI', value: process.env.MONGO_URI },
+  { key: 'MONGO_URL', value: process.env.MONGO_URL },
+  { key: 'MONGODB_URL', value: process.env.MONGODB_URL },
+  { key: 'MONGO_PUBLIC_URL', value: process.env.MONGO_PUBLIC_URL }
+].filter(candidate => candidate.value);
+
+let baseMongoUri = mongoCandidates.find(candidate => {
+  if (isUnresolvedRailwayReference(candidate.value)) {
+    console.warn(`Ignoring unresolved Railway variable reference in ${candidate.key}.`);
+    return false;
+  }
+  if (isRailway && candidate.key === 'MONGO_URI' && isDockerComposeMongoUri(candidate.value)) {
+    console.warn('Ignoring Docker Compose MONGO_URI on Railway so Railway Mongo variables can be used.');
+    return false;
+  }
+  return true;
+})?.value;
 
 if (!baseMongoUri && process.env.MONGOHOST) {
   const host = process.env.MONGOHOST;

@@ -5,9 +5,11 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+mongoose.set('bufferCommands', false);
 const User = require('./models/User');
 
 const app = express();
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -248,9 +250,9 @@ app.delete('/api/login/admin/users/:userId', verifyAdmin, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5101;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/auth_db';
+const MONGO_URI = process.env.MONGO_URI || (process.env.NODE_ENV === 'production' ? '' : 'mongodb://mongo:27017/auth_db');
 
-const maskedURI = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@');
+const maskedURI = MONGO_URI ? MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@') : 'UNDEFINED';
 console.log(`[Login Service] Attempting connection to MongoDB at: ${maskedURI}`);
 
 // Explicit connection event listeners for logging detailed state
@@ -270,8 +272,21 @@ mongoose.connection.on('disconnected', () => {
   console.warn('[Login Service: Mongoose] Disconnected from MongoDB');
 });
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Login Service: Initial connection call completed'))
-  .catch(err => console.error('Login Service: Initial connection failed:', err));
+async function start() {
+  if (!MONGO_URI) {
+    throw new Error('Login Service: MONGO_URI is not set. Add Railway MongoDB variables or a MONGO_URL reference.');
+  }
 
-app.listen(PORT, () => console.log(`Login Service running on port ${PORT}`));
+  await mongoose.connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000
+  });
+  console.log('Login Service: Initial connection call completed');
+
+  app.listen(PORT, () => console.log(`Login Service running on port ${PORT}`));
+}
+
+start().catch(err => {
+  console.error('Login Service: Startup failed:', err);
+  process.exit(1);
+});
