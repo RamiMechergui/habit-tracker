@@ -232,8 +232,9 @@ export const HabitProvider = ({ children }) => {
         const ct = (res.headers.get('content-type') || '').toLowerCase();
         if (!ct.includes('application/json')) {
           const txt = await res.text();
-          console.error(`[Store] ${e.url} expected JSON but received ${ct || 'unknown'} — first 500 chars:\n${txt.slice(0,500)}`);
-          throw new Error(`Server returned non-JSON for ${e.key}`);
+          console.warn(`[Store] ${e.url} expected JSON but received ${ct || 'unknown'} — first 500 chars:\n${txt.slice(0,500)}`);
+          // Skip this endpoint and continue using cached/offline data
+          continue;
         }
         try {
           parsed[e.key] = await res.json();
@@ -281,34 +282,12 @@ export const HabitProvider = ({ children }) => {
       }
     } catch (e) {
       console.error('[Store] refreshFromServer error:', e);
-
-      // Dev fallback: if profile endpoint returned HTML (common when proxy isn't active),
-      // try a direct request to localhost:5000 to recover profile data.
+      // Notify the user but keep using cached data
       try {
-        if (e?.message?.includes('non-JSON') || e?.message?.includes('Server returned non-JSON for profile')) {
-          const fallbackBase = 'http://localhost:5000';
-          console.info('[Store] Attempting fallback fetch to', `${fallbackBase}/api/user/me`);
-          const fb = await fetch(`${fallbackBase}/api/user/me`, { credentials: 'include' });
-          if (fb.ok && (fb.headers.get('content-type') || '').includes('application/json')) {
-            const profile = await fb.json();
-            const profileData = {
-              firstName: profile.firstName,
-              lastName: profile.lastName,
-              profilePicture: profile.profilePicture,
-            };
-            setUser(prev => {
-              const updated = { ...prev, ...profileData };
-              db.saveUser(updated);
-              return updated;
-            });
-          } else {
-            const txt = await fb.text();
-            console.warn('[Store] Fallback /api/user/me did not return JSON:', txt.slice(0, 300));
-          }
-        }
-      } catch (fbErr) {
-        console.warn('[Store] Fallback profile fetch failed:', fbErr.message || fbErr);
-      }
+        setToasts(prev => [...prev.slice(-4), { id: `server_err_${Date.now()}`, type: 'urgent', message: 'Server unavailable — using cached data.' }]);
+      } catch (_) {}
+      return;
+    }
     }
   }, [API_URL]);
 
@@ -393,45 +372,9 @@ export const HabitProvider = ({ children }) => {
 
       } catch (e) {
         console.error('App initialization error:', e);
-
-        // Dev fallback: if /api/verify returned non-JSON (HTML), try direct localhost:5000
         try {
-          if (e?.message?.includes('Invalid /api/verify response')) {
-            const fallback = 'http://localhost:5000/api/verify';
-            console.info('[Store] Attempting fallback verify at', fallback);
-            const fbRes = await fetch(fallback, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
-            if (fbRes.ok && (fbRes.headers.get('content-type') || '').includes('application/json')) {
-              const userData = await fbRes.json();
-              let token = null;
-              try {
-                const stored = await Preferences.get({ key: 'user_session' });
-                if (stored?.value) token = JSON.parse(stored.value)?.token || null;
-              } catch (_) {}
-
-              const restored = {
-                _id: userData.userId || userData._id,
-                email: userData.email,
-                firstName: userData.firstName || null,
-                lastName: userData.lastName || null,
-                profilePicture: userData.profilePicture || null,
-                token: token
-              };
-
-              setUser(restored);
-              await Preferences.set({ key: 'user_session', value: JSON.stringify(restored) });
-              db.saveUser(restored);
-
-              // Try to refresh other data
-              try { await refreshFromServer(); } catch (_) {}
-            } else {
-              const txt = await fbRes.text();
-              console.warn('[Store] Fallback /api/verify did not return JSON:', txt.slice(0,300));
-            }
-          }
-        } catch (fbErr) {
-          console.warn('[Store] Fallback verify attempt failed:', fbErr.message || fbErr);
-        }
-
+          setToasts(prev => [...prev.slice(-4), { id: `init_err_${Date.now()}`, type: 'urgent', message: 'Initialization failed — using cached data.' }]);
+        } catch (_) {}
         startSyncListener();
       }
 
@@ -729,8 +672,16 @@ export const HabitProvider = ({ children }) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    // Robust parsing: handle non-JSON responses (HTML/502) gracefully
+    const rawText = await res.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (err) {
+      const snippet = rawText.slice(0, 300);
+      throw new Error(`Login failed: unexpected response from server: ${snippet}`);
+    }
+    if (!res.ok) throw new Error(data.message || `Login failed with status ${res.status}`);
 
     // Login response already includes firstName, lastName, profilePicture, expenseCategories
     // Set the complete user in ONE call — no follow-up fetch needed for the name
@@ -880,10 +831,21 @@ export const HabitProvider = ({ children }) => {
     if (!res.ok) {
       let msg = 'Upload failed';
       try {
-        const err = await res.json();
-        if (err && err.message) msg = err.message;
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (ct.includes('application/json')) {
+          const err = await res.json();
+          if (err && err.message) msg = err.message;
+        } else {
+          const txt = await res.text();
+          msg = txt.slice(0, 300) || msg;
+        }
       } catch (_) {}
       throw new Error(msg);
+    }
+    const ctSuccess = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ctSuccess.includes('application/json')) {
+      const txt = await res.text();
+      throw new Error(`Upload failed: unexpected server response: ${txt.slice(0,300)}`);
     }
     const data = await res.json();
     const updated = { ...user, profilePicture: data.profilePicture };
