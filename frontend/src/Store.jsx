@@ -288,7 +288,6 @@ export const HabitProvider = ({ children }) => {
       } catch (_) {}
       return;
     }
-    }
   }, [API_URL]);
 
   // ── Register sync callback ──────────────────────────────────
