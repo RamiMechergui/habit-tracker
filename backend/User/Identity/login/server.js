@@ -45,6 +45,14 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+const requireMongoConnection = (req, res, next) => {
+  if (mongoose.connection.readyState === 1) return next();
+
+  res.status(503).json({
+    message: 'Database connection is not ready. Check Railway MongoDB variables and service logs.'
+  });
+};
+
 const verifyToken = (req, res, next) => {
   let token;
   if (req.cookies.habitToken) token = req.cookies.habitToken;
@@ -101,7 +109,7 @@ const verifyAdmin = (req, res, next) => {
  *       401:
  *         description: Invalid credentials
  */
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', requireMongoConnection, async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
@@ -157,7 +165,7 @@ app.post('/api/login', async (req, res) => {
  *       401:
  *         description: Not authorized
  */
-app.put('/api/login/change-password', verifyToken, async (req, res) => {
+app.put('/api/login/change-password', verifyToken, requireMongoConnection, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
     const user = await User.findOne({ userId: req.user.userId });
@@ -218,7 +226,7 @@ app.delete('/api/login/admin/session', (req, res) => {
 });
 
 // Admin Endpoint for Dashboard: User Count
-app.get('/api/login/admin/users', verifyAdmin, async (req, res) => {
+app.get('/api/login/admin/users', verifyAdmin, requireMongoConnection, async (req, res) => {
   try {
     const count = await User.countDocuments();
     res.json({ count });
@@ -228,7 +236,7 @@ app.get('/api/login/admin/users', verifyAdmin, async (req, res) => {
 });
 
 // Admin Endpoint for Dashboard: User List
-app.get('/api/login/admin/users/list', verifyAdmin, async (req, res) => {
+app.get('/api/login/admin/users/list', verifyAdmin, requireMongoConnection, async (req, res) => {
   try {
     const users = await User.find({}, '-password').sort({ createdAt: -1 });
     res.json(users);
@@ -238,7 +246,7 @@ app.get('/api/login/admin/users/list', verifyAdmin, async (req, res) => {
 });
 
 // Admin Endpoint for Dashboard: Delete User
-app.delete('/api/login/admin/users/:userId', verifyAdmin, async (req, res) => {
+app.delete('/api/login/admin/users/:userId', verifyAdmin, requireMongoConnection, async (req, res) => {
   try {
     const { userId } = req.params;
     const deletedUser = await User.findOneAndDelete({ userId });
@@ -272,21 +280,32 @@ mongoose.connection.on('disconnected', () => {
   console.warn('[Login Service: Mongoose] Disconnected from MongoDB');
 });
 
-async function start() {
+let isConnecting = false;
+
+async function connectMongo() {
   if (!MONGO_URI) {
-    throw new Error('Login Service: MONGO_URI is not set. Add Railway MongoDB variables or a MONGO_URL reference.');
+    console.error('Login Service: MONGO_URI is not set. Add Railway MongoDB variables or a MONGO_URL reference.');
+    return;
   }
 
-  await mongoose.connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 10000,
-    connectTimeoutMS: 10000
-  });
-  console.log('Login Service: Initial connection call completed');
+  if (isConnecting || mongoose.connection.readyState === 1) return;
 
-  app.listen(PORT, () => console.log(`Login Service running on port ${PORT}`));
+  isConnecting = true;
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000
+    });
+    console.log('Login Service: Initial connection call completed');
+  } catch (err) {
+    console.error('Login Service: MongoDB connection failed:', err);
+  } finally {
+    isConnecting = false;
+  }
 }
 
-start().catch(err => {
-  console.error('Login Service: Startup failed:', err);
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`Login Service running on port ${PORT}`);
+  connectMongo();
+  setInterval(connectMongo, 15000);
 });

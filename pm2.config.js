@@ -39,11 +39,11 @@ let baseMongoUri = mongoCandidates.find(candidate => {
   return true;
 })?.value;
 
-if (!baseMongoUri && process.env.MONGOHOST) {
+if (!baseMongoUri && process.env.MONGOHOST && !isUnresolvedRailwayReference(process.env.MONGOHOST)) {
   const host = process.env.MONGOHOST;
-  const port = process.env.MONGOPORT || '27017';
-  const user = process.env.MONGOUSER;
-  const pass = process.env.MONGOPASSWORD;
+  const port = isUnresolvedRailwayReference(process.env.MONGOPORT) ? '27017' : (process.env.MONGOPORT || '27017');
+  const user = isUnresolvedRailwayReference(process.env.MONGOUSER) ? undefined : process.env.MONGOUSER;
+  const pass = isUnresolvedRailwayReference(process.env.MONGOPASSWORD) ? undefined : process.env.MONGOPASSWORD;
   const dbName = process.env.MONGODATABASE || 'habit-db';
   
   if (user && pass) {
@@ -51,6 +51,8 @@ if (!baseMongoUri && process.env.MONGOHOST) {
   } else {
     baseMongoUri = `mongodb://${host}:${port}/${dbName}`;
   }
+} else if (!baseMongoUri && process.env.MONGOHOST) {
+  console.warn('Ignoring unresolved Railway variable reference in MONGOHOST.');
 }
 
 console.log("Base Resolved MONGO_URI:", baseMongoUri ? baseMongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//xxxx:xxxx@') : "UNDEFINED");

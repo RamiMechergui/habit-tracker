@@ -41,6 +41,14 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+const requireMongoConnection = (req, res, next) => {
+  if (mongoose.connection.readyState === 1) return next();
+
+  res.status(503).json({
+    message: 'Database connection is not ready. Check Railway MongoDB variables and service logs.'
+  });
+};
+
 /**
  * @swagger
  * /api/register:
@@ -70,7 +78,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
  *       400:
  *         description: Validation error
  */
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', requireMongoConnection, async (req, res) => {
   const { email, password, confirmPassword, firstName = '', lastName = '' } = req.body;
   if (password !== confirmPassword) return res.status(400).json({ message: 'Passwords do not match' });
   
@@ -132,21 +140,32 @@ mongoose.connection.on('disconnected', () => {
   console.warn('[Register Service: Mongoose] Disconnected from MongoDB');
 });
 
-async function start() {
+let isConnecting = false;
+
+async function connectMongo() {
   if (!MONGO_URI) {
-    throw new Error('Register Service: MONGO_URI is not set. Add Railway MongoDB variables or a MONGO_URL reference.');
+    console.error('Register Service: MONGO_URI is not set. Add Railway MongoDB variables or a MONGO_URL reference.');
+    return;
   }
 
-  await mongoose.connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 10000,
-    connectTimeoutMS: 10000
-  });
-  console.log('Register Service: Initial connection call completed');
+  if (isConnecting || mongoose.connection.readyState === 1) return;
 
-  app.listen(PORT, () => console.log(`Register Service running on port ${PORT}`));
+  isConnecting = true;
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000
+    });
+    console.log('Register Service: Initial connection call completed');
+  } catch (err) {
+    console.error('Register Service: MongoDB connection failed:', err);
+  } finally {
+    isConnecting = false;
+  }
 }
 
-start().catch(err => {
-  console.error('Register Service: Startup failed:', err);
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`Register Service running on port ${PORT}`);
+  connectMongo();
+  setInterval(connectMongo, 15000);
 });
