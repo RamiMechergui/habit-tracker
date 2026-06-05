@@ -73,7 +73,45 @@ export const nativeFetch = async (url, options = {}) => {
   if (!opts.credentials) opts.credentials = 'include';
   // Also set lowercase header to be robust in different environments
   if (token && !headers['authorization']) headers['authorization'] = headers['Authorization'];
-  return fetch(url, opts);
+  // Primary request using configured URL/header options
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (err) {
+    // If network error and this was an API call, try same-origin fallback
+    try {
+      if (typeof window !== 'undefined' && String(url).includes('/api/')) {
+        const u = new URL(url, window.location.origin);
+        const path = `${u.pathname}${u.search}`;
+        return await fetch(path, opts);
+      }
+    } catch (_) {}
+    throw err;
+  }
+
+  // If the backend returned HTML (likely the SPA) for an API endpoint,
+  // retry the same-origin /api path. This handles misconfigured API_URL
+  // that points to the frontend host instead of the API host.
+  try {
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('text/html') && String(url).includes('/api/')) {
+      if (typeof window !== 'undefined') {
+        const u = new URL(url, window.location.origin);
+        const path = `${u.pathname}${u.search}`;
+        try {
+          const fb = await fetch(path, opts);
+          return fb;
+        } catch (_) {
+          // fallback failed — return original response
+          return res;
+        }
+      }
+    }
+  } catch (e) {
+    // ignore parsing errors and return original response
+  }
+
+  return res;
 };
 
 // Helpful debug log in development
