@@ -66,7 +66,7 @@ export default function AvatarUploader() {
       await updateProfilePicture(blob);
       setRawSrc(null);
     } catch (e) {
-      setError('Upload failed. Please try again.');
+      setError(e?.message || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }

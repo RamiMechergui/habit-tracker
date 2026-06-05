@@ -299,25 +299,30 @@ export const HabitProvider = ({ children }) => {
 
           if (res.ok) {
             const userData = await res.json();
-            const mockUser = {
+            // Preserve any locally stored token if present
+            let token = null;
+            try {
+              const stored = await Preferences.get({ key: 'user_session' });
+              if (stored?.value) token = JSON.parse(stored.value)?.token || null;
+            } catch (_) {}
+
+            const restored = {
               _id: userData.userId || userData._id,
               email: userData.email,
-              firstName: null,
-              lastName: null,
-              profilePicture: null
+              firstName: userData.firstName || null,
+              lastName: userData.lastName || null,
+              profilePicture: userData.profilePicture || null,
+              token: token
             };
-            // Only override if we don't have local user data, to prevent flickering names
-            setUser(prev => {
-              const updated = prev ? { ...prev, _id: mockUser._id, email: mockUser.email } : mockUser;
-              Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
-              db.saveUser(updated);
-              return updated;
-            });
+
+            setUser(restored);
+            await Preferences.set({ key: 'user_session', value: JSON.stringify(restored) });
+            db.saveUser(restored);
 
             // Fetch everything from server and merge
             await refreshFromServer();
           } else if (res.status === 401) {
-            // Unauthorized - backend rejected cookie, clear session
+            // Unauthorized - backend rejected cookie or token invalid, clear session
             await Preferences.remove({ key: 'user_session' });
             setUser(null);
           }
@@ -766,7 +771,14 @@ export const HabitProvider = ({ children }) => {
       credentials: 'include',
       body: formData,
     });
-    if (!res.ok) throw new Error('Upload failed');
+    if (!res.ok) {
+      let msg = 'Upload failed';
+      try {
+        const err = await res.json();
+        if (err && err.message) msg = err.message;
+      } catch (_) {}
+      throw new Error(msg);
+    }
     const data = await res.json();
     const updated = { ...user, profilePicture: data.profilePicture };
     setUser(updated);

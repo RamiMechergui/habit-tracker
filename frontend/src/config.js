@@ -68,6 +68,11 @@ export const nativeFetch = async (url, options = {}) => {
   if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  return fetch(url, { ...options, headers });
+  // Ensure credentials are included by default so cookies are sent
+  const opts = { ...options, headers };
+  if (!opts.credentials) opts.credentials = 'include';
+  // Also set lowercase header to be robust in different environments
+  if (token && !headers['authorization']) headers['authorization'] = headers['Authorization'];
+  return fetch(url, opts);
 };
 
