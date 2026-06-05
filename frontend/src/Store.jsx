@@ -208,43 +208,69 @@ export const HabitProvider = ({ children }) => {
   const refreshFromServer = useCallback(async () => {
     if (!navigator.onLine) return;
     try {
-      const [catRes, bookRes, archiveRes, logsRes, profileRes] = await Promise.all([
-        fetch(`${API_URL}/api/categories`,  { credentials: 'include' }),
-        fetch(`${API_URL}/api/currentbook`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/archives`,    { credentials: 'include' }),
-        fetch(`${API_URL}/api/daily`,       { credentials: 'include' }),
-        fetch(`${API_URL}/api/user/me`,     { credentials: 'include' }),
-      ]);
+      // Query all expected endpoints and validate responses individually
+      const endpoints = [
+        { key: 'categories', url: `${API_URL}/api/categories` },
+        { key: 'currentbook', url: `${API_URL}/api/currentbook` },
+        { key: 'archives', url: `${API_URL}/api/archives` },
+        { key: 'daily', url: `${API_URL}/api/daily` },
+        { key: 'profile', url: `${API_URL}/api/user/me` },
+      ];
 
-      if (catRes.ok) {
-        const cats = (await catRes.json()).expenseCategories;
+      const responses = await Promise.all(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
+
+      const parsed = {};
+      for (let i = 0; i < responses.length; i++) {
+        const res = responses[i];
+        const e = endpoints[i];
+        // If non-OK, capture body text for diagnostics but continue
+        if (!res.ok) {
+          const txt = await res.text();
+          console.warn(`[Store] ${e.url} returned status ${res.status}: ${txt.slice(0, 200)}`);
+          continue;
+        }
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (!ct.includes('application/json')) {
+          const txt = await res.text();
+          console.error(`[Store] ${e.url} expected JSON but received ${ct || 'unknown'} — first 500 chars:\n${txt.slice(0,500)}`);
+          throw new Error(`Server returned non-JSON for ${e.key}`);
+        }
+        try {
+          parsed[e.key] = await res.json();
+        } catch (err) {
+          const txt = await res.text();
+          console.error(`[Store] Failed to parse JSON from ${e.url}: ${err.message}\nResponse snippet:\n${txt.slice(0,500)}`);
+          throw err;
+        }
+      }
+
+      // Apply parsed results
+      if (parsed.categories) {
+        const cats = parsed.categories.expenseCategories || parsed.categories;
         setExpenseCategories(cats);
         db.saveCategories(cats);
       }
-      if (bookRes.ok) {
-        const book = await bookRes.json();
-        setCurrentBookState(book);
-        db.saveCurrentBook(book);
+      if (parsed.currentbook) {
+        setCurrentBookState(parsed.currentbook);
+        db.saveCurrentBook(parsed.currentbook);
       }
-      if (archiveRes.ok) {
-        const arch = (await archiveRes.json()).archivedBooks || [];
+      if (parsed.archives) {
+        const arch = parsed.archives.archivedBooks || parsed.archives || [];
         setArchivedBooks(arch);
         db.saveArchives(arch);
       }
-      if (logsRes.ok) {
-        const logsData = await logsRes.json();
+      if (parsed.daily) {
         setLogs(prev => {
-          const merged = { ...prev, ...logsData };
+          const merged = { ...prev, ...parsed.daily };
           db.saveLogs(merged);
           return merged;
         });
       }
-      // /api/user/me returns firstName, lastName, email, profilePicture
-      if (profileRes.ok) {
-        const profile = await profileRes.json();
+      if (parsed.profile) {
+        const profile = parsed.profile;
         const profileData = {
-          firstName:      profile.firstName,
-          lastName:       profile.lastName,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
           profilePicture: profile.profilePicture,
         };
         setUser(prev => {
@@ -298,6 +324,12 @@ export const HabitProvider = ({ children }) => {
           });
 
           if (res.ok) {
+            const ct = (res.headers.get('content-type') || '').toLowerCase();
+            if (!ct.includes('application/json')) {
+              const txt = await res.text();
+              console.error(`[Store] /api/verify returned non-JSON (${ct}). Response snippet:\n${txt.slice(0,500)}`);
+              throw new Error('Invalid /api/verify response (expected JSON)');
+            }
             const userData = await res.json();
             // Preserve any locally stored token if present
             let token = null;
