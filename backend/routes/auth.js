@@ -39,7 +39,8 @@ router.post('/register', async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         profilePicture: user.profilePicture || null,
-        expenseCategories: user.expenseCategories
+        expenseCategories: user.expenseCategories,
+        token
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -70,7 +71,8 @@ router.post('/login', async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         profilePicture: user.profilePicture || null,
-        expenseCategories: user.expenseCategories
+        expenseCategories: user.expenseCategories,
+        token
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -87,6 +89,36 @@ router.post('/logout', (req, res) => {
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   });
   res.json({ message: 'Logged out successfully' });
+});
+
+// GET /verify — validate JWT and return user identity
+router.get('/verify', async (req, res) => {
+  let token;
+  if (req.cookies.habitToken) {
+    token = req.cookies.habitToken;
+  } else if (req.headers.authorization?.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  if (!token) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod');
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    res.json({
+      userId: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      profilePicture: user.profilePicture,
+      verified: true
+    });
+  } catch (error) {
+    res.status(401).json({ message: 'Not authorized, token failed' });
+  }
 });
 
 module.exports = router;

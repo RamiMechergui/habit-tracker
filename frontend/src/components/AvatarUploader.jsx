@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import { Camera, X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 import { useHabits } from '../Store';
+import { API_URL } from '../config';
 
 // Helper: draw the cropped area on a canvas and return a Blob
 async function getCroppedBlob(imageSrc, croppedAreaPixels) {
@@ -38,7 +39,7 @@ export default function AvatarUploader() {
   const avatarUrl = user?.profilePicture
     ? (user.profilePicture.startsWith('data:')
         ? user.profilePicture
-        : `${user.profilePicture}?t=${Date.now()}`)
+        : `${API_URL}${user.profilePicture}?t=${Date.now()}`)
     : null;
 
   const onFileChange = (e) => {

@@ -291,7 +291,7 @@ export const HabitProvider = ({ children }) => {
 
         // Step 2: If online, verify session and sync with server
         if (navigator.onLine) {
-          const res = await fetch(`${API_URL}/api/verify`, {
+          const res = await fetch(`${API_URL}/api/auth/verify`, {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
           });
@@ -618,7 +618,7 @@ export const HabitProvider = ({ children }) => {
   }, [user, API_URL]);
 
   const login = async (email, password) => {
-    const res = await fetch(`${API_URL}/api/login`, {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -669,7 +669,7 @@ export const HabitProvider = ({ children }) => {
   };
 
   const register = async (email, password, confirmPassword, firstName = '', lastName = '') => {
-    const res = await fetch(`${API_URL}/api/register`, {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -681,7 +681,7 @@ export const HabitProvider = ({ children }) => {
     // Cookie is now set — immediately persist the name in the settings service
     if (firstName || lastName) {
       try {
-        await fetch(`${API_URL}/api/settings`, {
+        await fetch(`${API_URL}/api/user/profile`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -698,7 +698,7 @@ export const HabitProvider = ({ children }) => {
 
   const updateProfile = async (firstName, lastName) => {
     if (!user) return;
-    const res = await fetch(`${API_URL}/api/settings`, {
+    const res = await fetch(`${API_URL}/api/user/profile`, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -714,7 +714,7 @@ export const HabitProvider = ({ children }) => {
 
   const changePassword = async (currentPassword, newPassword) => {
     if (!user) return;
-    const res = await fetch(`${API_URL}/api/login/change-password`, {
+    const res = await fetch(`${API_URL}/api/user/change-password`, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -727,7 +727,7 @@ export const HabitProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch(`${API_URL}/api/logout`, {
+      await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -760,7 +760,7 @@ export const HabitProvider = ({ children }) => {
     if (!user) return;
     const formData = new FormData();
     formData.append('image', croppedBlob, 'profile.jpg');
-    const res = await fetch(`${API_URL}/api/avatar`, {
+    const res = await fetch(`${API_URL}/api/avatar/profile-picture`, {
       method: 'POST',
       credentials: 'include',
       body: formData,
