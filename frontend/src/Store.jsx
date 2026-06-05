@@ -661,6 +661,13 @@ export const HabitProvider = ({ children }) => {
       db.saveLogs(logsData);
     }
 
+    // Fetch latest server data (categories, current book, archives, profile)
+    try {
+      await refreshFromServer();
+    } catch (e) {
+      console.warn('[Store] refreshFromServer after login failed:', e);
+    }
+
     // Start sync listener after login
     startSyncListener();
   };
