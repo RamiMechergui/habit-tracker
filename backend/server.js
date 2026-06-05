@@ -55,6 +55,20 @@ app.use('/api/settings', userRoutes);
 app.use('/api/categories', userRoutes);
 app.use('/api/avatar', userRoutes);
 
+// ── Monolithic aliases for flat microservice-compatible auth paths ──────
+// The frontend uses flat paths (/api/login, /api/register, ...) which
+// Docker/nginx routes to individual microservices. This section makes
+// those same paths work when running the monolithic backend.
+
+// Delegates: rewrite req.url to match the sub-route and pass to the router
+app.put('/api/settings',            (req, res, next) => { req.url = '/profile';           userRoutes(req, res, next); });
+app.post('/api/avatar',             (req, res, next) => { req.url = '/profile-picture';   userRoutes(req, res, next); });
+app.put('/api/login/change-password', (req, res, next) => { req.url = '/change-password'; userRoutes(req, res, next); });
+
+// Catch-all for flat auth paths: /api/login, /api/register, /api/logout, /api/verify
+// Must come AFTER all other /api/* mounts so it only catches unmatched paths.
+app.use('/api', authRoutes);
+
 // SSE delivery stream — not available in monolithic mode; return graceful 503
 // so the frontend EventSource fails fast rather than hanging indefinitely
 app.get('/api/delivery/stream', (_req, res) => {
