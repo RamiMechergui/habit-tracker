@@ -24,3 +24,8 @@ The original client codebase has been safely partitioned into a `frontend/` dire
 
 > [!WARNING]
 > Everything is coded exactly to specification, but your local machine currently **does not have Docker installed** (or active in the system PATH), which means the terminal cannot deploy the containers yet. See my latest message for next steps!
+
+## 5. Hotfix: Initialization Order Bug
+Fixed a runtime `ReferenceError: Cannot access 'de' before initialization` (where `de` minified to `connectSSE`) inside `frontend/src/Store.jsx`.
+* **The Cause:** The `useEffect` listening to `visibilitychange` was placed above the declaration of `connectSSE`. At component initialization, evaluating the dependency array accessed `connectSSE` before its declaration line was reached.
+* **The Fix:** Moved the `useEffect` block below the declaration of `connectSSE` to guarantee it is fully initialized before use.

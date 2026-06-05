@@ -267,19 +267,6 @@ export const HabitProvider = ({ children }) => {
     onSyncDone(refreshFromServer);
   }, [refreshFromServer]);
 
-  // ── Re-sync when app is foregrounded (tab focus / native resume) ─
-  // This ensures that changes made on another device (or the web app)
-  // appear immediately when the user switches back to this instance.
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine && user) {
-        refreshFromServer();
-        connectSSE();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [user, refreshFromServer, connectSSE]);
 
   // ── Initialize app: ALWAYS load offline data first ─────────
   useEffect(() => {
@@ -591,6 +578,20 @@ export const HabitProvider = ({ children }) => {
       console.warn('[Store] Could not open SSE stream (delivery service may be offline):', e.message);
     }
   }, [API_URL, IS_NATIVE, user]);
+
+  // ── Re-sync when app is foregrounded (tab focus / native resume) ─
+  // This ensures that changes made on another device (or the web app)
+  // appear immediately when the user switches back to this instance.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && user) {
+        refreshFromServer();
+        connectSSE();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [user, refreshFromServer, connectSSE]);
 
   // ── Essentials + notifications load after login ───────────────
   useEffect(() => {
