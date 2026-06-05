@@ -42,7 +42,6 @@ export const IS_NATIVE = isNative;
 // when the cookie bridge is unavailable.
 let _cachedNativeToken = null;
 const getNativeToken = async () => {
-  if (!isNative) return null;
   if (_cachedNativeToken) return _cachedNativeToken;
   try {
     const { value } = await Preferences.get({ key: 'user_session' });
@@ -60,11 +59,10 @@ export const invalidateNativeTokenCache = () => {
 
 /**
  * Drop-in replacement for fetch() that:
- * - On native: attaches Authorization: Bearer <token> header when a stored JWT exists
- * - On web: behaves identically to the native fetch
+ * - Attaches Authorization: Bearer <token> header when a stored JWT exists
+ * - Works identically on both native Capacitor and standard Web browser
  */
 export const nativeFetch = async (url, options = {}) => {
-  if (!isNative) return fetch(url, options);
   const token = await getNativeToken();
   const headers = { ...(options.headers || {}) };
   if (token && !headers['Authorization']) {
