@@ -281,6 +281,34 @@ export const HabitProvider = ({ children }) => {
       }
     } catch (e) {
       console.error('[Store] refreshFromServer error:', e);
+
+      // Dev fallback: if profile endpoint returned HTML (common when proxy isn't active),
+      // try a direct request to localhost:5000 to recover profile data.
+      try {
+        if (e?.message?.includes('non-JSON') || e?.message?.includes('Server returned non-JSON for profile')) {
+          const fallbackBase = 'http://localhost:5000';
+          console.info('[Store] Attempting fallback fetch to', `${fallbackBase}/api/user/me`);
+          const fb = await fetch(`${fallbackBase}/api/user/me`, { credentials: 'include' });
+          if (fb.ok && (fb.headers.get('content-type') || '').includes('application/json')) {
+            const profile = await fb.json();
+            const profileData = {
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+              profilePicture: profile.profilePicture,
+            };
+            setUser(prev => {
+              const updated = { ...prev, ...profileData };
+              db.saveUser(updated);
+              return updated;
+            });
+          } else {
+            const txt = await fb.text();
+            console.warn('[Store] Fallback /api/user/me did not return JSON:', txt.slice(0, 300));
+          }
+        }
+      } catch (fbErr) {
+        console.warn('[Store] Fallback profile fetch failed:', fbErr.message || fbErr);
+      }
     }
   }, [API_URL]);
 
@@ -365,6 +393,45 @@ export const HabitProvider = ({ children }) => {
 
       } catch (e) {
         console.error('App initialization error:', e);
+
+        // Dev fallback: if /api/verify returned non-JSON (HTML), try direct localhost:5000
+        try {
+          if (e?.message?.includes('Invalid /api/verify response')) {
+            const fallback = 'http://localhost:5000/api/verify';
+            console.info('[Store] Attempting fallback verify at', fallback);
+            const fbRes = await fetch(fallback, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+            if (fbRes.ok && (fbRes.headers.get('content-type') || '').includes('application/json')) {
+              const userData = await fbRes.json();
+              let token = null;
+              try {
+                const stored = await Preferences.get({ key: 'user_session' });
+                if (stored?.value) token = JSON.parse(stored.value)?.token || null;
+              } catch (_) {}
+
+              const restored = {
+                _id: userData.userId || userData._id,
+                email: userData.email,
+                firstName: userData.firstName || null,
+                lastName: userData.lastName || null,
+                profilePicture: userData.profilePicture || null,
+                token: token
+              };
+
+              setUser(restored);
+              await Preferences.set({ key: 'user_session', value: JSON.stringify(restored) });
+              db.saveUser(restored);
+
+              // Try to refresh other data
+              try { await refreshFromServer(); } catch (_) {}
+            } else {
+              const txt = await fbRes.text();
+              console.warn('[Store] Fallback /api/verify did not return JSON:', txt.slice(0,300));
+            }
+          }
+        } catch (fbErr) {
+          console.warn('[Store] Fallback verify attempt failed:', fbErr.message || fbErr);
+        }
+
         startSyncListener();
       }
 
