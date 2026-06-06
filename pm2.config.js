@@ -148,7 +148,8 @@ module.exports = {
     { name: 'essentials',    port: 5127, path: 'backend/User/Essentials/item-service' },
     { name: 'notifications', port: 5128, path: 'backend/User/Essentials/notification-service' },
     { name: 'delivery-service', port: 5129, path: 'backend/User/Essentials/delivery-service' },
-    { name: 'user-prefs',    port: 5130, path: 'backend/User/Essentials/user-prefs-service' }
+    { name: 'user-prefs',    port: 5130, path: 'backend/User/Essentials/user-prefs-service' },
+    { name: 'credentials',   port: 5133, path: 'backend/User/Profile/credentials' }
   ].map(service => {
     // Dynamically resolve service-specific database names to preserve isolation
     let serviceDbName = service.name + '_db';
