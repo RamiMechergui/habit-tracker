@@ -269,13 +269,14 @@ export const HabitProvider = ({ children }) => {
       }
       if (parsed.profile) {
         const profile = parsed.profile;
-        const profileData = {
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          profilePicture: profile.profilePicture,
-        };
+        // Only update fields that are actually populated — don't wipe good cached data with empty strings
         setUser(prev => {
-          const updated = { ...prev, ...profileData };
+          const updated = {
+            ...prev,
+            ...(profile.firstName      ? { firstName:      profile.firstName      } : {}),
+            ...(profile.lastName       ? { lastName:       profile.lastName       } : {}),
+            ...(profile.profilePicture ? { profilePicture: profile.profilePicture } : {}),
+          };
           db.saveUser(updated);
           return updated;
         });
@@ -337,25 +338,56 @@ export const HabitProvider = ({ children }) => {
               throw new Error('Invalid /api/verify response (expected JSON)');
             }
             const userData = await res.json();
-            // Preserve any locally stored token if present
-            let token = null;
+            // Preserve any locally stored token AND profile fields if present
+            let cachedSession = null;
             try {
               const stored = await Preferences.get({ key: 'user_session' });
-              if (stored?.value) token = JSON.parse(stored.value)?.token || null;
+              if (stored?.value) cachedSession = JSON.parse(stored.value);
             } catch (_) {}
+            const token = cachedSession?.token || null;
 
+            // Only replace profile fields if the verify response actually contains them.
+            // The microservices verify endpoint may only return userId + email — in that
+            // case we keep the cached values so the name/avatar aren't wiped.
             const restored = {
-              _id: userData.userId || userData._id,
-              email: userData.email,
-              firstName: userData.firstName || null,
-              lastName: userData.lastName || null,
-              profilePicture: userData.profilePicture || null,
-              token: token
+              _id:            userData.userId || userData._id,
+              email:          userData.email  || cachedSession?.email || '',
+              firstName:      userData.firstName      || cachedSession?.firstName      || '',
+              lastName:       userData.lastName       || cachedSession?.lastName       || '',
+              profilePicture: userData.profilePicture || cachedSession?.profilePicture || null,
+              token
             };
 
             setUser(restored);
             await Preferences.set({ key: 'user_session', value: JSON.stringify(restored) });
             db.saveUser(restored);
+
+            // If name is still blank after merging cache, try fetching from /api/settings
+            // (works in both monolithic and microservices mode)
+            if (!restored.firstName && !restored.lastName) {
+              try {
+                const settingsRes = await fetch(`${API_URL}/api/settings`, { credentials: 'include' });
+                if (settingsRes.ok) {
+                  const ct = (settingsRes.headers.get('content-type') || '').toLowerCase();
+                  if (ct.includes('application/json')) {
+                    const settingsData = await settingsRes.json();
+                    if (settingsData.firstName || settingsData.lastName) {
+                      const withName = {
+                        ...restored,
+                        firstName:      settingsData.firstName      || restored.firstName,
+                        lastName:       settingsData.lastName       || restored.lastName,
+                        profilePicture: settingsData.profilePicture || restored.profilePicture || null,
+                      };
+                      setUser(withName);
+                      await Preferences.set({ key: 'user_session', value: JSON.stringify(withName) });
+                      db.saveUser(withName);
+                    }
+                  }
+                }
+              } catch (settingsErr) {
+                console.warn('[Store] Could not fetch /api/settings for profile hydration:', settingsErr.message);
+              }
+            }
 
             // Fetch everything from server and merge
             await refreshFromServer();

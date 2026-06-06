@@ -26,14 +26,12 @@ export default function Settings() {
   const [pwError, setPwError] = useState(null);
   const [pwSaving, setPwSaving] = useState(false);
 
-  // Sync from user object when it changes
+  // Re-sync fields whenever the store user object is updated (e.g. after /api/verify
+  // or /api/settings returns the real name from the server)
   useEffect(() => {
-    if (user) {
-      // If store has values and local state is empty, populate them
-      if (user.firstName && firstName === '') setFirstName(user.firstName);
-      if (user.lastName && lastName === '') setLastName(user.lastName);
-    }
-  }, [user, firstName, lastName]);
+    if (user?.firstName) setFirstName(user.firstName);
+    if (user?.lastName)  setLastName(user.lastName);
+  }, [user?.firstName, user?.lastName]);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
