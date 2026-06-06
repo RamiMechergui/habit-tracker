@@ -111,9 +111,9 @@ router.get('/verify', async (req, res) => {
     res.json({
       userId: user._id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      profilePicture: user.profilePicture,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      profilePicture: user.profilePicture || null,
       verified: true
     });
   } catch (error) {

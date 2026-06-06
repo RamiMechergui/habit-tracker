@@ -58,6 +58,21 @@ app.get('/api/settings', verifyToken, async (req, res) => {
   } catch (error) { res.status(500).json({ message: error.message }); }
 });
 
+// Alias: GET /api/user/me — same data, used by the frontend refreshFromServer()
+app.get('/api/user/me', verifyToken, async (req, res) => {
+  try {
+    let settings = await Settings.findOne({ userId: req.user._id });
+    if (!settings) { settings = await Settings.create({ userId: req.user._id }); }
+    res.json({
+      firstName:      settings.firstName      || '',
+      lastName:       settings.lastName       || '',
+      profilePicture: settings.profilePicture || null,
+      email:          settings.email          || ''
+    });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+});
+
+
 /**
  * @swagger
  * /api/settings:
