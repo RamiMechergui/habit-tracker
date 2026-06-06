@@ -63,6 +63,7 @@ server {
     location /api/currentbook { proxy_pass http://127.0.0.1:5107; }
     location /api/archives { proxy_pass http://127.0.0.1:5108; }
     location /api/settings { proxy_pass http://127.0.0.1:5109; }
+    location /api/user { proxy_pass http://127.0.0.1:5109; }
     location /api/categories { proxy_pass http://127.0.0.1:5110; }
     location /api/avatar { proxy_pass http://127.0.0.1:5111; }
     location /api/profile { proxy_pass http://127.0.0.1:5112; }

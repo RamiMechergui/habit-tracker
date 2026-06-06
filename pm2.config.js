@@ -152,7 +152,7 @@ module.exports = {
   ].map(service => {
     // Dynamically resolve service-specific database names to preserve isolation
     let serviceDbName = service.name + '_db';
-    if (service.name === 'login' || service.name === 'register') {
+    if (service.name === 'login' || service.name === 'register' || service.name === 'verify') {
       serviceDbName = 'identity_db';
     } else if (service.name === 'side-hustle') {
       serviceDbName = 'hustle_db';

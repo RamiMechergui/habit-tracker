@@ -45,6 +45,7 @@ services:
     environment:
       - PORT=5104
       - JWT_SECRET=${JWT_SECRET}
+      - MONGO_URI=mongodb://mongo:27017/identity_db
     networks: [habit-network]
 
   daily:

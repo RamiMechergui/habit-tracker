@@ -63,6 +63,7 @@ app.use('/api/avatar', userRoutes);
 // Delegates: rewrite req.url to match the sub-route and pass to the router
 app.put('/api/settings',            (req, res, next) => { req.url = '/profile';           userRoutes(req, res, next); });
 app.post('/api/avatar',             (req, res, next) => { req.url = '/profile-picture';   userRoutes(req, res, next); });
+app.get('/api/avatar',              (req, res, next) => { req.url = '/profile-picture';   userRoutes(req, res, next); });
 app.put('/api/login/change-password', (req, res, next) => { req.url = '/change-password'; userRoutes(req, res, next); });
 
 // Catch-all for flat auth paths: /api/login, /api/register, /api/logout, /api/verify

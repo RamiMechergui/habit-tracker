@@ -81,6 +81,16 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
+// GET /api/user/profile-picture — return current user's profile picture
+router.get('/profile-picture', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('profilePicture');
+    res.json({ profilePicture: user.profilePicture || null });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // PUT /api/user/profile — update firstName and lastName
 router.put('/profile', protect, async (req, res) => {
   try {

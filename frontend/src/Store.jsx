@@ -215,6 +215,7 @@ export const HabitProvider = ({ children }) => {
         { key: 'archives', url: `${API_URL}/api/archives` },
         { key: 'daily', url: `${API_URL}/api/daily` },
         { key: 'profile', url: `${API_URL}/api/user/me` },
+        { key: 'avatar', url: `${API_URL}/api/avatar` },
       ];
 
       const responses = await Promise.all(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
@@ -273,9 +274,19 @@ export const HabitProvider = ({ children }) => {
         setUser(prev => {
           const updated = {
             ...prev,
-            ...(profile.firstName      ? { firstName:      profile.firstName      } : {}),
-            ...(profile.lastName       ? { lastName:       profile.lastName       } : {}),
-            ...(profile.profilePicture ? { profilePicture: profile.profilePicture } : {}),
+            ...(profile.firstName ? { firstName: profile.firstName } : {}),
+            ...(profile.lastName  ? { lastName:  profile.lastName  } : {}),
+          };
+          db.saveUser(updated);
+          return updated;
+        });
+      }
+      if (parsed.avatar) {
+        const avatar = parsed.avatar;
+        setUser(prev => {
+          const updated = {
+            ...prev,
+            ...(avatar.profilePicture ? { profilePicture: avatar.profilePicture } : {}),
           };
           db.saveUser(updated);
           return updated;
@@ -767,7 +778,7 @@ export const HabitProvider = ({ children }) => {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, confirmPassword })
+      body: JSON.stringify({ email, password, confirmPassword, firstName, lastName })
     });
     const data = await parseJsonResponse(res);
     if (!res.ok) throw new Error(data.message || `Registration failed with status ${res.status}`);
