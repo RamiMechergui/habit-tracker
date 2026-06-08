@@ -32,7 +32,7 @@ jobs:
 
             echo "🐳 Rebuilding and restarting Docker services..."
             docker compose down
-            docker compose build --no-cache
+            docker compose build
             docker compose up -d
 
             echo "✅ Deployment complete!"
