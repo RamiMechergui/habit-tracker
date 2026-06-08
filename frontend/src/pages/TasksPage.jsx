@@ -87,6 +87,16 @@ export default function TasksPage() {
     setLocalDirty(false);
   }, [date, logs, getLog]);
 
+  const logRef = React.useRef(log);
+  const dateRef = React.useRef(date);
+  const localDirtyRef = React.useRef(localDirty);
+
+  useEffect(() => {
+    logRef.current = log;
+    dateRef.current = date;
+    localDirtyRef.current = localDirty;
+  }, [log, date, localDirty]);
+
   // ── Auto-save (1s debounce) ──────────────────────────────────────────────────
   useEffect(() => {
     if (!localDirty) return;
@@ -103,6 +113,26 @@ export default function TasksPage() {
     }, 1000);
     return () => clearTimeout(timer);
   }, [log, date, saveLog, localDirty]);
+
+  useEffect(() => {
+    const handleSavePending = () => {
+      if (localDirtyRef.current) {
+        saveLog(dateRef.current, logRef.current).catch(err => {
+          console.error('[TasksPage] Pending save failed:', err);
+        });
+      }
+    };
+    window.addEventListener('evolvia-save-pending', handleSavePending);
+
+    return () => {
+      window.removeEventListener('evolvia-save-pending', handleSavePending);
+      if (localDirtyRef.current) {
+        saveLog(dateRef.current, logRef.current).catch(err => {
+          console.error('[TasksPage] Unmount save failed:', err);
+        });
+      }
+    };
+  }, [saveLog]);
 
   // ── Derived state ────────────────────────────────────────────────────────────
   const isFuture = useMemo(

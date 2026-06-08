@@ -39,6 +39,7 @@ const essentialsRoutes   = require('./routes/essentials');
 const notificationsRoutes = require('./routes/notifications');
 const tasksRoutes        = require('./routes/tasks');
 const notesRoutes        = require('./routes/notes');
+const credentialsRoutes  = require('./routes/credentials');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/daily', logRoutes);
@@ -47,6 +48,7 @@ app.use('/api/essentials', essentialsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/notes', notesRoutes);
+app.use('/api/credentials', credentialsRoutes);
 
 // Aliases for monolithic compatibility with microservices frontend
 app.use('/api/currentbook', userRoutes);

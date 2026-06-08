@@ -144,6 +144,16 @@ export default function DailyLog() {
     setSearchParams({ date });
   }, [date, currentBook, logs, localDirty]); 
 
+  const logRef = React.useRef(log);
+  const dateRef = React.useRef(date);
+  const localDirtyRef = React.useRef(localDirty);
+
+  useEffect(() => {
+    logRef.current = log;
+    dateRef.current = date;
+    localDirtyRef.current = localDirty;
+  }, [log, date, localDirty]);
+
   useEffect(() => {
     // Only auto-save if we are dirty
     if (!localDirty) return;
@@ -163,6 +173,26 @@ export default function DailyLog() {
 
     return () => clearTimeout(timeoutId);
   }, [log, date, saveLog, localDirty]);
+
+  useEffect(() => {
+    const handleSavePending = () => {
+      if (localDirtyRef.current) {
+        saveLog(dateRef.current, logRef.current).catch(err => {
+          console.error('[DailyLog] Pending save failed:', err);
+        });
+      }
+    };
+    window.addEventListener('evolvia-save-pending', handleSavePending);
+
+    return () => {
+      window.removeEventListener('evolvia-save-pending', handleSavePending);
+      if (localDirtyRef.current) {
+        saveLog(dateRef.current, logRef.current).catch(err => {
+          console.error('[DailyLog] Unmount save failed:', err);
+        });
+      }
+    };
+  }, [saveLog]);
 
   const updateSection = (section, key, val) => {
     setLog(prev => ({ ...prev, [section]: { ...prev[section], [key]: val } }));

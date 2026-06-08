@@ -831,6 +831,21 @@ export const HabitProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    // 1. Dispatch event to save any pending/dirty user changes before session terminates
+    window.dispatchEvent(new CustomEvent('evolvia-save-pending'));
+
+    // Wait briefly (200ms) for unmount cleanups and saves to write/enqueue
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // 2. Attempt to replay sync queue to save outstanding changes to server while cookie is still valid
+    if (navigator.onLine) {
+      try {
+        await replayQueue();
+      } catch (e) {
+        console.warn('[Store] Failed to replay sync queue before logout:', e);
+      }
+    }
+
     try {
       await fetch(`${API_URL}/api/logout`, {
         method: 'POST',
@@ -858,7 +873,7 @@ export const HabitProvider = ({ children }) => {
     setNotifications([]);
     setUnreadCount(0);
     setToasts([]);
-    db.clearAllOfflineData();
+    await db.clearAllOfflineData();
   };
 
   const updateProfilePicture = async (croppedBlob) => {
@@ -1071,12 +1086,15 @@ export const HabitProvider = ({ children }) => {
     if (user) {
       if (navigator.onLine) {
         try {
-          await fetch(`${API_URL}/api/daily/${dateStr}`, {
+          const res = await fetch(`${API_URL}/api/daily/${dateStr}`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
+          if (!res.ok) {
+            throw new Error(`Server returned status ${res.status}`);
+          }
         } catch(e) {
           console.warn('[Store] Failed to save to backend, queuing for sync:', e.message);
           db.enqueueSync({
@@ -1115,11 +1133,12 @@ export const HabitProvider = ({ children }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ category })
         });
-        const data = await res.json();
-        if (res.ok) {
-          setExpenseCategories(data.expenseCategories);
-          db.saveCategories(data.expenseCategories);
+        if (!res.ok) {
+          throw new Error(`Server returned status ${res.status}`);
         }
+        const data = await res.json();
+        setExpenseCategories(data.expenseCategories);
+        db.saveCategories(data.expenseCategories);
       } catch (e) {
         console.warn('[Store] Queuing addCategory for sync');
         db.enqueueSync({
@@ -1152,11 +1171,12 @@ export const HabitProvider = ({ children }) => {
           method: 'DELETE',
           credentials: 'include'
         });
-        const data = await res.json();
-        if (res.ok) {
-          setExpenseCategories(data.expenseCategories);
-          db.saveCategories(data.expenseCategories);
+        if (!res.ok) {
+          throw new Error(`Server returned status ${res.status}`);
         }
+        const data = await res.json();
+        setExpenseCategories(data.expenseCategories);
+        db.saveCategories(data.expenseCategories);
       } catch (e) {
         console.warn('[Store] Queuing deleteCategory for sync');
         db.enqueueSync({
@@ -1194,11 +1214,12 @@ export const HabitProvider = ({ children }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ newCategory: trimmedNew })
         });
-        const data = await res.json();
-        if (res.ok) {
-          setExpenseCategories(data.expenseCategories);
-          db.saveCategories(data.expenseCategories);
+        if (!res.ok) {
+          throw new Error(`Server returned status ${res.status}`);
         }
+        const data = await res.json();
+        setExpenseCategories(data.expenseCategories);
+        db.saveCategories(data.expenseCategories);
       } catch (e) {
         console.warn('[Store] Queuing editCategory for sync');
         db.enqueueSync({

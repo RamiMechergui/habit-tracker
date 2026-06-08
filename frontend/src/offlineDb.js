@@ -6,7 +6,7 @@
  */
 
 const DB_NAME = 'evolvia_offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 // Object store names
 const STORES = {
@@ -17,6 +17,7 @@ const STORES = {
   ARCHIVES:   'archives',
   SYNC_QUEUE: 'syncQueue',
   NOTES:      'notes',         // Daily notes keyed by _id
+  CREDENTIALS: 'credentials', // Password Vault
 };
 
 let dbInstance = null;
@@ -69,6 +70,11 @@ function openDb() {
       if (!db.objectStoreNames.contains(STORES.NOTES)) {
         const notesStore = db.createObjectStore(STORES.NOTES, { keyPath: '_id' });
         notesStore.createIndex('date', 'date', { unique: false });
+      }
+
+      // Credentials — key = _id (string). Created in v3.
+      if (!db.objectStoreNames.contains(STORES.CREDENTIALS)) {
+        db.createObjectStore(STORES.CREDENTIALS, { keyPath: '_id' });
       }
     };
 
@@ -265,6 +271,26 @@ export async function replaceAllNotes(notes) {
   for (const note of notes) await putItem(STORES.NOTES, note);
 }
 
+// Credentials
+export async function saveCredentials(credsList) {
+  await clearStore(STORES.CREDENTIALS);
+  for (const c of credsList) {
+    await putItem(STORES.CREDENTIALS, c);
+  }
+}
+
+export async function saveCredential(cred) {
+  await putItem(STORES.CREDENTIALS, cred);
+}
+
+export async function deleteCredential(id) {
+  await deleteItem(STORES.CREDENTIALS, id);
+}
+
+export async function loadCredentials() {
+  return getAllItems(STORES.CREDENTIALS);
+}
+
 // ── Full wipe (logout) ──────────────────────────────────────────
 
 export async function clearAllOfflineData() {
@@ -275,4 +301,5 @@ export async function clearAllOfflineData() {
   await clearStore(STORES.ARCHIVES);
   await clearStore(STORES.SYNC_QUEUE);
   await clearStore(STORES.NOTES);
+  await clearStore(STORES.CREDENTIALS);
 }
