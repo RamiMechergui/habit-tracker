@@ -32,3 +32,7 @@ npm-debug.log*
 
 # Runtime
 uploads/
+
+# AWS / SSH Keys
+*.pem
+*.key
