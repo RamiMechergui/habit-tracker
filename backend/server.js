@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -22,6 +23,8 @@ const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+// Ensure writeable by the node user (Docker named volumes are owned by root)
+try { fs.chmodSync(uploadDir, 0o755); } catch (_) {}
 app.use('/uploads', express.static(uploadDir));
 
 // Connect to MongoDB
@@ -99,9 +102,20 @@ app.get('/api/avatar',                (req, res, next) => { req.url = '/';      
 app.post('/api/avatar',               (req, res, next) => { req.url = '/avatar';          profileRoutes(req, res, next); });
 app.put('/api/login/change-password', (req, res, next) => { req.url = '/change-password'; profileRoutes(req, res, next); });
 
-// Other flat aliases
-app.use('/api/currentbook', booksRoutes);
-app.use('/api/archives', userRoutes);
+// Books — the frontend calls /api/currentbook (bare) for POST/create and PUT/finish.
+// booksRoutes has handlers at /current, /archived.
+app.post('/api/currentbook',   (req, res, next) => { req.url = '/current';  booksRoutes(req, res, next); });
+app.put('/api/currentbook',    (req, res, next) => { req.url = '/current';  booksRoutes(req, res, next); });
+app.get('/api/currentbook',    (req, res, next) => { req.url = '/current';  booksRoutes(req, res, next); });
+app.get('/api/currentbook/current', (req, res, next) => { req.url = '/current';  booksRoutes(req, res, next); });
+app.get('/api/currentbook/archived',(req, res, next) => { req.url = '/archived'; booksRoutes(req, res, next); });
+
+// Archives — the frontend calls /api/archives for POST/create and GET/list
+// GET uses userRoutes (has router.get('/archives', ...) returning { archivedBooks }).
+// POST for archiving is a legacy microservices call — the monolithic PUT /api/currentbook
+// already pushes to archivedBooks, so we just echo the body as a no-op success.
+app.get('/api/archives',  (req, res, next) => { req.url = '/archives'; userRoutes(req, res, next); });
+app.post('/api/archives', (req, res) => res.json({ success: true, ...req.body }));
 
 // Categories — the frontend calls /api/categories for all CRUD operations on expense categories.
 // The expensesRoutes has handlers at /categories, /categories/list, /categories/:category.

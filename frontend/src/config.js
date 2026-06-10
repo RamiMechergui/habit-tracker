@@ -30,7 +30,7 @@ if (!envApiUrl && !import.meta.env.DEV && !isNative) {
 
 export const API_URL = isNative
   ? (envApiUrlNative || envApiUrl || (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin))
-  : (envApiUrl || (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin));
+  : (envApiUrl || (import.meta.env.DEV ? 'http://localhost:5001' : window.location.origin));
 
 /** Whether we are running inside a native Capacitor app (Android / iOS) */
 export const IS_NATIVE = isNative;
