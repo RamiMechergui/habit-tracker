@@ -79,26 +79,35 @@ app.use('/api/books', booksRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Aliases for monolithic compatibility with microservices frontend
-app.use('/api/currentbook', booksRoutes);
-app.use('/api/archives', userRoutes);
-app.use('/api/settings', profileRoutes);
-app.use('/api/categories', expensesRoutes);
-app.use('/api/avatar', profileRoutes);
-
-// ── Monolithic aliases for flat microservice-compatible auth paths ──────
-// The frontend uses flat paths (/api/login, /api/register, ...) which
-// Docker/nginx routes to individual microservices. This section makes
+// ── Monolithic aliases for flat microservice-compatible paths ──────────
+// The frontend uses flat paths (/api/login, /api/register, /api/settings,
+// /api/avatar, /api/categories, /api/currentbook, /api/archives, ...)
+// which Docker/nginx routes to individual microservices. This section makes
 // those same paths work when running the monolithic backend.
 
-// Delegates: rewrite req.url to match the sub-route and pass to the router
-app.put('/api/settings',            (req, res, next) => { req.url = '/';           profileRoutes(req, res, next); });
-app.post('/api/avatar',             (req, res, next) => { req.url = '/avatar';     profileRoutes(req, res, next); });
+// Flat aliases — rewrite req.url to match the sub-route and pass to the router
+// Auth paths
+app.post('/api/login',                (req, res, next) => { req.url = '/login';           authRoutes(req, res, next); });
+app.post('/api/register',             (req, res, next) => { req.url = '/register';        authRoutes(req, res, next); });
+app.post('/api/logout',               (req, res, next) => { req.url = '/logout';          authRoutes(req, res, next); });
+app.get('/api/verify',                (req, res, next) => { req.url = '/verify';          authRoutes(req, res, next); });
+
+// User profile/avatar paths
+app.get('/api/settings',              (req, res, next) => { req.url = '/';                profileRoutes(req, res, next); });
+app.put('/api/settings',              (req, res, next) => { req.url = '/';                profileRoutes(req, res, next); });
+app.get('/api/avatar',                (req, res, next) => { req.url = '/';                profileRoutes(req, res, next); });
+app.post('/api/avatar',               (req, res, next) => { req.url = '/avatar';          profileRoutes(req, res, next); });
 app.put('/api/login/change-password', (req, res, next) => { req.url = '/change-password'; profileRoutes(req, res, next); });
 
-// Catch-all for flat auth paths: /api/login, /api/register, /api/logout, /api/verify
-// Must come AFTER all other /api/* mounts so it only catches unmatched paths.
-app.use('/api', authRoutes);
+// Other flat aliases
+app.use('/api/currentbook', booksRoutes);
+app.use('/api/archives', userRoutes);
+
+// Categories — the frontend calls /api/categories for all CRUD operations on expense categories.
+// The expensesRoutes has handlers at /categories, /categories/list, /categories/:category.
+app.get('/api/categories',                  (req, res, next) => { req.url = '/categories/list';                expensesRoutes(req, res, next); });
+app.post('/api/categories',                 (req, res, next) => { req.url = '/categories';                     expensesRoutes(req, res, next); });
+app.delete('/api/categories/:category',     (req, res, next) => { req.url = '/categories/' + req.params.category; expensesRoutes(req, res, next); });
 
 // SSE delivery stream — not available in monolithic mode; return graceful 503
 // so the frontend EventSource fails fast rather than hanging indefinitely

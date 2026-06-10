@@ -81,6 +81,17 @@ router.get('/categories/list', protect, async (req, res) => {
   try {
     const User = require('../models/User');
     const user = await User.findById(req.user._id).select('expenseCategories');
+    res.json({ expenseCategories: user.expenseCategories || [] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Alias: GET /categories matches /categories/list (the frontend calls /api/categories)
+router.get('/categories', protect, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('expenseCategories');
     res.json({ categories: user.expenseCategories || [] });
   } catch (err) {
     res.status(500).json({ message: err.message });
