@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { X, ShieldAlert, ShoppingBag } from 'lucide-react';
+import { X, ShieldAlert, ShoppingBag, AlertTriangle } from 'lucide-react';
 
 /**
  * NotificationToast — stacked top-right toasts for incoming SSE notifications.
@@ -19,23 +19,23 @@ export default function NotificationToast({ toasts, onDismiss }) {
 
 function ToastItem({ toast, onDismiss }) {
   const timerRef = useRef(null);
-  const isUrgent = toast.type === 'urgent';
-  const duration = isUrgent ? 8000 : 5000;
+  const type = toast.type === 'system' ? 'system' : toast.type === 'urgent' ? 'urgent' : 'reminder';
+  const duration = type === 'urgent' ? 8000 : type === 'system' ? 10000 : 5000;
 
   useEffect(() => {
     timerRef.current = setTimeout(() => onDismiss(toast.id), duration);
     return () => clearTimeout(timerRef.current);
   }, [toast.id, duration, onDismiss]);
 
+  const icon = type === 'urgent' ? <ShieldAlert size={18} /> : type === 'system' ? <AlertTriangle size={18} /> : <ShoppingBag size={18} />;
+  const label = type === 'urgent' ? '🚨 Out of Stock' : type === 'system' ? '⚠️ System' : '🔔 Running Low';
+  const cls = type === 'urgent' ? 'notif-toast-urgent' : type === 'system' ? 'notif-toast-system' : 'notif-toast-reminder';
+
   return (
-    <div className={`notif-toast ${isUrgent ? 'notif-toast-urgent' : 'notif-toast-reminder'}`}>
-      <div className="notif-toast-icon">
-        {isUrgent ? <ShieldAlert size={18} /> : <ShoppingBag size={18} />}
-      </div>
+    <div className={`notif-toast ${cls}`}>
+      <div className="notif-toast-icon">{icon}</div>
       <div className="notif-toast-body">
-        <span className="notif-toast-label">
-          {isUrgent ? '🚨 Out of Stock' : '🔔 Running Low'}
-        </span>
+        <span className="notif-toast-label">{label}</span>
         <p className="notif-toast-message">{toast.message}</p>
       </div>
       <button
@@ -45,7 +45,6 @@ function ToastItem({ toast, onDismiss }) {
       >
         <X size={14} />
       </button>
-      {/* Progress bar that shrinks over the toast duration */}
       <div
         className="notif-toast-progress"
         style={{ animationDuration: `${duration}ms` }}

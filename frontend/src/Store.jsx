@@ -266,7 +266,7 @@ export const HabitProvider = ({ children }) => {
     // Note: user is in the deps array so this callback is recreated on login
     // and always has the current user value
     try {
-      // Query all expected endpoints and validate responses individually
+      // Query all expected endpoints — use allSettled so a single network blip doesn't skip everything
       const endpoints = [
         { key: 'categories', url: `${API_URL}/api/categories` },
         { key: 'currentbook', url: `${API_URL}/api/currentbook` },
@@ -278,12 +278,19 @@ export const HabitProvider = ({ children }) => {
         { key: 'settings', url: `${API_URL}/api/settings` },
       ];
 
-      const responses = await Promise.all(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
+      const settled = await Promise.allSettled(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
+      // Filter to only fulfilled responses
+      const responsePairs = [];
+      for (let i = 0; i < settled.length; i++) {
+        if (settled[i].status === 'fulfilled') {
+          responsePairs.push({ endpoint: endpoints[i], response: settled[i].value });
+        } else {
+          console.warn(`[Store] ${endpoints[i].url} fetch rejected:`, settled[i].reason?.message);
+        }
+      }
 
       const parsed = {};
-      for (let i = 0; i < responses.length; i++) {
-        const res = responses[i];
-        const e = endpoints[i];
+      for (const { endpoint: e, response: res } of responsePairs) {
         // If non-OK, capture body text for diagnostics but continue
         if (!res.ok) {
           const txt = await res.text();
@@ -374,11 +381,7 @@ export const HabitProvider = ({ children }) => {
         }
       }
     } catch (e) {
-      console.error('[Store] refreshFromServer error:', e);
-      // Notify the user but keep using cached data
-      try {
-        setToasts(prev => [...prev.slice(-4), { id: `server_err_${Date.now()}`, type: 'urgent', message: 'Server unavailable — using cached data.' }]);
-      } catch (_) {}
+      console.warn('[Store] refreshFromServer error — keeping cached data:', e.message);
       return;
     }
   }, [API_URL, user]);
@@ -492,7 +495,7 @@ export const HabitProvider = ({ children }) => {
       } catch (e) {
         console.error('App initialization error:', e);
         try {
-          setToasts(prev => [...prev.slice(-4), { id: `init_err_${Date.now()}`, type: 'urgent', message: 'Initialization failed — using cached data.' }]);
+          setToasts(prev => [...prev.slice(-4), { id: `init_err_${Date.now()}`, type: 'system', message: 'Initialization failed — using cached data.' }]);
         } catch (_) {}
         startSyncListener();
       }
