@@ -1,0 +1,38 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            # Stash any local changes on the server to prevent merge conflicts
+            git stash
+            
+            # Pull the latest code from the main branch
+            git pull origin main
+            
+            # Rebuild and restart the docker containers
+            # --build ensures any new dependencies or Dockerfile changes are applied
+            # -d runs them in the background
+            docker compose down
+            docker compose up -d --build
+            
+            # Clean up dangling images to save disk space on your EC2 instance
+            docker image prune -f
