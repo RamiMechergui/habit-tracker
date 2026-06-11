@@ -53,8 +53,14 @@ jobs:
             git reset --hard origin/main
 
             # ── Rebuild and restart Docker Compose ────────────────────────
-            docker compose down
+            # '|| true' prevents failure when no containers are running yet (first deploy)
+            docker compose down --remove-orphans || true
+
             docker compose up -d --build
+
+            # ── Verify containers started ─────────────────────────────────
+            echo "=== Running containers after deploy ==="
+            docker compose ps
 
             # ── Clean up old images ───────────────────────────────────────
             docker image prune -f
