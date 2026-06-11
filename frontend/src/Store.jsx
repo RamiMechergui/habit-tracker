@@ -81,12 +81,18 @@ export const HabitProvider = ({ children }) => {
   });
 
   const setTimelinePrefs = useCallback((updates) => {
-    setTimelinePrefsState(prev => {
-      const next = { ...prev, ...updates };
-      try { localStorage.setItem('timelinePrefs', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, []);
+    const next = { ...timelinePrefs, ...updates };
+    setTimelinePrefsState(next);
+    try { localStorage.setItem('timelinePrefs', JSON.stringify(next)); } catch {}
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timelinePrefs: next })
+      }).catch(() => {});
+    }
+  }, [timelinePrefs, user, API_URL]);
 
   // ── Recurring task helpers ────────────────────────────────────
   const WEEKDAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -141,43 +147,68 @@ export const HabitProvider = ({ children }) => {
   const saveRecurringTask = useCallback((taskDef) => {
     const id = taskDef.id && !taskDef.id.startsWith('task_') ? taskDef.id : `rec_${Date.now()}`;
     const def = { ...taskDef, id, isDisabled: false, startDate: taskDef.startDate || format(new Date(), 'yyyy-MM-dd'), createdAt: new Date().toISOString() };
-    setRecurringTasksState(prev => {
-      const next = { ...prev, [id]: def };
-      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
-      return next;
-    });
+    const next = { ...recurringTasks, [id]: def };
+    setRecurringTasksState(next);
+    try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recurringTasks: next })
+      }).catch(() => {});
+    }
     return def;
-  }, []);
+  }, [recurringTasks, user, API_URL]);
 
   // Update a recurring task definition (future occurrences only)
   const updateRecurringTask = useCallback((id, updates) => {
-    setRecurringTasksState(prev => {
-      if (!prev[id]) return prev;
-      const next = { ...prev, [id]: { ...prev[id], ...updates } };
-      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, []);
+    if (!recurringTasks[id]) return;
+    const next = { ...recurringTasks, [id]: { ...recurringTasks[id], ...updates } };
+    setRecurringTasksState(next);
+    try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recurringTasks: next })
+      }).catch(() => {});
+    }
+  }, [recurringTasks, user, API_URL]);
 
   // Disable (soft-delete) a recurring task
   const disableRecurringTask = useCallback((id) => {
-    setRecurringTasksState(prev => {
-      if (!prev[id]) return prev;
-      const next = { ...prev, [id]: { ...prev[id], isDisabled: true } };
-      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, []);
+    if (!recurringTasks[id]) return;
+    const next = { ...recurringTasks, [id]: { ...recurringTasks[id], isDisabled: true } };
+    setRecurringTasksState(next);
+    try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recurringTasks: next })
+      }).catch(() => {});
+    }
+  }, [recurringTasks, user, API_URL]);
 
   // Delete a recurring task definition entirely
   const deleteRecurringTask = useCallback((id) => {
-    setRecurringTasksState(prev => {
-      const next = { ...prev };
-      delete next[id];
-      try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, []);
+    if (!recurringTasks[id]) return;
+    const next = { ...recurringTasks };
+    delete next[id];
+    setRecurringTasksState(next);
+    try { localStorage.setItem('recurringTasks', JSON.stringify(next)); } catch {}
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recurringTasks: next })
+      }).catch(() => {});
+    }
+  }, [recurringTasks, user, API_URL]);
 
   // ── Essentials state ──────────────────────────────────────────
   const [essentials, setEssentials] = useState([]);
@@ -242,6 +273,7 @@ export const HabitProvider = ({ children }) => {
         { key: 'profile', url: `${API_URL}/api/user/me` },
         { key: 'avatar', url: `${API_URL}/api/avatar` },
         { key: 'notes', url: `${API_URL}/api/notes` },
+        { key: 'settings', url: `${API_URL}/api/settings` },
       ];
 
       const responses = await Promise.all(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
@@ -321,6 +353,19 @@ export const HabitProvider = ({ children }) => {
       if (parsed.notes) {
         setAllNotes(parsed.notes);
         db.replaceAllNotes(parsed.notes);
+      }
+      if (parsed.settings) {
+        if (parsed.settings.recurringTasks) {
+          setRecurringTasksState(parsed.settings.recurringTasks);
+          try { localStorage.setItem('recurringTasks', JSON.stringify(parsed.settings.recurringTasks)); } catch {}
+        }
+        if (parsed.settings.timelinePrefs) {
+          setTimelinePrefsState(parsed.settings.timelinePrefs);
+          try { localStorage.setItem('timelinePrefs', JSON.stringify(parsed.settings.timelinePrefs)); } catch {}
+        }
+        if (parsed.settings.theme) {
+          try { localStorage.setItem('theme', parsed.settings.theme); } catch {}
+        }
       }
     } catch (e) {
       console.error('[Store] refreshFromServer error:', e);

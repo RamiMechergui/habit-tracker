@@ -74,7 +74,9 @@ router.get('/', protect, async (req, res) => {
       email: user.email,
       profilePicture: user.profilePicture,
       theme: settings?.theme || 'dark',
-      expenseCategories: user.expenseCategories
+      expenseCategories: user.expenseCategories,
+      recurringTasks: settings?.recurringTasks || {},
+      timelinePrefs: settings?.timelinePrefs || { defaultDuration: 30, intervalGranularity: 30 }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -83,28 +85,36 @@ router.get('/', protect, async (req, res) => {
 
 router.put('/', protect, async (req, res) => {
   try {
-    const { firstName, lastName, theme } = req.body;
+    const { firstName, lastName, theme, recurringTasks, timelinePrefs } = req.body;
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { firstName, lastName },
       { new: true }
     ).select('-password');
 
-    if (theme) {
+    const updateFields = {};
+    if (theme !== undefined) updateFields.theme = theme;
+    if (recurringTasks !== undefined) updateFields.recurringTasks = recurringTasks;
+    if (timelinePrefs !== undefined) updateFields.timelinePrefs = timelinePrefs;
+
+    if (Object.keys(updateFields).length > 0) {
       await Settings.findOneAndUpdate(
         { userId: req.user._id.toString() },
-        { theme },
+        updateFields,
         { upsert: true, new: true }
       );
     }
 
+    const settings = await Settings.findOne({ userId: req.user._id.toString() });
     res.json({
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       profilePicture: user.profilePicture,
-      theme: theme || (await Settings.findOne({ userId: req.user._id.toString() }))?.theme || 'dark',
-      expenseCategories: user.expenseCategories
+      theme: settings?.theme || 'dark',
+      expenseCategories: user.expenseCategories,
+      recurringTasks: settings?.recurringTasks || {},
+      timelinePrefs: settings?.timelinePrefs || { defaultDuration: 30, intervalGranularity: 30 }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

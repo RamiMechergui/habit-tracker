@@ -5,6 +5,7 @@ import {
   WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { API_URL } from './config';
 import Dashboard from './pages/Dashboard';
 import DailyLog from './pages/DailyLog';
 import WeeklyReview from './pages/WeeklyReview';
@@ -51,7 +52,15 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
-  }, [theme]);
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme })
+      }).catch(() => {});
+    }
+  }, [theme, user]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
