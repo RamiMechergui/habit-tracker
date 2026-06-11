@@ -207,6 +207,7 @@ export const HabitProvider = ({ children }) => {
   // ── Refresh state from server (called after sync completes) ──
   const refreshFromServer = useCallback(async () => {
     if (!navigator.onLine) return;
+    if (!user) return; // skip if not authenticated
     try {
       // Query all expected endpoints and validate responses individually
       const endpoints = [
@@ -405,6 +406,7 @@ export const HabitProvider = ({ children }) => {
           } else if (res.status === 401) {
             // Unauthorized - backend rejected cookie or token invalid, clear session
             await Preferences.remove({ key: 'user_session' });
+            invalidateNativeTokenCache();
             setUser(null);
           }
         }

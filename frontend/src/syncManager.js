@@ -40,6 +40,7 @@ export async function replayQueue() {
 
     console.log(`[Sync] Replaying ${queue.length} queued mutation(s)…`);
 
+    let allSucceeded = true;
     for (const item of queue) {
       try {
         const fetchOpts = {
@@ -63,17 +64,20 @@ export async function replayQueue() {
         } else {
           // Server error — stop processing, will retry later
           console.warn(`[Sync] Server returned ${res.status} for ${item.url}, will retry later`);
+          allSucceeded = false;
           break;
         }
       } catch (fetchErr) {
         // Network error mid-sync — stop, we're probably offline again
         console.warn('[Sync] Network error during replay, stopping:', fetchErr.message);
+        allSucceeded = false;
         break;
       }
     }
 
-    // Notify the Store to refresh from the server
-    if (onSyncComplete) {
+    // Only refresh from server if ALL queued items were processed successfully.
+    // Otherwise the token is likely stale — wait for the next attempt.
+    if (allSucceeded && onSyncComplete) {
       try { await onSyncComplete(); } catch (_) { /* ignore */ }
     }
   } catch (err) {

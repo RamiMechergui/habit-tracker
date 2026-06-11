@@ -67,6 +67,7 @@ const expensesRoutes     = require('./routes/expenses');
 const booksRoutes        = require('./routes/books');
 const profileRoutes      = require('./routes/profile');
 const analyticsRoutes    = require('./routes/analytics');
+const adminRoutes        = require('./routes/admin');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/daily', logRoutes);
@@ -81,6 +82,7 @@ app.use('/api/expenses', expensesRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/login/admin', adminRoutes);
 
 // ── Monolithic aliases for flat microservice-compatible paths ──────────
 // The frontend uses flat paths (/api/login, /api/register, /api/settings,
