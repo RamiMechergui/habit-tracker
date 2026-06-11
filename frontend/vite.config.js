@@ -7,9 +7,10 @@ const apiTarget = process.env.VITE_API_TARGET || 'http://backend:5000'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: {
+    server: {
     host: true,
     port: 5173,
+    allowedHosts: true,
     watch: {
       usePolling: true,
       ignored: ['**/node_modules/**', '**/android/**', '**/.git/**', '**/src-tauri/**'],
