@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-# Source nvm if available
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+# Source nvm (try multiple common locations)
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+elif [ -s /usr/local/nvm/nvm.sh ]; then
+  . /usr/local/nvm/nvm.sh
+elif [ -s /usr/share/nvm/nvm.sh ]; then
+  . /usr/share/nvm/nvm.sh
+elif command -v npm &>/dev/null; then
+  : # npm already in PATH
+else
+  echo "Error: npm not found. Install nvm or Node.js first."
+  echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+  exit 1
+fi
 
 APP_DIR="$HOME/habit-tracker"
 LOG_DIR="$HOME/logs"
