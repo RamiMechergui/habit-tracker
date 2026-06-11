@@ -16,7 +16,7 @@ const safeStartOfWeek = typeof startOfWeek === 'function'
       return d;
     };
 import * as db from './offlineDb.js';
-import { startSyncListener, onSyncDone, requestBackgroundSync } from './syncManager.js';
+import { startSyncListener, onSyncDone, requestBackgroundSync, replayQueue } from './syncManager.js';
 import { API_URL, IS_NATIVE, nativeFetch, invalidateNativeTokenCache } from './config';
 
 const HabitContext = createContext();
@@ -241,6 +241,7 @@ export const HabitProvider = ({ children }) => {
         { key: 'daily', url: `${API_URL}/api/daily` },
         { key: 'profile', url: `${API_URL}/api/user/me` },
         { key: 'avatar', url: `${API_URL}/api/avatar` },
+        { key: 'notes', url: `${API_URL}/api/notes` },
       ];
 
       const responses = await Promise.all(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
@@ -316,6 +317,10 @@ export const HabitProvider = ({ children }) => {
           db.saveUser(updated);
           return updated;
         });
+      }
+      if (parsed.notes) {
+        setAllNotes(parsed.notes);
+        db.replaceAllNotes(parsed.notes);
       }
     } catch (e) {
       console.error('[Store] refreshFromServer error:', e);
