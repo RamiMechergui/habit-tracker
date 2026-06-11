@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+# Source nvm if available
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
 APP_DIR="$HOME/habit-tracker"
 LOG_DIR="$HOME/logs"
 mkdir -p "$LOG_DIR"
