@@ -125,12 +125,10 @@ app.get('/api/categories',                  (req, res, next) => { req.url = '/ca
 app.post('/api/categories',                 (req, res, next) => { req.url = '/categories';                     expensesRoutes(req, res, next); });
 app.delete('/api/categories/:category',     (req, res, next) => { req.url = '/categories/' + req.params.category; expensesRoutes(req, res, next); });
 
-// SSE delivery stream — not available in monolithic mode; return graceful 503
-// so the frontend EventSource fails fast rather than hanging indefinitely
+// SSE delivery stream — not available in monolithic mode; return 204 No Content
+// so the frontend EventSource stops trying to reconnect permanently
 app.get('/api/delivery/stream', (_req, res) => {
-  res.status(503).json({
-    message: 'Delivery service not available in monolithic mode. Real-time push is disabled.'
-  });
+  res.status(204).end();
 });
 
 const PORT = process.env.PORT || 5000;
