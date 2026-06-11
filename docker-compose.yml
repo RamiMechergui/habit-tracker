@@ -36,21 +36,13 @@ services:
       - JWT_SECRET=${JWT_SECRET:-your_super_secure_jwt_secret_key_change_in_production_12345}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change_this_admin_dashboard_password}
       - CLIENT_URL=http://localhost
-      - KAFKA_BROKER=kafka:9092
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     volumes:
       - ./backend:/app
       - /app/node_modules
-      # Uploads stored in container writable layer (avoids root-owned volume permission issues).
-      # Use a bind mount (e.g. ./backend/uploads:/app/uploads) in production if persistence needed.
-      # - uploads:/app/uploads
     networks:
       - habit-network
     depends_on:
       - mongo
-      - kafka
 
   # ── MongoDB Database ──────────────────────────────────────────────
   mongo:
@@ -62,41 +54,6 @@ services:
       - mongo_data:/data/db
     networks:
       - habit-network
-
-  # ── Kafka Infrastructure (for task reminders & essentials notifications) ─────
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    hostname: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-    networks:
-      - habit-network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    hostname: kafka
-    depends_on: [zookeeper]
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_NUM_PARTITIONS: 10
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CREATE_TOPICS: "item-status-changed:10:1,notifications-created:10:1,notifications-created-dlq:1:1,task-notifications:10:1"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    networks:
-      - habit-network
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
 
   # ── Mongo Express (Admin UI) ──────────────────────────────────────
   mongo-express:
@@ -120,5 +77,3 @@ networks:
 
 volumes:
   mongo_data:
-  zookeeper_data:
-  kafka_data:

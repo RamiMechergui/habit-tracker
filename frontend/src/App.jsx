@@ -24,8 +24,7 @@ import Admin from './pages/Admin';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
-import NotificationBar from './components/NotificationBar';
-import NotificationToast from './components/NotificationToast';
+
 import { useHabits } from './Store';
 
 const NAV_LINKS = [
@@ -212,10 +211,6 @@ function App() {
             <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block' }} />
           </div>
 
-          {/* Right: Notification */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
-            <NotificationBar />
-          </div>
       </header>
 
       {/* ── Offline Banner ── */}
@@ -263,8 +258,6 @@ function App() {
 
       {/* ── Top-right floating action bar ── */}
       <div className="action-controls-container">
-        <NotificationBar />
-        <div className="action-divider" />
         <button
           onClick={toggleTheme}
           className="theme-toggle-btn-header"
@@ -301,8 +294,7 @@ function App() {
       <InstallPrompt />
       <UpdateToast />
 
-      {/* ── Notification Toasts (SSE live events) ── */}
-      <NotificationToast toasts={toasts} onDismiss={dismissToast} />
+
 
     </div>
   );
