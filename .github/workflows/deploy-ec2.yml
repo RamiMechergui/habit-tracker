@@ -37,5 +37,26 @@ jobs:
             echo "=== [EC2] Deploy triggered by GitHub Actions ==="
             echo "Commit: ${{ github.sha }}"
             echo "Author: ${{ github.actor }}"
-            bash ~/habit-tracker/deploy-ec2.sh
+
+            REPO_DIR=~/habit-tracker
+
+            # ── Clone if the directory doesn't exist yet ──────────────────
+            if [ ! -d "$REPO_DIR" ]; then
+              echo ">>> Repo not found. Cloning for the first time..."
+              git clone https://github.com/RamiMechergui/habit-tracker.git "$REPO_DIR"
+            fi
+
+            cd "$REPO_DIR"
+
+            # ── Pull latest code ──────────────────────────────────────────
+            git fetch origin main
+            git reset --hard origin/main
+
+            # ── Rebuild and restart Docker Compose ────────────────────────
+            docker compose down
+            docker compose up -d --build
+
+            # ── Clean up old images ───────────────────────────────────────
+            docker image prune -f
+
             echo "=== [EC2] Deploy finished successfully ==="
