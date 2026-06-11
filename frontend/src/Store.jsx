@@ -835,7 +835,8 @@ export const HabitProvider = ({ children }) => {
     const updated = { ...user, firstName: data.firstName, lastName: data.lastName };
     setUser(updated);
     await saveSession(updated);
-    db.saveUser(updated); = async (currentPassword, newPassword) => {
+    db.saveUser(updated);
+    const changePassword = async (currentPassword, newPassword) => {
     if (!user) return;
     const res = await fetch(`${API_URL}/api/login/change-password`, {
       method: 'PUT',
