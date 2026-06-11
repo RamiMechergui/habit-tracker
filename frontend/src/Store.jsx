@@ -861,19 +861,8 @@ export const HabitProvider = ({ children }) => {
     const data = await parseJsonResponse(res);
     if (!res.ok) throw new Error(data.message || `Registration failed with status ${res.status}`);
 
-    // Cookie is now set — immediately persist the name in the settings service
-    if (firstName || lastName) {
-      try {
-        await fetch(`${API_URL}/api/settings`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ firstName, lastName })
-        });
-      } catch (e) {
-        console.error('Failed to save name during registration:', e);
-      }
-    }
+    // firstName and lastName are saved directly to the User model by the register
+    // handler (User.create). No additional settings call needed here.
 
     return data;
   };

@@ -1,52 +1,135 @@
 #!/usr/bin/env bash
-set -e
+# =============================================================================
+#  deploy-ec2.sh — Monolithic deploy script for Evolvia (Habit Tracker)
+#
+#  Called automatically by GitHub Actions on every push to main/master.
+#  Can also be run manually:  bash ~/habit-tracker/deploy-ec2.sh
+#
+#  What this script does:
+#    1. Loads Node.js (via nvm or system PATH)
+#    2. Pulls the latest code from GitHub
+#    3. Installs backend dependencies
+#    4. Installs frontend dependencies and builds the React app
+#    5. Copies the production build to /var/www/html (served by Nginx)
+#    6. Reloads Nginx (zero-downtime static file update)
+#    7. Restarts the PM2 backend process (zero-downtime via reload)
+# =============================================================================
+set -euo pipefail
 
-# Source nvm (try multiple common locations)
+# ── Colour helpers ────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
+info()    { echo -e "${CYAN}[deploy]${NC} $*"; }
+success() { echo -e "${GREEN}[deploy]${NC} ✓ $*"; }
+warn()    { echo -e "${YELLOW}[deploy]${NC} ⚠ $*"; }
+error()   { echo -e "${RED}[deploy]${NC} ✗ $*" >&2; }
+
+# ── Config ────────────────────────────────────────────────────────────────────
+APP_DIR="${APP_DIR:-$HOME/habit-tracker}"
+WEB_ROOT="/var/www/html"
+PM2_APP_NAME="habit-tracker-api"
+LOG_DIR="$HOME/logs"
+BRANCH="main"
+
+# ── Load Node.js ──────────────────────────────────────────────────────────────
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck source=/dev/null
   . "$NVM_DIR/nvm.sh"
-elif [ -s /usr/local/nvm/nvm.sh ]; then
-  . /usr/local/nvm/nvm.sh
-elif [ -s /usr/share/nvm/nvm.sh ]; then
-  . /usr/share/nvm/nvm.sh
-elif command -v npm &>/dev/null; then
-  : # npm already in PATH
+  nvm use --lts 2>/dev/null || nvm use node 2>/dev/null || true
+elif command -v node &>/dev/null; then
+  : # node already in PATH (system install)
 else
-  echo "Error: npm not found. Install nvm or Node.js first."
-  echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+  error "Node.js not found. Run ec2-init.sh first."
   exit 1
 fi
 
-APP_DIR="$HOME/habit-tracker"
-LOG_DIR="$HOME/logs"
+NODE_VER=$(node --version 2>/dev/null || echo "unknown")
+NPM_VER=$(npm --version 2>/dev/null || echo "unknown")
+info "Node ${NODE_VER}  /  npm ${NPM_VER}"
+
+# ── Sanity checks ─────────────────────────────────────────────────────────────
+if [ ! -d "$APP_DIR" ]; then
+  error "App directory '$APP_DIR' not found. Run ec2-init.sh first."
+  exit 1
+fi
+
+if [ ! -f "$APP_DIR/.env" ]; then
+  warn ".env not found in $APP_DIR — creating from .env.example"
+  cp "$APP_DIR/.env.example" "$APP_DIR/.env" 2>/dev/null || true
+fi
+
 mkdir -p "$LOG_DIR"
 
-echo "=== Deploying habit-tracker to EC2 ==="
+echo ""
+info "======================================================="
+info "  Evolvia — EC2 Monolith Deploy"
+info "  $(date '+%Y-%m-%d %H:%M:%S %Z')"
+info "======================================================="
+echo ""
 
-# 1. Pull latest code
+# ── Step 1: Pull latest code ──────────────────────────────────────────────────
+info "Step 1/5 — Pulling latest code..."
 cd "$APP_DIR"
-git pull origin main
+git fetch --all
+git checkout "$BRANCH" 2>/dev/null || true
+git reset --hard "origin/$BRANCH"
+success "Code updated to $(git rev-parse --short HEAD)"
 
-# 2. Install backend dependencies & restart
-echo "[backend] Installing dependencies..."
+# ── Step 2: Backend dependencies ─────────────────────────────────────────────
+info "Step 2/5 — Installing backend dependencies..."
 cd "$APP_DIR/backend"
-npm install
+npm ci --omit=dev --prefer-offline 2>&1 | tail -5
+success "Backend dependencies installed"
 
-echo "[backend] Restarting..."
-pkill -f "node server.js" 2>/dev/null || true
-nohup node server.js > "$LOG_DIR/backend.log" 2>&1 &
-echo "[backend] Started (PID $!)"
-
-# 3. Install frontend dependencies & restart
-echo "[frontend] Installing dependencies..."
+# ── Step 3: Frontend build ────────────────────────────────────────────────────
+info "Step 3/5 — Building frontend..."
 cd "$APP_DIR/frontend"
-npm install
+npm ci --prefer-offline 2>&1 | tail -5
 
-echo "[frontend] Restarting..."
-pkill -f "vite" 2>/dev/null || true
-nohup npx vite --host > "$LOG_DIR/frontend.log" 2>&1 &
-echo "[frontend] Started (PID $!)"
+# Build with VITE_API_URL unset (empty string) so all /api/ calls are relative.
+# Nginx on EC2 proxies /api/ → localhost:5001, so this is correct.
+VITE_API_URL="" npm run build 2>&1 | tail -20
+success "Frontend build complete (dist/)"
 
-echo "=== Deploy complete ==="
-echo "Backend:  http://$(curl -s http://checkip.amazonaws.com):5001"
-echo "Frontend: http://ec2-$(curl -s http://checkip.amazonaws.com | tr . -).compute-1.amazonaws.com"
+# ── Step 4: Publish frontend to Nginx web root ────────────────────────────────
+info "Step 4/5 — Publishing frontend to ${WEB_ROOT}..."
+sudo mkdir -p "$WEB_ROOT"
+sudo rsync -a --delete "$APP_DIR/frontend/dist/" "$WEB_ROOT/"
+sudo chown -R www-data:www-data "$WEB_ROOT" 2>/dev/null || \
+  sudo chown -R nginx:nginx "$WEB_ROOT" 2>/dev/null || \
+  sudo chmod -R 755 "$WEB_ROOT"
+
+# Reload Nginx (zero-downtime — tests config first)
+if sudo nginx -t 2>/dev/null; then
+  sudo systemctl reload nginx
+  success "Nginx reloaded"
+else
+  warn "Nginx config test failed — skipping reload (site still served from old build)"
+fi
+
+# ── Step 5: Restart backend via PM2 ──────────────────────────────────────────
+info "Step 5/5 — Restarting backend (PM2)..."
+cd "$APP_DIR"
+
+if pm2 show "$PM2_APP_NAME" &>/dev/null; then
+  # Process already registered — reload it (zero-downtime rolling restart)
+  pm2 reload "$PM2_APP_NAME" --update-env
+  success "PM2 process '${PM2_APP_NAME}' reloaded"
+else
+  # First deploy — start fresh from ecosystem config
+  pm2 start ecosystem.config.js --env production
+  success "PM2 process '${PM2_APP_NAME}' started"
+fi
+
+# Persist PM2 process list so it survives reboots
+pm2 save --force
+
+echo ""
+info "======================================================="
+success "Deploy complete! 🎉"
+info "  Commit : $(cd "$APP_DIR" && git rev-parse --short HEAD)"
+info "  Backend: http://localhost:5001  (via PM2)"
+PUBLIC_IP=$(curl -s --connect-timeout 3 http://checkip.amazonaws.com 2>/dev/null || echo "<EC2-IP>")
+info "  App    : http://${PUBLIC_IP}"
+info "======================================================="
+echo ""

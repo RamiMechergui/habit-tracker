@@ -86,9 +86,16 @@ router.get('/', protect, async (req, res) => {
 router.put('/', protect, async (req, res) => {
   try {
     const { firstName, lastName, theme, recurringTasks, timelinePrefs } = req.body;
+
+    // Only update name fields if explicitly provided — avoids wiping names when
+    // only settings (theme, recurringTasks, etc.) are being saved
+    const nameUpdate = {};
+    if (firstName !== undefined) nameUpdate.firstName = firstName;
+    if (lastName !== undefined) nameUpdate.lastName = lastName;
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { firstName, lastName },
+      nameUpdate,
       { new: true }
     ).select('-password');
 

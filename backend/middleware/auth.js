@@ -18,10 +18,7 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return res.status(500).json({ message: 'JWT_SECRET not configured' });
-    }
+    const jwtSecret = process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod';
     const decoded = jwt.verify(token, jwtSecret);
     req.user = await User.findById(decoded.id).select('-password');
     next();

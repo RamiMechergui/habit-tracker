@@ -1,18 +1,41 @@
-name: Deploy to EC2
+name: 🚀 Deploy to EC2
 
 on:
   push:
     branches: [main, master]
 
+  # Allow triggering manually from the GitHub Actions tab
+  workflow_dispatch:
+
 jobs:
   deploy:
+    name: Deploy – Monolith
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: SSH into EC2 and deploy
+      # ── 1. Show commit info in the Actions log ──────────────────────────
+      - name: 📋 Show commit info
+        run: |
+          echo "Repository : ${{ github.repository }}"
+          echo "Branch     : ${{ github.ref_name }}"
+          echo "Commit SHA : ${{ github.sha }}"
+          echo "Author     : ${{ github.actor }}"
+          echo "Triggered  : ${{ github.event_name }}"
+
+      # ── 2. SSH into EC2 and run the deploy script ───────────────────────
+      - name: 🔑 SSH → EC2 deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          # Give the deploy script plenty of time (build can take a few mins)
+          command_timeout: 12m
           script: |
+            set -e
+            echo "=== [EC2] Deploy triggered by GitHub Actions ==="
+            echo "Commit: ${{ github.sha }}"
+            echo "Author: ${{ github.actor }}"
             bash ~/habit-tracker/deploy-ec2.sh
+            echo "=== [EC2] Deploy finished successfully ==="
