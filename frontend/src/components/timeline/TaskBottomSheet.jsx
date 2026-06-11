@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Clock, Bell, AlignLeft, Target, Trash2, Copy, RefreshCw, AlertCircle, Repeat } from 'lucide-react';
+import { X, Clock, AlignLeft, Target, Trash2, Copy, RefreshCw, AlertCircle, Repeat } from 'lucide-react';
 import { useHabits } from '../../Store';
 
 const PRIORITIES = [
@@ -30,12 +30,7 @@ const RECURRENCES = [
   { key: 'custom',   label: '⚙️ Custom'   },
 ];
 
-const REMINDER_OPTIONS = [
-  { value: 0,  label: 'At time'    },
-  { value: 5,  label: '5 min'      },
-  { value: 15, label: '15 min'     },
-  { value: 30, label: '30 min'     },
-];
+
 
 const WEEKDAYS = [
   { key: 'monday',    short: 'Mo' },
@@ -96,8 +91,7 @@ export default function TaskBottomSheet({
   const [recurrence,          setRecurrence]          = useState('none');
   const [customDays,          setCustomDays]          = useState([]);
   const [editScope,           setEditScope]           = useState('this'); // 'this' | 'all'
-  const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [reminderMinutes,     setReminderMinutes]     = useState(15);
+
 
   const startH = fromStr(startTime).h, startM = fromStr(startTime).m;
   const endH   = fromStr(endTime).h,   endM   = fromStr(endTime).m;
@@ -135,8 +129,7 @@ export default function TaskBottomSheet({
       setRecurrence(initialData.recurrence || 'none');
       setCustomDays(initialData.customDays || []);
       setEditScope('this');
-      setNotificationEnabled(initialData.notificationEnabled ?? true);
-      setReminderMinutes(initialData.reminderMinutes ?? 15);
+
     } else {
       const h = suggestedHour ?? 9;
       const minuteOpts = buildMinuteOptions(intervalGranularity);
@@ -147,7 +140,6 @@ export default function TaskBottomSheet({
       setStartTimeRaw(st); setEndTimeRaw(toStr(end.h, end.m)); setUserEditedEnd(false);
       setPriority('medium'); setCategory('Other'); setStatus('Pending');
       setDelayReason(''); setRecurrence('none'); setCustomDays([]); setEditScope('this');
-      setNotificationEnabled(true); setReminderMinutes(15);
     }
   }, [initialData, isOpen, suggestedHour, defaultDuration, intervalGranularity]);
 
@@ -172,9 +164,6 @@ export default function TaskBottomSheet({
       delayReason:         (['Delayed','Missed'].includes(status)) ? delayReason.trim() : '',
       recurrence,
       customDays:          recurrence === 'custom' ? customDays : [],
-      notificationEnabled,
-      reminderMinutes,
-      notificationSent:    initialData?.notificationSent || false,
       createdAt:           initialData?.createdAt || new Date().toISOString(),
     };
 
@@ -398,29 +387,7 @@ export default function TaskBottomSheet({
               </div>
             )}
 
-            {/* Notifications */}
-            <div style={{ background:'var(--tl-panel-bg)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-              <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <Bell size={17} color={notificationEnabled?'var(--accent-blue)':'var(--text-muted)'} />
-                  <div>
-                    <div style={{ fontSize:'0.9rem', fontWeight:600 }}>Reminder</div>
-                    <div style={{ fontSize:'0.75rem', color:'var(--text-muted)' }}>Notify before task starts</div>
-                  </div>
-                </div>
-                <input type="checkbox" className="habit-checkbox" checked={notificationEnabled} onChange={e => setNotificationEnabled(e.target.checked)} />
-              </label>
-              {notificationEnabled && (
-                <div style={{ marginTop:12, display:'flex', gap:6, flexWrap:'wrap' }}>
-                  {REMINDER_OPTIONS.map(o => (
-                    <button key={o.value} onClick={() => setReminderMinutes(o.value)}
-                      style={{ padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)', background: reminderMinutes===o.value?'rgba(59,130,246,0.15)':'transparent', borderColor: reminderMinutes===o.value?'var(--accent-blue)':'var(--border)', color: reminderMinutes===o.value?'var(--accent-blue)':'var(--text-muted)', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', transition:'all 0.2s', fontFamily:'var(--font-sans)' }}>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+
 
           </div>
         </div>

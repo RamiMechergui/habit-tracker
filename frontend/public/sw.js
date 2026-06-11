@@ -147,66 +147,6 @@ async function notifyClientsToSync() {
   }
 }
 
-// ─── Push Notifications ─────────────────────────────────────────
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body,
-      icon: '/logo_circle.png',
-      badge: '/logo_circle.png',
-      data: {
-        url: data.url || '/daily',
-        taskId: data.taskId
-      },
-      vibrate: [200, 100, 200],
-      actions: [
-        { action: 'complete', title: '✅ Complete' },
-        { action: 'snooze', title: '⏳ Snooze (10m)' },
-        { action: 'open', title: 'Open App' }
-      ]
-    };
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
-  }
-});
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const { action, notification } = event;
-  const taskId = notification.data?.taskId;
-  const urlToOpen = notification.data?.url || '/daily';
-
-  if (action === 'complete' || action === 'snooze') {
-    event.waitUntil(
-      fetch('/api/notifications/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskId, action }),
-      }).then(response => {
-        if (!response.ok) throw new Error('Action failed');
-        console.log(`[SW] Task ${action} success`);
-      }).catch(err => {
-        console.error(`[SW] Task ${action} failed:`, err);
-      })
-    );
-    return;
-  }
-
-  // Default: Open App
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(urlToOpen);
-      }
-    })
-  );
-});
 
 

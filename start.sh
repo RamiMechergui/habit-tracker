@@ -71,19 +71,7 @@ server {
 
     # Essentials microservices
     location /api/essentials { proxy_pass http://127.0.0.1:5127; }
-    location /api/notifications { proxy_pass http://127.0.0.1:5128; }
 
-    # SSE stream — disable buffering for real-time push
-    location /api/delivery/stream {
-        proxy_pass http://127.0.0.1:5129;
-        proxy_set_header Connection '';
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 3600s;
-        add_header X-Accel-Buffering no;
-        add_header Cache-Control no-cache;
-    }
-    location /api/delivery { proxy_pass http://127.0.0.1:5129; }
     location /api/user-prefs { proxy_pass http://127.0.0.1:5130; }
     location /api/tasks { proxy_pass http://127.0.0.1:5131; }
     location /api/notes { proxy_pass http://127.0.0.1:5132; }

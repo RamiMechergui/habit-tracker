@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Clock, Bell, CheckCircle, XCircle, GripVertical, AlertTriangle, RefreshCw, Flame, Zap } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, GripVertical, AlertTriangle, RefreshCw, Flame, Zap } from 'lucide-react';
 
 const PRIORITY_COLORS = {
   low:      'var(--priority-low)',
@@ -227,10 +227,6 @@ export default function TaskCard({
               {/* Priority badge */}
               {pVisual.badge && statusKey !== 'Completed' && (
                 <span className="task-priority-badge" style={{ color: priorityColor }}>{pVisual.badge}</span>
-              )}
-              {/* Notification bell */}
-              {task.notificationEnabled && (
-                <Bell size={9} className="task-card-bell-icon" aria-label="Reminder set" />
               )}
             </h4>
             {!isFutureDate && (

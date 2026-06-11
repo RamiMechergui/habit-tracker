@@ -146,8 +146,6 @@ module.exports = {
 
     // --- ESSENTIALS MICROSERVICES ---
     { name: 'essentials',    port: 5127, path: 'backend/User/Essentials/item-service' },
-    { name: 'notifications', port: 5128, path: 'backend/User/Essentials/notification-service' },
-    { name: 'delivery-service', port: 5129, path: 'backend/User/Essentials/delivery-service' },
     { name: 'user-prefs',    port: 5130, path: 'backend/User/Essentials/user-prefs-service' },
     { name: 'credentials',   port: 5133, path: 'backend/User/Profile/credentials' }
   ].map(service => {
@@ -202,8 +200,7 @@ module.exports = {
         SYSTEM_SERVICE_URL: 'http://127.0.0.1:5125',
         EXPENSES_SERVICE_URL: 'http://127.0.0.1:5126',
         ANALYTICS_SERVICE_URL: 'http://127.0.0.1:5113',
-        TASKS_SERVICE_URL: 'http://127.0.0.1:5131',
-        KAFKA_BROKER: process.env.KAFKA_BROKER || '127.0.0.1:9092'
+        TASKS_SERVICE_URL: 'http://127.0.0.1:5131'
       }
     };
   })

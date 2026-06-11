@@ -16,7 +16,7 @@ const safeStartOfWeek = typeof startOfWeek === 'function'
       return d;
     };
 import {
-  Plus, Loader2, Bell,
+  Plus,
   List, CalendarDays, CheckCircle2, Target, Filter, X,
   ChevronLeft, ChevronRight, Search, FileDown,
 } from 'lucide-react';
@@ -31,7 +31,7 @@ import MonthlyCalendar   from '../components/timeline/MonthlyCalendar';
 import TimelineAnalytics from '../components/timeline/TimelineAnalytics';
 import LiveFocusBanner   from '../components/timeline/LiveFocusBanner';
 import SmartAlerts       from '../components/timeline/SmartAlerts';
-import { usePushNotifications } from '../hooks/usePushNotifications';
+
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PRIORITY_FILTERS = ['all', 'low', 'medium', 'high', 'critical'];
@@ -46,7 +46,7 @@ const VIEW_OPTIONS = [
 
 // ── Page Component ────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  const { getLog, saveLog, logs, expenseCategories, scheduleTaskReminder, cancelTaskReminder, getVirtualTasksForDate, recurringTasks } = useHabits();
+  const { getLog, saveLog, logs, expenseCategories, getVirtualTasksForDate, recurringTasks } = useHabits();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const queryDate = searchParams.get('date');
@@ -79,7 +79,7 @@ export default function TasksPage() {
   const [searchQuery,   setSearchQuery]   = useState('');
   const [showSearch,    setShowSearch]    = useState(false);
 
-  const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
+
 
   // ── Sync log on date change ──────────────────────────────────────────────────
   useEffect(() => {
@@ -209,18 +209,11 @@ export default function TasksPage() {
       }
       return { ...prev, tasks: [...existing, taskData] };
     });
-
-    if (taskData.notificationEnabled && taskData.status === 'Pending') {
-      scheduleTaskReminder(taskData, date);
-    } else {
-      cancelTaskReminder(taskData.id);
-    }
-  }, [date, markDirty, scheduleTaskReminder, cancelTaskReminder]);
+  }, [markDirty]);
 
   const handleDeleteTask = useCallback((taskId) => {
     markDirty(prev => ({ ...prev, tasks: (prev.tasks ?? []).filter(t => t.id !== taskId) }));
-    cancelTaskReminder(taskId);
-  }, [markDirty, cancelTaskReminder]);
+  }, [markDirty]);
 
   const handleDuplicateTask = useCallback((task) => {
     const dup = {
@@ -609,29 +602,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Push notification prompt */}
-      {isSupported && !isSubscribed && permission !== 'denied' && (
-        <div className="push-notif-banner">
-          <div className="push-notif-body">
-            <div className="push-notif-icon">
-              <Bell size={18} aria-hidden="true" />
-            </div>
-            <div>
-              <h4 className="push-notif-title">Enable Task Reminders</h4>
-              <p className="push-notif-sub">Get notified when tasks are due, even when the app is closed.</p>
-            </div>
-          </div>
-          <button
-            className="btn push-notif-btn"
-            onClick={subscribe}
-            disabled={loading}
-            aria-label="Enable push notifications"
-          >
-            {loading ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Bell size={14} aria-hidden="true" />}
-            Enable
-          </button>
-        </div>
-      )}
+
 
       {/* ── Sticky Hub Toolbar ──────────────────────────────────────────────── */}
       <div className="hub-toolbar" role="toolbar" aria-label="Timeline controls">
