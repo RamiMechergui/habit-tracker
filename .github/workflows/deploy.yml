@@ -20,6 +20,12 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Check if the project directory exists, if not, clone the repository
+            if [ ! -d "${{ secrets.PROJECT_PATH }}" ]; then
+              echo "Project directory not found. Cloning repository..."
+              git clone https://github.com/RamiMechergui/habit-tracker.git ${{ secrets.PROJECT_PATH }}
+            fi
+            
             cd ${{ secrets.PROJECT_PATH }}
             
             # Stash any local changes on the server to prevent merge conflicts
