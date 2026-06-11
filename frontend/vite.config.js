@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Determine API target based on environment
-const apiTarget = process.env.VITE_API_TARGET || 'http://backend:5000'
+// Determine API target for the Vite proxy.
+// On EC2 the backend runs on localhost:5001; Docker overrides via VITE_API_TARGET.
+const apiTarget = process.env.VITE_API_TARGET || 'http://localhost:5001'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,11 +15,6 @@ export default defineConfig({
     watch: {
       usePolling: true,
       ignored: ['**/node_modules/**', '**/android/**', '**/.git/**', '**/src-tauri/**'],
-    },
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 80,
     },
     proxy: {
       '/api': {

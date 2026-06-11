@@ -14,7 +14,7 @@ app.use(cookieParser());
 
 // CORS configuration with credentials support
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost',
+  origin: process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : true,
   credentials: true
 }));
 
