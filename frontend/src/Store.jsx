@@ -929,7 +929,10 @@ export const HabitProvider = ({ children }) => {
     const updated = { ...user, profilePicture: data.profilePicture };
     setUser(updated);
     await saveSession(updated);
-    db.saveUser(updated);  const getLog = useCallback((dateStr) => {
+    db.saveUser(updated);
+  };
+
+  const getLog = useCallback((dateStr) => {
     const existingLog = logs[dateStr];
     const currentBookActive = currentBook && currentBook.isActive && currentBook.bookName;
     const isWithinCurrentBook = currentBookActive && dateStr >= currentBook.startDate;
