@@ -30,7 +30,7 @@ if (!envApiUrl && !import.meta.env.DEV && !isNative) {
 
 export const API_URL = isNative
   ? (envApiUrlNative || envApiUrl || (import.meta.env.DEV ? 'http://localhost:5001' : window.location.origin))
-  : (envApiUrl || '');
+  : '';
 
 /** Whether we are running inside a native Capacitor app (Android / iOS) */
 export const IS_NATIVE = isNative;
@@ -49,7 +49,16 @@ const getNativeToken = async () => {
       const parsed = JSON.parse(value);
       _cachedNativeToken = parsed?.token || null;
     }
-  } catch (_) {}
+  } catch (_) {
+    // Capacitor Preferences may not be available in plain browser — fallback to localStorage
+    try {
+      const raw = localStorage.getItem('user_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        _cachedNativeToken = parsed?.token || null;
+      }
+    } catch (_2) {}
+  }
   return _cachedNativeToken;
 };
 

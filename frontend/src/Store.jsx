@@ -26,6 +26,30 @@ export const useHabits = () => useContext(HabitContext);
 // Shadow global fetch so all fetch calls in this file use the native-aware helper
 const fetch = nativeFetch;
 
+// ── Session persistence helpers (Capacitor Preferences + localStorage fallback) ──
+const saveSession = async (data) => {
+  const json = JSON.stringify(data);
+  await Preferences.set({ key: 'user_session', value: json });
+  try { localStorage.setItem('user_session', json); } catch (_) {}
+};
+
+const loadSession = async () => {
+  try {
+    const { value } = await Preferences.get({ key: 'user_session' });
+    if (value) return JSON.parse(value);
+  } catch (_) {}
+  try {
+    const raw = localStorage.getItem('user_session');
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return null;
+};
+
+const clearSession = async () => {
+  await Preferences.remove({ key: 'user_session' });
+  try { localStorage.removeItem('user_session'); } catch (_) {}
+};
+
 
 
 // ── Timeline prefs helpers ────────────────────────────────────
@@ -315,10 +339,9 @@ export const HabitProvider = ({ children }) => {
       const startTime = Date.now();
       try {
         // Step 1: Load session securely via Capacitor Preferences
-        const { value } = await Preferences.get({ key: 'user_session' });
-        if (value) {
+        const cachedUser = await loadSession();
+        if (cachedUser) {
           try {
-            const cachedUser = JSON.parse(value);
             setUser(cachedUser);
             // Also sync to IndexedDB as fallback
             db.saveUser(cachedUser);
@@ -351,11 +374,7 @@ export const HabitProvider = ({ children }) => {
             }
             const userData = await res.json();
             // Preserve any locally stored token AND profile fields if present
-            let cachedSession = null;
-            try {
-              const stored = await Preferences.get({ key: 'user_session' });
-              if (stored?.value) cachedSession = JSON.parse(stored.value);
-            } catch (_) {}
+            let cachedSession = await loadSession();
             const token = cachedSession?.token || null;
 
             // Only replace profile fields if the verify response actually contains them.
@@ -371,7 +390,7 @@ export const HabitProvider = ({ children }) => {
             };
 
             setUser(restored);
-            await Preferences.set({ key: 'user_session', value: JSON.stringify(restored) });
+            await saveSession(restored);
             db.saveUser(restored);
 
             // If name is still blank after merging cache, try fetching from /api/settings
@@ -391,7 +410,7 @@ export const HabitProvider = ({ children }) => {
                         profilePicture: settingsData.profilePicture || restored.profilePicture || null,
                       };
                       setUser(withName);
-                      await Preferences.set({ key: 'user_session', value: JSON.stringify(withName) });
+                      await saveSession(withName);
                       db.saveUser(withName);
                     }
                   }
@@ -405,7 +424,7 @@ export const HabitProvider = ({ children }) => {
             await refreshFromServer();
           } else if (res.status === 401) {
             // Unauthorized - backend rejected cookie or token invalid, clear session
-            await Preferences.remove({ key: 'user_session' });
+            await clearSession();
             invalidateNativeTokenCache();
             setUser(null);
           }
@@ -738,7 +757,7 @@ export const HabitProvider = ({ children }) => {
       token:          data.token          || null,
     };
     setUser(userData);
-    await Preferences.set({ key: 'user_session', value: JSON.stringify(userData) });
+    await saveSession(userData);
     db.saveUser(userData);
 
     const categories = data.expenseCategories && data.expenseCategories.length > 0
@@ -815,11 +834,8 @@ export const HabitProvider = ({ children }) => {
     if (!res.ok) throw new Error(data.message);
     const updated = { ...user, firstName: data.firstName, lastName: data.lastName };
     setUser(updated);
-    await Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
-    db.saveUser(updated);
-  };
-
-  const changePassword = async (currentPassword, newPassword) => {
+    await saveSession(updated);
+    db.saveUser(updated); = async (currentPassword, newPassword) => {
     if (!user) return;
     const res = await fetch(`${API_URL}/api/login/change-password`, {
       method: 'PUT',
@@ -909,11 +925,8 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     const updated = { ...user, profilePicture: data.profilePicture };
     setUser(updated);
-    await Preferences.set({ key: 'user_session', value: JSON.stringify(updated) });
-    db.saveUser(updated);
-  };
-
-  const getLog = useCallback((dateStr) => {
+    await saveSession(updated);
+    db.saveUser(updated);  const getLog = useCallback((dateStr) => {
     const existingLog = logs[dateStr];
     const currentBookActive = currentBook && currentBook.isActive && currentBook.bookName;
     const isWithinCurrentBook = currentBookActive && dateStr >= currentBook.startDate;

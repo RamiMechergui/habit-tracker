@@ -28,8 +28,8 @@ router.post('/register', async (req, res) => {
       
       res.cookie('habitToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+        sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
       });
 
@@ -60,8 +60,8 @@ router.post('/login', async (req, res) => {
       
       res.cookie('habitToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+        sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
       });
 
@@ -85,8 +85,8 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('habitToken', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    sameSite: 'lax'
   });
   res.json({ message: 'Logged out successfully' });
 });
