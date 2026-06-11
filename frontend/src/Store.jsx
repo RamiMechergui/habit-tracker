@@ -263,6 +263,8 @@ export const HabitProvider = ({ children }) => {
   const refreshFromServer = useCallback(async () => {
     if (!navigator.onLine) return;
     if (!user) return; // skip if not authenticated
+    // Note: user is in the deps array so this callback is recreated on login
+    // and always has the current user value
     try {
       // Query all expected endpoints and validate responses individually
       const endpoints = [
@@ -304,20 +306,24 @@ export const HabitProvider = ({ children }) => {
         }
       }
 
-      // Apply parsed results
+      // Apply parsed results — guard against empty server responses overwriting local data
       if (parsed.categories) {
         const cats = parsed.categories.expenseCategories || parsed.categories;
-        setExpenseCategories(cats);
-        db.saveCategories(cats);
+        if (Array.isArray(cats) && cats.length > 0) {
+          setExpenseCategories(cats);
+          db.saveCategories(cats);
+        }
       }
-      if (parsed.currentbook) {
+      if (parsed.currentbook && parsed.currentbook.bookName) {
         setCurrentBookState(parsed.currentbook);
         db.saveCurrentBook(parsed.currentbook);
       }
       if (parsed.archives) {
-        const arch = parsed.archives.archivedBooks || parsed.archives || [];
-        setArchivedBooks(arch);
-        db.saveArchives(arch);
+        const arch = parsed.archives.archivedBooks || parsed.archives;
+        if (Array.isArray(arch)) {
+          setArchivedBooks(arch);
+          db.saveArchives(arch);
+        }
       }
       if (parsed.daily) {
         setLogs(prev => {
@@ -375,7 +381,7 @@ export const HabitProvider = ({ children }) => {
       } catch (_) {}
       return;
     }
-  }, [API_URL]);
+  }, [API_URL, user]);
 
   // ── Register sync callback ──────────────────────────────────
   useEffect(() => {
@@ -749,12 +755,13 @@ export const HabitProvider = ({ children }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [user, refreshFromServer, connectSSE]);
 
-  // ── Essentials + notifications load after login ───────────────
+  // ── Essentials + notifications + full refresh after login ───
   useEffect(() => {
     if (user && navigator.onLine) {
       loadEssentials();
       loadNotifications();
       connectSSE();
+      refreshFromServer();
     }
     return () => {
       if (sseRef.current) {
@@ -762,7 +769,7 @@ export const HabitProvider = ({ children }) => {
         sseRef.current = null;
       }
     };
-  }, [user, loadEssentials, loadNotifications, connectSSE]);
+  }, [user, loadEssentials, loadNotifications, connectSSE, refreshFromServer]);
 
   // Refresh unread count every 60s as a fallback when SSE is unavailable
   useEffect(() => {
@@ -823,14 +830,7 @@ export const HabitProvider = ({ children }) => {
       setLogs(logsData);
       db.saveLogs(logsData);
     }
-
-    // Fetch latest server data (categories, current book, archives, profile)
-    try {
-      await refreshFromServer();
-    } catch (e) {
-      console.warn('[Store] refreshFromServer after login failed:', e);
-    }
-
+ 
     // Start sync listener after login
     startSyncListener();
   };
@@ -909,14 +909,20 @@ export const HabitProvider = ({ children }) => {
     await new Promise(resolve => setTimeout(resolve, 200));
 
     // 2. Attempt to replay sync queue to save outstanding changes to server while cookie is still valid
+    let syncSucceeded = false;
     if (navigator.onLine) {
       try {
         await replayQueue();
+        syncSucceeded = true;
       } catch (e) {
         console.warn('[Store] Failed to replay sync queue before logout:', e);
       }
+    } else {
+      // Offline — sync not possible, treat as succeeded to allow clear (data is in IndexedDB)
+      syncSucceeded = true;
     }
 
+    // 3. Server logout (best effort)
     try {
       await fetch(`${API_URL}/api/logout`, {
         method: 'POST',
@@ -944,7 +950,15 @@ export const HabitProvider = ({ children }) => {
     setNotifications([]);
     setUnreadCount(0);
     setToasts([]);
-    await db.clearAllOfflineData();
+
+    // Clear IndexedDB ONLY if sync succeeded.
+    // If sync failed (e.g. network error during replay), keep local data
+    // so the next session can retry the sync and not lose data.
+    if (syncSucceeded) {
+      await db.clearAllOfflineData();
+    } else {
+      console.warn('[Store] Sync queue did not fully flush — keeping IndexedDB data for next session');
+    }
   };
 
   const updateProfilePicture = async (croppedBlob) => {
