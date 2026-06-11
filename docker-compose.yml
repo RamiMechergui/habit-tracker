@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     hostname: frontend
     ports:
-      - "5173:5173"
+      - "80:80"
     environment:
       - VITE_API_URL_NATIVE=http://backend:5000
       - VITE_API_TARGET=http://backend:5000
@@ -39,7 +39,7 @@ services:
       - MONGO_URI=mongodb://mongo:27017/habittracker
       - JWT_SECRET=${JWT_SECRET:-your_super_secure_jwt_secret_key_change_in_production_12345}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change_this_admin_dashboard_password}
-      - CLIENT_URL=http://localhost:5173
+      - CLIENT_URL=http://localhost
       - KAFKA_BROKER=kafka:9092
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}

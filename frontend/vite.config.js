@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react()],
     server: {
     host: true,
-    port: 5173,
+    port: 80,
     allowedHosts: true,
     watch: {
       usePolling: true,
@@ -18,7 +18,7 @@ export default defineConfig({
     hmr: {
       protocol: 'ws',
       host: 'localhost',
-      port: 5173,
+      port: 80,
     },
     proxy: {
       '/api': {
