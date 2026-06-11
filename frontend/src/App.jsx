@@ -49,10 +49,11 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
+  const userId = user?._id;
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
-    if (user && navigator.onLine) {
+    if (userId && navigator.onLine) {
       fetch(`${API_URL}/api/settings`, {
         method: 'PUT',
         credentials: 'include',
@@ -60,7 +61,7 @@ function App() {
         body: JSON.stringify({ theme })
       }).catch(() => {});
     }
-  }, [theme, user]);
+  }, [theme, userId]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 

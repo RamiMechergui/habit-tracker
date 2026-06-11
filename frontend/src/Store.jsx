@@ -260,9 +260,9 @@ export const HabitProvider = ({ children }) => {
   }, []);
 
   // ── Refresh state from server (called after sync completes) ──
+  const userId = user?._id;
   const refreshFromServer = useCallback(async () => {
-    if (!navigator.onLine) return;
-    if (!user) return; // skip if not authenticated
+    if (!navigator.onLine || !userId) return;
     // Note: user is in the deps array so this callback is recreated on login
     // and always has the current user value
     try {
@@ -343,11 +343,17 @@ export const HabitProvider = ({ children }) => {
         const profile = parsed.profile;
         // Only update fields that are actually populated — don't wipe good cached data with empty strings
         setUser(prev => {
-          const updated = {
-            ...prev,
-            ...(profile.firstName ? { firstName: profile.firstName } : {}),
-            ...(profile.lastName  ? { lastName:  profile.lastName  } : {}),
-          };
+          let changed = false;
+          const updated = { ...prev };
+          if (profile.firstName && profile.firstName !== prev?.firstName) {
+            updated.firstName = profile.firstName;
+            changed = true;
+          }
+          if (profile.lastName && profile.lastName !== prev?.lastName) {
+            updated.lastName = profile.lastName;
+            changed = true;
+          }
+          if (!changed) return prev;
           db.saveUser(updated);
           return updated;
         });
@@ -355,12 +361,12 @@ export const HabitProvider = ({ children }) => {
       if (parsed.avatar) {
         const avatar = parsed.avatar;
         setUser(prev => {
-          const updated = {
-            ...prev,
-            ...(avatar.profilePicture ? { profilePicture: avatar.profilePicture } : {}),
-          };
-          db.saveUser(updated);
-          return updated;
+          if (avatar.profilePicture && avatar.profilePicture !== prev?.profilePicture) {
+            const updated = { ...prev, profilePicture: avatar.profilePicture };
+            db.saveUser(updated);
+            return updated;
+          }
+          return prev;
         });
       }
       if (parsed.notes) {
@@ -384,7 +390,7 @@ export const HabitProvider = ({ children }) => {
       console.warn('[Store] refreshFromServer error — keeping cached data:', e.message);
       return;
     }
-  }, [API_URL, user]);
+  }, [API_URL, userId]);
 
   // ── Register sync callback ──────────────────────────────────
   useEffect(() => {
@@ -511,7 +517,8 @@ export const HabitProvider = ({ children }) => {
     };
 
     initApp();
-  }, [refreshFromServer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load all state from IndexedDB
   const loadOfflineData = async () => {
@@ -706,14 +713,15 @@ export const HabitProvider = ({ children }) => {
   }, []);
 
   // ── SSE: connect to delivery service ─────────────────────────
+  const token = user?.token;
   const connectSSE = useCallback(() => {
     if (sseRef.current) sseRef.current.close();
     if (!navigator.onLine) return;
 
     try {
       let streamUrl = `${API_URL}/api/delivery/stream`;
-      if (IS_NATIVE && user?.token) {
-        streamUrl += `?token=${encodeURIComponent(user.token)}`;
+      if (IS_NATIVE && token) {
+        streamUrl += `?token=${encodeURIComponent(token)}`;
       }
       const es = new EventSource(streamUrl, { withCredentials: true });
 
@@ -746,25 +754,25 @@ export const HabitProvider = ({ children }) => {
     } catch (e) {
       console.warn('[Store] Could not open SSE stream (delivery service may be offline):', e.message);
     }
-  }, [API_URL, IS_NATIVE, user]);
+  }, [API_URL, IS_NATIVE, token]);
 
   // ── Re-sync when app is foregrounded (tab focus / native resume) ─
   // This ensures that changes made on another device (or the web app)
   // appear immediately when the user switches back to this instance.
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine && user) {
+      if (document.visibilityState === 'visible' && navigator.onLine && user?._id) {
         refreshFromServer();
         connectSSE();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [user, refreshFromServer, connectSSE]);
+  }, [user?._id, refreshFromServer, connectSSE]);
 
   // ── Essentials + notifications + full refresh after login ───
   useEffect(() => {
-    if (user && navigator.onLine) {
+    if (user?._id && navigator.onLine) {
       loadEssentials();
       loadNotifications();
       connectSSE();
@@ -776,11 +784,11 @@ export const HabitProvider = ({ children }) => {
         sseRef.current = null;
       }
     };
-  }, [user, loadEssentials, loadNotifications, connectSSE, refreshFromServer]);
+  }, [user?._id, loadEssentials, loadNotifications, connectSSE, refreshFromServer]);
 
   // Refresh unread count every 60s as a fallback when SSE is unavailable
   useEffect(() => {
-    if (!user) return;
+    if (!user?._id) return;
     const interval = setInterval(() => {
       if (navigator.onLine) {
         fetch(`${API_URL}/api/notifications/count`, { credentials: 'include' })
@@ -790,7 +798,7 @@ export const HabitProvider = ({ children }) => {
       }
     }, 60000);
     return () => clearInterval(interval);
-  }, [user, API_URL]);
+  }, [user?._id, API_URL]);
 
   const login = async (email, password) => {
     const res = await fetch(`${API_URL}/api/login`, {
