@@ -533,7 +533,11 @@ export const HabitProvider = ({ children }) => {
       }
       if (offLogs && Object.keys(offLogs).length > 0) setLogs(offLogs);
       if (offCats && offCats.length > 0) setExpenseCategories(offCats);
-      if (offBook) setCurrentBookState(offBook);
+      if (offBook) {
+        // Unwrap legacy shape from old finishCurrentBook bug (data.currentBook wrapper)
+        const clean = offBook.currentBook || offBook;
+        setCurrentBookState(clean);
+      }
       if (offArchives && offArchives.length > 0) setArchivedBooks(offArchives);
     } catch (e) {
       console.error('[Store] loadOfflineData error:', e);
@@ -1371,9 +1375,17 @@ export const HabitProvider = ({ children }) => {
       });
       const data = await res.json();
       if (res.ok) {
-        setCurrentBookState(data);
-        db.saveCurrentBook(data);
-        // Archive the book in archives service
+        // PUT returns { currentBook, archivedBooks } — unwrap it
+        const newBook = data.currentBook || data;
+        const newArchives = data.archivedBooks;
+        setCurrentBookState(newBook);
+        db.saveCurrentBook(newBook);
+        // Save archives from PUT response immediately (fallback if GET fails)
+        if (Array.isArray(newArchives)) {
+          setArchivedBooks(newArchives);
+          db.saveArchives(newArchives);
+        }
+        // Archive the book in archives service (legacy microservice call)
         try {
           await fetch(`${API_URL}/api/archives`, {
             method: 'POST',
@@ -1386,12 +1398,15 @@ export const HabitProvider = ({ children }) => {
               finalPage
             })
           });
-          // Refresh archives
+          // Refresh archives to get any updates from the server
           const archiveRes = await fetch(`${API_URL}/api/archives`, { credentials: 'include' });
           if (archiveRes.ok) {
             const archiveData = await archiveRes.json();
-            setArchivedBooks(archiveData.archivedBooks || []);
-            db.saveArchives(archiveData.archivedBooks || []);
+            const freshArchives = archiveData.archivedBooks || [];
+            if (freshArchives.length > 0 || !Array.isArray(newArchives)) {
+              setArchivedBooks(freshArchives);
+              db.saveArchives(freshArchives);
+            }
           }
         } catch (e) { console.error('Error archiving:', e); }
       }
