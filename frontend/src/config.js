@@ -24,16 +24,9 @@ if (isNative && !envApiUrlNative) {
   );
 }
 
-if (!envApiUrl && !import.meta.env.DEV && !isNative) {
-  console.warn('[App] VITE_API_URL is not set in production. API requests may fail if /api is not proxied to the backend.');
-}
-
 export const API_URL = isNative
   ? (envApiUrlNative || envApiUrl || (import.meta.env.DEV ? 'http://localhost:5001' : window.location.origin))
   : '';
-
-/** Whether we are running inside a native Capacitor app (Android / iOS) */
-export const IS_NATIVE = isNative;
 
 // ── Native fetch helper ───────────────────────────────────────
 // On Capacitor native builds, httpOnly cookies may not be forwarded by the

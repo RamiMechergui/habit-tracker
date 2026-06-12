@@ -17,7 +17,7 @@ const safeStartOfWeek = typeof startOfWeek === 'function'
     };
 import * as db from './offlineDb.js';
 import { startSyncListener, onSyncDone, requestBackgroundSync, replayQueue } from './syncManager.js';
-import { API_URL, IS_NATIVE, nativeFetch, invalidateNativeTokenCache } from './config';
+import { API_URL, nativeFetch, invalidateNativeTokenCache } from './config';
 
 const HabitContext = createContext();
 
@@ -92,7 +92,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ timelinePrefs: next })
       }).catch(() => {});
     }
-  }, [timelinePrefs, user, API_URL]);
+  }, [timelinePrefs, user]);
 
   // ── Recurring task helpers ────────────────────────────────────
   const WEEKDAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -159,7 +159,7 @@ export const HabitProvider = ({ children }) => {
       }).catch(() => {});
     }
     return def;
-  }, [recurringTasks, user, API_URL]);
+  }, [recurringTasks, user]);
 
   // Update a recurring task definition (future occurrences only)
   const updateRecurringTask = useCallback((id, updates) => {
@@ -175,7 +175,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
-  }, [recurringTasks, user, API_URL]);
+  }, [recurringTasks, user]);
 
   // Disable (soft-delete) a recurring task
   const disableRecurringTask = useCallback((id) => {
@@ -191,7 +191,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
-  }, [recurringTasks, user, API_URL]);
+  }, [recurringTasks, user]);
 
   // Delete a recurring task definition entirely
   const deleteRecurringTask = useCallback((id) => {
@@ -208,7 +208,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
-  }, [recurringTasks, user, API_URL]);
+  }, [recurringTasks, user]);
 
   // ── Essentials state ──────────────────────────────────────────
   const [essentials, setEssentials] = useState([]);
@@ -266,12 +266,10 @@ export const HabitProvider = ({ children }) => {
       const endpoints = [
         { key: 'categories', url: `${API_URL}/api/categories` },
         { key: 'currentbook', url: `${API_URL}/api/currentbook` },
-        { key: 'archives', url: `${API_URL}/api/archives` },
-        { key: 'daily', url: `${API_URL}/api/daily` },
-        { key: 'profile', url: `${API_URL}/api/user/me` },
-        { key: 'avatar', url: `${API_URL}/api/avatar` },
-        { key: 'notes', url: `${API_URL}/api/notes` },
-        { key: 'settings', url: `${API_URL}/api/settings` },
+        { key: 'archives',    url: `${API_URL}/api/archives` },
+        { key: 'daily',       url: `${API_URL}/api/daily` },
+        { key: 'notes',       url: `${API_URL}/api/notes` },
+        { key: 'settings',    url: `${API_URL}/api/settings` },
       ];
 
       const settled = await Promise.allSettled(endpoints.map(e => fetch(e.url, { credentials: 'include' })));
@@ -335,58 +333,37 @@ export const HabitProvider = ({ children }) => {
           return merged;
         });
       }
-      if (parsed.profile) {
-        const profile = parsed.profile;
-        // Only update fields that are actually populated — don't wipe good cached data with empty strings
+      if (parsed.settings) {
+        const s = parsed.settings;
+        // Update user profile fields from settings (single source of truth)
         setUser(prev => {
-          let changed = false;
           const updated = { ...prev };
-          if (profile.firstName && profile.firstName !== prev?.firstName) {
-            updated.firstName = profile.firstName;
-            changed = true;
-          }
-          if (profile.lastName && profile.lastName !== prev?.lastName) {
-            updated.lastName = profile.lastName;
-            changed = true;
-          }
+          let changed = false;
+          if (s.firstName && s.firstName !== prev?.firstName) { updated.firstName = s.firstName; changed = true; }
+          if (s.lastName && s.lastName !== prev?.lastName) { updated.lastName = s.lastName; changed = true; }
+          if (s.profilePicture && s.profilePicture !== prev?.profilePicture) { updated.profilePicture = s.profilePicture; changed = true; }
           if (!changed) return prev;
           db.saveUser(updated);
           return updated;
         });
-      }
-      if (parsed.avatar) {
-        const avatar = parsed.avatar;
-        setUser(prev => {
-          if (avatar.profilePicture && avatar.profilePicture !== prev?.profilePicture) {
-            const updated = { ...prev, profilePicture: avatar.profilePicture };
-            db.saveUser(updated);
-            return updated;
-          }
-          return prev;
-        });
-      }
-      if (parsed.notes) {
-        setAllNotes(parsed.notes);
-        db.replaceAllNotes(parsed.notes);
-      }
-      if (parsed.settings) {
-        if (parsed.settings.recurringTasks) {
-          setRecurringTasksState(parsed.settings.recurringTasks);
-          try { localStorage.setItem('recurringTasks', JSON.stringify(parsed.settings.recurringTasks)); } catch {}
+        // Sync app settings to local storage
+        if (s.recurringTasks) {
+          setRecurringTasksState(s.recurringTasks);
+          try { localStorage.setItem('recurringTasks', JSON.stringify(s.recurringTasks)); } catch {}
         }
-        if (parsed.settings.timelinePrefs) {
-          setTimelinePrefsState(parsed.settings.timelinePrefs);
-          try { localStorage.setItem('timelinePrefs', JSON.stringify(parsed.settings.timelinePrefs)); } catch {}
+        if (s.timelinePrefs) {
+          setTimelinePrefsState(s.timelinePrefs);
+          try { localStorage.setItem('timelinePrefs', JSON.stringify(s.timelinePrefs)); } catch {}
         }
-        if (parsed.settings.theme) {
-          try { localStorage.setItem('theme', parsed.settings.theme); } catch {}
+        if (s.theme) {
+          try { localStorage.setItem('theme', s.theme); } catch {}
         }
       }
     } catch (e) {
       console.warn('[Store] refreshFromServer error — keeping cached data:', e.message);
       return;
     }
-  }, [API_URL, userId]);
+  }, [userId]);
 
   // ── Register sync callback ──────────────────────────────────
   useEffect(() => {

@@ -16,7 +16,10 @@ router.get('/', async (req, res) => {
     const decryptedList = credentials.map(c => ({
       ...c,
       password: decrypt(c.password),
-      notes: c.notes ? decrypt(c.notes) : ''
+      notes: c.notes ? decrypt(c.notes) : '',
+      url: c.url || '',
+      category: c.category || 'Other',
+      isPinned: !!c.isPinned
     }));
     
     res.json(decryptedList);
@@ -29,7 +32,7 @@ router.get('/', async (req, res) => {
 // POST /api/credentials - Add new credential (encrypted)
 router.post('/', async (req, res) => {
   try {
-    const { serviceName, username, password, notes = '', tags = [] } = req.body;
+    const { serviceName, url = '', username, password, notes = '', category = 'Other', isPinned = false, tags = [] } = req.body;
     if (!serviceName || !username || !password) {
       return res.status(400).json({ message: 'ServiceName, username, and password are required' });
     }
@@ -40,9 +43,12 @@ router.post('/', async (req, res) => {
     const cred = await Credential.create({
       userId: req.user._id,
       serviceName: serviceName.trim(),
+      url: url.trim(),
       username: username.trim(),
       password: encryptedPassword,
       notes: encryptedNotes,
+      category,
+      isPinned,
       tags
     });
 
@@ -60,13 +66,16 @@ router.post('/', async (req, res) => {
 // PUT /api/credentials/:id - Update credential (encrypted)
 router.put('/:id', async (req, res) => {
   try {
-    const { serviceName, username, password, notes, tags } = req.body;
+    const { serviceName, url, username, password, notes, category, isPinned, tags } = req.body;
     
     const updates = {};
     if (serviceName !== undefined) updates.serviceName = serviceName.trim();
+    if (url !== undefined)         updates.url = url.trim();
     if (username !== undefined)    updates.username = username.trim();
     if (password !== undefined)    updates.password = encrypt(password);
     if (notes !== undefined)       updates.notes = notes ? encrypt(notes) : '';
+    if (category !== undefined)    updates.category = category;
+    if (isPinned !== undefined)    updates.isPinned = isPinned;
     if (tags !== undefined)        updates.tags = tags;
 
     const cred = await Credential.findOneAndUpdate(

@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote
+  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote, KeyRound
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -21,6 +21,7 @@ import SideHustle from './pages/SideHustle';
 import VideoEditing from './pages/VideoEditing';
 import Essentials from './pages/Essentials';
 import Admin from './pages/Admin';
+import PasswordVault from './pages/PasswordVault';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
@@ -32,6 +33,7 @@ const NAV_LINKS = [
   { to: '/daily',         icon: CheckSquare,     label: 'Daily Log' },
   { to: '/tasks',         icon: Clock,           label: 'Timeline' },
   { to: '/notes',         icon: StickyNote,      label: 'Daily Notes' },
+  { to: '/vault',         icon: KeyRound,        label: 'Password Vault' },
   { to: '/weekly',        icon: CalendarDays,    label: 'Weekly' },
   { to: '/monthly',       icon: CalendarRange,   label: 'Monthly' },
   { to: '/archive',       icon: BookOpen,        label: 'Archive' },
@@ -70,10 +72,6 @@ function App() {
 
   if (loading) return <Splash />;
   if (!user)   return <Auth />;
-
-  const displayName = user.firstName || user.lastName
-    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-    : (user.email?.split('@')[0] || 'User');
 
   return (
     <div className="layout" style={{ display: 'flex', minHeight: '100vh' }}>
@@ -230,6 +228,7 @@ function App() {
             <Route path="/daily"     element={<DailyLog />} />
             <Route path="/tasks"     element={<TasksPage />} />
             <Route path="/notes"     element={<DailyNotes />} />
+            <Route path="/vault"     element={<PasswordVault />} />
             <Route path="/weekly"    element={<WeeklyReview />} />
             <Route path="/monthly"   element={<MonthlyReview />} />
             <Route path="/archive"   element={<BookArchive />} />
@@ -264,27 +263,6 @@ function App() {
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
-        <div className="action-divider" />
-        <button
-          onClick={logout}
-          title="Quit"
-          className="desktop-quit-btn desktop-quit-btn--hidden"
-          style={{ 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            background: '#ef4444',
-            border: 'none',
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
-          }}
-        >
-          <LogOut size={15} style={{ marginLeft: '-2px' }} />
         </button>
       </div>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format, parseISO } from 'date-fns';
 import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
@@ -1133,64 +1133,134 @@ export default function DailyLog() {
             </div>
           </div>
 
-          <div className="glass-card p-6">
-            <h3 className="mb-4 flex items-center gap-2"><BookOpen size={20} className="text-amber" /> Book Reading <span className="text-amber text-sm">{(log.books.read ? 10 : 0)}/10pts</span></h3>
-
-            {bookProgress && (
-              <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '8px', borderRadius: '6px', marginBottom: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--accent-blue)', fontWeight: 'bold' }}>
-                  📖 Reading: {bookProgress.bookName}
+          <div className="glass-card p-6" style={{ position: 'relative', overflow: 'hidden' }}>
+            {/* Frozen / Redirection Overlay when no active book */}
+            {!bookProgress && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(15, 23, 42, 0.8)',
+                backdropFilter: 'blur(5px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                textAlign: 'center',
+                zIndex: 10,
+                animation: 'pageSlideIn 0.3s ease-out'
+              }}>
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  background: 'rgba(234, 179, 8, 0.15)',
+                  color: 'var(--accent-yellow, #eab308)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '12px',
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                  boxShadow: '0 0 15px rgba(234, 179, 8, 0.1)'
+                }}>
+                  <BookOpen size={24} style={{ animation: 'pulse 2s infinite' }} />
+                </div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  No Book Selected
+                </h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '240px', lineHeight: 1.4 }}>
+                  Start tracking a book from your Dashboard to unlock reading habits log.
                 </p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Progress: {bookProgress.currentPage} / {bookProgress.targetPages} pages ({Math.round(bookProgress.progress)}%)
-                </p>
+                <Link
+                  to="/dashboard"
+                  className="btn"
+                  style={{
+                    background: 'var(--accent-yellow, #eab308)',
+                    color: '#000',
+                    fontWeight: 700,
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    textDecoration: 'none',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(234, 179, 8, 0.2)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>Choose Book</span>
+                </Link>
               </div>
             )}
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input
-                style={{ flex: '1 1 140px', minWidth: '120px', opacity: bookProgress ? 0.6 : 1 }}
-                placeholder="Book Name"
-                value={log.books.name}
-                onChange={e => updateSection('books', 'name', e.target.value)}
-                disabled={bookProgress ? true : isFuture}
-                title={bookProgress ? `Currently tracking: ${bookProgress.bookName}` : 'Enter book name'}
-              />
-              <input
-                placeholder="Page"
-                type="number"
-                value={log.books.page}
-                onChange={e => {
-                  const pageVal = e.target.value;
-                  if (!pageVal) { updateSection('books', 'page', ''); return; }
-                  const pageNum = parseInt(pageVal);
-                  if (bookProgress) {
-                    const cappedValue = Math.min(Math.max(0, pageNum), bookProgress.targetPages);
-                    updateSection('books', 'page', cappedValue.toString());
-                  } else {
-                    updateSection('books', 'page', pageVal);
-                  }
-                }}
-                max={bookProgress?.targetPages}
-                style={{ width: '90px', flexShrink: 0 }}
-                disabled={isFuture}
-                title={bookProgress ? `Enter page number (max: ${bookProgress.targetPages})` : 'Current page you read up to today'}
-              />
+            <div style={{
+              pointerEvents: bookProgress ? 'auto' : 'none',
+              filter: bookProgress ? 'none' : 'blur(2px)',
+              opacity: bookProgress ? 1 : 0.25,
+              transition: 'all 0.3s ease'
+            }}>
+              <h3 className="mb-4 flex items-center gap-2"><BookOpen size={20} className="text-amber" /> Book Reading <span className="text-amber text-sm">{(log.books.read ? 10 : 0)}/10pts</span></h3>
+
+              {bookProgress && (
+                <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '8px', borderRadius: '6px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--accent-blue)', fontWeight: 'bold' }}>
+                    📖 Reading: {bookProgress.bookName}
+                  </p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Progress: {bookProgress.currentPage} / {bookProgress.targetPages} pages ({Math.round(bookProgress.progress)}%)
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <input
+                  style={{ flex: '1 1 140px', minWidth: '120px', opacity: bookProgress ? 0.6 : 1 }}
+                  placeholder="Book Name"
+                  value={log.books.name}
+                  onChange={e => updateSection('books', 'name', e.target.value)}
+                  disabled={bookProgress ? true : isFuture}
+                  title={bookProgress ? `Currently tracking: ${bookProgress.bookName}` : 'Enter book name'}
+                />
+                <input
+                  placeholder="Page"
+                  type="number"
+                  value={log.books.page}
+                  onChange={e => {
+                    const pageVal = e.target.value;
+                    if (!pageVal) { updateSection('books', 'page', ''); return; }
+                    const pageNum = parseInt(pageVal);
+                    if (bookProgress) {
+                      const cappedValue = Math.min(Math.max(0, pageNum), bookProgress.targetPages);
+                      updateSection('books', 'page', cappedValue.toString());
+                    } else {
+                      updateSection('books', 'page', pageVal);
+                    }
+                  }}
+                  max={bookProgress?.targetPages}
+                  style={{ width: '90px', flexShrink: 0 }}
+                  disabled={isFuture}
+                  title={bookProgress ? `Enter page number (max: ${bookProgress.targetPages})` : 'Current page you read up to today'}
+                />
+              </div>
+              {bookProgress && parseInt(log.books.page) > bookProgress.targetPages && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '8px', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444' }}>
+                  ⚠️ Page number cannot exceed {bookProgress.targetPages} pages
+                </div>
+              )}
+              <label className="flex items-center gap-2">
+                <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e => updateSection('books', 'read', e.target.checked)} disabled={isFuture} />
+                Reading Finished (10pts)
+              </label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                {bookProgress
+                  ? '💡 Tip: Enter your page number daily to track your reading progress on the Dashboard.'
+                  : '💡 Tip: Start tracking a book on the Dashboard to synchronize it here.'}
+              </p>
             </div>
-            {bookProgress && parseInt(log.books.page) > bookProgress.targetPages && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '8px', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444' }}>
-                ⚠️ Page number cannot exceed {bookProgress.targetPages} pages
-              </div>
-            )}
-            <label className="flex items-center gap-2">
-              <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e => updateSection('books', 'read', e.target.checked)} disabled={isFuture} />
-              Reading Finished (10pts)
-            </label>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-              {bookProgress
-                ? '💡 Tip: Enter your page number daily to track your reading progress on the Dashboard.'
-                : '💡 Tip: Start tracking a book on the Dashboard to synchronize it here.'}
-            </p>
           </div>
 
           <div className="glass-card p-6">

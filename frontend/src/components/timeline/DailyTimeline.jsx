@@ -254,7 +254,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, filters = {} }) {
+export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, onSelectDate, filters = {} }) {
   const { timelinePrefs } = useHabits();
   const initialZoom = granularityToZoom(timelinePrefs.intervalGranularity);
   const [zoom, setZoom] = useState(initialZoom);
@@ -371,9 +371,56 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             border: '1px solid rgba(99,102,241,0.25)',
             fontSize: '0.9rem',
             flexShrink: 0,
-          }} aria-hidden="true">📅</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isMobile ? 'normal' : 'nowrap', color: 'var(--text-primary)', fontWeight: 700 }}>
+            cursor: onSelectDate ? 'pointer' : 'default',
+          }} 
+          onClick={onSelectDate ? () => {
+            const el = document.getElementById('tl-native-date-picker');
+            if (el) {
+              try { el.showPicker(); } catch (_) { el.click(); }
+            }
+          } : undefined}
+          title={onSelectDate ? "Choose a specific day" : undefined}
+          aria-hidden="true">📅</span>
+          <span 
+            style={{ 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: isMobile ? 'normal' : 'nowrap', 
+              color: 'var(--text-primary)', 
+              fontWeight: 700,
+              cursor: onSelectDate ? 'pointer' : 'default',
+              position: 'relative'
+            }}
+            onClick={onSelectDate ? () => {
+              const el = document.getElementById('tl-native-date-picker');
+              if (el) {
+                try { el.showPicker(); } catch (_) { el.click(); }
+              }
+            } : undefined}
+            title={onSelectDate ? "Choose a specific day" : undefined}
+          >
             {format(new Date(date + 'T12:00:00'), isMobile ? 'EEE, MMM d' : 'EEEE, MMMM d')}
+            {onSelectDate && (
+              <input
+                id="tl-native-date-picker"
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    onSelectDate(e.target.value);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
           </span>
         </h3>
 

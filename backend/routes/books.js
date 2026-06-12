@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const User = require('../models/User');
-const Archive = require('../models/Archive');
-
 // GET current book
 router.get('/current', protect, async (req, res) => {
   try {

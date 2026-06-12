@@ -809,6 +809,7 @@ export default function TasksPage() {
             onEditTask={openEdit}
             onAddClick={openAddAtHour}
             isFutureDate={isFuture}
+            onSelectDate={handleSelectDate}
             filters={activeFilters}
           />
         </div>
