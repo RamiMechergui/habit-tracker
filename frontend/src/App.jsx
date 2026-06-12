@@ -185,7 +185,7 @@ function App() {
           </button>
 
           <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
+            <img src="/logo_circle.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
             <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>EVOLVIA</span>
           </div>
         </div>
@@ -202,7 +202,7 @@ function App() {
             >
               <Menu size={22} color="var(--text-primary)" />
             </button>
-            <img src="/logo.png" alt="Logo" style={{ width: '22px', height: '22px', borderRadius: '4px' }} />
+            <img src="/logo_circle.png" alt="Logo" style={{ width: '22px', height: '22px', borderRadius: '4px' }} />
             <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
               EVOLVIA
             </span>

@@ -628,24 +628,51 @@ export default function TasksPage() {
             ))}
           </div>
 
-          {/* Week navigation */}
-          <div className="hub-week-nav" role="group" aria-label="Week navigation">
+          {/* Day navigation */}
+          <div className="hub-week-nav" role="group" aria-label="Day navigation">
             <button
               className="hub-week-nav-btn"
-              onClick={goToPrevWeek}
-              aria-label="Previous week"
+              onClick={goToPrevDay}
+              aria-label="Previous day"
             >
               <ChevronLeft size={15} />
             </button>
-            <span className="hub-week-label">
-              {format(safeStartOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
-              {' – '}
-              {format(endOfWeek(parseISO(date), { weekStartsOn: 1 }), 'MMM d')}
+            <span 
+              className="hub-week-label"
+              style={{ cursor: 'pointer', position: 'relative' }}
+              onClick={() => {
+                const el = document.getElementById('hub-native-date-picker');
+                if (el) {
+                  try { el.showPicker(); } catch (_) { el.click(); }
+                }
+              }}
+              title="Click to pick a specific date"
+            >
+              {format(new Date(date + 'T12:00:00'), 'MMM d, yyyy')}
+              <input
+                id="hub-native-date-picker"
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setDate(e.target.value);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  pointerEvents: 'none',
+                }}
+              />
             </span>
             <button
               className="hub-week-nav-btn"
-              onClick={goToNextWeek}
-              aria-label="Next week"
+              onClick={goToNextDay}
+              aria-label="Next day"
             >
               <ChevronRight size={15} />
             </button>
