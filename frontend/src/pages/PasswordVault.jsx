@@ -733,8 +733,9 @@ export default function PasswordVault() {
                         key={cred._id}
                         className={`credential-item ${selectedId === cred._id ? 'active' : ''}`}
                         onClick={() => {
-                          setSelectedId(cred._id);
-                          setMobileView('details');
+                          const isAlreadySelected = selectedId === cred._id;
+                          setSelectedId(isAlreadySelected ? null : cred._id);
+                          setMobileView(isAlreadySelected ? 'list' : 'details');
                           setShowDetailPassword(false);
                         }}
                       >

@@ -79,6 +79,7 @@ app.post('/api/archives', (req, res) => res.json({ success: true, ...req.body })
 // Categories
 app.get('/api/categories',              (req, res, next) => { req.url = '/categories/list';             expRoutes(req, res, next); });
 app.post('/api/categories',             (req, res, next) => { req.url = '/categories';                  expRoutes(req, res, next); });
+app.put('/api/categories/:category',    (req, res, next) => { req.url = '/categories/' + req.params.category; expRoutes(req, res, next); });
 app.delete('/api/categories/:category', (req, res, next) => { req.url = '/categories/' + req.params.category; expRoutes(req, res, next); });
 
 // Notification stubs — return empty so the frontend doesn't error

@@ -85,7 +85,27 @@ router.post('/categories', protect, async (req, res) => {
       user.expenseCategories.push(category.trim());
       await user.save();
     }
-    res.json({ categories: user.expenseCategories });
+    res.json({ expenseCategories: user.expenseCategories });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PUT /api/expenses/categories/:category
+router.put('/categories/:category', protect, async (req, res) => {
+  try {
+    const { newCategory } = req.body;
+    if (!newCategory?.trim()) return res.status(400).json({ message: 'New category name required' });
+    const user = await User.findById(req.user._id);
+    const oldCat = decodeURIComponent(req.params.category);
+    if (user.expenseCategories.includes(newCategory.trim()) && newCategory.trim() !== oldCat) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+    user.expenseCategories = user.expenseCategories.map(
+      c => c === oldCat ? newCategory.trim() : c
+    );
+    await user.save();
+    res.json({ expenseCategories: user.expenseCategories });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -99,7 +119,7 @@ router.delete('/categories/:category', protect, async (req, res) => {
       c => c !== decodeURIComponent(req.params.category)
     );
     await user.save();
-    res.json({ categories: user.expenseCategories });
+    res.json({ expenseCategories: user.expenseCategories });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
