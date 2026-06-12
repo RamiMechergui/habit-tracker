@@ -25,27 +25,19 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 )
 
-
-// ── Service Worker Registration ──────────────────────────────────
-// Log resolved API URL at startup to help debug deployment/runtime issues
+// ── Debug ───────────────────────────────────────────────────────────────────
 console.log('[App] Resolved API_URL =', API_URL);
 
+// ── Service Worker ──────────────────────────────────────────────────────────
+// vite-plugin-pwa (injectRegister: 'auto') handles SW registration automatically.
+// We only need to wire up the background-sync message relay here.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/'
-      });
-      console.log('[App] Service Worker registered:', registration.scope);
-
-      // Listen for SW messages (e.g., background sync triggers)
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'SYNC_REPLAY') {
-          import('./syncManager.js').then(({ replayQueue }) => replayQueue());
-        }
-      });
-    } catch (err) {
-      console.warn('[App] Service Worker registration failed:', err);
-    }
+  window.addEventListener('load', () => {
+    // Listen for SW messages (e.g., background sync triggers from sw.js)
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'SYNC_REPLAY') {
+        import('./syncManager.js').then(({ replayQueue }) => replayQueue());
+      }
+    });
   });
 }

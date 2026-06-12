@@ -1931,6 +1931,66 @@ label {
   }
 }
 
+/* iOS install prompt — stacked layout with step instructions */
+.install-prompt-ios {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 16px;
+  position: relative;
+}
+
+.install-prompt-ios-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.install-prompt-ios-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.install-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Install spinner animation */
+.install-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: installSpin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes installSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Disabled state for install button */
+.install-prompt-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* ═══════════════════════════════════════════════════
    SW UPDATE TOAST
    ═══════════════════════════════════════════════════ */
