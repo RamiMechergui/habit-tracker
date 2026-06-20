@@ -79,6 +79,7 @@ export default function PasswordVault() {
   // UI state
   const [copyFeedback, setCopyFeedback] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [copyToast, setCopyToast] = useState({ visible: false, text: '', type: 'success' });
 
   // Split-pane layout helper for mobile
   const [mobileView, setMobileView] = useState('list'); // 'list' or 'details'
@@ -264,15 +265,52 @@ export default function PasswordVault() {
     }
   };
 
-  // Copy helper with feedback transitions
+  // Copy helper — works on both HTTPS (clipboard API) and HTTP (localhost/execCommand fallback)
   const triggerCopy = (text, fieldKey) => {
     if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
+
+    const onSuccess = () => {
       setCopyFeedback(prev => ({ ...prev, [fieldKey]: true }));
-      setTimeout(() => {
-        setCopyFeedback(prev => ({ ...prev, [fieldKey]: false }));
-      }, 2000);
-    });
+      setTimeout(() => setCopyFeedback(prev => ({ ...prev, [fieldKey]: false })), 2000);
+
+      // Show toast
+      setCopyToast({ visible: true, text: `${fieldKey === 'password' ? 'Password' : 'Username'} copied to clipboard!`, type: 'success' });
+      setTimeout(() => setCopyToast(prev => ({ ...prev, visible: false })), 2500);
+    };
+
+    const onError = () => {
+      setCopyToast({ visible: true, text: 'Copy failed — please copy manually.', type: 'error' });
+      setTimeout(() => setCopyToast(prev => ({ ...prev, visible: false })), 3000);
+    };
+
+    // Prefer modern Clipboard API (requires HTTPS or localhost in some browsers)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+        // Fallback to execCommand if Clipboard API is blocked
+        execCommandCopy(text) ? onSuccess() : onError();
+      });
+    } else {
+      // Legacy fallback for HTTP contexts
+      execCommandCopy(text) ? onSuccess() : onError();
+    }
+  };
+
+  // execCommand-based copy fallback (works on HTTP/localhost)
+  const execCommandCopy = (text) => {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.setAttribute('readonly', '');
+      el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      document.body.appendChild(el);
+      el.select();
+      el.setSelectionRange(0, el.value.length); // iOS support
+      const ok = document.execCommand('copy');
+      document.body.removeChild(el);
+      return ok;
+    } catch (_) {
+      return false;
+    }
   };
 
   // Open creation modal
@@ -384,6 +422,35 @@ export default function PasswordVault() {
 
   return (
     <div className="password-vault-page" style={{ animation: 'pageSlideIn 0.3s ease', minHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── COPY TOAST ── */}
+      {copyToast.visible && (
+        <div style={{
+          position: 'fixed',
+          bottom: '28px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          padding: '12px 22px',
+          borderRadius: '12px',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          animation: 'slideUp 0.25s ease',
+          background: copyToast.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)',
+          border: `1px solid ${copyToast.type === 'success' ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.3)'}`,
+          color: copyToast.type === 'success' ? '#10b981' : '#ef4444',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          whiteSpace: 'nowrap',
+        }}>
+          {copyToast.type === 'success' ? <Check size={16} /> : <X size={16} />}
+          {copyToast.text}
+        </div>
+      )}
       
       {/* Dynamic CSS Styling Injector */}
       <style>{`
@@ -541,6 +608,10 @@ export default function PasswordVault() {
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(14px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         @media (max-width: 768px) {
           .vault-container {

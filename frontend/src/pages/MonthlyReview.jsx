@@ -266,6 +266,51 @@ export default function MonthlyReview() {
     }
   });
 
+  const screenTimeData = {
+    labels,
+    datasets: [
+      {
+        label: 'Social Media (Hours)',
+        data: monthlyData.map(d => {
+          const min = parseInt(d.log?.bad?.social?.min) || 0;
+          return parseFloat((min / 60).toFixed(2));
+        }),
+        borderColor: '#a78bfa',
+        backgroundColor: 'rgba(167,139,250,0.08)',
+        tension: 0.35,
+        fill: true,
+        pointBackgroundColor: '#a78bfa',
+        pointRadius: 2.5,
+        pointHoverRadius: 5,
+      },
+      {
+        label: 'Phone Usage (Hours)',
+        data: monthlyData.map(d => {
+          const min = parseInt(d.log?.bad?.phone?.min) || 0;
+          return parseFloat((min / 60).toFixed(2));
+        }),
+        borderColor: '#ec4899',
+        backgroundColor: 'rgba(236,72,153,0.08)',
+        tension: 0.35,
+        fill: true,
+        pointBackgroundColor: '#ec4899',
+        pointRadius: 2.5,
+        pointHoverRadius: 5,
+      }
+    ]
+  };
+
+  const screenTimeOptions = mergeChartOptions({
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: (value) => `${value}h`
+        }
+      }
+    }
+  });
+
   // ── Weekend Duties Aggregation ──────────────────────────────
   let preLaundryCount = 0, cleanRoomCount = 0, regularLaundryCount = 0, shareBoughtCount = 0;
   monthlyData.forEach(d => {
@@ -555,6 +600,10 @@ export default function MonthlyReview() {
 
     <ChartCard title="Waking Up Time (24h Format)" colorGradient="linear-gradient(135deg,#8b5cf6,#7c3aed)" icon="⏰" borderColor="#8b5cf6" height={290}>
       <Line data={wakingData} options={wakingOptions} />
+    </ChartCard>
+
+    <ChartCard title="Social Media & Phone Screen Time" colorGradient="linear-gradient(135deg,#a78bfa,#ec4899)" icon="📱" borderColor="#a78bfa" height={320}>
+      <Line data={screenTimeData} options={screenTimeOptions} />
     </ChartCard>
 
     <ChartCard title="Weekend Duties Completion" colorGradient="linear-gradient(135deg,#10b981,#059669)" icon="✅" borderColor="#10b981" height={250}>

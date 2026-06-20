@@ -219,6 +219,27 @@ export const HabitProvider = ({ children }) => {
   // ── Daily Notes state ─────────────────────────────────────────
   const [dailyNotes, setDailyNotes] = useState({}); // { 'YYYY-MM-DD': [notes] }
   const [allNotes, setAllNotes] = useState([]);        // flat list sorted by createdAt desc
+  const [noteSections, setNoteSectionsState] = useState(() => {
+    try {
+      const raw = localStorage.getItem('noteSections');
+      return raw ? JSON.parse(raw) : ['General'];
+    } catch {
+      return ['General'];
+    }
+  });
+
+  const setNoteSections = useCallback((nextSections) => {
+    setNoteSectionsState(nextSections);
+    try { localStorage.setItem('noteSections', JSON.stringify(nextSections)); } catch {}
+    if (user && navigator.onLine) {
+      fetch(`${API_URL}/api/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noteSections: nextSections })
+      }).catch(() => {});
+    }
+  }, [user, API_URL]);
 
   // Daily Defaults - Memoized to prevent unnecessary re-renders
   const createEmptyDay = useCallback((dateStr) => ({
@@ -354,6 +375,10 @@ export const HabitProvider = ({ children }) => {
         if (s.timelinePrefs) {
           setTimelinePrefsState(s.timelinePrefs);
           try { localStorage.setItem('timelinePrefs', JSON.stringify(s.timelinePrefs)); } catch {}
+        }
+        if (s.noteSections) {
+          setNoteSectionsState(s.noteSections);
+          try { localStorage.setItem('noteSections', JSON.stringify(s.noteSections)); } catch {}
         }
         if (s.theme) {
           try { localStorage.setItem('theme', s.theme); } catch {}
@@ -1337,7 +1362,7 @@ export const HabitProvider = ({ children }) => {
     return allNotes;
   };
 
-  const addDailyNote = async (date, content) => {
+  const addDailyNote = async (date, content, section = '') => {
     const tempId = 'temp_' + Date.now();
     const nowStr = new Date().toISOString();
     
@@ -1346,6 +1371,7 @@ export const HabitProvider = ({ children }) => {
       _id: tempId,
       date,
       content,
+      section,
       createdAt: nowStr,
       updatedAt: nowStr,
       pendingSync: true
@@ -1359,7 +1385,7 @@ export const HabitProvider = ({ children }) => {
       await db.enqueueSync({
         method: 'POST',
         url: '/api/notes',
-        body: { date, content, localId: tempId }
+        body: { date, content, section, localId: tempId }
       });
       requestBackgroundSync();
       return newNote;
@@ -1370,7 +1396,7 @@ export const HabitProvider = ({ children }) => {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, content, localId: tempId })
+        body: JSON.stringify({ date, content, section, localId: tempId })
       });
       
       if (!res.ok) throw new Error('API failed');
@@ -1393,34 +1419,32 @@ export const HabitProvider = ({ children }) => {
       await db.enqueueSync({
         method: 'POST',
         url: '/api/notes',
-        body: { date, content, localId: tempId }
+        body: { date, content, section, localId: tempId }
       });
       requestBackgroundSync();
       return newNote;
     }
   };
 
-  const updateDailyNote = async (id, date, content) => {
+  const updateDailyNote = async (id, date, content, section) => {
     const nowStr = new Date().toISOString();
     
     // Optimistic Update
     setDailyNotes(prev => ({
       ...prev,
-      [date]: (prev[date] || []).map(n => n._id === id ? { ...n, content, updatedAt: nowStr, pendingSync: true } : n)
+      [date]: (prev[date] || []).map(n => n._id === id ? { ...n, content, section: section !== undefined ? section : n.section, updatedAt: nowStr, pendingSync: true } : n)
     }));
-    setAllNotes(prev => prev.map(n => n._id === id ? { ...n, content, updatedAt: nowStr, pendingSync: true } : n));
+    setAllNotes(prev => prev.map(n => n._id === id ? { ...n, content, section: section !== undefined ? section : n.section, updatedAt: nowStr, pendingSync: true } : n));
     
     const existing = allNotes.find(n => n._id === id) || { _id: id, date, createdAt: nowStr };
-    const updatedNote = { ...existing, content, updatedAt: nowStr, pendingSync: true };
+    const updatedNote = { ...existing, content, section: section !== undefined ? section : existing.section, updatedAt: nowStr, pendingSync: true };
     await db.saveNote(updatedNote);
 
     if (!navigator.onLine || id.startsWith('temp_')) {
-      // If it's a temp ID, the original POST is in the queue, we just enqueue the PUT (backend needs to handle tempId resolution or we just wait for sync.
-      // Usually better to let the backend resolve it, but for simplicity, just enqueue the PUT.
       await db.enqueueSync({
         method: 'PUT',
         url: `/api/notes/${id}`,
-        body: { content }
+        body: { content, section }
       });
       requestBackgroundSync();
       return updatedNote;
@@ -1431,7 +1455,7 @@ export const HabitProvider = ({ children }) => {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content, section })
       });
 
       if (!res.ok) throw new Error('API failed');
@@ -1450,7 +1474,7 @@ export const HabitProvider = ({ children }) => {
       await db.enqueueSync({
         method: 'PUT',
         url: `/api/notes/${id}`,
-        body: { content }
+        body: { content, section }
       });
       requestBackgroundSync();
       return updatedNote;
@@ -1508,6 +1532,7 @@ export const HabitProvider = ({ children }) => {
       // Daily Notes
       dailyNotes, fetchNotesForDate, addDailyNote, updateDailyNote, deleteDailyNote,
       allNotes, setAllNotes, fetchAllNotes,
+      noteSections, setNoteSections,
       // Recurring tasks
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,

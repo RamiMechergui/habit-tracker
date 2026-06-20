@@ -7,6 +7,17 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 
+const formatDuration = (totalMin) => {
+  const minVal = parseInt(totalMin);
+  if (isNaN(minVal) || minVal <= 0) return '';
+  const hrs = Math.floor(minVal / 60);
+  const mins = minVal % 60;
+  if (hrs > 0) {
+    return `${hrs}h${mins > 0 ? ` ${mins}m` : ''}`;
+  }
+  return `${mins}m`;
+};
+
 export default function DailyLog() {
   const { getLog, saveLog, expenseCategories = ['Food', 'Transportation', 'Entertainment', 'Smoking'], currentBook, getBookProgress, logs } = useHabits();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -449,8 +460,8 @@ export default function DailyLog() {
       const badItems = [
         { key: 'smoking', label: '[Avoid] Smoking Avoided', pts: '10pts', extra: totalCigarettes ? `(${totalCigarettes} cigs)` : '' },
         { key: 'sexual', label: '[Avoid] Sexual discipline Avoided', pts: '4pts' },
-        { key: 'social', label: '[Avoid] Social Media Avoided', pts: '2pts', extra: log.bad?.social?.min ? `(${log.bad.social.min} min)` : '' },
-        { key: 'phone', label: '[Avoid] Phone Usage Avoided', pts: '6pts', extra: log.bad?.phone?.min ? `(${log.bad.phone.min} min)` : '' },
+        { key: 'social', label: '[Avoid] Social Media Avoided', pts: '2pts', extra: log.bad?.social?.min ? `(${formatDuration(log.bad.social.min)})` : '' },
+        { key: 'phone', label: '[Avoid] Phone Usage Avoided', pts: '6pts', extra: log.bad?.phone?.min ? `(${formatDuration(log.bad.phone.min)})` : '' },
         { key: 'coffee', label: '[Avoid] Coffee Avoided', pts: '2pts' },
         { key: 'eating', label: '[Avoid] Eating out Avoided', pts: '2pts' },
         { key: 'noSugar', label: '[Avoid] No sugar Avoided', pts: '2pts' }
@@ -726,40 +737,109 @@ export default function DailyLog() {
                   </div>
                   <div className="flex items-center gap-2">
                     {item.extra && (
-                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        {item.id === 'smoking' && <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>}
-                        <input
-                          type="number"
-                          min="0"
-                          max="999"
-                          placeholder={item.id === 'smoking' ? 'Total' : item.placeholder}
-                          style={item.id === 'smoking' ? {
-                            width: '85px',
-                            padding: '0.4rem 0.4rem 0.4rem 28px',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.4)',
-                            borderRadius: '8px',
-                            fontSize: '0.85rem',
-                            fontWeight: 'bold',
-                            color: '#ef4444',
-                            boxShadow: '0 2px 10px rgba(239, 68, 68, 0.15)',
-                            outline: 'none',
-                            transition: 'all 0.2s ease'
-                          } : { 
-                            width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
-                          }}
-                          value={item.id === 'smoking' ? (totalCigarettes || '') : (log.bad?.[item.id]?.[item.extra] || '')} 
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (val === '' || Number(val) >= 0) {
-                            if (item.id !== 'smoking') {
-                              updateBad(item.id, item.extra, val);
-                            }
-                          }
-                        }} 
-                        disabled={isFuture || item.id === 'smoking'} 
-                        readOnly={item.id === 'smoking'}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {item.id === 'smoking' && (
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="999"
+                              placeholder="Total"
+                              style={{
+                                width: '85px',
+                                padding: '0.4rem 0.4rem 0.4rem 28px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                borderRadius: '8px',
+                                fontSize: '0.85rem',
+                                fontWeight: 'bold',
+                                color: '#ef4444',
+                                boxShadow: '0 2px 10px rgba(239, 68, 68, 0.15)',
+                                outline: 'none',
+                                transition: 'all 0.2s ease'
+                              }}
+                              value={totalCigarettes || ''}
+                              disabled={isFuture}
+                              readOnly={true}
+                            />
+                          </div>
+                        )}
+                        {(item.id === 'social' || item.id === 'phone') && (
+                          (() => {
+                            const totalMin = log.bad?.[item.id]?.min !== undefined ? parseInt(log.bad[item.id].min) : 0;
+                            const hrs = Math.floor(totalMin / 60);
+                            const mins = totalMin % 60;
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="H"
+                                  style={{
+                                    width: '45px',
+                                    padding: '0.4rem',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    color: '#fff',
+                                    textAlign: 'center'
+                                  }}
+                                  value={hrs || ''}
+                                  onChange={e => {
+                                    const hVal = Math.max(0, parseInt(e.target.value) || 0);
+                                    updateBad(item.id, 'min', hVal * 60 + mins);
+                                  }}
+                                  disabled={isFuture}
+                                />
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>h</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  placeholder="M"
+                                  style={{
+                                    width: '45px',
+                                    padding: '0.4rem',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    color: '#fff',
+                                    textAlign: 'center'
+                                  }}
+                                  value={mins || ''}
+                                  onChange={e => {
+                                    const mVal = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                                    updateBad(item.id, 'min', hrs * 60 + mVal);
+                                  }}
+                                  disabled={isFuture}
+                                />
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>m</span>
+                              </div>
+                            );
+                          })()
+                        )}
+                        {item.id !== 'smoking' && item.id !== 'social' && item.id !== 'phone' && (
+                          <input
+                            type="number"
+                            min="0"
+                            max="999"
+                            placeholder={item.placeholder}
+                            style={{ 
+                              width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
+                            }}
+                            value={log.bad?.[item.id]?.[item.extra] || ''} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val === '' || Number(val) >= 0) {
+                                updateBad(item.id, item.extra, val);
+                              }
+                            }} 
+                            disabled={isFuture} 
+                          />
+                        )}
                       </div>
                     )}
                     <input type="checkbox" className="habit-checkbox" checked={log.bad?.[item.id]?.checked || false} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />

@@ -29,11 +29,11 @@ router.get('/', async (req, res) => {
 // POST /api/notes
 router.post('/', async (req, res) => {
   try {
-    const { date, content } = req.body;
+    const { date, content, section } = req.body;
     if (!date || !content?.trim()) {
       return res.status(400).json({ message: 'date and content are required' });
     }
-    const note = await createNote(req.user.userId, date, content.trim());
+    const note = await createNote(req.user.userId, date, content.trim(), section || '');
     res.status(201).json(note);
   } catch (err) {
     console.error('[Notes] POST error:', err);
@@ -44,7 +44,8 @@ router.post('/', async (req, res) => {
 // PUT /api/notes/:id
 router.put('/:id', async (req, res) => {
   try {
-    const note = await updateNote(req.user.userId, req.params.id, req.body.content?.trim());
+    const { content, section } = req.body;
+    const note = await updateNote(req.user.userId, req.params.id, content?.trim(), section);
     if (!note) return res.status(404).json({ message: 'Note not found' });
     res.json(note);
   } catch (err) {

@@ -33,6 +33,7 @@ function toNoteShape(item) {
     userId:    item.userId,
     date:      item.date,
     content:   item.content,
+    section:   item.section || '',
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -93,10 +94,10 @@ async function getNotesByDate(userId, date) {
  * @param {string} content
  * @returns {Promise<object>}
  */
-async function createNote(userId, date, content) {
+async function createNote(userId, date, content, section = '') {
   const ts     = new Date().toISOString();
   const noteId = randomUUID();
-  const item   = { userId, noteId, date, content, createdAt: ts, updatedAt: ts };
+  const item   = { userId, noteId, date, content, section, createdAt: ts, updatedAt: ts };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return toNoteShape(item);
 }
@@ -108,16 +109,30 @@ async function createNote(userId, date, content) {
  * @param {string} content
  * @returns {Promise<object|null>}
  */
-async function updateNote(userId, noteId, content) {
+async function updateNote(userId, noteId, content, section) {
   const ts  = new Date().toISOString();
-  const res = await docClient.send(new UpdateCommand({
+  let UpdateExpression = 'SET content = :c, updatedAt = :ts';
+  const ExpressionAttributeValues = { ':c': content, ':ts': ts };
+  
+  if (section !== undefined) {
+    UpdateExpression += ', #sec = :sec';
+    ExpressionAttributeValues[':sec'] = section;
+  }
+  
+  const params = {
     TableName:                 TABLE,
     Key:                       { userId, noteId },
-    UpdateExpression:          'SET content = :c, updatedAt = :ts',
+    UpdateExpression,
     ConditionExpression:       'attribute_exists(noteId)',
-    ExpressionAttributeValues: { ':c': content, ':ts': ts },
+    ExpressionAttributeValues,
     ReturnValues:              'ALL_NEW',
-  }));
+  };
+  
+  if (section !== undefined) {
+    params.ExpressionAttributeNames = { '#sec': 'section' };
+  }
+
+  const res = await docClient.send(new UpdateCommand(params));
   return toNoteShape(res.Attributes);
 }
 

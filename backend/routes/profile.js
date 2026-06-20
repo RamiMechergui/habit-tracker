@@ -62,6 +62,7 @@ router.get('/', protect, async (req, res) => {
       expenseCategories: user.expenseCategories,
       recurringTasks:    settings.recurringTasks  || {},
       timelinePrefs:     settings.timelinePrefs   || { defaultDuration: 30, intervalGranularity: 30 },
+      noteSections:      settings.noteSections    || ['General'],
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -71,7 +72,7 @@ router.get('/', protect, async (req, res) => {
 // PUT /api/profile — update name and/or settings
 router.put('/', protect, async (req, res) => {
   try {
-    const { firstName, lastName, theme, recurringTasks, timelinePrefs } = req.body;
+    const { firstName, lastName, theme, recurringTasks, timelinePrefs, noteSections } = req.body;
 
     const nameUpdate = {};
     if (firstName !== undefined) nameUpdate.firstName = firstName;
@@ -81,6 +82,7 @@ router.put('/', protect, async (req, res) => {
     if (theme          !== undefined) settingsUpdate.theme          = theme;
     if (recurringTasks !== undefined) settingsUpdate.recurringTasks = recurringTasks;
     if (timelinePrefs  !== undefined) settingsUpdate.timelinePrefs  = timelinePrefs;
+    if (noteSections   !== undefined) settingsUpdate.noteSections   = noteSections;
 
     const [user, settings] = await Promise.all([
       Object.keys(nameUpdate).length ? updateUser(req.user.userId, nameUpdate) : getUserById(req.user.userId),
@@ -96,6 +98,7 @@ router.put('/', protect, async (req, res) => {
       expenseCategories: user.expenseCategories,
       recurringTasks:    settings.recurringTasks  || {},
       timelinePrefs:     settings.timelinePrefs   || { defaultDuration: 30, intervalGranularity: 30 },
+      noteSections:      settings.noteSections    || ['General', 'Home Notes', 'Dev Notes', 'Work Notes', 'Personal Notes'],
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

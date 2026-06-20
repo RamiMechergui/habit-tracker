@@ -280,6 +280,51 @@ export default function WeeklyReview() {
     }
   });
 
+  const screenTimeData = {
+    labels,
+    datasets: [
+      {
+        label: 'Social Media (Hours)',
+        data: weeklyData.map(d => {
+          const min = parseInt(d.log?.bad?.social?.min) || 0;
+          return parseFloat((min / 60).toFixed(2));
+        }),
+        borderColor: '#a78bfa',
+        backgroundColor: 'rgba(167,139,250,0.12)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#a78bfa',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+      {
+        label: 'Phone Usage (Hours)',
+        data: weeklyData.map(d => {
+          const min = parseInt(d.log?.bad?.phone?.min) || 0;
+          return parseFloat((min / 60).toFixed(2));
+        }),
+        borderColor: '#ec4899',
+        backgroundColor: 'rgba(236,72,153,0.12)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#ec4899',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }
+    ]
+  };
+
+  const screenTimeOptions = mergeChartOptions({
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: (value) => `${value}h`
+        }
+      }
+    }
+  });
+
   const satDuty = weeklyData.find(d => d.dayName === 'Sat')?.log?.weekend?.saturday;
   const sunDuty = weeklyData.find(d => d.dayName === 'Sun')?.log?.weekend?.sunday;
 
@@ -620,6 +665,10 @@ export default function WeeklyReview() {
 
       <ChartCard title="Weekly Wake-Up Time" color="linear-gradient(135deg,#3b82f6,#06b6d4)" icon="⏰" height={260}>
         <Line data={wakingData} options={wakingOptions} />
+      </ChartCard>
+
+      <ChartCard title="Social Media & Phone Usage" color="linear-gradient(135deg,#a78bfa,#ec4899)" icon="📱" height={280}>
+        <Line data={screenTimeData} options={screenTimeOptions} />
       </ChartCard>
 
       <ChartCard title="Weekly Expenses" color="linear-gradient(135deg,#f59e0b,#d97706)" icon="💰" height={260}>
