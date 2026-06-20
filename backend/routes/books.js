@@ -1,72 +1,72 @@
 const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const User = require('../models/User');
-// GET current book
+const router  = express.Router();
+const { protect }               = require('../middleware/auth');
+const { getUserById, updateUser } = require('../db/users');
+
+// GET /api/books/current
 router.get('/current', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('currentBook');
+    const user = await getUserById(req.user.userId);
     res.json(user.currentBook || {});
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST set current book
+// POST /api/books/current — set a new current book
 router.post('/current', protect, async (req, res) => {
   try {
     const { bookName, targetPages } = req.body;
-    if (!bookName?.trim()) return res.status(400).json({ message: 'Book name required' });
+    if (!bookName?.trim())          return res.status(400).json({ message: 'Book name required' });
     if (!targetPages || targetPages <= 0) return res.status(400).json({ message: 'Target pages > 0 required' });
 
-    const user = await User.findById(req.user._id);
-    user.currentBook = {
-      bookName: bookName.trim(),
+    const currentBook = {
+      bookName:   bookName.trim(),
       targetPages: parseInt(targetPages),
-      startDate: new Date().toISOString().split('T')[0],
-      isActive: true
+      startDate:  new Date().toISOString().split('T')[0],
+      isActive:   true,
     };
-    await user.save();
-    res.json(user.currentBook);
+    const updated = await updateUser(req.user.userId, { currentBook });
+    res.json(updated.currentBook);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// PUT update current book (complete/archive)
+// PUT /api/books/current — update / archive current book
 router.put('/current', protect, async (req, res) => {
   try {
     const { isActive, finalPage } = req.body;
-    const user = await User.findById(req.user._id);
+    const user = await getUserById(req.user.userId);
     if (!user.currentBook.bookName) return res.status(400).json({ message: 'No active book' });
 
-    if (isActive === false && user.currentBook.isActive === true) {
-      const archivedBook = {
-        bookName: user.currentBook.bookName,
-        targetPages: user.currentBook.targetPages,
-        startDate: user.currentBook.startDate,
-        completionDate: new Date().toISOString().split('T')[0],
-        finalPage: finalPage || user.currentBook.targetPages
-      };
+    let { currentBook, archivedBooks } = user;
 
-      if (!user.archivedBooks) user.archivedBooks = [];
-      user.archivedBooks.push(archivedBook);
-      user.currentBook = { bookName: '', targetPages: 0, startDate: '', isActive: false };
+    if (isActive === false && currentBook.isActive === true) {
+      const archivedBook = {
+        bookName:       currentBook.bookName,
+        targetPages:    currentBook.targetPages,
+        startDate:      currentBook.startDate,
+        completionDate: new Date().toISOString().split('T')[0],
+        finalPage:      finalPage || currentBook.targetPages,
+      };
+      archivedBooks = [...(archivedBooks || []), archivedBook];
+      currentBook   = { bookName: '', targetPages: 0, startDate: '', isActive: false };
     } else {
-      user.currentBook.isActive = isActive !== undefined ? isActive : false;
+      currentBook = { ...currentBook, isActive: isActive !== undefined ? isActive : false };
     }
 
-    await user.save();
-    res.json({ currentBook: user.currentBook, archivedBooks: user.archivedBooks || [] });
+    const updated = await updateUser(req.user.userId, { currentBook, archivedBooks });
+    res.json({ currentBook: updated.currentBook, archivedBooks: updated.archivedBooks || [] });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// GET archived books
+// GET /api/books/archived
 router.get('/archived', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('archivedBooks');
+    const user = await getUserById(req.user.userId);
     res.json({ archivedBooks: user.archivedBooks || [] });
   } catch (err) {
     res.status(500).json({ message: err.message });

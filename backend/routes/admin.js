@@ -1,16 +1,16 @@
 const express = require('express');
-const router = express.Router();
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const router  = express.Router();
+const jwt     = require('jsonwebtoken');
+const { getUserById, deleteUser, countUsers, listUsers } = require('../db/users');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'change_this_admin_dashboard_password';
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod';
+const JWT_SECRET     = process.env.JWT_SECRET     || 'supersecretjwtkey_change_me_in_prod';
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure:   process.env.NODE_ENV === 'production',
   sameSite: 'lax',
-  maxAge: 24 * 60 * 60 * 1000,
+  maxAge:   24 * 60 * 60 * 1000,
 };
 
 function adminAuth(req, res, next) {
@@ -34,43 +34,41 @@ router.post('/session', (req, res) => {
   res.json({ success: true });
 });
 
-router.get('/session', adminAuth, (req, res) => {
+router.get('/session', adminAuth, (_req, res) => {
   res.json({ authenticated: true });
 });
 
-router.delete('/session', (req, res) => {
+router.delete('/session', (_req, res) => {
   res.clearCookie('adminToken', COOKIE_OPTS);
   res.json({ success: true });
 });
 
-router.get('/users', adminAuth, async (req, res) => {
+// GET /api/login/admin/users — count of users
+router.get('/users', adminAuth, async (_req, res) => {
   try {
-    const count = await User.countDocuments();
+    const count = await countUsers();
     res.json({ count });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-router.get('/users/list', adminAuth, async (req, res) => {
+// GET /api/login/admin/users/list
+router.get('/users/list', adminAuth, async (_req, res) => {
   try {
-    const users = await User.find({}).select('email firstName lastName createdAt');
-    res.json(users.map(u => ({
-      userId: u._id,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      createdAt: u.createdAt,
-    })));
+    const users = await listUsers();
+    res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
+// DELETE /api/login/admin/users/:id
 router.delete('/users/:id', adminAuth, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await getUserById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+    await deleteUser(req.params.id);
     res.json({ message: 'User deleted', userId: req.params.id });
   } catch (err) {
     res.status(500).json({ message: err.message });
