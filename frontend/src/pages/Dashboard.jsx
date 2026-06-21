@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('all');
   const [taskSortBy, setTaskSortBy] = useState('date-desc');
   const [editingTaskId, setEditingTaskId] = useState(null);
+  const [deletingTaskId, setDeletingTaskId] = useState(null);
 
   // Inline edit state
   const [editTitle, setEditTitle] = useState('');
@@ -168,23 +169,22 @@ export default function Dashboard() {
     showMessage('Task updated successfully!');
   };
 
-  const deleteDashboardTask = async (task) => {
-    if (window.confirm(`Are you sure you want to delete "${task.title}"?`)) {
-      const logData = getLog(task.date);
-      let tasksForDate = [];
-      if (logData.tasks) {
-        if (Array.isArray(logData.tasks)) {
-          tasksForDate = [...logData.tasks];
-        } else if (logData.tasks.tasks && Array.isArray(logData.tasks.tasks)) {
-          tasksForDate = [...logData.tasks.tasks];
-        }
+  const confirmDeleteTask = async (task) => {
+    const logData = getLog(task.date);
+    let tasksForDate = [];
+    if (logData.tasks) {
+      if (Array.isArray(logData.tasks)) {
+        tasksForDate = [...logData.tasks];
+      } else if (logData.tasks.tasks && Array.isArray(logData.tasks.tasks)) {
+        tasksForDate = [...logData.tasks.tasks];
       }
-
-      const updatedTasks = tasksForDate.filter(t => t.id !== task.id);
-      const updatedLog = { ...logData, tasks: updatedTasks };
-      await saveLog(task.date, updatedLog);
-      showMessage('Task deleted successfully!');
     }
+
+    const updatedTasks = tasksForDate.filter(t => t.id !== task.id);
+    const updatedLog = { ...logData, tasks: updatedTasks };
+    await saveLog(task.date, updatedLog);
+    showMessage('Task deleted successfully!');
+    setDeletingTaskId(null);
   };
 
   const showMessage = (text, type = 'success') => {
@@ -869,7 +869,7 @@ export default function Dashboard() {
                         </button>
                         <button
                           className="action-btn action-btn-delete"
-                          onClick={() => deleteDashboardTask(task)}
+                          onClick={() => deletingTaskId === task.id ? setDeletingTaskId(null) : setDeletingTaskId(task.id)}
                           title="Delete Task"
                         >
                           <Trash2 size={15} />
@@ -883,6 +883,39 @@ export default function Dashboard() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Inline Delete Confirmation */}
+                    {deletingTaskId === task.id && (
+                      <div style={{
+                        marginTop: '0.75rem',
+                        padding: '1rem',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        animation: 'evolvia-down 0.2s ease-out'
+                      }}>
+                        <span style={{ fontSize: '0.9rem', color: '#f87171', fontWeight: 500 }}>
+                          Are you sure you want to delete this task?
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={() => setDeletingTaskId(null)}
+                            style={{ background: 'transparent', border: '1px solid #f87171', color: '#f87171', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s' }}
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            onClick={() => confirmDeleteTask(task)}
+                            style={{ background: '#ef4444', border: 'none', color: '#fff', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Inline Edit Form */}
                     {isEditing && (
