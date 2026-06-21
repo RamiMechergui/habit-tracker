@@ -325,6 +325,35 @@ export default function WeeklyReview() {
     }
   });
 
+  const cigarettesData = {
+    labels,
+    datasets: [{
+      label: 'Cigarettes Smoked',
+      data: weeklyData.map(d => {
+        if (!d.log || !Array.isArray(d.log.expenses)) return 0;
+        return d.log.expenses
+          .filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking')
+          .reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0);
+      }),
+      borderColor: '#ef4444',
+      backgroundColor: 'rgba(239,68,68,0.12)',
+      tension: 0.4,
+      fill: true,
+      pointBackgroundColor: '#ef4444',
+      pointRadius: 5,
+      pointHoverRadius: 8,
+    }]
+  };
+
+  const cigarettesOptions = mergeChartOptions({
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1 }
+      }
+    }
+  });
+
   const satDuty = weeklyData.find(d => d.dayName === 'Sat')?.log?.weekend?.saturday;
   const sunDuty = weeklyData.find(d => d.dayName === 'Sun')?.log?.weekend?.sunday;
 
@@ -669,6 +698,10 @@ export default function WeeklyReview() {
 
       <ChartCard title="Social Media & Phone Usage" color="linear-gradient(135deg,#a78bfa,#ec4899)" icon="📱" height={280}>
         <Line data={screenTimeData} options={screenTimeOptions} />
+      </ChartCard>
+
+      <ChartCard title="Cigarettes Smoked" color="linear-gradient(135deg,#ef4444,#b91c1c)" icon="🚬" height={260}>
+        <Line data={cigarettesData} options={cigarettesOptions} />
       </ChartCard>
 
       <ChartCard title="Weekly Expenses" color="linear-gradient(135deg,#f59e0b,#d97706)" icon="💰" height={260}>

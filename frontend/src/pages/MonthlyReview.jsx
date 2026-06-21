@@ -311,6 +311,35 @@ export default function MonthlyReview() {
     }
   });
 
+  const cigarettesData = {
+    labels,
+    datasets: [{
+      label: 'Cigarettes Smoked',
+      data: monthlyData.map(d => {
+        if (!d.log || !Array.isArray(d.log.expenses)) return 0;
+        return d.log.expenses
+          .filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking')
+          .reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0);
+      }),
+      borderColor: '#ef4444',
+      backgroundColor: 'rgba(239,68,68,0.08)',
+      tension: 0.35,
+      fill: true,
+      pointBackgroundColor: '#ef4444',
+      pointRadius: 2.5,
+      pointHoverRadius: 5,
+    }]
+  };
+
+  const cigarettesOptions = mergeChartOptions({
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1 }
+      }
+    }
+  });
+
   // ── Weekend Duties Aggregation ──────────────────────────────
   let preLaundryCount = 0, cleanRoomCount = 0, regularLaundryCount = 0, shareBoughtCount = 0;
   monthlyData.forEach(d => {
@@ -604,6 +633,10 @@ export default function MonthlyReview() {
 
     <ChartCard title="Social Media & Phone Screen Time" colorGradient="linear-gradient(135deg,#a78bfa,#ec4899)" icon="📱" borderColor="#a78bfa" height={320}>
       <Line data={screenTimeData} options={screenTimeOptions} />
+    </ChartCard>
+
+    <ChartCard title="Cigarettes Smoked Evolution" colorGradient="linear-gradient(135deg,#ef4444,#b91c1c)" icon="🚬" borderColor="#ef4444" height={290}>
+      <Line data={cigarettesData} options={cigarettesOptions} />
     </ChartCard>
 
     <ChartCard title="Weekend Duties Completion" colorGradient="linear-gradient(135deg,#10b981,#059669)" icon="✅" borderColor="#10b981" height={250}>

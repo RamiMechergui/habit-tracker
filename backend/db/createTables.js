@@ -117,6 +117,24 @@ const TABLES = [
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
+
+  // ── HabitGerman ───────────────────────────────────────────────────────────
+  // Single-table design: recordId prefix determines type:
+  //   VOCAB#<uuid>    → vocabulary entry
+  //   GRAMMAR#<uuid>  → grammar rule
+  //   NOTE#YYYY-MM-DD → daily study note
+  {
+    TableName: 'HabitGerman',
+    KeySchema: [
+      { AttributeName: 'userId',   KeyType: 'HASH' },
+      { AttributeName: 'recordId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId',   AttributeType: 'S' },
+      { AttributeName: 'recordId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
 ];
 
 /**

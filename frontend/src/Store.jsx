@@ -228,6 +228,9 @@ export const HabitProvider = ({ children }) => {
     }
   });
 
+  // ── German Learning state ─────────────────────────────────────
+  const [germanData, setGermanData] = useState([]);
+
   const setNoteSections = useCallback((nextSections) => {
     setNoteSectionsState(nextSections);
     try { localStorage.setItem('noteSections', JSON.stringify(nextSections)); } catch {}
@@ -1518,6 +1521,76 @@ export const HabitProvider = ({ children }) => {
     }
   };
 
+  // ── German Learning API methods ───────────────────────────────
+  const fetchGermanData = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/german`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setGermanData(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchGermanData error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addGermanVocab = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/vocab`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add vocab');
+    setGermanData(prev => [...prev, data]);
+    return data;
+  }, [API_URL]);
+
+  const addGermanGrammar = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/grammar`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add grammar');
+    setGermanData(prev => [...prev, data]);
+    return data;
+  }, [API_URL]);
+
+  const saveGermanNote = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/note`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save note');
+    setGermanData(prev => {
+      const filtered = prev.filter(r => r.recordId !== data.recordId);
+      return [...filtered, data];
+    });
+    return data;
+  }, [API_URL]);
+
+  const deleteGermanRecord = useCallback(async (recordId) => {
+    // Optimistic
+    setGermanData(prev => prev.filter(r => r.recordId !== recordId));
+    try {
+      await fetch(`${API_URL}/api/german/${encodeURIComponent(recordId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch (e) {
+      console.warn('[Store] deleteGermanRecord error:', e.message);
+      await fetchGermanData(); // roll back
+    }
+  }, [API_URL, fetchGermanData]);
+
   return (
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData,
@@ -1536,6 +1609,8 @@ export const HabitProvider = ({ children }) => {
       // Recurring tasks
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
+      // German Learning
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, saveGermanNote, deleteGermanRecord,
     }}>
       {children}
     </HabitContext.Provider>
