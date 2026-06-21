@@ -15,11 +15,19 @@ const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 
 const clientConfig = {
   region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'local',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'local',
-  },
 };
+
+if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_ACCESS_KEY_ID !== 'local') {
+  clientConfig.credentials = {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  };
+} else if (process.env.NODE_ENV !== 'production') {
+  clientConfig.credentials = {
+    accessKeyId: 'local',
+    secretAccessKey: 'local',
+  };
+}
 
 // When DYNAMODB_ENDPOINT is set, override the endpoint (DynamoDB Local)
 if (process.env.DYNAMODB_ENDPOINT) {
