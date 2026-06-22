@@ -69,8 +69,28 @@ export const HabitProvider = ({ children }) => {
   const [expenseCategories, setExpenseCategories] = useState(['Food', 'Transportation', 'Entertainment', 'Smoking']);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
+  const [plannedBooks, setPlannedBooks] = useState([]);
+  const [history, setHistory] = useState([]);
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
   const [timelinePrefs, setTimelinePrefsState] = useState(loadTimelinePrefs);
+
+  // Fire-and-forget history logger — also updates local state in real-time
+  const logHistory = (action, description) => {
+    fetch(`${API_URL}/api/history`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, description }),
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (Array.isArray(data)) {
+          setHistory(data);
+          db.saveHistory(data);
+        }
+      })
+      .catch(() => {});
+  };
 
   // ── Recurring tasks state ─────────────────────────────────────
   const [recurringTasks, setRecurringTasksState] = useState(() => {
@@ -158,6 +178,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
+    logHistory('recurring_task_add', `Added recurring task "${taskDef.name || taskDef.title || 'Untitled'}"`);
     return def;
   }, [recurringTasks, user]);
 
@@ -175,6 +196,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
+    logHistory('recurring_task_update', `Updated recurring task "${recurringTasks[id]?.name || recurringTasks[id]?.title || id}"`);
   }, [recurringTasks, user]);
 
   // Disable (soft-delete) a recurring task
@@ -191,6 +213,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
+    logHistory('recurring_task_disable', `Disabled recurring task "${recurringTasks[id]?.name || recurringTasks[id]?.title || id}"`);
   }, [recurringTasks, user]);
 
   // Delete a recurring task definition entirely
@@ -208,6 +231,7 @@ export const HabitProvider = ({ children }) => {
         body: JSON.stringify({ recurringTasks: next })
       }).catch(() => {});
     }
+    logHistory('recurring_task_delete', `Deleted recurring task "${recurringTasks[id]?.name || recurringTasks[id]?.title || id}"`);
   }, [recurringTasks, user]);
 
   // ── Essentials state ──────────────────────────────────────────
@@ -292,8 +316,10 @@ export const HabitProvider = ({ children }) => {
       // Query all expected endpoints — use allSettled so a single network blip doesn't skip everything
       const endpoints = [
         { key: 'categories', url: `${API_URL}/api/categories` },
-        { key: 'currentbook', url: `${API_URL}/api/currentbook` },
-        { key: 'archives',    url: `${API_URL}/api/archives` },
+        { key: 'currentbook',  url: `${API_URL}/api/currentbook` },
+        { key: 'archives',     url: `${API_URL}/api/archives` },
+        { key: 'plannedbooks', url: `${API_URL}/api/plannedbooks` },
+        { key: 'history',     url: `${API_URL}/api/history` },
         { key: 'daily',       url: `${API_URL}/api/daily` },
         { key: 'notes',       url: `${API_URL}/api/notes` },
         { key: 'settings',    url: `${API_URL}/api/settings` },
@@ -351,6 +377,20 @@ export const HabitProvider = ({ children }) => {
         if (Array.isArray(arch)) {
           setArchivedBooks(arch);
           db.saveArchives(arch);
+        }
+      }
+      if (parsed.plannedbooks) {
+        const planned = parsed.plannedbooks.plannedBooks || parsed.plannedbooks;
+        if (Array.isArray(planned)) {
+          setPlannedBooks(planned);
+          db.savePlannedBooks(planned);
+        }
+      }
+      if (parsed.history) {
+        const hist = parsed.history.history || parsed.history;
+        if (Array.isArray(hist)) {
+          setHistory(hist);
+          db.saveHistory(hist);
         }
       }
       if (parsed.daily) {
@@ -524,12 +564,14 @@ export const HabitProvider = ({ children }) => {
   // Load all state from IndexedDB
   const loadOfflineData = async () => {
     try {
-      const [offUser, offLogs, offCats, offBook, offArchives] = await Promise.all([
+      const [offUser, offLogs, offCats, offBook, offArchives, offPlanned, offHistory] = await Promise.all([
         db.loadUser(),
         db.loadLogs(),
         db.loadCategories(),
         db.loadCurrentBook(),
-        db.loadArchives()
+        db.loadArchives(),
+        db.loadPlannedBooks(),
+        db.loadHistory()
       ]);
 
       // Only fallback to IndexedDB user if Preferences didn't load one
@@ -550,6 +592,8 @@ export const HabitProvider = ({ children }) => {
         setCurrentBookState(clean);
       }
       if (offArchives && offArchives.length > 0) setArchivedBooks(offArchives);
+      if (offPlanned && offPlanned.length > 0) setPlannedBooks(offPlanned);
+      if (offHistory && offHistory.length > 0) setHistory(offHistory);
     } catch (e) {
       console.error('[Store] loadOfflineData error:', e);
     }
@@ -582,11 +626,13 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     setEssentials(prev => [data, ...prev]);
+    logHistory('essential_add', `Added essential item "${name}"`);
     return data;
   }, [API_URL]);
 
   const updateEssential = useCallback(async (id, updates) => {
     // Optimistic update
+    const current = essentials.find(i => i._id === id);
     setEssentials(prev => prev.map(i => i._id === id ? { ...i, ...updates, lastUpdated: new Date().toISOString() } : i));
     try {
       const res = await fetch(`${API_URL}/api/essentials/${id}`, {
@@ -601,10 +647,11 @@ export const HabitProvider = ({ children }) => {
         const data = await res.json();
         throw new Error(data.message);
       }
+      logHistory('essential_update', `Updated essential item "${current?.name || id}"`);
     } catch (e) {
       throw e;
     }
-  }, [API_URL, loadEssentials]);
+  }, [API_URL, loadEssentials, essentials]);
 
 
 
@@ -618,6 +665,7 @@ export const HabitProvider = ({ children }) => {
       if (!res.ok) {
         await loadEssentials(); // roll back
       }
+      logHistory('essential_delete', 'Deleted an essential item');
     } catch (e) {
       console.error('[Store] deleteEssential error:', e);
       await loadEssentials();
@@ -737,6 +785,7 @@ export const HabitProvider = ({ children }) => {
     setUser(updated);
     await saveSession(updated);
     db.saveUser(updated);
+    logHistory('profile_update', `Updated profile: ${firstName} ${lastName}`);
   };
 
   const changePassword = async (currentPassword, newPassword) => {
@@ -749,6 +798,7 @@ export const HabitProvider = ({ children }) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
+    logHistory('password_change', 'Changed account password');
     return data;
   };
 
@@ -772,6 +822,8 @@ export const HabitProvider = ({ children }) => {
       // Offline — sync not possible, treat as succeeded to allow clear (data is in IndexedDB)
       syncSucceeded = true;
     }
+
+    logHistory('logout', 'User logged out');
 
     // 3. Server logout (best effort)
     try {
@@ -839,6 +891,7 @@ export const HabitProvider = ({ children }) => {
     setUser(updated);
     await saveSession(updated);
     db.saveUser(updated);
+    logHistory('profile_picture', 'Updated profile picture');
   };
 
   const getLog = useCallback((dateStr) => {
@@ -1045,6 +1098,7 @@ export const HabitProvider = ({ children }) => {
         });
       }
     }
+    logHistory('daily_log', `Updated daily log for ${dateStr}`);
   }, [user, API_URL]);
 
   const addExpenseCategory = async (category) => {
@@ -1087,6 +1141,7 @@ export const HabitProvider = ({ children }) => {
         body: { category }
       });
     }
+    logHistory('expense_category_add', `Added expense category "${category}"`);
   };
 
   const deleteExpenseCategory = async (category) => {
@@ -1125,6 +1180,7 @@ export const HabitProvider = ({ children }) => {
         body: null
       });
     }
+    logHistory('expense_category_delete', `Deleted expense category "${category}"`);
   };
 
   const editExpenseCategory = async (oldCategory, newCategory) => {
@@ -1168,20 +1224,22 @@ export const HabitProvider = ({ children }) => {
         body: { newCategory: trimmedNew }
       });
     }
+    logHistory('expense_category_edit', `Renamed category "${oldCategory}" to "${trimmedNew}"`);
   };
 
-  const setCurrentBook = async (bookName, targetPages) => {
+  const setCurrentBook = async (bookName, targetPages, author) => {
     try {
       const res = await fetch(`${API_URL}/api/currentbook`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookName, targetPages })
+        body: JSON.stringify({ bookName, targetPages, author })
       });
       const data = await res.json();
       if (res.ok) {
         setCurrentBookState(data);
         db.saveCurrentBook(data);
+        logHistory('book_start', `Started reading "${bookName}" (${targetPages} pages)`);
       } else {
         throw new Error(data.message);
       }
@@ -1250,6 +1308,7 @@ export const HabitProvider = ({ children }) => {
             }
           }
         } catch (e) { console.error('Error archiving:', e); }
+        logHistory('book_finish', `Finished reading "${currentBook.bookName}" (${finalPage} pages)`);
       }
     } catch (e) {
       console.error('Error finishing book:', e);
@@ -1284,6 +1343,96 @@ export const HabitProvider = ({ children }) => {
       }))
     };
   };
+
+  // ── Planned Books API methods ──────────────────────────────────
+  const fetchPlannedBooks = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/plannedbooks`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.plannedBooks || [];
+        setPlannedBooks(list);
+        db.savePlannedBooks(list);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchPlannedBooks error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addPlannedBook = useCallback(async (bookName, author) => {
+    const res = await fetch(`${API_URL}/api/plannedbooks`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookName, author }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add planned book');
+    if (Array.isArray(data)) {
+      setPlannedBooks(data);
+      db.savePlannedBooks(data);
+    }
+    logHistory('planned_book_add', `Added "${bookName}" to planned books`);
+    return data;
+  }, [API_URL]);
+
+  const removePlannedBook = useCallback(async (index) => {
+    setPlannedBooks(prev => prev.filter((_, i) => i !== index));
+    try {
+      const res = await fetch(`${API_URL}/api/plannedbooks/${index}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setPlannedBooks(data);
+          db.savePlannedBooks(data);
+        }
+      }
+      logHistory('planned_book_remove', 'Removed a book from planned books');
+    } catch (e) {
+      console.warn('[Store] removePlannedBook error:', e.message);
+      await fetchPlannedBooks();
+    }
+  }, [API_URL, fetchPlannedBooks]);
+
+  // ── History ────────────────────────────────────────────────────
+  const fetchHistory = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/history`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.history || [];
+        setHistory(list);
+        db.saveHistory(list);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchHistory error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addHistoryEntry = useCallback(async (action, description) => {
+    try {
+      const res = await fetch(`${API_URL}/api/history`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, description }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setHistory(data);
+          db.saveHistory(data);
+        }
+      }
+    } catch (e) {
+      console.warn('[Store] addHistoryEntry error:', e.message);
+    }
+  }, [API_URL]);
 
   const getWeeklyData = (date) => {
       const start = safeStartOfWeek(date, { weekStartsOn: 1 });
@@ -1371,6 +1520,7 @@ export const HabitProvider = ({ children }) => {
   const addDailyNote = async (date, content, section = '') => {
     const tempId = 'temp_' + Date.now();
     const nowStr = new Date().toISOString();
+    logHistory('note_add', `Added note for ${date}`);
     
     // Optimistic Update
     const newNote = {
@@ -1488,6 +1638,7 @@ export const HabitProvider = ({ children }) => {
   };
 
   const deleteDailyNote = async (id, date) => {
+    logHistory('note_delete', `Deleted note for ${date}`);
     // Optimistic Update
     setDailyNotes(prev => ({
       ...prev,
@@ -1525,18 +1676,32 @@ export const HabitProvider = ({ children }) => {
   };
 
   // ── German Learning API methods ───────────────────────────────
-  const fetchGermanData = useCallback(async () => {
+  const fetchGermanData = useCallback(async (force) => {
     if (!navigator.onLine) return;
+    // sessionStorage cache: serve stale-while-revalidate
+    const cacheKey = `german_${user?._id || 'anon'}`;
+    if (!force) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setGermanData(parsed);
+          }
+        }
+      } catch {}
+    }
     try {
       const res = await fetch(`${API_URL}/api/german`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setGermanData(data);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
       }
     } catch (e) {
       console.warn('[Store] fetchGermanData error:', e.message);
     }
-  }, [API_URL]);
+  }, [API_URL, user]);
 
   const addGermanVocab = useCallback(async (payload) => {
     const res = await fetch(`${API_URL}/api/german/vocab`, {
@@ -1548,6 +1713,7 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add vocab');
     setGermanData(prev => [...prev, data]);
+    logHistory('german_vocab_add', `Added German vocabulary: ${payload?.word || payload?.german || ''}`);
     return data;
   }, [API_URL]);
 
@@ -1561,6 +1727,63 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add grammar');
     setGermanData(prev => [...prev, data]);
+    logHistory('german_grammar_add', `Added German grammar: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanVocab = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update vocab');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_vocab_update', `Updated German vocabulary: ${payload?.word || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanGrammar = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/grammar/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update grammar');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_grammar_update', `Updated German grammar: ${payload?.rule || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const addGermanVerb = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/verb`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add verb');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_verb_add', `Added German verb: ${payload?.infinitive || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanVerb = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/verb/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update verb');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_verb_update', `Updated German verb: ${payload?.infinitive || ''}`);
     return data;
   }, [API_URL]);
 
@@ -1577,6 +1800,7 @@ export const HabitProvider = ({ children }) => {
       const filtered = prev.filter(r => r.recordId !== data.recordId);
       return [...filtered, data];
     });
+    logHistory('german_note_save', `Saved German note`);
     return data;
   }, [API_URL]);
 
@@ -1592,6 +1816,7 @@ export const HabitProvider = ({ children }) => {
       console.warn('[Store] deleteGermanRecord error:', e.message);
       await fetchGermanData(); // roll back
     }
+    logHistory('german_record_delete', 'Deleted a German learning record');
   }, [API_URL, fetchGermanData]);
 
   // ── AWS Learning API methods ──────────────────────────────────
@@ -1618,6 +1843,7 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add service');
     setAwsData(prev => [...prev, data]);
+    logHistory('aws_service_add', `Added AWS service: ${payload?.name || ''}`);
     return data;
   }, [API_URL]);
 
@@ -1631,6 +1857,7 @@ export const HabitProvider = ({ children }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add certification');
     setAwsData(prev => [...prev, data]);
+    logHistory('aws_cert_add', `Added AWS certification: ${payload?.name || ''}`);
     return data;
   }, [API_URL]);
 
@@ -1647,6 +1874,7 @@ export const HabitProvider = ({ children }) => {
       const filtered = prev.filter(r => r.recordId !== data.recordId);
       return [...filtered, data];
     });
+    logHistory('aws_note_save', 'Saved AWS note');
     return data;
   }, [API_URL]);
 
@@ -1657,6 +1885,7 @@ export const HabitProvider = ({ children }) => {
         method: 'DELETE',
         credentials: 'include',
       });
+      logHistory('aws_record_delete', 'Deleted an AWS learning record');
     } catch (e) {
       console.warn('[Store] deleteAwsRecord error:', e.message);
       await fetchAwsData();
@@ -1682,9 +1911,13 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, saveGermanNote, deleteGermanRecord,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, addAwsCert, saveAwsNote, deleteAwsRecord,
+      // Planned Books
+      plannedBooks, fetchPlannedBooks, addPlannedBook, removePlannedBook,
+      // History
+      history, fetchHistory, addHistoryEntry,
     }}>
       {children}
     </HabitContext.Provider>

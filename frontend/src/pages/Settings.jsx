@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
-import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut, Clock, Timer, Layers } from 'lucide-react';
+import { format } from 'date-fns';
+import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut, Clock, Timer, Layers, History, Globe, Monitor, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function Settings() {
-  const { user, updateProfile, changePassword, logout, timelinePrefs, setTimelinePrefs } = useHabits();
+  const { user, updateProfile, changePassword, logout, timelinePrefs, setTimelinePrefs, history } = useHabits();
+  const [expandedEntry, setExpandedEntry] = useState(null);
 
   // Profile fields
   const [firstName, setFirstName] = useState(user?.firstName || '');
@@ -363,6 +365,96 @@ export default function Settings() {
             </strong>
             {' · '}Minute steps: <strong style={{ color: 'var(--accent-blue)' }}>:{String(timelinePrefs.intervalGranularity).padStart(2,'0')}</strong>
           </div>
+        </div>
+      </div>
+
+      {/* ─── History Card ─── */}
+      <div className="glass-card settings-card">
+        <div className="settings-card-header">
+          <div className="settings-icon-badge" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05))', color: '#d97706' }}>
+            <History size={22} />
+          </div>
+          <div>
+            <h3>Activity History</h3>
+            <p className="settings-subtitle">Track of account activity and changes</p>
+          </div>
+        </div>
+
+        <div className="settings-form">
+          {(!history || history.length === 0) ? (
+            <p className="settings-hint" style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+              No activity recorded yet. Activity will appear here as you use the app.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {[...history].reverse().map((entry) => (
+                <div key={entry.id} style={{
+                  background: 'var(--bg-card-hover)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  transition: 'box-shadow 0.2s',
+                }}>
+                  <button
+                    onClick={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '0.7rem 1rem',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--text-primary)', fontSize: '0.88rem',
+                      textAlign: 'left', gap: '0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '8px',
+                        background: entry.action === 'login'
+                          ? 'rgba(59,130,246,0.15)'
+                          : 'rgba(245,158,11,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                        color: entry.action === 'login' ? '#3b82f6' : '#d97706',
+                      }}>
+                        {entry.device === 'Mobile' ? <Smartphone size={14} /> : <Monitor size={14} />}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem' }}>
+                          {entry.description || entry.action}
+                        </p>
+                        <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {entry.timestamp ? format(new Date(entry.timestamp), 'MMM d, yyyy · HH:mm') : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    {expandedEntry === entry.id ? <ChevronUp size={16} style={{ flexShrink: 0, color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ flexShrink: 0, color: 'var(--text-muted)' }} />}
+                  </button>
+
+                  {expandedEntry === entry.id && (
+                    <div style={{
+                      borderTop: '1px solid var(--border)',
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.82rem',
+                      color: 'var(--text-muted)',
+                      display: 'flex', flexDirection: 'column', gap: '0.5rem',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Globe size={13} style={{ flexShrink: 0 }} />
+                        <span><strong>IP Address:</strong> {entry.ip || 'Unknown'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {entry.device === 'Mobile' ? <Smartphone size={13} style={{ flexShrink: 0 }} /> : <Monitor size={13} style={{ flexShrink: 0 }} />}
+                        <span><strong>Device:</strong> {entry.device || 'Unknown'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <Monitor size={13} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span style={{ wordBreak: 'break-all' }}><strong>User Agent:</strong> {entry.userAgent || 'N/A'}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

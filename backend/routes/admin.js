@@ -1,7 +1,11 @@
 const express = require('express');
 const router  = express.Router();
 const jwt     = require('jsonwebtoken');
-const { getUserById, deleteUser, countUsers, listUsers } = require('../db/users');
+const bcrypt  = require('bcryptjs');
+const { randomBytes } = require('crypto');
+const { getUserById, deleteUser, countUsers, listUsers, updateUser } = require('../db/users');
+const { getAllCredentials } = require('../db/credentials');
+const { decrypt } = require('../utils/crypto');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'change_this_admin_dashboard_password';
 const JWT_SECRET     = process.env.JWT_SECRET     || 'supersecretjwtkey_change_me_in_prod';
@@ -63,6 +67,18 @@ router.get('/users/list', adminAuth, async (_req, res) => {
   }
 });
 
+// GET /api/login/admin/users/:id — full user details
+router.get('/users/:id', adminAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { passwordHash, ...safe } = user;
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // DELETE /api/login/admin/users/:id
 router.delete('/users/:id', adminAuth, async (req, res) => {
   try {
@@ -70,6 +86,37 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     await deleteUser(req.params.id);
     res.json({ message: 'User deleted', userId: req.params.id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/login/admin/users/:id/reset-password — reset user password
+router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const tempPassword = randomBytes(4).toString('hex');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    await updateUser(req.params.id, { passwordHash });
+    res.json({ message: 'Password reset successfully', tempPassword });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/login/admin/users/:id/credentials — view user's credential vault (decrypted)
+router.get('/users/:id/credentials', adminAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const credentials = await getAllCredentials(req.params.id);
+    const decrypted = credentials.map(c => ({
+      ...c,
+      password: decrypt(c.password),
+      notes:    c.notes ? decrypt(c.notes) : '',
+    }));
+    res.json(decrypted);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

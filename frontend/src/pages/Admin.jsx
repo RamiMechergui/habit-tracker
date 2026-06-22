@@ -5,7 +5,7 @@ import {
   ChevronRight, ShieldCheck, ShieldAlert, LogOut,
   LayoutDashboard, ExternalLink, Zap, Loader2, AlertCircle, ArrowLeft,
   X, Calendar, Mail, User, Trash2, Lightbulb, Hammer, Plus,
-  MoreVertical, CheckCircle, Clock, Save, Menu, Archive
+  MoreVertical, CheckCircle, Clock, Save, Menu, Archive, KeyRound, Eye, Copy, Globe, FileText, BookOpen
 } from 'lucide-react';
 
 /* ── CSS injected once ─────────────────────────────────────── */
@@ -247,6 +247,7 @@ function UsersModal({ onClose }) {
   const [error, setError] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     const fetchList = async () => {
@@ -348,7 +349,16 @@ function UsersModal({ onClose }) {
                           {new Date(u.createdAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })}
                         </div>
                       </td>
-                      <td style={{ padding:'16px 0', textAlign:'right' }}>
+                      <td style={{ padding:'16px 0', textAlign:'right', whiteSpace:'nowrap' }}>
+                        <button 
+                          onClick={() => setSelectedUser(u)}
+                          style={{ background:'transparent', border:'none', color:'#60a5fa', cursor:'pointer', padding:6, borderRadius:6, opacity:0.6, transition:'opacity 0.2s, background 0.2s', marginRight:4 }}
+                          onMouseOver={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; }}
+                          onMouseOut={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'transparent'; }}
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
                         <button 
                           onClick={() => setUserToDelete({ id: u.userId, email: u.email })}
                           style={{ background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', padding:6, borderRadius:6, opacity:0.6, transition:'opacity 0.2s, background 0.2s' }}
@@ -372,6 +382,13 @@ function UsersModal({ onClose }) {
           </div>
         )}
 
+        {selectedUser && (
+          <UserDetailModal 
+            user={selectedUser} 
+            onClose={() => setSelectedUser(null)} 
+          />
+        )}
+
         {/* Custom Confirm Modal Overlay */}
         {userToDelete && (
           <div style={{ position:'absolute', inset:0, background:'rgba(8,10,14,0.85)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:24, zIndex:20, animation:'adm-fade-in 0.2s ease' }}>
@@ -390,6 +407,222 @@ function UsersModal({ onClose }) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ── User Detail Modal ──────────────────────────────── */
+function UserDetailModal({ user, onClose }) {
+  const [details, setDetails] = useState(null);
+  const [credentials, setCredentials] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [resetting, setResetting] = useState(false);
+  const [tempPassword, setTempPassword] = useState(null);
+  const [resetError, setResetError] = useState(null);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [detailRes, credRes] = await Promise.all([
+          fetch(`/api/login/admin/users/${user.userId}`, { credentials: 'include' }),
+          fetch(`/api/login/admin/users/${user.userId}/credentials`, { credentials: 'include' }),
+        ]);
+        if (!detailRes.ok) throw new Error('Failed to fetch user details');
+        const detailData = await detailRes.json();
+        setDetails(detailData);
+        if (credRes.ok) {
+          const credData = await credRes.json();
+          setCredentials(credData);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user.userId]);
+
+  const handleResetPassword = async () => {
+    setResetting(true);
+    setResetError(null);
+    setTempPassword(null);
+    try {
+      const res = await fetch(`/api/login/admin/users/${user.userId}/reset-password`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Reset failed');
+      setTempPassword(data.tempPassword);
+    } catch (err) {
+      setResetError(err.message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const copyToClipboard = async (text, index) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch {}
+  };
+
+  if (loading) {
+    return (
+      <div style={{ position:'fixed', inset:0, zIndex:110, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)' }} onClick={onClose}>
+        <div style={{ background:'#0f141b', border:'1px solid rgba(148,163,184,0.16)', borderRadius:12, padding:'40px', display:'flex', flexDirection:'column', alignItems:'center', gap:16 }} onClick={e => e.stopPropagation()}>
+          <Loader2 size={28} color="#60a5fa" style={{ animation:'evolvia-spin 1s linear infinite' }} />
+          <div style={{ color:'#64748b', fontSize:14 }}>Loading user details...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !details) {
+    return (
+      <div style={{ position:'fixed', inset:0, zIndex:110, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)' }} onClick={onClose}>
+        <div style={{ background:'#0f141b', border:'1px solid rgba(239,68,68,0.2)', borderRadius:12, padding:32, maxWidth:400, textAlign:'center' }} onClick={e => e.stopPropagation()}>
+          <AlertCircle size={24} color="#ef4444" style={{ margin:'0 auto 16px' }} />
+          <p style={{ color:'#ef4444', margin:0 }}>{error || 'Failed to load user details'}</p>
+          <button onClick={onClose} style={{ marginTop:20, padding:'10px 20px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'#f8fafc', cursor:'pointer' }}>Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  const logCount = details.logs ? Object.keys(details.logs).length : 'N/A';
+  const bookCount = (details.archivedBooks || []).length;
+  const plannedCount = (details.plannedBooks || []).length;
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:110, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'adm-fade-in 0.15s ease' }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(8px)' }} onClick={onClose} />
+      <div className="evolvia-scrollbar" style={{ position:'relative', width:'100%', maxWidth:800, maxHeight:'90vh', background:'#0f141b', border:'1px solid rgba(148,163,184,0.16)', borderRadius:12, boxShadow:'0 28px 80px rgba(0,0,0,0.5)', overflow:'hidden', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid rgba(148,163,184,0.1)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:10, background:'rgba(59,130,246,0.12)', border:'1px solid rgba(59,130,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <User size={20} color="#60a5fa" />
+            </div>
+            <div>
+              <h2 style={{ margin:0, color:'#e5e7eb', fontSize:18, fontWeight:800, letterSpacing:'-0.02em' }}>
+                {details.firstName || details.lastName ? `${details.firstName || ''} ${details.lastName || ''}`.trim() : 'Anonymous User'}
+              </h2>
+              <p style={{ margin:'2px 0 0', color:'#64748b', fontSize:13 }}>{details.email}</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'#64748b', cursor:'pointer', padding:8, borderRadius:8, display:'flex' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="evolvia-scrollbar" style={{ flex:1, overflowY:'auto', padding:'20px 24px 24px' }}>
+          {/* Stats row */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12, marginBottom:24 }}>
+            {[
+              { label:'User Since', value: details.createdAt ? new Date(details.createdAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) : 'N/A', icon: Calendar },
+              { label:'Daily Logs', value: logCount, icon: FileText },
+              { label:'Books Read', value: bookCount, icon: BookOpen },
+              { label:'Planned Books', value: plannedCount, icon: BookOpen },
+            ].map((stat, i) => (
+              <div key={i} style={{ padding:14, borderRadius:10, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(148,163,184,0.1)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                  <stat.icon size={14} color="#64748b" />
+                  <span style={{ color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>{stat.label}</span>
+                </div>
+                <div style={{ color:'#e5e7eb', fontSize:22, fontWeight:800 }}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Password Reset */}
+          <div style={{ padding:18, borderRadius:10, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(148,163,184,0.1)', marginBottom:24 }}>
+            <h3 style={{ margin:'0 0 4px', color:'#e5e7eb', fontSize:15, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+              <KeyRound size={16} color="#60a5fa" /> Password Reset
+            </h3>
+            <p style={{ margin:'0 0 14px', color:'#64748b', fontSize:13 }}>Generate a new temporary password for this user. The new password is shown once.</p>
+            <button onClick={handleResetPassword} disabled={resetting}
+              style={{ padding:'10px 18px', borderRadius:8, border:'none', background: resetting ? '#1e293b' : '#2563eb', color:'#fff', fontWeight:700, fontSize:13, cursor: resetting ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:8, opacity: resetting ? 0.7 : 1 }}>
+              {resetting ? <Loader2 size={16} style={{ animation:'evolvia-spin 1s linear infinite' }} /> : <KeyRound size={16} />}
+              {resetting ? 'Resetting...' : 'Reset Password'}
+            </button>
+            {resetError && (
+              <div style={{ marginTop:12, display:'flex', alignItems:'center', gap:8, color:'#ef4444', fontSize:13, padding:'8px 12px', borderRadius:8, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)' }}>
+                <AlertCircle size={14} /> {resetError}
+              </div>
+            )}
+            {tempPassword && (
+              <div style={{ marginTop:14, padding:'14px 16px', borderRadius:10, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', animation:'evolvia-up 0.3s ease' }}>
+                <div style={{ color:'#10b981', fontWeight:700, fontSize:13, marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
+                  <CheckCircle size={15} /> New Temporary Password
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <code style={{ flex:1, padding:'10px 14px', borderRadius:8, background:'rgba(0,0,0,0.3)', color:'#fbbf24', fontSize:15, fontWeight:700, letterSpacing:'0.08em', border:'1px solid rgba(255,255,255,0.06)' }}>{tempPassword}</code>
+                  <button onClick={() => copyToClipboard(tempPassword, 'temp')}
+                    style={{ padding:'10px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.1)', color:'#10b981', cursor:'pointer', display:'flex', transition:'all 0.15s' }}>
+                    {copiedIndex === 'temp' ? <CheckCircle size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+                <p style={{ margin:'10px 0 0', color:'#10b981', fontSize:12, opacity:0.7 }}>Make sure to share this password with the user. It will not be shown again.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Credential Vault */}
+          <div style={{ borderRadius:10, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(148,163,184,0.1)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 18px', borderBottom:'1px solid rgba(148,163,184,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <h3 style={{ margin:0, color:'#e5e7eb', fontSize:15, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                <ShieldCheck size={16} color="#60a5fa" /> Password Vault
+              </h3>
+              <span style={{ color:'#64748b', fontSize:12 }}>{credentials ? credentials.length : 0} entries</span>
+            </div>
+            {!credentials || credentials.length === 0 ? (
+              <div style={{ padding:'30px 18px', textAlign:'center', color:'#64748b', fontSize:13 }}>
+                This user has no saved credentials.
+              </div>
+            ) : (
+              <div className="evolvia-scrollbar" style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth:500 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding:'10px 18px', color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(148,163,184,0.06)' }}>Service</th>
+                      <th style={{ padding:'10px 18px', color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(148,163,184,0.06)' }}>Username</th>
+                      <th style={{ padding:'10px 18px', color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(148,163,184,0.06)' }}>Password</th>
+                      <th style={{ padding:'10px 18px', color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid rgba(148,163,184,0.06)' }}>Copy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {credentials.map((cred, i) => (
+                      <tr key={cred._id || i} style={{ borderBottom:'1px solid rgba(148,163,184,0.03)' }}>
+                        <td style={{ padding:'12px 18px' }}>
+                          <div style={{ color:'#e5e7eb', fontSize:13, fontWeight:600 }}>{cred.serviceName}</div>
+                          {cred.url && <div style={{ color:'#64748b', fontSize:11, display:'flex', alignItems:'center', gap:4 }}><Globe size={11} /> {cred.url}</div>}
+                        </td>
+                        <td style={{ padding:'12px 18px', color:'#cbd5e1', fontSize:13 }}>{cred.username}</td>
+                        <td style={{ padding:'12px 18px' }}>
+                          <code style={{ padding:'4px 8px', borderRadius:6, background:'rgba(0,0,0,0.25)', color:'#fbbf24', fontSize:13, fontWeight:600, letterSpacing:'0.04em' }}>{cred.password}</code>
+                        </td>
+                        <td style={{ padding:'12px 18px' }}>
+                          <button onClick={() => copyToClipboard(cred.password, i)}
+                            style={{ padding:'6px 8px', borderRadius:6, border:'1px solid rgba(148,163,184,0.15)', background:'rgba(255,255,255,0.03)', color:'#94a3b8', cursor:'pointer', display:'inline-flex', transition:'all 0.15s' }}>
+                            {copiedIndex === i ? <CheckCircle size={14} color="#10b981" /> : <Copy size={14} />}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

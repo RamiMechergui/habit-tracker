@@ -31,7 +31,7 @@ async function getAllGermanRecords(userId) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General' }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now() }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -42,6 +42,12 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     example,
     notes,
     category,
+    plural,
+    leitnerBox,
+    lastReviewDate,
+    mastery,
+    favorite,
+    sortOrder,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -49,7 +55,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder'];
   const sets = [];
   const names = {};
   const values = {};
@@ -77,7 +83,7 @@ async function updateVocab(userId, recordId, updates) {
 }
 
 // ── Grammar ───────────────────────────────────────────────────────────────────
-async function addGrammar(userId, { rule, explanation, examples = [], category = 'General' }) {
+async function addGrammar(userId, { rule, explanation, examples = [], category = 'General', level = 'A1', mastery = 0, favorite = false, sortOrder = Date.now() }) {
   const recordId = `GRAMMAR#${uuidv4()}`;
   const item = {
     userId,
@@ -87,6 +93,10 @@ async function addGrammar(userId, { rule, explanation, examples = [], category =
     explanation,
     examples,
     category,
+    level,
+    mastery,
+    favorite,
+    sortOrder,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -94,7 +104,7 @@ async function addGrammar(userId, { rule, explanation, examples = [], category =
 }
 
 async function updateGrammar(userId, recordId, updates) {
-  const allowed = ['rule', 'explanation', 'examples', 'category'];
+  const allowed = ['rule', 'explanation', 'examples', 'category', 'level', 'mastery', 'favorite', 'sortOrder'];
   const sets = [];
   const names = {};
   const values = {};
@@ -147,6 +157,50 @@ async function getNoteByDate(userId, date) {
   return res.Item || null;
 }
 
+// ── Verbs ──────────────────────────────────────────────────────────────────────
+async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs = '', wir = '', ihr = '', Sie = '', category = 'General', favorite = false, sortOrder = Date.now() }) {
+  const recordId = `VERB#${uuidv4()}`;
+  const item = {
+    userId, recordId, type: 'verb',
+    infinitive, meaning,
+    ich, du, erSieEs, wir, ihr, Sie,
+    category,
+    favorite,
+    sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateVerb(userId, recordId, updates) {
+  const allowed = ['infinitive', 'meaning', 'ich', 'du', 'erSieEs', 'wir', 'ihr', 'Sie', 'category', 'favorite', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 // ── Delete (any type) ─────────────────────────────────────────────────────────
 async function deleteGermanRecord(userId, recordId) {
   await docClient.send(new DeleteCommand({
@@ -162,6 +216,8 @@ module.exports = {
   updateVocab,
   addGrammar,
   updateGrammar,
+  addVerb,
+  updateVerb,
   saveNote,
   getNoteByDate,
   deleteGermanRecord,

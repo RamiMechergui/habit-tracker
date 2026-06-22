@@ -3,7 +3,7 @@ const router               = express.Router();
 const jwt                  = require('jsonwebtoken');
 const bcrypt               = require('bcryptjs');
 const { randomUUID }       = require('crypto');
-const { createUser, getUserById, getUserByEmail } = require('../db/users');
+const { createUser, getUserById, getUserByEmail, updateUser } = require('../db/users');
 const { protect }          = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod';
@@ -31,6 +31,30 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const userId       = randomUUID();
     const user         = await createUser({ userId, email, passwordHash, firstName: firstName || '', lastName: lastName || '' });
+    // Log registration to history (fire-and-forget)
+    try {
+      const ua = req.headers['user-agent'] || '';
+      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown';
+      const s = ua.toLowerCase();
+      const device = s.includes('iphone') || s.includes('ipad') || s.includes('ipod') || (s.includes('android') && s.includes('mobile')) || s.includes('windows phone') || s.includes('mobile')
+        ? 'Mobile'
+        : (s.includes('android') || s.includes('tablet') || s.includes('kindle') || s.includes('playbook')
+          ? 'Tablet'
+          : 'Desktop');
+
+      const logEntry = {
+        id:           Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        action:       'register',
+        description:  'User registered a new account',
+        ip,
+        device,
+        userAgent:    ua.slice(0, 300),
+        timestamp:    new Date().toISOString(),
+      };
+      const history = [...(user.history || []), logEntry];
+      await updateUser(user.userId, { history }).catch(() => {});
+    } catch (_) { /* non-blocking */ }
+
     const token        = generateToken(userId);
     res.cookie('habitToken', token, cookieOpts(req));
     res.status(201).json({
@@ -60,6 +84,31 @@ router.post('/login', async (req, res) => {
 
     const token = generateToken(user.userId);
     res.cookie('habitToken', token, cookieOpts(req));
+
+    // Log login to history (fire-and-forget)
+    try {
+      const ua = req.headers['user-agent'] || '';
+      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown';
+      const s = ua.toLowerCase();
+      const device = s.includes('iphone') || s.includes('ipad') || s.includes('ipod') || (s.includes('android') && s.includes('mobile')) || s.includes('windows phone') || s.includes('mobile')
+        ? 'Mobile'
+        : (s.includes('android') || s.includes('tablet') || s.includes('kindle') || s.includes('playbook')
+          ? 'Tablet'
+          : 'Desktop');
+
+      const logEntry = {
+        id:           Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        action:       'login',
+        description:  'User logged in',
+        ip,
+        device,
+        userAgent:    ua.slice(0, 300),
+        timestamp:    new Date().toISOString(),
+      };
+      const history = [...(user.history || []), logEntry];
+      await updateUser(user.userId, { history }).catch(() => {});
+    } catch (_) { /* non-blocking */ }
+
     res.json({
       _id:               user._id,
       firstName:         user.firstName,

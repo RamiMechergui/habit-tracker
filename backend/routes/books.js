@@ -16,12 +16,13 @@ router.get('/current', protect, async (req, res) => {
 // POST /api/books/current — set a new current book
 router.post('/current', protect, async (req, res) => {
   try {
-    const { bookName, targetPages } = req.body;
+    const { bookName, targetPages, author } = req.body;
     if (!bookName?.trim())          return res.status(400).json({ message: 'Book name required' });
     if (!targetPages || targetPages <= 0) return res.status(400).json({ message: 'Target pages > 0 required' });
 
     const currentBook = {
       bookName:   bookName.trim(),
+      author:     (author || '').trim(),
       targetPages: parseInt(targetPages),
       startDate:  new Date().toISOString().split('T')[0],
       isActive:   true,
@@ -68,6 +69,50 @@ router.get('/archived', protect, async (req, res) => {
   try {
     const user = await getUserById(req.user.userId);
     res.json({ archivedBooks: user.archivedBooks || [] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Planned Books ─────────────────────────────────────────────────
+
+// GET /api/books/planned
+router.get('/planned', protect, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.userId);
+    res.json({ plannedBooks: user.plannedBooks || [] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/books/planned — add a planned book
+router.post('/planned', protect, async (req, res) => {
+  try {
+    const { bookName, author } = req.body;
+    if (!bookName?.trim()) return res.status(400).json({ message: 'Book name is required' });
+
+    const user = await getUserById(req.user.userId);
+    const plannedBooks = [...(user.plannedBooks || []), {
+      bookName: bookName.trim(),
+      author: (author || '').trim(),
+      addedAt: new Date().toISOString().split('T')[0],
+    }];
+    const updated = await updateUser(req.user.userId, { plannedBooks });
+    res.status(201).json(updated.plannedBooks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/books/planned/:index — remove a planned book by index
+router.delete('/planned/:index', protect, async (req, res) => {
+  try {
+    const idx = parseInt(req.params.index, 10);
+    const user = await getUserById(req.user.userId);
+    const plannedBooks = (user.plannedBooks || []).filter((_, i) => i !== idx);
+    const updated = await updateUser(req.user.userId, { plannedBooks });
+    res.json(updated.plannedBooks);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

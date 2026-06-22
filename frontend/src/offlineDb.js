@@ -6,18 +6,20 @@
  */
 
 const DB_NAME = 'evolvia_offline';
-const DB_VERSION = 3;
+const DB_VERSION = 5;
 
 // Object store names
 const STORES = {
-  LOGS:       'logs',
-  USER:       'user',
-  CATEGORIES: 'categories',
-  BOOK:       'currentBook',
-  ARCHIVES:   'archives',
-  SYNC_QUEUE: 'syncQueue',
-  NOTES:      'notes',         // Daily notes keyed by _id
-  CREDENTIALS: 'credentials', // Password Vault
+  LOGS:         'logs',
+  USER:         'user',
+  CATEGORIES:   'categories',
+  BOOK:         'currentBook',
+  ARCHIVES:     'archives',
+  PLANNED:      'plannedBooks',
+  HISTORY:      'history',
+  SYNC_QUEUE:   'syncQueue',
+  NOTES:        'notes',
+  CREDENTIALS:  'credentials',
 };
 
 let dbInstance = null;
@@ -75,6 +77,16 @@ function openDb() {
       // Credentials — key = _id (string). Created in v3.
       if (!db.objectStoreNames.contains(STORES.CREDENTIALS)) {
         db.createObjectStore(STORES.CREDENTIALS, { keyPath: '_id' });
+      }
+
+      // Planned books — auto-increment. Created in v4.
+      if (!db.objectStoreNames.contains(STORES.PLANNED)) {
+        db.createObjectStore(STORES.PLANNED, { keyPath: 'id', autoIncrement: true });
+      }
+
+      // History — key = id (string). Created in v5.
+      if (!db.objectStoreNames.contains(STORES.HISTORY)) {
+        db.createObjectStore(STORES.HISTORY, { keyPath: 'id' });
       }
     };
 
@@ -217,6 +229,30 @@ export async function loadArchives() {
   return getAllItems(STORES.ARCHIVES);
 }
 
+// Planned Books
+export async function savePlannedBooks(books) {
+  await clearStore(STORES.PLANNED);
+  for (const b of books) {
+    await putItem(STORES.PLANNED, b);
+  }
+}
+
+export async function loadPlannedBooks() {
+  return getAllItems(STORES.PLANNED);
+}
+
+// History
+export async function saveHistory(entries) {
+  await clearStore(STORES.HISTORY);
+  for (const e of entries) {
+    await putItem(STORES.HISTORY, e);
+  }
+}
+
+export async function loadHistory() {
+  return getAllItems(STORES.HISTORY);
+}
+
 // ── Sync Queue ───────────────────────────────────────────────────
 
 export async function enqueueSync(action) {
@@ -299,6 +335,8 @@ export async function clearAllOfflineData() {
   await clearStore(STORES.CATEGORIES);
   await clearStore(STORES.BOOK);
   await clearStore(STORES.ARCHIVES);
+  await clearStore(STORES.PLANNED);
+  await clearStore(STORES.HISTORY);
   await clearStore(STORES.SYNC_QUEUE);
   await clearStore(STORES.NOTES);
   await clearStore(STORES.CREDENTIALS);

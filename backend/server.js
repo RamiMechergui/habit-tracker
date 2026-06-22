@@ -44,6 +44,7 @@ app.use('/api/profile',     require('./routes/profile'));
 app.use('/api/login/admin', require('./routes/admin'));
 app.use('/api/german',      require('./routes/german'));
 app.use('/api/aws',         require('./routes/aws'));
+app.use('/api/history',     require('./routes/history'));
 
 // ── Flat-path aliases (used by frontend Store) ────────────────────────────────
 const authRoutes    = require('./routes/auth');
@@ -74,6 +75,16 @@ app.get('/api/currentbook/archived', (req, res, next) => { req.url = '/archived'
 // Archives
 app.get('/api/archives',  (req, res, next) => { req.url = '/archived'; booksRoutes(req, res, next); });
 app.post('/api/archives', (req, res) => res.json({ success: true, ...req.body }));
+
+// Planned Books
+app.get('/api/plannedbooks',    (req, res, next) => { req.url = '/planned';  booksRoutes(req, res, next); });
+app.post('/api/plannedbooks',   (req, res, next) => { req.url = '/planned';  booksRoutes(req, res, next); });
+app.delete('/api/plannedbooks/:index', (req, res, next) => { req.url = '/planned/' + req.params.index; booksRoutes(req, res, next); });
+
+// History
+const historyRoutes = require('./routes/history');
+app.get('/api/history',  (req, res, next) => { req.url = '/'; historyRoutes(req, res, next); });
+app.post('/api/history', (req, res, next) => { req.url = '/'; historyRoutes(req, res, next); });
 
 // Categories
 app.get('/api/categories',              (req, res, next) => { req.url = '/categories/list';                 expRoutes(req, res, next); });

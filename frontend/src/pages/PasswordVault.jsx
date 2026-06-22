@@ -32,7 +32,7 @@ const getFaviconUrl = (urlStr) => {
 };
 
 export default function PasswordVault() {
-  const { isOnline } = useHabits();
+  const { isOnline, addHistoryEntry } = useHabits();
   
   // Security locks
   const [isLocked, setIsLocked] = useState(true);
@@ -222,6 +222,7 @@ export default function PasswordVault() {
       if (modalMode === 'edit') {
         setSelectedId(data._id);
       }
+      addHistoryEntry('vault_' + modalMode, (modalMode === 'edit' ? 'Updated' : 'Added') + ' credential "' + (modalData.serviceName || '') + '"');
     } catch (err) {
       setModalError(err.message);
     } finally {
@@ -238,10 +239,12 @@ export default function PasswordVault() {
       });
       if (!res.ok) throw new Error('Deletion failed');
       
+      const deleted = credentials.find(c => c._id === id);
       setCredentials(prev => prev.filter(c => c._id !== id));
       if (selectedId === id) setSelectedId(null);
       setDeleteConfirmId(null);
       setMobileView('list');
+      addHistoryEntry('vault_delete', 'Deleted credential "' + (deleted?.serviceName || id) + '"');
     } catch (err) {
       console.error(err);
     }

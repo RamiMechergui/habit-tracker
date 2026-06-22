@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { exportAwsPDF } from '../utils/exportAwsPDF';
 import { format } from 'date-fns';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import {
   Cloud, BookOpen, Award, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
@@ -61,7 +62,7 @@ function StatCard({ value, label, color, icon: Icon }) {
   );
 }
 
-function ServiceForm({ onAdd, loading }) {
+function ServiceForm({ onAdd, loading, isMobile }) {
   const [form, setForm] = useState({ service: '', description: '', category: '', keyFeatures: '', pricing: '', notes: '' });
   const [open, setOpen] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -94,7 +95,7 @@ function ServiceForm({ onAdd, loading }) {
         <form onSubmit={handleSubmit} style={{
           marginTop: '0.85rem', background: 'var(--bg-card)',
           border: `1px solid ${C.orange}30`, borderRadius: '14px', padding: '1.25rem',
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+          display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem',
         }}>
           {[
             { k: 'service', label: 'AWS Service *', placeholder: 'e.g. S3, EC2, Lambda' },
@@ -166,7 +167,7 @@ function ServiceForm({ onAdd, loading }) {
   );
 }
 
-function CertForm({ onAdd, loading }) {
+function CertForm({ onAdd, loading, isMobile }) {
   const [form, setForm] = useState({ certification: '', provider: 'AWS', status: 'Planned', examDate: '', score: '', notes: '' });
   const [open, setOpen] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -199,7 +200,7 @@ function CertForm({ onAdd, loading }) {
         <form onSubmit={handleSubmit} style={{
           marginTop: '0.85rem', background: 'var(--bg-card)',
           border: `1px solid ${C.blue}30`, borderRadius: '14px', padding: '1.25rem',
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+          display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem',
         }}>
           {[
             { k: 'certification', label: 'Certification *', placeholder: 'e.g. AWS Solutions Architect' },
@@ -259,6 +260,7 @@ function CertForm({ onAdd, loading }) {
 }
 
 export default function LearningAws() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const {
     awsData, fetchAwsData,
     addAwsService, addAwsCert, saveAwsNote, deleteAwsRecord,
@@ -397,34 +399,53 @@ export default function LearningAws() {
         </div>
       </div>
 
-      <div style={{
-        display: 'flex', gap: '0.4rem', flexWrap: 'wrap',
-        background: 'var(--bg-card)', border: '1px solid var(--border)',
-        borderRadius: '14px', padding: '0.5rem', marginBottom: '1.25rem',
-      }}>
-        <TabBtn active={tab === 'notes'}    onClick={() => setTab('notes')}    icon={NotebookPen} label="Daily Notes" />
-        <TabBtn active={tab === 'services'} onClick={() => setTab('services')} icon={BookOpen}     label="Services" />
-        <TabBtn active={tab === 'certs'}    onClick={() => setTab('certs')}    icon={Award}        label="Certifications" />
-        <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}    label="Progress" />
-
-        <button
-          onClick={handleExport}
-          disabled={awsData.length === 0}
-          style={{
+      {isMobile ? (
+        <div style={{
+          display: 'flex', gap: '0.4rem', flexWrap: 'nowrap', overflowX: 'auto',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: '14px', padding: '0.5rem', marginBottom: '1.25rem',
+        }}>
+          <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+            <TabBtn active={tab === 'notes'}    onClick={() => setTab('notes')}    icon={NotebookPen} label="Daily Notes" />
+            <TabBtn active={tab === 'services'} onClick={() => setTab('services')} icon={BookOpen}     label="Services" />
+            <TabBtn active={tab === 'certs'}    onClick={() => setTab('certs')}    icon={Award}        label="Certifications" />
+            <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}    label="Progress" />
+            <button onClick={handleExport} disabled={awsData.length === 0} style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: awsData.length === 0 ? 'not-allowed' : 'pointer',
+              background: awsData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
+              border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: awsData.length === 0 ? 0.5 : 1,
+              boxShadow: awsData.length > 0 ? `0 4px 12px ${C.green}40` : 'none', whiteSpace: 'nowrap',
+            }}>
+              <Download size={15} /> Export PDF
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          display: 'flex', gap: '0.4rem', flexWrap: 'wrap',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: '14px', padding: '0.5rem', marginBottom: '1.25rem',
+        }}>
+          <TabBtn active={tab === 'notes'}    onClick={() => setTab('notes')}    icon={NotebookPen} label="Daily Notes" />
+          <TabBtn active={tab === 'services'} onClick={() => setTab('services')} icon={BookOpen}     label="Services" />
+          <TabBtn active={tab === 'certs'}    onClick={() => setTab('certs')}    icon={Award}        label="Certifications" />
+          <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}    label="Progress" />
+          <button onClick={handleExport} disabled={awsData.length === 0} style={{
             marginLeft: 'auto',
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: awsData.length === 0 ? 'not-allowed' : 'pointer',
             background: awsData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
             border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: awsData.length === 0 ? 0.5 : 1,
             boxShadow: awsData.length > 0 ? `0 4px 12px ${C.green}40` : 'none',
-          }}
-        >
-          <Download size={15} /> Export PDF
-        </button>
-      </div>
+          }}>
+            <Download size={15} /> Export PDF
+          </button>
+        </div>
+      )}
 
       {tab === 'notes' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: '1.25rem' }}>
           <div className="glass-card" style={{ padding: '1.25rem', height: 'fit-content' }}>
             <h3 style={{ margin: '0 0 0.85rem 0', fontSize: '0.9rem', fontWeight: 700, color: C.orange }}>
               📅 Study Sessions
@@ -559,7 +580,7 @@ export default function LearningAws() {
 
       {tab === 'services' && (
         <div>
-          <ServiceForm onAdd={handleAddService} loading={saving} />
+          <ServiceForm onAdd={handleAddService} loading={saving} isMobile={isMobile} />
 
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
             <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -582,7 +603,7 @@ export default function LearningAws() {
           </div>
 
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="responsive-table" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -604,17 +625,17 @@ export default function LearningAws() {
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={{ ...cellStyle, fontWeight: 700, color: C.orange }}>{s.service}</td>
-                      <td style={{ ...cellStyle, maxWidth: 200 }}>{s.description}</td>
-                      <td style={cellStyle}>
+                      <td data-label="Service" style={{ ...cellStyle, fontWeight: 700, color: C.orange }}>{s.service}</td>
+                      <td data-label="Description" style={{ ...cellStyle, maxWidth: 200 }}>{s.description}</td>
+                      <td data-label="Category" style={cellStyle}>
                         <span style={{
                           background: `${C.orange}20`, color: C.orange,
                           padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600,
                         }}>{s.category || 'General'}</span>
                       </td>
-                      <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{s.pricing || '—'}</td>
-                      <td style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{s.keyFeatures || '—'}</td>
-                      <td style={{ ...cellStyle, textAlign: 'center' }}>
+                      <td data-label="Pricing" style={{ ...cellStyle, color: 'var(--text-muted)' }}>{s.pricing || '—'}</td>
+                      <td data-label="Key Features" style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{s.keyFeatures || '—'}</td>
+                      <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
                         <button
                           onClick={() => handleDelete(s.recordId)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px' }}
@@ -633,7 +654,7 @@ export default function LearningAws() {
 
       {tab === 'certs' && (
         <div>
-          <CertForm onAdd={handleAddCert} loading={saving} />
+          <CertForm onAdd={handleAddCert} loading={saving} isMobile={isMobile} />
 
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
             <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />

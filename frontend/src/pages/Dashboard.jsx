@@ -1060,6 +1060,11 @@ export default function Dashboard() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{bookProgress.bookName}</h4>
+                  {currentBook?.author && (
+                    <p className="text-muted text-sm" style={{ margin: '0.15rem 0' }}>
+                      by {currentBook.author}
+                    </p>
+                  )}
                   <p className="text-muted text-sm" style={{ margin: '0.25rem 0' }}>
                     {bookProgress.currentPage} / {bookProgress.targetPages} pages
                   </p>

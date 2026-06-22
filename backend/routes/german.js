@@ -15,6 +15,8 @@ const {
   updateVocab,
   addGrammar,
   updateGrammar,
+  addVerb,
+  updateVerb,
   saveNote,
   getNoteByDate,
   deleteGermanRecord,
@@ -49,11 +51,11 @@ router.get('/note', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category } = req.body;
+    const { word, translation, example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST vocab error:', err);
@@ -76,11 +78,11 @@ router.put('/vocab/:recordId', async (req, res) => {
 // ── POST /api/german/grammar ──────────────────────────────────────────────────
 router.post('/grammar', async (req, res) => {
   try {
-    const { rule, explanation, examples, category } = req.body;
+    const { rule, explanation, examples, category, level, mastery, favorite } = req.body;
     if (!rule?.trim() || !explanation?.trim()) {
       return res.status(400).json({ message: 'rule and explanation are required' });
     }
-    const record = await addGrammar(req.user.userId, { rule: rule.trim(), explanation: explanation.trim(), examples, category });
+    const record = await addGrammar(req.user.userId, { rule: rule.trim(), explanation: explanation.trim(), examples, category, level, mastery, favorite });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST grammar error:', err);
@@ -97,6 +99,33 @@ router.put('/grammar/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT grammar error:', err);
     res.status(500).json({ message: 'Failed to update grammar rule' });
+  }
+});
+
+// ── POST /api/german/verb ──────────────────────────────────────────────────────
+router.post('/verb', async (req, res) => {
+  try {
+    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite } = req.body;
+    if (!infinitive?.trim() || !meaning?.trim()) {
+      return res.status(400).json({ message: 'infinitive and meaning are required' });
+    }
+    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST verb error:', err);
+    res.status(500).json({ message: 'Failed to add verb' });
+  }
+});
+
+// ── PUT /api/german/verb/:recordId ────────────────────────────────────────────
+router.put('/verb/:recordId', async (req, res) => {
+  try {
+    const updated = await updateVerb(req.user.userId, req.params.recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Record not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT verb error:', err);
+    res.status(500).json({ message: 'Failed to update verb' });
   }
 });
 

@@ -7481,4 +7481,53 @@ label {
   }
 }
 
+/* ── Responsive Tables — convert to cards on mobile ── */
+@media (max-width: 768px) {
+  .responsive-table table,
+  .responsive-table thead,
+  .responsive-table tbody,
+  .responsive-table th,
+  .responsive-table td,
+  .responsive-table tr {
+    display: block;
+  }
+  .responsive-table thead {
+    display: none;
+  }
+  .responsive-table tr {
+    margin-bottom: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.65rem;
+    background: var(--bg-card);
+  }
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0.4rem !important;
+    border: none !important;
+    font-size: 0.78rem !important;
+    gap: 0.5rem;
+    max-width: none !important;
+    text-align: left !important;
+  }
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .responsive-table td[colspan] {
+    text-align: center !important;
+    justify-content: center;
+  }
+  .responsive-table td[colspan]::before {
+    display: none;
+  }
+}
+
 
