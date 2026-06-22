@@ -1,0 +1,176 @@
+# Evolvia (Habit Tracker) — AWS Hosting Architecture
+
+## Overview
+The Habit Tracker app ("Evolvia") is hosted on **AWS EC2** as a monolith. It uses **Nginx** to serve the React frontend and reverse-proxy API calls to a **Node.js/Express** backend, which persists data in **Amazon DynamoDB**. Deployment is automated via **GitHub Actions**.
+
+---
+
+## Architecture Diagram (Conceptual)
+
+```
+Internet
+    │
+    ▼
+┌─────────────────────────────────────────────────┐
+│           EC2 Instance (Ubuntu 22.04)           │
+│                                                  │
+│  ┌──────────┐    ┌──────────────┐               │
+│  │  Nginx   │───▶│ /var/www/html│  (React SPA)  │
+│  │ (port 80)│    └──────────────┘               │
+│  │          │───▶ http://127.0.0.1:5001          │
+│  └──────────┘         │                         │
+│                       ▼                          │
+│              ┌──────────────────┐               │
+│              │  Express API     │               │
+│              │  (PM2 managed)   │               │
+│              └────────┬─────────┘               │
+│                       │                          │
+└───────────────────────┼──────────────────────────┘
+                        │
+                        ▼
+               ┌─────────────────┐
+               │  AWS DynamoDB   │
+               │  (7 tables)     │
+               └─────────────────┘
+```
+
+---
+
+## 1. Compute — EC2 Instance
+
+- **OS**: Ubuntu 22.04 LTS (also tested on 20.04)
+- **Size**: t2.micro or t3.micro (free tier eligible)
+- **Security Group**: Must allow inbound HTTP (port 80) and optionally HTTPS (port 443)
+
+**One-time setup** (`ec2-init.sh`):
+1. Installs system packages: git, curl, nginx, rsync, build-essential
+2. Installs Node.js 20 via nvm
+3. Installs PM2 globally and registers its startup hook (survives reboots)
+4. Clones the repository from GitHub
+5. Creates `.env` from `.env.example`
+6. Configures Nginx (copies `nginx.ec2.conf` to `/etc/nginx/sites-available/evolvia`)
+7. Runs the first deploy
+
+---
+
+## 2. Reverse Proxy & Static Files — Nginx
+
+**Config file**: `nginx.ec2.conf`
+
+Nginx serves two roles:
+- **Static file server**: serves the built React app from `/var/www/html` with proper caching headers
+  - `index.html`, `sw.js`, `manifest.json` → no caching (must always be fresh for PWA)
+  - Hashed assets (JS, CSS, images) → 1-year immutable cache
+  - SPA fallback: all non-asset routes serve `index.html` (React Router)
+- **API reverse proxy**: `/api/*` requests are forwarded to `http://127.0.0.1:5001`
+  - Includes WebSocket upgrade headers, timeouts (60s), and 10MB upload limit
+
+**HTTPS** (optional, for PWA install support):
+- Use Certbot + Let's Encrypt (`setup-https.sh`)
+- Requires a domain name pointed at the EC2 IP via A record
+
+---
+
+## 3. Backend — Express.js via PM2
+
+**Process manager**: PM2 with ecosystem config (`ecosystem.config.js`)
+- **Process name**: `habit-tracker-api`
+- **Script**: `backend/server.js`
+- **Port**: 5001 (internal, only Nginx talks to it)
+- **Instances**: 1 (fork mode)
+- **Memory limit**: 512MB (restarts if exceeded)
+- **Auto-restart**: up to 10 crashes within 1 minute, 3s delay between restarts
+- **Logs**: written to `~/logs/api-error.log` and `~/logs/api-out.log`
+- **Persist across reboots**: `pm2 save` + `pm2 startup`
+
+The backend is a single Express server that handles all API routes:
+- Auth (login, register, logout, verify)
+- Daily habit logs
+- User settings/profile/avatar
+- Tasks, notes, credentials (encrypted)
+- Expenses, categories, books/archives
+- German language study records
+- Notification stubs
+
+---
+
+## 4. Database — Amazon DynamoDB
+
+**Connection logic** (`backend/db/dynamodb.js`):
+- When `DYNAMODB_ENDPOINT` is set → connects to DynamoDB Local (for local dev)
+- When `DYNAMODB_ENDPOINT` is unset → connects to real AWS DynamoDB
+- AWS credentials come from env vars: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- Uses the `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages
+
+**Tables** (auto-created on startup via `backend/db/createTables.js`):
+
+| Table Name      | Partition Key   | Sort Key      | GSI              |
+|-----------------|-----------------|---------------|------------------|
+| HabitUsers      | userId (S)      | —             | EmailIndex (email) |
+| HabitLogs       | userId (S)      | date (S)      | —                |
+| HabitExpenses   | userId (S)      | date (S)      | —                |
+| HabitNotes      | userId (S)      | noteId (S)    | UserDateIndex (userId+date) |
+| HabitCredentials| userId (S)      | credentialId (S) | —              |
+| HabitSettings   | userId (S)      | —             | —                |
+| HabitGerman     | userId (S)      | recordId (S)  | —                |
+
+All tables use **PAY_PER_REQUEST** billing (on-demand capacity).
+
+---
+
+## 5. CI/CD — GitHub Actions
+
+**Workflow**: `.github/workflows/deploy-ec2.yml`
+
+On every push to `main` or `master`:
+1. Uses `appleboy/ssh-action` to SSH into the EC2 instance
+2. Authenticates with GitHub Secrets: `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`
+3. Clones/pulls the latest code
+4. Runs `deploy-ec2.sh` which:
+   - Pulls latest git changes
+   - Installs backend deps (`npm ci --omit=dev`)
+   - Installs frontend deps and builds (`npm run build`)
+   - Syncs the build to `/var/www/html` via `rsync`
+   - Reloads Nginx (zero-downtime, config tested first)
+   - Reloads the PM2 process (`pm2 reload habit-tracker-api --update-env`)
+
+---
+
+## 6. Alternative: Docker on EC2
+
+There is also a Docker Compose setup (`docker-compose.yml` and `Dockerfile`) that runs on EC2:
+- **Frontend**: Vite dev server (port 80)
+- **Backend**: Express API (port 5000 → 5001)
+- **DynamoDB Local**: Local DynamoDB for testing (port 8000)
+- **DynamoDB Admin**: Web UI for DynamoDB Local (port 8001)
+
+The GitHub Actions workflow (`deploy-ec2.yml`) also supports `docker compose up -d --build` as an alternative deployment method.
+
+Additionally, a **monolithic Dockerfile** (`Dockerfile` at root) builds both frontend and backend into a single container with Nginx + PM2, used by the Render deployment (`render.yaml`).
+
+---
+
+## 7. Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Backend port (5000 in Docker, 5001 on EC2) |
+| `NODE_ENV` | `production` or `development` |
+| `JWT_SECRET` | Secret for JWT token signing |
+| `ADMIN_PASSWORD` | Admin dashboard password |
+| `ENCRYPTION_KEY` | Encryption key for stored credentials |
+| `DYNAMODB_ENDPOINT` | Set for local DynamoDB; unset for AWS DynamoDB |
+| `AWS_REGION` | AWS region (e.g. `us-east-1`) |
+| `AWS_ACCESS_KEY_ID` | AWS access key (use IAM role instead if possible) |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
+| `CLIENT_URL` | Allowed CORS origin(s) |
+| `VITE_API_URL` | API URL for frontend builds |
+
+---
+
+## 8. Security Considerations
+
+- HTTPS via Let's Encrypt is required for PWA install functionality
+- The `.env` file containing secrets must be manually configured after initial setup
+- EC2 Security Group should restrict ports 80/443 to general traffic, and SSH (port 22) to your IP only
+- AWS IAM roles are preferred over hardcoded AWS credentials in `.env`

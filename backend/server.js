@@ -43,6 +43,7 @@ app.use('/api/books',       require('./routes/books'));
 app.use('/api/profile',     require('./routes/profile'));
 app.use('/api/login/admin', require('./routes/admin'));
 app.use('/api/german',      require('./routes/german'));
+app.use('/api/aws',         require('./routes/aws'));
 
 // ── Flat-path aliases (used by frontend Store) ────────────────────────────────
 const authRoutes    = require('./routes/auth');

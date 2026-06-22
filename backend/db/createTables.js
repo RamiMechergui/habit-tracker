@@ -135,6 +135,24 @@ const TABLES = [
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
+
+  // ── HabitAws ──────────────────────────────────────────────────────────────
+  // Single-table design: recordId prefix determines type:
+  //   SERVICE#<uuid>  → AWS service note
+  //   CERT#<uuid>     → certification prep entry
+  //   NOTE#YYYY-MM-DD → daily study note
+  {
+    TableName: 'HabitAws',
+    KeySchema: [
+      { AttributeName: 'userId',   KeyType: 'HASH' },
+      { AttributeName: 'recordId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId',   AttributeType: 'S' },
+      { AttributeName: 'recordId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
 ];
 
 /**

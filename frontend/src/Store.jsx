@@ -231,6 +231,9 @@ export const HabitProvider = ({ children }) => {
   // ── German Learning state ─────────────────────────────────────
   const [germanData, setGermanData] = useState([]);
 
+  // ── AWS Learning state ────────────────────────────────────────
+  const [awsData, setAwsData] = useState([]);
+
   const setNoteSections = useCallback((nextSections) => {
     setNoteSectionsState(nextSections);
     try { localStorage.setItem('noteSections', JSON.stringify(nextSections)); } catch {}
@@ -1591,6 +1594,75 @@ export const HabitProvider = ({ children }) => {
     }
   }, [API_URL, fetchGermanData]);
 
+  // ── AWS Learning API methods ──────────────────────────────────
+  const fetchAwsData = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/aws`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setAwsData(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchAwsData error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addAwsService = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/aws/service`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add service');
+    setAwsData(prev => [...prev, data]);
+    return data;
+  }, [API_URL]);
+
+  const addAwsCert = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/aws/cert`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add certification');
+    setAwsData(prev => [...prev, data]);
+    return data;
+  }, [API_URL]);
+
+  const saveAwsNote = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/aws/note`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save note');
+    setAwsData(prev => {
+      const filtered = prev.filter(r => r.recordId !== data.recordId);
+      return [...filtered, data];
+    });
+    return data;
+  }, [API_URL]);
+
+  const deleteAwsRecord = useCallback(async (recordId) => {
+    setAwsData(prev => prev.filter(r => r.recordId !== recordId));
+    try {
+      await fetch(`${API_URL}/api/aws/${encodeURIComponent(recordId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch (e) {
+      console.warn('[Store] deleteAwsRecord error:', e.message);
+      await fetchAwsData();
+    }
+  }, [API_URL, fetchAwsData]);
+
   return (
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData,
@@ -1611,6 +1683,8 @@ export const HabitProvider = ({ children }) => {
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, saveGermanNote, deleteGermanRecord,
+      // AWS Learning
+      awsData, fetchAwsData, addAwsService, addAwsCert, saveAwsNote, deleteAwsRecord,
     }}>
       {children}
     </HabitContext.Provider>

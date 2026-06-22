@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote, KeyRound, Languages
+  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote, KeyRound, Languages, Cloud
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -23,6 +23,7 @@ import Essentials from './pages/Essentials';
 import Admin from './pages/Admin';
 import PasswordVault from './pages/PasswordVault';
 import LearningGerman from './pages/LearningGerman';
+import LearningAws from './pages/LearningAws';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
@@ -43,6 +44,7 @@ const NAV_LINKS = [
   { to: '/sidehustle',    icon: Rocket,          label: 'Side Hustle' },
   { to: '/video-editing', icon: Video,           label: 'Video Editing' },
   { to: '/german',        icon: Languages,       label: 'Learning German' },
+  { to: '/aws',           icon: Cloud,           label: 'Learning AWS' },
   { to: '/settings',      icon: SettingsIcon,    label: 'Settings' },
 ];
 
@@ -239,6 +241,7 @@ function App() {
             <Route path="/sidehustle" element={<SideHustle />} />
             <Route path="/video-editing" element={<VideoEditing />} />
             <Route path="/german"    element={<LearningGerman />} />
+            <Route path="/aws"       element={<LearningAws />} />
             <Route path="/settings"  element={<Settings />} />
           </Routes>
         </div>
