@@ -1445,19 +1445,19 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'grammar'} onClick={() => setTab('grammar')} icon={GraduationCap} label="Grammar" />
             <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
-            <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
+            <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
             </button>
-            <button onClick={() => setShowQuiz(true)} disabled={vocab.length < 4} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 4 ? 'not-allowed' : 'pointer', background: vocab.length < 4 ? 'var(--bg)' : `linear-gradient(135deg, ${C.purple}, ${C.blue})`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1, boxShadow: vocab.length >= 4 ? `0 4px 12px ${C.purple}40` : 'none' }}>
+            <button onClick={() => setShowQuiz(true)} disabled={vocab.length < 4} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 4 ? 'not-allowed' : 'pointer', background: vocab.length < 4 ? 'var(--bg)' : `linear-gradient(135deg, ${C.purple}, ${C.blue})`, border: vocab.length < 4 ? '1px solid var(--border)' : 'none', color: vocab.length < 4 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1, boxShadow: vocab.length >= 4 ? `0 4px 12px ${C.purple}40` : 'none' }}>
               <Shuffle size={15} /> Quiz
             </button>
-            <button onClick={() => setShowGrammarQuiz(true)} disabled={grammar.length < 2} title="Grammar Quiz" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: grammar.length < 2 ? 'not-allowed' : 'pointer', background: grammar.length < 2 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: grammar.length < 2 ? 0.5 : 1, boxShadow: grammar.length >= 2 ? `0 4px 12px ${C.blue}40` : 'none' }}>
+            <button onClick={() => setShowGrammarQuiz(true)} disabled={grammar.length < 2} title="Grammar Quiz" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: grammar.length < 2 ? 'not-allowed' : 'pointer', background: grammar.length < 2 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: grammar.length < 2 ? '1px solid var(--border)' : 'none', color: grammar.length < 2 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: grammar.length < 2 ? 0.5 : 1, boxShadow: grammar.length >= 2 ? `0 4px 12px ${C.blue}40` : 'none' }}>
               <GraduationCap size={15} /> Grammar Quiz
             </button>
-            <button onClick={() => setShowMCQuiz(true)} disabled={vocab.length < 4} title="Multiple Choice Quiz" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 4 ? 'not-allowed' : 'pointer', background: vocab.length < 4 ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1, boxShadow: vocab.length >= 4 ? `0 4px 12px ${C.gold}40` : 'none' }}>
+            <button onClick={() => setShowMCQuiz(true)} disabled={vocab.length < 4} title="Multiple Choice Quiz" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 4 ? 'not-allowed' : 'pointer', background: vocab.length < 4 ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: vocab.length < 4 ? '1px solid var(--border)' : 'none', color: vocab.length < 4 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1, boxShadow: vocab.length >= 4 ? `0 4px 12px ${C.gold}40` : 'none' }}>
               <HelpCircle size={15} /> MC Quiz
             </button>
-            <button onClick={() => setShowWriting(true)} disabled={vocab.length < 3} title="Writing Practice" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 3 ? 'not-allowed' : 'pointer', background: vocab.length < 3 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 3 ? 0.5 : 1, boxShadow: vocab.length >= 3 ? `0 4px 12px ${C.blue}40` : 'none' }}>
+            <button onClick={() => setShowWriting(true)} disabled={vocab.length < 3} title="Writing Practice" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 3 ? 'not-allowed' : 'pointer', background: vocab.length < 3 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: vocab.length < 3 ? '1px solid var(--border)' : 'none', color: vocab.length < 3 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 3 ? 0.5 : 1, boxShadow: vocab.length >= 3 ? `0 4px 12px ${C.blue}40` : 'none' }}>
               <PenTool size={15} /> Writing
             </button>
             <button onClick={() => setShowGlobalSearch(true)} title="Global Search" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.85rem' }}>
@@ -1479,7 +1479,9 @@ export default function LearningGerman() {
           display: 'flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer',
           background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
-          border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1,
+          border: vocab.length === 0 ? '1px solid var(--border)' : 'none',
+          color: vocab.length === 0 ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1,
           boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none',
         }}>
           <Repeat size={15} /> Review
@@ -1488,7 +1490,9 @@ export default function LearningGerman() {
           display: 'flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 4 ? 'not-allowed' : 'pointer',
           background: vocab.length < 4 ? 'var(--bg)' : `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
-          border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1,
+          border: vocab.length < 4 ? '1px solid var(--border)' : 'none',
+          color: vocab.length < 4 ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1,
           boxShadow: vocab.length >= 4 ? `0 4px 12px ${C.purple}40` : 'none',
         }}>
           <Shuffle size={15} /> Quiz
@@ -1497,7 +1501,9 @@ export default function LearningGerman() {
           display: 'flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: grammar.length < 2 ? 'not-allowed' : 'pointer',
           background: grammar.length < 2 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
-          border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: grammar.length < 2 ? 0.5 : 1,
+          border: grammar.length < 2 ? '1px solid var(--border)' : 'none',
+          color: grammar.length < 2 ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700, fontSize: '0.85rem', opacity: grammar.length < 2 ? 0.5 : 1,
           boxShadow: grammar.length >= 2 ? `0 4px 12px ${C.blue}40` : 'none',
         }}>
           <GraduationCap size={15} /> Grammar Quiz
@@ -1506,7 +1512,9 @@ export default function LearningGerman() {
           display: 'flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 4 ? 'not-allowed' : 'pointer',
           background: vocab.length < 4 ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, ${C.red})`,
-          border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1,
+          border: vocab.length < 4 ? '1px solid var(--border)' : 'none',
+          color: vocab.length < 4 ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 4 ? 0.5 : 1,
           boxShadow: vocab.length >= 4 ? `0 4px 12px ${C.gold}40` : 'none',
         }}>
           <HelpCircle size={15} /> MC Quiz
@@ -1515,7 +1523,9 @@ export default function LearningGerman() {
           display: 'flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 3 ? 'not-allowed' : 'pointer',
           background: vocab.length < 3 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
-          border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 3 ? 0.5 : 1,
+          border: vocab.length < 3 ? '1px solid var(--border)' : 'none',
+          color: vocab.length < 3 ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 3 ? 0.5 : 1,
           boxShadow: vocab.length >= 3 ? `0 4px 12px ${C.blue}40` : 'none',
         }}>
           <PenTool size={15} /> Writing
@@ -1533,7 +1543,9 @@ export default function LearningGerman() {
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer',
             background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
-            border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1,
+            border: germanData.length === 0 ? '1px solid var(--border)' : 'none',
+            color: germanData.length === 0 ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1,
             boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none',
           }}>
             <Download size={15} /> Export PDF

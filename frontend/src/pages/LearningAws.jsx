@@ -602,53 +602,104 @@ export default function LearningAws() {
             )}
           </div>
 
-          <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="responsive-table" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {['Service', 'Description', 'Category', 'Pricing', 'Key Features', ''].map(h => (
-                      <th key={h} style={headerCellStyle}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredServices.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                        {search ? 'No results found.' : 'No services added yet. Click "Add Service" to start!'}
-                      </td>
-                    </tr>
-                  )}
-                  {filteredServices.map(s => (
-                    <tr key={s.recordId} style={{ transition: 'background 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td data-label="Service" style={{ ...cellStyle, fontWeight: 700, color: C.orange }}>{s.service}</td>
-                      <td data-label="Description" style={{ ...cellStyle, maxWidth: 200 }}>{s.description}</td>
-                      <td data-label="Category" style={cellStyle}>
+          {isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {filteredServices.length === 0 && (
+                <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  {search ? 'No results found.' : 'No services added yet. Click "Add Service" to start!'}
+                </div>
+              )}
+              {filteredServices.map((s, i) => (
+                <div key={s.recordId} className="glass-card" style={{
+                  padding: '1.1rem 1.25rem',
+                  border: `1px solid ${C.orange}20`,
+                  borderLeft: `3px solid ${C.orange}`,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span style={{
+                        background: `${C.orange}20`, color: C.orange,
+                        width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.75rem', fontWeight: 800, flexShrink: 0,
+                      }}>{i + 1}</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', color: C.orange }}>{s.service}</div>
                         <span style={{
                           background: `${C.orange}20`, color: C.orange,
-                          padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600,
+                          padding: '1px 7px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600,
                         }}>{s.category || 'General'}</span>
-                      </td>
-                      <td data-label="Pricing" style={{ ...cellStyle, color: 'var(--text-muted)' }}>{s.pricing || '—'}</td>
-                      <td data-label="Key Features" style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{s.keyFeatures || '—'}</td>
-                      <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
-                        <button
-                          onClick={() => handleDelete(s.recordId)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(s.recordId)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', flexShrink: 0 }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.83rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                    {s.description}
+                  </p>
+
+                  {(s.pricing || s.keyFeatures) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                      {s.pricing && <div><strong style={{color: 'var(--text-primary)'}}>Pricing:</strong> {s.pricing}</div>}
+                      {s.keyFeatures && <div><strong style={{color: 'var(--text-primary)'}}>Features:</strong> {s.keyFeatures}</div>}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="responsive-table" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Service', 'Description', 'Category', 'Pricing', 'Key Features', ''].map(h => (
+                        <th key={h} style={headerCellStyle}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredServices.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          {search ? 'No results found.' : 'No services added yet. Click "Add Service" to start!'}
+                        </td>
+                      </tr>
+                    )}
+                    {filteredServices.map(s => (
+                      <tr key={s.recordId} style={{ transition: 'background 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td data-label="Service" style={{ ...cellStyle, fontWeight: 700, color: C.orange }}>{s.service}</td>
+                        <td data-label="Description" style={{ ...cellStyle, maxWidth: 200 }}>{s.description}</td>
+                        <td data-label="Category" style={cellStyle}>
+                          <span style={{
+                            background: `${C.orange}20`, color: C.orange,
+                            padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600,
+                          }}>{s.category || 'General'}</span>
+                        </td>
+                        <td data-label="Pricing" style={{ ...cellStyle, color: 'var(--text-muted)' }}>{s.pricing || '—'}</td>
+                        <td data-label="Key Features" style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{s.keyFeatures || '—'}</td>
+                        <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
+                          <button
+                            onClick={() => handleDelete(s.recordId)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
