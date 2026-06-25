@@ -1,0 +1,136 @@
+/* -- Monthly Calendar ------------------------------ */
+.month-calendar-card { padding:24px; margin-top:20px; }
+.month-nav-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.month-nav-btn { background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; }
+.month-nav-btn:hover { background:rgba(255,255,255,0.1); }
+.month-filter-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; background:rgba(0,0,0,0.2); padding:12px; border-radius:12px; border:1px solid var(--border); }
+.month-filter-chip { background:transparent; border:1px solid var(--border); color:var(--text-secondary); padding:4px 10px; border-radius:16px; font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+.month-filter-chip:hover { background:rgba(255,255,255,0.05); color:var(--text-primary); }
+.month-filter-chip.active { background:var(--accent-blue); border-color:var(--accent-blue); color:#fff; }
+.month-grid-header { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; text-align:center; margin-bottom:8px; }
+.month-grid-day { font-size:0.75rem; color:var(--text-muted); font-weight:700; padding-bottom:4px; }
+.month-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.month-cell { aspect-ratio:1; padding:4px 2px 6px; border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; cursor:pointer; transition:all 0.18s; gap:2px; }
+.month-cell.today { border-width:1.5px; }
+.month-cell-date { font-size:0.85rem; font-weight:500; color:var(--text-primary); }
+.month-cell.today .month-cell-date { font-weight:800; color:var(--accent-blue); }
+.month-cell-dots { display:flex; gap:2px; justify-content:center; flex-wrap:wrap; max-width:100%; }
+.month-dot { width:4px; height:4px; border-radius:50%; }
+.month-pct-label { font-size:0.58rem; font-weight:700; }
+.month-legend { display:flex; flex-wrap:wrap; gap:16px; margin-top:24px; justify-content:center; font-size:0.75rem; color:var(--text-muted); }
+.month-legend-item { display:flex; align-items:center; gap:6px; }
+
+/* Rich cell variant */
+.month-cell-rich { position:relative; overflow:hidden; }
+.month-cell-rich:hover { transform:scale(1.05); z-index:2; border-color:rgba(255,255,255,0.3); }
+.month-cell-rich.expanded { border-color:var(--accent-blue); z-index:3; }
+.month-cell-date.today-date { background:var(--accent-blue); color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+.month-cell-badges { display:flex; gap:3px; flex-wrap:wrap; justify-content:center; }
+.month-badge { display:inline-flex; align-items:center; gap:3px; padding:1px 5px; border-radius:10px; font-size:0.58rem; font-weight:700; line-height:1.4; }
+.month-badge--done { background:rgba(16,185,129,0.2); color:#10b981; }
+.month-badge--critical { background:rgba(239,68,68,0.2); color:#ef4444; }
+.month-badge--missed { background:rgba(239,68,68,0.12); color:#ef4444; }
+.month-cell-previews { display:flex; flex-direction:column; gap:1px; width:100%; padding:0 2px; }
+.month-cell-preview-item { display:flex; align-items:center; gap:3px; overflow:hidden; }
+.month-preview-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.month-preview-title { font-size:0.58rem; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.month-preview-more { font-size:0.55rem; color:var(--text-muted); text-align:center; }
+.month-filter-label { font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; }
+.month-filter-divider { width:1px; height:16px; background:var(--border); flex-shrink:0; }
+.month-dot--critical { width:6px; height:6px; background:#ef4444; animation:pulse 1.5s infinite; }
+
+/* Light theme */
+[data-theme='light'] .month-nav-btn { background:rgba(0,0,0,0.05); color:var(--text-primary); }
+[data-theme='light'] .month-filter-bar { background:rgba(255,255,255,0.5); }
+[data-theme='light'] .month-filter-chip:hover { background:rgba(0,0,0,0.05); }
+
+/* Mobile */
+@media (max-width: 600px) {
+  .month-calendar-card { padding:12px !important; margin-top:10px; }
+  .month-filter-bar { padding:8px; gap:4px; }
+  .month-filter-chip { padding:4px 8px; font-size:0.65rem; }
+  .month-grid { gap:4px; }
+  .month-grid-header { gap:4px; }
+  .month-grid-day { font-size:0.65rem; }
+  .month-cell { border-radius:8px; padding:2px 1px 4px; gap:1px; }
+  .month-cell-date { font-size:0.7rem; }
+  .month-pct-label { font-size:0.5rem; }
+  .month-dot { width:3px; height:3px; }
+  .month-legend { gap:8px; font-size:0.65rem; }
+}
+
+/* -- Day Expand Panel ------------------------------ */
+.day-expand-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px; margin-top:16px; animation:pageSlideIn 0.25s ease; }
+.day-expand-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.day-expand-date { font-size:0.95rem; font-weight:700; }
+.day-expand-summary { font-size:0.75rem; color:var(--text-muted); }
+.day-expand-add { display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:8px; border:1px solid var(--accent-blue); background:transparent; color:var(--accent-blue); font-size:0.72rem; font-weight:700; cursor:pointer; transition:all 0.15s; }
+.day-expand-add:hover { background:var(--accent-blue); color:#fff; }
+.day-expand-close { display:inline-flex; align-items:center; padding:6px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; }
+.day-expand-close:hover { background:rgba(255,255,255,0.05); color:var(--text-primary); }
+.day-expand-progress-track { height:6px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden; margin-bottom:14px; }
+.day-expand-progress-fill { height:100%; background:linear-gradient(90deg,#10b981,#34d399); border-radius:3px; transition:width 0.4s ease; }
+.day-expand-tasks { display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; }
+.day-expand-empty { text-align:center; color:var(--text-muted); font-size:0.82rem; padding:24px 0; }
+.day-expand-task-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.02); border-left:3px solid transparent; }
+.day-expand-task-row.priority-critical { border-left-color:var(--priority-critical); }
+.day-expand-task-row.priority-high { border-left-color:var(--priority-high); }
+.day-expand-task-row.priority-medium { border-left-color:var(--priority-medium); }
+.day-expand-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.day-expand-task-info { flex:1; min-width:0; display:flex; flex-direction:column; }
+.day-expand-task-title { font-size:0.82rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.day-expand-task-meta { font-size:0.65rem; color:var(--text-muted); }
+
+/* -- Heatmap Tooltip ------------------------------- */
+.heatmap-tooltip-wrap { position:absolute; z-index:20; pointer-events:none; }
+.heatmap-tooltip-wrap.above { bottom:100%; margin-bottom:8px; }
+.heatmap-tooltip-wrap.below { top:100%; margin-top:8px; }
+.heatmap-tooltip { background:#1f2937; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 14px; font-size:0.75rem; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.4); max-width:220px; }
+
+/* -- Burnout Warning ------------------------------- */
+.burnout-warning { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:12px; padding:10px 14px; margin-bottom:16px; font-size:0.78rem; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
+.burnout-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; background:rgba(239,68,68,0.15); color:#ef4444; font-size:0.65rem; font-weight:700; }
+
+/* -- Statistics Panel ------------------------------ */
+.stats-open-btn { display:inline-flex; align-items:center; padding:5px 10px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.72rem; transition:all 0.15s; }
+.stats-open-btn:hover { background:rgba(255,255,255,0.05); color:var(--text-primary); }
+.stats-panel-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
+.stats-panel { background:var(--bg); border-radius:20px 20px 0 0; width:100%; max-width:600px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1); }
+.stats-panel-header { display:flex; justify-content:space-between; align-items:center; padding:20px 24px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.stats-panel-title { font-size:1.1rem; font-weight:700; }
+.stats-panel-month { font-size:0.8rem; color:var(--text-muted); font-weight:600; }
+.stats-panel-close { display:inline-flex; align-items:center; padding:6px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; }
+.stats-panel-close:hover { background:rgba(255,255,255,0.05); }
+.stats-tabs { display:flex; gap:4px; padding:12px 24px 0; flex-shrink:0; }
+.stats-tab { padding:6px 14px; border-radius:8px 8px 0 0; border:1px solid transparent; background:transparent; color:var(--text-muted); font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.stats-tab.active { background:var(--bg-card); border-color:var(--border); border-bottom-color:var(--bg-card); color:var(--text-primary); }
+.stats-panel-body { flex:1; overflow-y:auto; padding:20px 24px; }
+.stats-overview-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.stats-tile { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+.stats-tile-icon { font-size:1.2rem; margin-bottom:4px; }
+.stats-tile-value { font-size:1.5rem; font-weight:800; }
+.stats-tile-label { font-size:0.65rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
+.stats-tile-sub { font-size:0.65rem; color:var(--text-muted); margin-top:4px; }
+.stats-weekly-compare { display:flex; justify-content:center; gap:16px; margin-top:8px; }
+.stats-weekly-label { font-size:0.65rem; color:var(--text-muted); }
+.stats-weekly-num { font-size:1.1rem; font-weight:800; }
+.stats-weekly-delta { font-size:0.75rem; font-weight:700; }
+.stats-weekly-delta.positive { color:#10b981; }
+.stats-weekly-delta.negative { color:#ef4444; }
+.stats-weekly-last { font-size:0.65rem; color:var(--text-muted); }
+.stats-best-day { font-size:0.75rem; font-weight:700; color:var(--accent-blue); margin-top:4px; }
+.stats-section-hint { font-size:0.7rem; color:var(--text-muted); font-weight:600; margin:16px 0 8px; }
+.stats-cat-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
+.stats-cat-name { width:80px; font-size:0.72rem; font-weight:600; flex-shrink:0; }
+.stats-cat-bar-track { flex:1; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; }
+.stats-cat-bar-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+.stats-cat-time { width:36px; text-align:right; font-size:0.65rem; color:var(--text-muted); }
+.stats-week-row { display:flex; align-items:center; gap:8px; padding:4px 0; }
+.stats-week-label { width:36px; font-size:0.65rem; font-weight:700; flex-shrink:0; }
+.stats-week-bar-track { flex:1; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; }
+.stats-week-bar-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+.stats-week-pct { width:32px; text-align:right; font-size:0.65rem; font-weight:700; }
+.stats-weekly-section, .stats-categories-section { margin-top:12px; }
+
+/* -- Search bar ------------------------------------ */
+.month-search-bar input[type="search"]::-webkit-search-cancel-button { display:none; }

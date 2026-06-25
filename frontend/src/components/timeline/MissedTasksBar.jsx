@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { AlertCircle, Clock, CheckCircle, X, MessageSquare, ChevronDown } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle, X, MessageSquare, ChevronDown, CalendarPlus } from 'lucide-react';
+import './MissedTasksBar.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORY_COLORS = {
@@ -13,7 +14,7 @@ const CATEGORY_COLORS = {
 };
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function MissedTasksBar({ tasks, onUpdateTaskStatus }) {
+export default function MissedTasksBar({ tasks, onUpdateTaskStatus, onSnooze }) {
   const [missedOpen,  setMissedOpen]  = useState(false);
   const [delayedOpen, setDelayedOpen] = useState(false);
   const [reasons, setReasons] = useState({});
@@ -71,68 +72,70 @@ export default function MissedTasksBar({ tasks, onUpdateTaskStatus }) {
           {missedOpen && (
             <div className="alert-card-list">
               {missedTasks.map(t => (
-                <TaskAlertCard
-                  key={t.id}
-                  task={t}
-                  variant="missed"
-                  reason={reasons[t.id] ?? ''}
-                  onReasonChange={r => setReason(t.id, r)}
-                  onComplete={() => handleAction(t.originalIndex, 'Completed', t.id)}
-                  onMark={() => handleAction(t.originalIndex, 'Missed', t.id)}
-                />
-              ))}
+                  <TaskAlertCard
+                      key={t.id}
+                      task={t}
+                      variant="missed"
+                      reason={reasons[t.id] ?? ''}
+                      onReasonChange={r => setReason(t.id, r)}
+                      onComplete={() => handleAction(t.originalIndex, 'Completed', t.id)}
+                      onMark={() => handleAction(t.originalIndex, 'Missed', t.id)}
+                      onSnooze={() => onSnooze?.(t)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {/* ── Delayed bar ── */}
-      {delayedTasks.length > 0 && (
-        <div className="alert-bar-group">
-          <button
-            className="alert-bar-v2 alert-bar-delayed"
-            onClick={() => setDelayedOpen(o => !o)}
-            aria-expanded={delayedOpen}
-          >
-            <div className="alert-bar-left">
-              <Clock size={18} aria-hidden="true" />
-              <span className="alert-bar-title">
-                {delayedTasks.length} delayed task{delayedTasks.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="alert-bar-right">
-              <span className="alert-bar-action">Review</span>
-              <ChevronDown
-                size={14}
-                className={`alert-bar-chevron ${delayedOpen ? 'open' : ''}`}
-                aria-hidden="true"
-              />
-            </div>
-          </button>
+          {/* ── Delayed bar ── */}
+          {delayedTasks.length > 0 && (
+            <div className="alert-bar-group">
+              <button
+                className="alert-bar-v2 alert-bar-delayed"
+                onClick={() => setDelayedOpen(o => !o)}
+                aria-expanded={delayedOpen}
+              >
+                <div className="alert-bar-left">
+                  <Clock size={18} aria-hidden="true" />
+                  <span className="alert-bar-title">
+                    {delayedTasks.length} delayed task{delayedTasks.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="alert-bar-right">
+                  <span className="alert-bar-action">Review</span>
+                  <ChevronDown
+                    size={14}
+                    className={`alert-bar-chevron ${delayedOpen ? 'open' : ''}`}
+                    aria-hidden="true"
+                  />
+                </div>
+              </button>
 
-          {delayedOpen && (
-            <div className="alert-card-list">
-              {delayedTasks.map(t => (
-                <TaskAlertCard
-                  key={t.id}
-                  task={t}
-                  variant="delayed"
-                  reason={reasons[t.id] ?? t.delayReason ?? ''}
-                  onReasonChange={r => setReason(t.id, r)}
-                  onComplete={() => handleAction(t.originalIndex, 'Completed', t.id)}
-                  onMark={() => handleAction(t.originalIndex, 'Missed', t.id)}
-                />
-              ))}
+              {delayedOpen && (
+                <div className="alert-card-list">
+                  {delayedTasks.map(t => (
+                    <TaskAlertCard
+                      key={t.id}
+                      task={t}
+                      variant="delayed"
+                      reason={reasons[t.id] ?? t.delayReason ?? ''}
+                      onReasonChange={r => setReason(t.id, r)}
+                      onComplete={() => handleAction(t.originalIndex, 'Completed', t.id)}
+                      onMark={() => handleAction(t.originalIndex, 'Missed', t.id)}
+                      onSnooze={() => onSnooze?.(t)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
     </div>
   );
 }
 
 // ── Task Alert Card ───────────────────────────────────────────────────────────
-function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMark }) {
+function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMark, onSnooze }) {
   const catColor = CATEGORY_COLORS[task.category] ?? CATEGORY_COLORS.Other;
 
   return (
@@ -201,6 +204,16 @@ function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMa
           <X size={13} aria-hidden="true" />
           Mark Missed
         </button>
+        {onSnooze && (
+          <button
+            className="btn task-alert-btn task-alert-btn--snooze"
+            onClick={onSnooze}
+            aria-label="Snooze to tomorrow"
+          >
+            <CalendarPlus size={13} aria-hidden="true" />
+            Tomorrow
+          </button>
+        )}
       </div>
     </div>
   );

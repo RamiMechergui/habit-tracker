@@ -56,7 +56,10 @@ services:
     hostname: dynamodb-local
     ports:
       - "8000:8000"
-    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    user: "root:root"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+    volumes:
+      - dynamodb-data:/data
     networks:
       - habit-network
     healthcheck:
@@ -82,6 +85,9 @@ services:
     depends_on:
       dynamodb-local:
         condition: service_healthy
+
+volumes:
+  dynamodb-data:
 
 networks:
   habit-network:

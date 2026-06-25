@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PlayCircle, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import './LiveFocusBanner.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getActiveTasks(tasks) {

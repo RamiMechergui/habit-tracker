@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ChevronDown, Plus, ZoomIn, ZoomOut, GripVertical } from 'lucide-react';
+import './DailyTimeline.css';
 import TaskCard from './TaskCard';
 import { useHabits } from '../../Store';
 
@@ -35,10 +36,10 @@ const BASE_HOUR_DESKTOP = 90;
 const BASE_HOUR_MOBILE  = 68;
 
 const TIME_SECTIONS = [
-  { key: 'morning',   label: 'Morning',   icon: '🌅', start: 5,  end: 11 },
-  { key: 'afternoon', label: 'Afternoon', icon: '☀️', start: 12, end: 17 },
-  { key: 'evening',   label: 'Evening',   icon: '🌙', start: 18, end: 23 },
-  { key: 'overnight', label: 'Night',     icon: '⭐', start: 0,  end: 4  },
+  { key: 'morning',   label: 'Morning',   icon: '🌅', start: 5,  end: 11, defaultColor: '#f59e0b' },
+  { key: 'afternoon', label: 'Afternoon', icon: '☀️', start: 12, end: 17, defaultColor: '#3b82f6' },
+  { key: 'evening',   label: 'Evening',   icon: '🌙', start: 18, end: 23, defaultColor: '#8b5cf6' },
+  { key: 'overnight', label: 'Night',     icon: '⭐', start: 0,  end: 4,  defaultColor: '#6366f1' },
 ];
 
 const getMins = (t) => { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; };
@@ -57,8 +58,8 @@ function saveCollapseState(state) {
   try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(state)); } catch {}
 }
 
-// Default: overnight closed, others open
-const DEFAULT_COLLAPSE = { morning: true, afternoon: true, evening: true, overnight: false };
+// Default: all open, overnight auto-collapses only when empty
+const DEFAULT_COLLAPSE = { morning: true, afternoon: true, evening: true, overnight: true };
 
 // ── Layout clustering ─────────────────────────────────────────────────────────
 function clusterTasks(tasks) {
@@ -102,8 +103,9 @@ function clusterTasks(tasks) {
 }
 
 // ── Section block component ───────────────────────────────────────────────────
-function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick, openState, onToggle }) {
+function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick, openState, onToggle, draggedTaskId, dragOverSection, onSetDraggedTaskId, onSetDragOverSection, sectionColors, onSetSectionColors, onMoveToDate, bulkMode, selectedIds, onBulkSelect, handleReorder }) {
   const open = openState;
+  const accentColor = sectionColors[section.key] || section.defaultColor;
 
   const sectionTasks = tasks.filter(t => {
     const h = parseInt((t.time || '00:00').split(':')[0]);
@@ -131,6 +133,13 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
         tabIndex={0}
         onKeyDown={e => e.key === 'Enter' && onToggle()}
         aria-expanded={open}
+        style={{ position:'sticky', top:0, zIndex:6, background:'var(--bg-card, #151520)', borderLeft:`3px solid ${accentColor}` }}
+        onContextMenu={e => {
+          e.preventDefault();
+          const cycle = ['#f59e0b','#3b82f6','#8b5cf6','#10b981','#ef4444','#ec4899','#6366f1', section.defaultColor];
+          const next = cycle[(cycle.indexOf(accentColor) + 1) % cycle.length];
+          onSetSectionColors({ ...sectionColors, [section.key]: next });
+        }}
       >
         <span className="tl-section-icon">{section.icon}</span>
         <span className="tl-section-title">{section.label}</span>
@@ -202,6 +211,36 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
             </div>
           ))}
 
+          {/* Drop zone overlay when dragging across sections */}
+          {draggedTaskId && section.key !== dragOverSection && (
+            <div
+              onMouseEnter={() => onSetDragOverSection(section.key)}
+              onTouchStart={() => onSetDragOverSection(section.key)}
+              onClick={() => {
+                const task = tasks.find(t => t.id === draggedTaskId);
+                if (task) {
+                  const dropTime = `${section.start.toString().padStart(2,'0')}:00`;
+                  onDragTime(draggedTaskId, dropTime);
+                }
+                onSetDraggedTaskId(null);
+                onSetDragOverSection(null);
+              }}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 10,
+                border: '2px dashed rgba(99,102,241,0.3)',
+                borderRadius: 12,
+                background: 'rgba(99,102,241,0.04)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                opacity: draggedTaskId && !dragOverSection ? 1 : 0.5,
+              }}
+            >
+              <span style={{ color: 'var(--accent-blue)', fontSize: '0.78rem', fontWeight: 700, background: 'var(--bg-card)', padding: '6px 14px', borderRadius: 20, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
+                Drop to {section.label} at {section.start.toString().padStart(2,'0')}:00
+              </span>
+            </div>
+          )}
+
           {/* Tasks in this section */}
           {clustered.filter(t => {
             const h = parseInt((t.time || '00:00').split(':')[0]);
@@ -221,6 +260,17 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 onEdit={() => onEditTask && onEditTask(task)}
                 onDragTime={t => onDragTime(task.id, t)}
                 sectionOffsetMins={section.start * 60}
+                bulkMode={bulkMode}
+                isSelected={selectedIds?.has(task.id)}
+                onBulkSelect={() => onBulkSelect?.(task.id)}
+                onDragStart={() => { onSetDraggedTaskId?.(task.id); onSetDragOverSection?.(section.key); }}
+                onDragEnd={() => { onSetDraggedTaskId?.(null); onSetDragOverSection?.(null); }}
+                onReorder={handleReorder}
+                onMoveToDate={onMoveToDate}
+                blocked={task.dependsOn?.length > 0 && task.dependsOn.some(depId => {
+                  const dep = tasks.find(t => t.id === depId);
+                  return dep && dep.status !== 'Completed';
+                })}
               />
             );
           })}
@@ -254,15 +304,27 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, onSelectDate, filters = {} }) {
+export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, onAddClick, isFutureDate, onSelectDate, filters = {}, bulkMode, selectedIds, onBulkSelect, onMoveToDate }) {
   const { timelinePrefs } = useHabits();
   const initialZoom = granularityToZoom(timelinePrefs.intervalGranularity);
   const [zoom, setZoom] = useState(initialZoom);
   const timelineRef = useRef(null);
   const isMobile = useIsMobile();
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [dragOverSection, setDragOverSection] = useState(null);
 
   // #8 — Persist section collapse state
   const [sectionOpen, setSectionOpen] = useState(() => loadCollapseState() ?? DEFAULT_COLLAPSE);
+  const allCollapsed = Object.values(sectionOpen).every(v => !v);
+
+  // #52 — Per-section color overrides
+  const [sectionColors, setSectionColors] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tl_section_colors') || '{}'); } catch { return {}; }
+  });
+  const saveSectionColors = (colors) => {
+    setSectionColors(colors);
+    try { localStorage.setItem('tl_section_colors', JSON.stringify(colors)); } catch {}
+  };
 
   const toggleSection = useCallback((key) => {
     setSectionOpen(prev => {
@@ -309,6 +371,22 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
     onUpdateTask(updated);
   };
 
+  // #25 — Reorder tasks (drag within same time slot)
+  const handleReorder = useCallback((taskId, direction) => {
+    const sameTime = tasks.filter(t => t.time === tasks.find(x => x.id === taskId)?.time);
+    if (sameTime.length < 2) return;
+    sameTime.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const idx = sameTime.findIndex(t => t.id === taskId);
+    if (idx < 0 || (direction === -1 && idx === 0) || (direction === 1 && idx === sameTime.length - 1)) return;
+    const swap = sameTime[idx + direction];
+    const updated = tasks.map(t => {
+      if (t.id === taskId) return { ...t, sortOrder: swap.sortOrder ?? 0 };
+      if (t.id === swap.id) return { ...swap, sortOrder: t.sortOrder ?? 0 };
+      return t;
+    });
+    onUpdateTask(updated);
+  }, [tasks, onUpdateTask]);
+
   // Auto-scroll to current time on mount
   useEffect(() => {
     if (!timelineRef.current || isFutureDate || date !== format(new Date(), 'yyyy-MM-dd')) return;
@@ -333,6 +411,56 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
   };
 
   const hasTasks = tasks.length > 0;
+
+  // #50 — Quick-add state & handler
+  const [quickAddText, setQuickAddText] = useState('');
+  const quickInputRef = useRef(null);
+  const handleQuickAdd = useCallback(() => {
+    const raw = quickAddText.trim();
+    if (!raw) return;
+    let text = raw;
+    let time = null, priority = 'medium', tags = [], notes = '';
+
+    // Parse time: @HH:MM or at 2pm / at 14:30
+    const timeMatch = text.match(/@(\d{1,2})(?::(\d{2}))?\s*$/i) || text.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(pm|am)?\s*$/i);
+    if (timeMatch) {
+      let h = parseInt(timeMatch[1]);
+      const m = parseInt(timeMatch[2]) || 0;
+      if (timeMatch[3]?.toLowerCase() === 'pm' && h < 12) h += 12;
+      if (timeMatch[3]?.toLowerCase() === 'am' && h === 12) h = 0;
+      time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      text = text.replace(timeMatch[0], '').trim();
+    }
+
+    // Parse priority: !high, !low, !critical, !medium
+    const prioMatch = text.match(/!(high|low|medium|critical)\b/i);
+    if (prioMatch) { priority = prioMatch[1].toLowerCase(); text = text.replace(prioMatch[0], '').trim(); }
+
+    // Parse tags: #tag
+    const tagMatches = text.match(/#(\w[\w-]*)/g);
+    if (tagMatches) { tags = tagMatches.map(t => t.slice(1).toLowerCase()); text = text.replace(/#\w[\w-]*/g, '').trim(); }
+
+    // Parse notes after period or |
+    const noteSep = text.match(/[.·|]\s*(.+)/);
+    if (noteSep) { notes = noteSep[1].trim(); text = text.replace(noteSep[0], '').trim(); }
+
+    // Create task directly
+    const newTask = {
+      id: `task_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+      title: text || 'Untitled',
+      time: time || format(new Date(), 'HH:mm'),
+      status: 'Pending',
+      priority,
+      category: 'Other',
+      duration: 30,
+      tags: tags.length > 0 ? tags : undefined,
+      notes: notes || undefined,
+      createdAt: new Date().toISOString(),
+    };
+    onUpdateTask([...(tasks || []), newTask]);
+    setQuickAddText('');
+    quickInputRef.current?.focus();
+  }, [quickAddText, onUpdateTask, tasks]);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -400,6 +528,22 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             title={onSelectDate ? "Choose a specific day" : undefined}
           >
             {format(new Date(date + 'T12:00:00'), isMobile ? 'EEE, MMM d' : 'EEEE, MMMM d')}
+            {/* #54 — Progress ring */}
+            {(() => {
+              const total = tasks.filter(t => !t.isVirtual).length;
+              const done  = tasks.filter(t => t.status === 'Completed').length;
+              const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+              const r = 9, circ = 2 * Math.PI * r;
+              return total > 0 ? (
+                <svg width={24} height={24} viewBox="0 0 24 24" style={{ flexShrink:0 }} aria-label={`${pct}% completed`}>
+                  <circle cx={12} cy={12} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3} />
+                  <circle cx={12} cy={12} r={r} fill="none" stroke="var(--accent-blue)" strokeWidth={3}
+                    strokeDasharray={circ} strokeDashoffset={circ - (pct / 100) * circ}
+                    transform="rotate(-90 12 12)" strokeLinecap="round" />
+                  <text x={12} y={12.5} textAnchor="middle" fill="var(--text-muted)" fontSize="6.5" fontWeight={700}>{pct}</text>
+                </svg>
+              ) : null;
+            })()}
             {onSelectDate && (
               <input
                 id="tl-native-date-picker"
@@ -463,6 +607,22 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             ))}
           </div>
         )}
+        <button onClick={() => { const val = allCollapsed; const next = Object.fromEntries(TIME_SECTIONS.map(s => [s.key, val])); setSectionOpen(next); saveCollapseState(next); }}
+          style={{ background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', color:'var(--text-muted)', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font-sans)', marginLeft:4, whiteSpace:'nowrap' }}
+          title={allCollapsed ? 'Expand all sections' : 'Collapse all sections'}
+        >
+          {allCollapsed ? 'Expand all' : 'Collapse all'}
+        </button>
+      </div>
+
+      {/* #50 — Quick-add bar */}
+      <div style={{ display:'flex', gap:8, padding:'8px 0', alignItems:'center' }}>
+        <input ref={quickInputRef} type="text" placeholder='Quick-add task… (e.g. "Buy groceries @14:30")'
+          style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'var(--font-sans)', outline:'none' }}
+          value={quickAddText} onChange={e => setQuickAddText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleQuickAdd(); }}
+        />
+        <button onClick={handleQuickAdd} style={{ background:'var(--accent)', border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontWeight:600, fontSize:'0.75rem', cursor:'pointer', fontFamily:'var(--font-sans)', whiteSpace:'nowrap' }}>Add</button>
       </div>
 
       {/* #9 — Drag-to-reschedule affordance hint */}
@@ -479,7 +639,14 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
         ref={timelineRef}
         style={{ position: 'relative', overflowX: 'hidden' }}
       >
-        {TIME_SECTIONS.map(section => (
+        {filteredTasks.length === 0 ? (
+          <div style={{ padding:'60px 20px', textAlign:'center', color:'var(--text-muted)' }}>
+            <div style={{ fontSize:'2.5rem', marginBottom:12, opacity:0.3 }}>📋</div>
+            <p style={{ margin:0, fontSize:'0.85rem', fontWeight:500 }}>No tasks for this day</p>
+            <p style={{ margin:'6px 0 0', fontSize:'0.72rem', opacity:0.6 }}>Tap + to add one</p>
+          </div>
+        ) : (
+          TIME_SECTIONS.map(section => (
           <TimeSection
             key={section.key}
             section={section}
@@ -495,8 +662,19 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             onAddClick={onAddClick}
             openState={sectionOpen[section.key] ?? true}
             onToggle={() => toggleSection(section.key)}
+            draggedTaskId={draggedTaskId}
+            dragOverSection={dragOverSection}
+            onSetDraggedTaskId={setDraggedTaskId}
+            onSetDragOverSection={setDragOverSection}
+            sectionColors={sectionColors}
+            onSetSectionColors={saveSectionColors}
+            onMoveToDate={onMoveToDate}
+            bulkMode={bulkMode}
+            selectedIds={selectedIds}
+            onBulkSelect={onBulkSelect}
+            handleReorder={handleReorder}
           />
-        ))}
+        )))}
       </div>
     </div>
   );

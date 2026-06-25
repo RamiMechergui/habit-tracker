@@ -4,6 +4,7 @@ import {
   ChevronDown, BarChart2, Flame, Target, TrendingUp, TrendingDown,
   Calendar, Clock, Award, AlertCircle, CheckCircle2, X
 } from 'lucide-react';
+import './StatisticsPanel.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const PRIORITY_WEIGHTS = { low: 1, medium: 2, high: 3, critical: 4 };

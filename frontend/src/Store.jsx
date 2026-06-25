@@ -126,34 +126,35 @@ export const HabitProvider = ({ children }) => {
     switch (def.recurrence) {
       case 'daily':    return true;
       case 'weekdays': return dow >= 1 && dow <= 5;
-      case 'weekly':   return dow === new Date((def.startDate || def.createdAt?.slice(0,10) || dateStr) + 'T12:00:00').getDay();
-      case 'monthly':  return new Date(dateStr + 'T12:00:00').getDate() === new Date((def.startDate || def.createdAt?.slice(0,10) || dateStr) + 'T12:00:00').getDate();
+      case 'weekly':   return dow === new Date((def.startDate || def.createdAt?.slice(0,10)) + 'T12:00:00').getDay();
+      case 'monthly':  return new Date(dateStr + 'T12:00:00').getDate() === new Date((def.startDate || def.createdAt?.slice(0,10)) + 'T12:00:00').getDate();
       case 'custom':   return Array.isArray(def.customDays) && def.customDays.includes(WEEKDAY_NAMES[dow]);
       default:         return false;
     }
   }, []);
 
   // Get virtual recurring task instances that apply to a date, merged with real log overrides
-  const getVirtualTasksForDate = useCallback((dateStr) => {
+  // Accept optional existingTasks param for optimistic override detection
+  const getVirtualTasksForDate = useCallback((dateStr, existingTasksOverride) => {
+    let existingTasks = existingTasksOverride ?? [];
+    if (!existingTasksOverride) {
+      const existingLog = logs[dateStr];
+      if (existingLog) {
+        if (Array.isArray(existingLog.tasks)) {
+          existingTasks = existingLog.tasks;
+        } else if (existingLog.tasks?.tasks && Array.isArray(existingLog.tasks.tasks)) {
+          existingTasks = existingLog.tasks.tasks;
+        }
+      }
+    }
     return Object.values(recurringTasks)
       .filter(def => recurringMatchesDate(def, dateStr))
       .map(def => {
-        const instanceId = `rec_${def.id}_${dateStr}`;
-        // If there is a real saved override for this date's log, use it
-        const existingLog = logs[dateStr];
-        let existingTasks = [];
-        if (existingLog && existingLog.tasks) {
-          if (Array.isArray(existingLog.tasks)) {
-            existingTasks = existingLog.tasks;
-          } else if (existingLog.tasks.tasks && Array.isArray(existingLog.tasks.tasks)) {
-            existingTasks = existingLog.tasks.tasks;
-          }
-        }
         const override = existingTasks.find(t => t.recurringId === def.id);
-        if (override) return null; // already persisted, don't create virtual duplicate
+        if (override) return null;
         return {
           ...def,
-          id:          instanceId,
+          id:          `rec_${def.id}_${dateStr}`,
           recurringId: def.id,
           status:      'Pending',
           isVirtual:   true,
@@ -980,8 +981,17 @@ export const HabitProvider = ({ children }) => {
     return emptyLog;
   }, [logs, currentBook, createEmptyDay]);
 
+  const saveLock = useRef(false);
+
   const saveLog = useCallback(async (dateStr, logData) => {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    try {
     const data = JSON.parse(JSON.stringify(logData));
+    // Strip virtual tasks before persisting
+    if (Array.isArray(data.tasks)) {
+      data.tasks = data.tasks.filter(t => !t.isVirtual);
+    }
     // Scoring Logic Calculation
     let mScore = 0;
     
@@ -1099,6 +1109,7 @@ export const HabitProvider = ({ children }) => {
       }
     }
     logHistory('daily_log', `Updated daily log for ${dateStr}`);
+    } finally { saveLock.current = false; }
   }, [user, API_URL]);
 
   const addExpenseCategory = async (category) => {

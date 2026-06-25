@@ -1,5 +1,18 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import './TaskCard.css';
 import { Clock, CheckCircle, XCircle, GripVertical, AlertTriangle, RefreshCw, Flame, Zap } from 'lucide-react';
+
+// ── Completion confetti particles ─────────────────
+function createConfetti(container) {
+  if (!container) return;
+  const colors = ['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;border-radius:${Math.random()>0.5?'50%':'2px'};background:${colors[i%colors.length]};top:${40+Math.random()*60}%;left:${Math.random()*100}%;pointer-events:none;z-index:20;animation:confettiFall ${0.6+Math.random()*0.8}s ease-out forwards;--dx:${(Math.random()-0.5)*120}px;--dy:${-(40+Math.random()*80)}px`;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+}
 
 const PRIORITY_COLORS = {
   low:      'var(--priority-low)',
@@ -52,6 +65,7 @@ const PRIORITY_VISUALS = {
 
 export default function TaskCard({
   task, onUpdateStatus, onEdit, onDragTime, isFutureDate, zoomFactor = 1, sectionOffsetMins = 0, hourHeight = 90,
+  bulkMode, isSelected, onBulkSelect, onDragStart, onDragEnd, blocked = false, onReorder, onMoveToDate,
 }) {
   const [swipeOffset,    setSwipeOffset]    = useState(0);
   const [dragY,          setDragY]          = useState(0);
@@ -59,10 +73,20 @@ export default function TaskCard({
   const [isDraggingTime, setIsDraggingTime] = useState(false);
   const [pop,            setPop]            = useState(false);
   const [progress,       setProgress]       = useState(() => getTimeProgress(task.time, task.duration));
+  const [timerOn,        setTimerOn]        = useState(false);
+  const [timerSeconds,   setTimerSeconds]   = useState(0);
+
+  // #27 — Ambient timer tick
+  useEffect(() => {
+    if (!timerOn) return;
+    const id = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [timerOn]);
 
   const startX    = useRef(0);
   const startY    = useRef(0);
   const longPress = useRef(null);
+  const cardRef   = useRef(null);
 
   useEffect(() => {
     const id = setInterval(() => setProgress(getTimeProgress(task.time, task.duration)), 30_000);
@@ -84,7 +108,12 @@ export default function TaskCard({
   }, [isSwiping, isDraggingTime]);
 
   const triggerStatus = useCallback((status) => {
-    if (status === 'Completed' && task.status !== 'Completed') { setPop(true); setTimeout(() => setPop(false), 600); }
+    if (status === 'Completed' && task.status !== 'Completed') {
+      setPop(true); setTimeout(() => setPop(false), 600);
+      setTimeout(() => createConfetti(cardRef.current), 50);
+      window.dispatchEvent(new CustomEvent('task-completed', { detail: { title: task.title } }));
+    }
+    try { navigator.vibrate?.(10); } catch {}
     onUpdateStatus(status);
   }, [task.status, onUpdateStatus]);
 
@@ -100,7 +129,8 @@ export default function TaskCard({
   const handleDragStart = useCallback((e) => {
     e.stopPropagation(); setIsDraggingTime(true);
     startY.current = e.touches ? e.touches[0].clientY : e.clientY;
-  }, []);
+    onDragStart?.();
+  }, [onDragStart]);
 
   const handleDragMove = useCallback((e) => {
     if (!isDraggingTime) return;
@@ -112,6 +142,7 @@ export default function TaskCard({
   const handleDragEnd = useCallback(() => {
     if (!isDraggingTime || isFutureDate) return;
     setIsDraggingTime(false);
+    onDragEnd?.();
     const pxPerMin  = hourHeight / 60;
     const [hours, minutes] = (task.time || '00:00').split(':').map(Number);
     const baseTop   = (hours * 60 + minutes) * pxPerMin;
@@ -157,7 +188,7 @@ export default function TaskCard({
   const pVisual       = PRIORITY_VISUALS[task.priority] || PRIORITY_VISUALS.medium;
 
   const showProgress = task.status === 'Pending' && progress > 0 && progress < 100;
-  const isActive     = isSwiping || isDraggingTime;
+  const isActive     = isSwiping || isDraggingTime || bulkMode;
   const isSkipped    = statusKey === 'Skipped';
 
   return (
@@ -185,23 +216,24 @@ export default function TaskCard({
       </div>
 
       {/* Card */}
-      <div
+      <div ref={cardRef}
         className={`task-card-v2 ${statusKey.toLowerCase()} ${pVisual.glowClass} ${pop ? 'task-card-pop' : ''}`}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClick={() => { if (!isDraggingTime) onEdit?.(); }}
+        onTouchStart={bulkMode ? undefined : handleTouchStart}
+        onTouchMove={bulkMode ? undefined : handleTouchMove}
+        onTouchEnd={bulkMode ? undefined : handleTouchEnd}
+        onClick={() => { if (bulkMode) { onBulkSelect?.(); return; } if (!isDraggingTime) onEdit?.(); }}
         style={{
           boxShadow:              isDraggingTime ? '0 12px 28px rgba(0,0,0,0.35)' : undefined,
-          cursor:                 'pointer',
-          touchAction:            'pan-y',
+          cursor:                 bulkMode ? 'pointer' : 'pointer',
+          touchAction:            bulkMode ? 'auto' : 'pan-y',
           WebkitTapHighlightColor:'transparent',
           textDecoration:          isSkipped ? 'line-through' : undefined,
+          outline:                 isSelected ? '2px solid var(--priority-medium)' : undefined,
         }}
         role="button"
         tabIndex={0}
         aria-label={`Task: ${task.title}, Status: ${statusKey}, Priority: ${task.priority}`}
-        onKeyDown={e => { if (e.key === 'Enter') onEdit?.(); }}
+        onKeyDown={e => { if (e.key === 'Enter') bulkMode ? onBulkSelect?.() : onEdit?.(); }}
       >
         {/* Priority stripe */}
         <div className="priority-stripe" style={{ background: priorityColor }} aria-hidden="true" />
@@ -214,7 +246,9 @@ export default function TaskCard({
         <div className="task-card-body">
           {/* Title row */}
           <div className="task-card-title-row">
-            <h4 className="task-card-title">
+                <h4 className="task-card-title">
+              {/* #33 — Blocked indicator */}
+              {blocked && <span style={{ color:'var(--priority-critical)', marginRight:4 }} title="Blocked by another task">🔒</span>}
               {/* Recurring icon */}
               {task.recurrence && task.recurrence !== 'none' && (
                 <RefreshCw size={9} className="task-card-recur-icon" aria-label="Recurring" />
@@ -229,14 +263,52 @@ export default function TaskCard({
                 <span className="task-priority-badge" style={{ color: priorityColor }}>{pVisual.badge}</span>
               )}
             </h4>
-            {!isFutureDate && (
-              <div className="task-card-drag-handle"
-                onMouseDown={handleDragStart} onTouchStart={handleDragStart}
-                onClick={e => e.stopPropagation()} aria-label="Drag to reschedule">
-                <GripVertical size={13} aria-hidden="true" />
+            <div className="task-card-drag-handle"
+              onMouseDown={isFutureDate ? undefined : handleDragStart}
+              onTouchStart={isFutureDate ? undefined : handleDragStart}
+              onClick={e => e.stopPropagation()}
+              aria-label={isFutureDate ? 'Future task — cannot drag' : 'Drag to reschedule'}
+              title={isFutureDate ? 'Cannot drag tasks in the future' : 'Drag to change time'}
+              style={{ opacity: isFutureDate ? 0.35 : 0.7, cursor: isFutureDate ? 'not-allowed' : 'grab' }}
+            >
+              <GripVertical size={13} aria-hidden="true" />
+            </div>
+            {onReorder && (
+              <div style={{ display:'flex', flexDirection:'column', gap:1, marginLeft:2 }}>
+                <button onClick={e => { e.stopPropagation(); onReorder(task.id, -1); }} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:0, lineHeight:1, fontSize:'0.55rem', opacity:0.4 }} title="Move up">▲</button>
+                <button onClick={e => { e.stopPropagation(); onReorder(task.id, 1); }} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:0, lineHeight:1, fontSize:'0.55rem', opacity:0.4 }} title="Move down">▼</button>
               </div>
             )}
           </div>
+
+          {/* #55 — Inline note preview */}
+          {task.notes && durationH >= 56 && (
+            <div style={{ fontSize:'0.68rem', color:'var(--text-muted)', padding:'4px 0 6px', lineHeight:1.4, opacity:0.85, fontStyle:'italic' }}>
+              {task.notes.length > 60 ? task.notes.slice(0,60)+'…' : task.notes}
+            </div>
+          )}
+
+          {/* #39 — Tags */}
+          {task.tags && task.tags.length > 0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:4, padding:'0 0 6px' }}>
+              {task.tags.map(tag => (
+                <span key={tag} style={{ background:'rgba(59,130,246,0.1)', color:'var(--accent-blue)', borderRadius:3, padding:'1px 6px', fontSize:'0.6rem', fontWeight:600 }}>
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* #32 — Subtasks summary */}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:4, padding:'0 0 6px', fontSize:'0.65rem', color:'var(--text-muted)' }}>
+              {task.subtasks.map(st => (
+                <span key={st.id} style={{ opacity:st.done?0.4:0.8 }}>
+                  {st.done ? '✓' : '○'} {st.title.length > 20 ? st.title.slice(0,20)+'…' : st.title}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Meta row */}
           {durationH >= 56 && (
@@ -244,7 +316,16 @@ export default function TaskCard({
               <span className="task-card-time">
                 <Clock size={9} aria-hidden="true" />
                 {task.time}{task.duration ? ` · ${task.duration}m` : ''}
+                {/* #27 — Ambient timer */}
+                {timerOn && (
+                  <span style={{ marginLeft:6, color:'var(--status-completed)', fontWeight:600 }}>
+                    {String(Math.floor(timerSeconds/60)).padStart(2,'0')}:{String(timerSeconds%60).padStart(2,'0')}
+                  </span>
+                )}
               </span>
+              <button onClick={e => { e.stopPropagation(); setTimerOn(p => !p); if (!timerOn) setTimerSeconds(0); }}
+                style={{ background:'none', border:'none', color:timerOn?'var(--status-completed)':'var(--text-muted)', cursor:'pointer', padding:'2px 4px', fontSize:'0.6rem', fontWeight:600, fontFamily:'var(--font-sans)' }}
+                title={timerOn ? 'Stop timer' : 'Start timer'}>{timerOn ? '■' : '▶'}</button>
               <span className={`task-status-pill ${statusMeta.cls}`}>{statusMeta.label}</span>
               {task.category && task.category !== 'Other' && (
                 <span className="category-chip"
@@ -256,6 +337,38 @@ export default function TaskCard({
               {task.delayReason && (
                 <AlertTriangle size={10} className="task-card-delay-icon" title={`Reason: ${task.delayReason}`} aria-label={`Delay reason: ${task.delayReason}`} />
               )}
+              {/* #45 — Linked page */}
+              {task.linkedPage && (
+                <span style={{ background:'rgba(139,92,246,0.1)', color:'#8b5cf6', borderRadius:3, padding:'1px 6px', fontSize:'0.6rem', fontWeight:600 }}>
+                  📘 {task.linkedPage.split('/').pop()}
+                </span>
+              )}
+              {/* #38 — Skip this occurrence for recurring tasks */}
+              {(task.recurrence || task.recurringId) && task.status !== 'Skipped' && (
+                <button onClick={e => { e.stopPropagation(); onUpdateStatus(task.id, 'Skipped'); }}
+                  style={{ background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:4, padding:'1px 6px', color:'var(--text-muted)', fontSize:'0.6rem', fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)', lineHeight:'16px' }}
+                  title="Skip this occurrence"
+                >Skip</button>
+              )}
+              {/* #44 — Overdue escalation badge */}
+              {task.status === 'Missed' && (
+                <span style={{ background:'var(--priority-critical)', color:'#fff', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, lineHeight:'16px', whiteSpace:'nowrap' }}>
+                  OVERDUE
+                </span>
+              )}
+              {onMoveToDate && (
+                <span style={{ position:'relative', display:'inline-flex', alignItems:'center' }}>
+                  <button onClick={e => { e.stopPropagation(); const inp = e.currentTarget.nextElementSibling; if (inp) { try { inp.showPicker?.(); inp.click?.(); } catch {} } }}
+                    style={{ background:'none', border:'none', color:'var(--text-muted)', opacity:0.4, cursor:'pointer', padding:0, lineHeight:1, fontSize:'0.65rem', fontFamily:'var(--font-sans)' }}
+                    title="Move to another day">↳</button>
+                  <input type="date" style={{ position:'absolute', top:'100%', right:0, width:0, height:0, padding:0, border:'none', opacity:0, pointerEvents:'none' }}
+                    onChange={e => { if (e.target.value) { onMoveToDate(task, e.target.value); e.target.value = ''; } }} />
+                </span>
+              )}
+              <button onClick={e => { e.stopPropagation(); const txt = `${task.title} (${task.time}${task.duration ? ', '+task.duration+'m' : ''})${task.notes ? '\n'+task.notes : ''}`; navigator.clipboard?.writeText(txt).catch(() => {}); }}
+                style={{ background:'none', border:'none', color:'var(--text-muted)', opacity:0.5, cursor:'pointer', padding:0, lineHeight:1, fontSize:'0.65rem', fontFamily:'var(--font-sans)', marginLeft:'auto' }}
+                title="Copy task details" aria-label="Copy task details"
+              >Share</button>
             </div>
           )}
 

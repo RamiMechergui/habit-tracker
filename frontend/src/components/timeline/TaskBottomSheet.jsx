@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Clock, AlignLeft, Target, Trash2, Copy, RefreshCw, AlertCircle, Repeat } from 'lucide-react';
+import { X, Clock, AlignLeft, Target, Trash2, Copy, RefreshCw, AlertCircle, Repeat, Calendar, Bookmark, CalendarPlus, Lightbulb } from 'lucide-react';
 import { useHabits } from '../../Store';
+import './TaskBottomSheet.css';
 
 const PRIORITIES = [
   { key: 'low',      label: '▾ Low',   cls: 'active-low'      },
@@ -31,6 +32,28 @@ const RECURRENCES = [
 ];
 
 
+
+const DEFAULT_TEMPLATES = [
+  { title: 'Morning routine', priority: 'medium', category: 'Personal', time: '07:00', duration: '30' },
+  { title: 'Daily standup', priority: 'high', category: 'Work', time: '09:00', duration: '15' },
+  { title: 'Deep work block', priority: 'critical', category: 'Work', time: '10:00', duration: '120' },
+  { title: 'Exercise', priority: 'medium', category: 'Health', time: '17:00', duration: '45' },
+  { title: 'Read / Learn', priority: 'low', category: 'Learning', time: '20:00', duration: '30' },
+];
+
+const STORAGE_KEY = 'task_templates';
+
+function loadTemplates() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; }
+  } catch {}
+  return DEFAULT_TEMPLATES;
+}
+
+function saveTemplates(templates) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(templates)); } catch {}
+}
 
 const WEEKDAYS = [
   { key: 'monday',    short: 'Mo' },
@@ -74,10 +97,13 @@ function TimePicker24h({ id, value, onChange, granularity = 30, label, endMinute
 }
 
 export default function TaskBottomSheet({
-  isOpen, onClose, onSave, onDelete, onDuplicate, initialData, isFutureDate, suggestedHour
+  isOpen, onClose, onSave, onDelete, onDuplicate, initialData, isFutureDate, suggestedHour, onCloneToDate, availableTasks = []
 }) {
   const { timelinePrefs, saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask } = useHabits();
   const { defaultDuration, intervalGranularity } = timelinePrefs;
+
+  const [templates, setTemplates] = useState(loadTemplates);
+  const [showTemplates, setShowTemplates] = useState(!initialData);
 
   const [title,               setTitle]               = useState('');
   const [description,         setDescription]         = useState('');
@@ -88,10 +114,36 @@ export default function TaskBottomSheet({
   const [category,            setCategory]            = useState('Other');
   const [status,              setStatus]              = useState('Pending');
   const [delayReason,         setDelayReason]         = useState('');
+  const [reasonConfirmed,     setReasonConfirmed]     = useState(false);
   const [recurrence,          setRecurrence]          = useState('none');
   const [customDays,          setCustomDays]          = useState([]);
   const [editScope,           setEditScope]           = useState('this'); // 'this' | 'all'
+  const [endDate,             setEndDate]             = useState('');
+  const [tags,                setTags]                = useState([]);
+  const [tagInput,            setTagInput]            = useState('');
+  const [cloneDate,           setCloneDate]           = useState('');
+  const [linkedPage,          setLinkedPage]          = useState('');
+  const [subtasks,            setSubtasks]            = useState([]);
+  const [subtaskInput,        setSubtaskInput]        = useState('');
+  const [dependsOn,           setDependsOn]           = useState([]);
 
+  const addSubtask = () => {
+    const t = subtaskInput.trim();
+    if (!t) return;
+    setSubtasks(prev => [...prev, { id: `st_${Date.now()}`, title: t, done: false }]);
+    setSubtaskInput('');
+  };
+
+  const toggleSubtask = (id) => setSubtasks(prev => prev.map(st => st.id === id ? { ...st, done: !st.done } : st));
+  const removeSubtask = (id) => setSubtasks(prev => prev.filter(st => st.id !== id));
+
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (t && !tags.includes(t)) setTags(prev => [...prev, t]);
+    setTagInput('');
+  };
+
+  const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
 
   const startH = fromStr(startTime).h, startM = fromStr(startTime).m;
   const endH   = fromStr(endTime).h,   endM   = fromStr(endTime).m;
@@ -126,8 +178,14 @@ export default function TaskBottomSheet({
       setCategory(initialData.category || 'Other');
       setStatus(initialData.status || 'Pending');
       setDelayReason(initialData.delayReason || '');
+      setReasonConfirmed(!!initialData.delayReason);
       setRecurrence(initialData.recurrence || 'none');
       setCustomDays(initialData.customDays || []);
+      setEndDate(initialData.endDate || '');
+      setTags(initialData.tags || []);
+      setLinkedPage(initialData.linkedPage || '');
+      setSubtasks(initialData.subtasks || []);
+      setDependsOn(initialData.dependsOn || []);
       setEditScope('this');
 
     } else {
@@ -139,9 +197,35 @@ export default function TaskBottomSheet({
       setTitle(''); setDescription('');
       setStartTimeRaw(st); setEndTimeRaw(toStr(end.h, end.m)); setUserEditedEnd(false);
       setPriority('medium'); setCategory('Other'); setStatus('Pending');
-      setDelayReason(''); setRecurrence('none'); setCustomDays([]); setEditScope('this');
+      setDelayReason(''); setRecurrence('none'); setCustomDays([]); setEndDate(''); setEditScope('this');
     }
   }, [initialData, isOpen, suggestedHour, defaultDuration, intervalGranularity]);
+
+  const applyTemplate = useCallback((tmpl) => {
+    setTitle(tmpl.title || '');
+    setStartTimeRaw(tmpl.time || '09:00');
+    const { h, m } = fromStr(tmpl.time || '09:00');
+    const end = addDuration(h, m, parseInt(tmpl.duration) || defaultDuration);
+    setEndTimeRaw(toStr(end.h, end.m));
+    setUserEditedEnd(true);
+    setPriority(tmpl.priority || 'medium');
+    setCategory(tmpl.category || 'Other');
+    setShowTemplates(false);
+  }, [defaultDuration]);
+
+  const saveAsTemplate = useCallback(() => {
+    if (!title.trim()) return;
+    const newTmpl = { title: title.trim(), priority, category, time: startTime, duration: String(duration) };
+    const updated = [newTmpl, ...templates.filter(t => t.title !== newTmpl.title)].slice(0, 20);
+    setTemplates(updated);
+    saveTemplates(updated);
+  }, [title, priority, category, startTime, duration, templates]);
+
+  const removeTemplate = useCallback((tmplTitle) => {
+    const updated = templates.filter(t => t.title !== tmplTitle);
+    setTemplates(updated);
+    saveTemplates(updated);
+  }, [templates]);
 
   if (!isOpen) return null;
 
@@ -164,6 +248,11 @@ export default function TaskBottomSheet({
       delayReason:         (['Delayed','Missed'].includes(status)) ? delayReason.trim() : '',
       recurrence,
       customDays:          recurrence === 'custom' ? customDays : [],
+      endDate:             recurrence !== 'none' ? endDate : '',
+      tags:                tags.length > 0 ? tags : undefined,
+      linkedPage:          linkedPage || undefined,
+      subtasks:            subtasks.length > 0 ? subtasks : undefined,
+      dependsOn:           dependsOn.length > 0 ? dependsOn : undefined,
       createdAt:           initialData?.createdAt || new Date().toISOString(),
     };
 
@@ -222,12 +311,22 @@ export default function TaskBottomSheet({
               <p style={{ margin:'2px 0 0', fontSize:'0.72rem', color:'var(--text-muted)' }}>Created {new Date(initialData.createdAt).toLocaleDateString()}</p>
             )}
           </div>
-          <div style={{ display:'flex', gap:8 }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {initialData && onDuplicate && !isEditingRecurring && (
               <button className="btn" style={{ background:'rgba(59,130,246,0.1)', color:'var(--accent-blue)', padding:'8px 12px', fontSize:'0.78rem', fontWeight:600 }}
                 onClick={() => { onDuplicate(initialData); onClose(); }}>
                 <Copy size={14} /> Duplicate
               </button>
+            )}
+            {initialData && onCloneToDate && (
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <input type="date" value={cloneDate} onChange={e => setCloneDate(e.target.value)}
+                  style={{ padding:'6px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:'0.72rem', fontFamily:'var(--font-sans)', maxWidth:120 }} />
+                <button className="btn" style={{ background:'rgba(16,185,129,0.12)', color:'var(--status-completed)', padding:'8px 10px', fontSize:'0.72rem', fontWeight:600, whiteSpace:'nowrap' }}
+                  onClick={() => { if (cloneDate) onCloneToDate(initialData, cloneDate); onClose(); }} disabled={!cloneDate}>
+                  <CalendarPlus size={13} /> Clone
+                </button>
+              </div>
             )}
             <button className="btn" style={{ background:'var(--bg-card)', color:'var(--text-primary)', border:'1px solid var(--border)', padding:'8px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}
               onClick={onClose} aria-label="Close"><X size={18} /></button>
@@ -251,6 +350,27 @@ export default function TaskBottomSheet({
         <div className="evolvia-scrollbar" style={{ overflowY:'auto', flex:1, padding:'20px 24px' }}>
           <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
 
+            {/* Templates */}
+            {!initialData && showTemplates && templates.length > 0 && (
+              <div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                  <span className="sheet-field-label" style={{ margin:0 }}>Templates</span>
+                  <button onClick={() => setShowTemplates(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', fontSize:'0.72rem', cursor:'pointer', padding:0, fontFamily:'var(--font-sans)' }}>✕ Hide</button>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  {templates.map((tmpl, i) => (
+                    <button key={i} onClick={() => applyTemplate(tmpl)}
+                      style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', fontSize:'0.78rem', fontWeight:600, cursor:'pointer', textAlign:'left', transition:'all 0.15s', fontFamily:'var(--font-sans)', width:'100%' }}
+                    >
+                      <Bookmark size={12} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+                      <span style={{ flex:1 }}>{tmpl.title}</span>
+                      <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>{tmpl.time} · {tmpl.duration}m</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <span className="sheet-field-label">Task Title *</span>
@@ -270,6 +390,82 @@ export default function TaskBottomSheet({
                   placeholder="Add description or notes..." value={description} onChange={e => setDescription(e.target.value)} />
               </div>
             </div>
+
+            {/* #39 — Tags */}
+            <div>
+              <span className="sheet-field-label">Tags</span>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:6 }}>
+                {tags.map(tag => (
+                  <span key={tag} style={{ background:'rgba(59,130,246,0.12)', color:'var(--accent-blue)', borderRadius:4, padding:'2px 8px', fontSize:'0.72rem', display:'flex', alignItems:'center', gap:4 }}>
+                    {tag}
+                    <button onClick={() => removeTag(tag)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1, fontSize:'0.72rem' }}>×</button>
+                  </span>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:6 }}>
+                <input type="text" placeholder="Add tag…" value={tagInput}
+                  onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                  style={{ flex:1, padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'var(--font-sans)', outline:'none' }}
+                />
+                <button onClick={addTag} style={{ background:'var(--accent)', border:'none', borderRadius:8, padding:'8px 12px', color:'#fff', fontWeight:600, fontSize:'0.72rem', cursor:'pointer', fontFamily:'var(--font-sans)' }}>+</button>
+              </div>
+            </div>
+
+            {/* #32 — Subtasks/checklist */}
+            <div>
+              <span className="sheet-field-label">Subtasks <span style={{ fontWeight:400, fontSize:'0.7rem', opacity:0.5 }}>(optional)</span></span>
+              <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:6 }}>
+                {subtasks.map(st => (
+                  <div key={st.id} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 8px', borderRadius:6, background:'rgba(255,255,255,0.03)' }}>
+                    <input type="checkbox" checked={st.done} onChange={() => toggleSubtask(st.id)} style={{ accentColor:'var(--accent-blue)' }} />
+                    <span style={{ flex:1, fontSize:'0.78rem', textDecoration:st.done?'line-through':'none', color:st.done?'var(--text-muted)':'var(--text)' }}>{st.title}</span>
+                    <button onClick={() => removeSubtask(st.id)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:2, fontSize:'0.7rem' }}>×</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:6 }}>
+                <input type="text" placeholder="Add subtask…" value={subtaskInput}
+                  onChange={e => setSubtaskInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
+                  style={{ flex:1, padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'var(--font-sans)', outline:'none' }} />
+                <button onClick={addSubtask} style={{ background:'var(--accent)', border:'none', borderRadius:8, padding:'8px 12px', color:'#fff', fontWeight:600, fontSize:'0.72rem', cursor:'pointer', fontFamily:'var(--font-sans)' }}>+</button>
+              </div>
+            </div>
+
+            {/* #45 — Link to learning page */}
+            <div>
+              <span className="sheet-field-label">Linked Page <span style={{ fontWeight:400, fontSize:'0.7rem', opacity:0.5 }}>(optional)</span></span>
+              <select value={linkedPage} onChange={e => setLinkedPage(e.target.value)}
+                style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'var(--font-sans)', outline:'none' }}>
+                <option value="">None</option>
+                <option value="/learn/german">German</option>
+                <option value="/learn/aws">AWS</option>
+                <option value="/learn/finance">Finance</option>
+              </select>
+            </div>
+
+            {/* #33 — Task dependencies */}
+            {availableTasks.length > 0 && (
+              <div>
+                <span className="sheet-field-label">Depends on <span style={{ fontWeight:400, fontSize:'0.7rem', opacity:0.5 }}>(optional)</span></span>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:6 }}>
+                  {availableTasks.filter(t => t.id !== initialData?.id).map(t => {
+                    const sel = dependsOn.includes(t.id);
+                    return (
+                      <button key={t.id} onClick={() => setDependsOn(prev => sel ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                        style={{ padding:'4px 10px', borderRadius:6, border:'1px solid', fontSize:'0.72rem', cursor:'pointer', fontFamily:'var(--font-sans)',
+                          background: sel ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.04)',
+                          borderColor: sel ? 'var(--accent-blue)' : 'var(--border)',
+                          color: sel ? 'var(--accent-blue)' : 'var(--text-muted)',
+                          fontWeight: sel ? 600 : 400 }}>
+                        {t.title.slice(0, 24)}{t.title.length > 24 ? '…' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Time range */}
             <div>
@@ -302,6 +498,12 @@ export default function TaskBottomSheet({
                   style={{ marginTop:6, background:'none', border:'none', padding:0, color:'var(--accent-blue)', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font-sans)' }}>
                   <RefreshCw size={10} /> Reset to auto (+{defaultDuration} min)
                 </button>
+              )}
+              {/* #40 — Smart scheduling suggestion */}
+              {(priority === 'high' || priority === 'critical') && !initialData && (
+                <div style={{ marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)', color:'var(--priority-high)', fontSize:'0.72rem', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
+                  <Lightbulb size={13} /> Schedule during peak productivity window (morning) for best results
+                </div>
               )}
             </div>
 
@@ -347,9 +549,22 @@ export default function TaskBottomSheet({
             {showDelayReason && (
               <div className="delay-reason-field">
                 <span className="sheet-field-label">{status==='Delayed'?'⏩ Delay Reason':'✗ Missed Reason'}</span>
-                <textarea className="w-full" style={{ resize:'none', minHeight:70 }}
-                  placeholder={`Why was this task ${status.toLowerCase()}?`}
-                  value={delayReason} onChange={e => setDelayReason(e.target.value)} />
+                {reasonConfirmed && delayReason.trim() ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg-card)', borderRadius:8, padding:'8px 12px' }}>
+                    <span style={{ flex:1, fontSize:'0.82rem', color:'var(--text-muted)' }}>{delayReason}</span>
+                    <button onClick={() => setReasonConfirmed(false)} style={{ background:'none', border:'none', color:'var(--accent-blue)', cursor:'pointer', fontSize:'0.72rem', fontFamily:'var(--font-sans)' }}>Edit</button>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', gap:6 }}>
+                    <textarea className="w-full" style={{ resize:'none', minHeight:70, flex:1 }}
+                      placeholder={`Why was this task ${status.toLowerCase()}?`}
+                      value={delayReason} onChange={e => setDelayReason(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (delayReason.trim()) setReasonConfirmed(true); } }} />
+                    {delayReason.trim() && (
+                      <button onClick={() => setReasonConfirmed(true)} style={{ background:'var(--accent)', border:'none', borderRadius:8, color:'#fff', cursor:'pointer', padding:'8px', fontFamily:'var(--font-sans)', fontSize:'0.72rem', fontWeight:600, alignSelf:'flex-end' }}>Confirm</button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -384,6 +599,20 @@ export default function TaskBottomSheet({
                     )}
                   </div>
                 )}
+
+                {/* End date for recurring */}
+                {recurrence !== 'none' && (
+                  <div className="recurrence-end-date" style={{ marginTop:10, display:'flex', alignItems:'center', gap:8 }}>
+                    <Calendar size={14} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+                    <span style={{ fontSize:'0.72rem', color:'var(--text-muted)', fontWeight:500, whiteSpace:'nowrap' }}>Ends:</span>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                      style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', fontSize:'0.78rem', fontFamily:'var(--font-sans)' }}
+                      min={new Date().toISOString().slice(0,10)} />
+                    {endDate && (
+                      <button onClick={() => setEndDate('')} style={{ background:'none', border:'none', padding:4, color:'var(--text-muted)', cursor:'pointer', fontSize:'0.72rem' }}>∞</button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -414,6 +643,14 @@ export default function TaskBottomSheet({
               style={{ background:'rgba(239,68,68,0.1)', color:'#ef4444', padding:'11px', fontWeight:600 }}
               onClick={() => { onDelete(initialData.id); onClose(); }}>
               <Trash2 size={15} /> Delete Task
+            </button>
+          )}
+
+          {title.trim() && (
+            <button className="btn w-full"
+              style={{ background:'rgba(99,102,241,0.08)', color:'#818cf8', padding:'9px', fontWeight:600, fontSize:'0.78rem' }}
+              onClick={saveAsTemplate}>
+              <Bookmark size={13} /> Save as Template
             </button>
           )}
         </div>

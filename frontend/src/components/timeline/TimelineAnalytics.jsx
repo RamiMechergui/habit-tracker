@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { ChevronDown, BarChart2, Flame, Target, Award, TrendingUp } from 'lucide-react';
+import './TimelineAnalytics.css';
 
 const PRIORITY_WEIGHTS = { low: 1, medium: 2, high: 3, critical: 4 };
 const CAT_COLORS = { Work:'var(--cat-work)', Health:'var(--cat-health)', Personal:'var(--cat-personal)', Learning:'var(--cat-learning)', Finance:'var(--cat-finance)', Social:'var(--cat-social)', Other:'var(--cat-other)' };

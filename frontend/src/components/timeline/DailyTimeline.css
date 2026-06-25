@@ -1,0 +1,62 @@
+/* -- Timeline View Wrapper ------------------------- */
+.timeline-view-wrap { animation:pageSlideIn 0.3s ease; }
+
+/* -- Current Time Indicator v2 --------------------- */
+.current-time-line { position:absolute; left:calc(var(--tl-axis-width) - 7px); right:0; display:flex; align-items:center; z-index:5; pointer-events:none; }
+.current-time-dot { width:12px; height:12px; border-radius:50%; background:#ef4444; flex-shrink:0; box-shadow:0 0 0 3px rgba(239,68,68,0.25), 0 0 12px rgba(239,68,68,0.5); animation:timeDotPulse 2s ease-in-out infinite; }
+@keyframes timeDotPulse { 0%,100% { box-shadow:0 0 0 3px rgba(239,68,68,0.25), 0 0 12px rgba(239,68,68,0.4); } 50% { box-shadow:0 0 0 5px rgba(239,68,68,0.12), 0 0 20px rgba(239,68,68,0.6); } }
+.current-time-dash { flex:1; height:1px; background:linear-gradient(90deg, #ef4444, transparent); }
+.current-time-label { background:#ef4444; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:6px; letter-spacing:0.03em; }
+
+/* -- Timeline Sections ----------------------------- */
+.tl-section { margin-bottom:8px; border-radius:14px; overflow:hidden; transition:all 0.2s; }
+.tl-section.collapsed .tl-section-grid { display:none; }
+.tl-section-header { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; cursor:pointer; user-select:none; transition:all 0.2s; background:var(--bg-card); border:1px solid var(--border); margin-bottom:8px; }
+.tl-section-header:hover { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.15); }
+.tl-section-icon { font-size:1.1rem; flex-shrink:0; line-height:1; }
+.tl-section-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-secondary); }
+.tl-section-badge { margin-left:auto; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:20px; background:rgba(255,255,255,0.06); color:var(--text-muted); flex-shrink:0; }
+.tl-section-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:6px; padding:4px 0; }
+
+/* -- Timeline Axis --------------------------------- */
+.tl-axis { position:absolute; left:0; top:0; bottom:0; width:var(--tl-axis-width); display:flex; flex-direction:column; border-right:1px solid var(--border); }
+.tl-axis-hour { display:flex; align-items:flex-start; justify-content:flex-end; padding-right:8px; font-size:0.65rem; font-weight:600; color:var(--text-muted); letter-spacing:0.03em; }
+.tl-axis-line { position:absolute; left:var(--tl-axis-width); right:0; border-top:1px solid var(--border); opacity:0.35; pointer-events:none; }
+
+/* -- Timeline Row (hour slot) ---------------------- */
+.tl-hour-row { position:relative; display:flex; border-bottom:1px solid rgba(255,255,255,0.03); transition:background 0.15s; }
+.tl-hour-row:hover { background:rgba(255,255,255,0.015); }
+.tl-hour-row:last-child { border-bottom:none; }
+
+/* -- Task positions inside row --------------------- */
+.tl-task-slot { position:absolute; left:var(--tl-axis-width); right:0; padding:2px 4px; z-index:2; }
+.tl-task-slot > * { height:100%; }
+
+/* -- Empty section prompt -------------------------- */
+.tl-empty-section { display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 16px; color:var(--text-muted); font-size:0.82rem; border:1px dashed var(--border); border-radius:10px; margin:4px 0; cursor:pointer; transition:all 0.2s; }
+.tl-empty-section:hover { border-color:rgba(255,255,255,0.2); color:var(--text-secondary); background:rgba(255,255,255,0.02); }
+
+/* -- Drag hint ------------------------------------- */
+.tl-drag-hint { display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:10px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); font-size:0.78rem; color:var(--text-muted); margin-bottom:12px; }
+
+/* -- Zoom pills ------------------------------------ */
+.zoom-pill-group { display:inline-flex; gap:2px; padding:3px; background:rgba(255,255,255,0.04); border-radius:10px; border:1px solid var(--border); }
+.zoom-pill { padding:6px 12px; border-radius:8px; border:none; background:transparent; color:var(--text-muted); font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.15s; font-family:var(--font-sans); }
+.zoom-pill.active { background:var(--bg-card); color:var(--text-primary); box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+.zoom-pill:hover:not(.active) { color:var(--text-primary); }
+
+/* -- Overnight Snooze Row -------------------------- */
+.tl-overnight-row { display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(99,102,241,0.04); border:1px dashed rgba(99,102,241,0.15); border-radius:10px; margin:4px 0; }
+
+/* -- Task Body / Inner Elements -------------------- */
+.task-card-body { padding:8px 10px 8px 14px; flex:1; display:flex; flex-direction:column; gap:3px; overflow:hidden; }
+.task-card-title-row { display:flex; align-items:center; gap:6px; overflow:hidden; }
+.task-card-title { font-size:0.82rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; flex:1; }
+.task-card-recur-icon { flex-shrink:0; color:var(--text-muted); }
+.task-card-bell-icon { flex-shrink:0; color:var(--status-missed); }
+.task-card-drag-handle { display:flex; align-items:center; justify-content:center; padding:4px; color:var(--text-muted); opacity:0.7; cursor:grab; transition:opacity 0.2s,color 0.2s; flex-shrink:0; }
+.task-card-drag-handle:hover { opacity:1; color:var(--text-primary); }
+.task-card-drag-handle:active { cursor:grabbing; }
+.task-card-meta-row { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.task-card-time { display:inline-flex; align-items:center; gap:3px; font-size:0.68rem; font-weight:600; color:var(--text-muted); }
+.task-card-delay-icon { color:var(--status-delayed); flex-shrink:0; }

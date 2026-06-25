@@ -24,10 +24,13 @@ app.use('/uploads', express.static(uploadDir));
 // ── Bootstrap DynamoDB tables on startup ─────────────────────────────────────
 const { createTables } = require('./db/createTables');
 createTables()
-  .then(() => console.log('[DynamoDB] Tables ready'))
+  .then(() => {
+    console.log('[DynamoDB] Tables ready');
+    const { seedUsers } = require('./scripts/seed-users');
+    seedUsers();
+  })
   .catch(err => {
     console.error('[DynamoDB] Failed to bootstrap tables:', err.message);
-    // Don't crash the process — tables may already exist or AWS handles it
   });
 
 // ── Routes ────────────────────────────────────────────────────────────────────

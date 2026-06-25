@@ -1,0 +1,26 @@
+/* -- Analytics Panel ------------------------------- */
+.analytics-panel { border-radius:20px; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(145deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.01) 100%); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.15); overflow:hidden; margin-bottom:24px; transition:all 0.4s cubic-bezier(0.16,1,0.3,1); }
+.analytics-panel:hover { box-shadow:inset 0 1px 0 rgba(255,255,255,0.1), 0 12px 40px rgba(0,0,0,0.25); border-color:rgba(255,255,255,0.15); }
+.analytics-panel-header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; cursor:pointer; user-select:none; background:rgba(0,0,0,0.1); border-bottom:1px solid transparent; transition:all 0.2s; }
+.analytics-panel-header:hover { background:rgba(0,0,0,0.2); }
+.analytics-panel-header.open { border-bottom-color:var(--border); }
+.analytics-panel-body { padding:20px; display:grid; grid-template-columns:repeat(5,1fr); gap:12px; animation:pageSlideIn 0.3s ease; }
+@media (max-width:700px) { .analytics-panel-body { grid-template-columns:repeat(3,1fr); } }
+@media (max-width:440px) { .analytics-panel-body { grid-template-columns:repeat(2,1fr); } }
+.analytics-stat-card { background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.05); border-radius:14px; padding:14px 10px; text-align:center; display:flex; flex-direction:column; align-items:center; }
+.analytics-stat-number { font-size:1.5rem; font-weight:800; letter-spacing:-0.03em; }
+.analytics-stat-label { font-size:0.65rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; }
+.analytics-streak-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:rgba(245,158,11,0.12); color:#f59e0b; font-size:0.78rem; font-weight:700; }
+
+/* -- Week Bar Chart -------------------------------- */
+.week-chart-wrap { padding:16px 20px 12px; border-top:1px solid var(--border); }
+.week-chart-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); margin-bottom:10px; }
+.week-bars { display:flex; align-items:flex-end; gap:6px; height:60px; }
+.week-bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+.week-bar { width:100%; border-radius:4px 4px 0 0; background:rgba(255,255,255,0.5); opacity:0.7; min-height:4px; transition:opacity 0.2s; }
+.week-bar.today { opacity:1; background:#ffffff; box-shadow:0 0 10px rgba(255,255,255,0.35); }
+.week-bar-day { font-size:0.62rem; color:var(--text-muted); font-weight:600; }
+
+/* -- Productivity Donut ---------------------------- */
+.productivity-donut-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:8px 0; }
+.productivity-donut-pct { font-size:0.75rem; font-weight:700; color:var(--text-secondary); }

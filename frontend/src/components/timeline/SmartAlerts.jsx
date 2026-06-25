@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { AlertTriangle, Flame, SkipForward, TrendingDown, X, Lightbulb } from 'lucide-react';
+import './SmartAlerts.css';
 
 const PRIORITY_WEIGHTS = { low: 1, medium: 2, high: 3, critical: 4 };
 
@@ -94,7 +95,50 @@ function detectAlerts(date, tasks, logs, recurringTasks) {
     }
   }
 
-  // 5. Suggestion: best time slots (lightweight heuristic)
+  // 5. Per-task recurrence streaks
+  Object.entries(recurringTasks || {}).forEach(([defId, def]) => {
+    if (def.isDisabled) return;
+    let streakCount = 0;
+    for (let i = 1; i <= 30; i++) {
+      const d = format(subDays(new Date(date + 'T12:00:00'), i), 'yyyy-MM-dd');
+      const t = (logs[d]?.tasks || []).find(x => x.recurringId === defId);
+      if (t && t.status === 'Completed') streakCount++;
+      else if (t && (t.status === 'Missed' || t.status === 'Skipped')) { streakCount = 0; break; }
+      else if (!t) break;
+    }
+    if (streakCount >= 5) {
+      alerts.push({
+        id:      `streak_${defId}`,
+        type:    'streak',
+        icon:    <Flame size={14} />,
+        title:   `${streakCount}-Day Streak`,
+        message: `"${def.title}" — completed ${streakCount} days in a row! Keep it up!`,
+      });
+    }
+  });
+
+  // 6. Weekly digest
+  if (tasks.length > 0) {
+    let totalTasks = 0, totalDone = 0, totalMissed = 0, daysWithTasks = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = format(subDays(new Date(date + 'T12:00:00'), i), 'yyyy-MM-dd');
+      const t = logs[d]?.tasks || [];
+      if (t.length > 0) daysWithTasks++;
+      t.forEach(x => { totalTasks++; if (x.status === 'Completed') totalDone++; if (x.status === 'Missed') totalMissed++; });
+    }
+    const completionPct = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
+    if (daysWithTasks >= 3) {
+      alerts.push({
+        id:      'weekly_digest',
+        type:    'tip',
+        icon:    <Lightbulb size={14} />,
+        title:   'Weekly Digest',
+        message: `${completionPct}% completion rate this week (${totalDone}/${totalTasks} tasks, ${totalMissed} missed across ${daysWithTasks} days).`,
+      });
+    }
+  }
+
+  // 7. Suggestion: best time slots (lightweight heuristic)
   if (tasks.length >= 3 && alerts.length === 0) {
     const morningCompleted = tasks.filter(t => {
       const h = parseInt((t.time || '00:00').split(':')[0]);
@@ -120,6 +164,7 @@ const TYPE_META = {
   danger:  { color: '#ef4444',                   bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.3)'   },
   info:    { color: 'var(--accent-blue)',         bg: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.2)'  },
   tip:     { color: 'var(--priority-high)',       bg: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.2)'  },
+  streak:  { color: '#f59e0b',                    bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)'  },
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────

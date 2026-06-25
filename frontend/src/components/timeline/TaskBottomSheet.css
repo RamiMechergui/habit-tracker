@@ -1,0 +1,32 @@
+/* -- Priority Selector ----------------------------- */
+.priority-selector { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.priority-btn { padding:7px 4px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:0.78rem; font-weight:700; cursor:pointer; transition:all 0.2s; text-align:center; font-family:var(--font-sans); }
+.priority-btn.active-low { background:var(--priority-low-bg); color:var(--priority-low); border-color:var(--priority-low); }
+.priority-btn.active-medium { background:var(--priority-medium-bg); color:var(--priority-medium); border-color:var(--priority-medium); }
+.priority-btn.active-high { background:var(--priority-high-bg); color:var(--priority-high); border-color:var(--priority-high); }
+.priority-btn.active-critical { background:var(--priority-critical-bg); color:var(--priority-critical); border-color:var(--priority-critical); }
+
+/* -- Category Picker ------------------------------- */
+.category-picker { display:flex; flex-wrap:wrap; gap:7px; }
+.cat-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s; font-family:var(--font-sans); }
+.cat-btn.active { border-width:1.5px; color:#fff; }
+
+/* -- Recurrence Toggle ----------------------------- */
+.recurrence-row { display:flex; gap:6px; flex-wrap:wrap; }
+.recurrence-chip { padding:5px 11px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s; font-family:var(--font-sans); }
+.recurrence-chip.active { background:rgba(99,102,241,0.15); border-color:#6366f1; color:#6366f1; }
+
+/* -- Bottom Sheet Form Labels ---------------------- */
+.sheet-field-label { font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; display:block; }
+
+/* -- Recurring Edit Scope Bar ---------------------- */
+.recurring-edit-scope-bar { display:flex; align-items:center; gap:8px; padding:10px 24px; background:rgba(99,102,241,0.08); border-bottom:1px solid rgba(99,102,241,0.15); font-size:0.78rem; font-weight:600; }
+.scope-chip { padding:4px 10px; border-radius:16px; border:1px solid rgba(99,102,241,0.25); background:transparent; color:var(--text-secondary); font-size:0.72rem; font-weight:600; cursor:pointer; transition:all 0.2s; font-family:var(--font-sans); }
+.scope-chip.active { background:rgba(99,102,241,0.2); border-color:#6366f1; color:#6366f1; }
+
+/* -- Custom Days Picker ---------------------------- */
+.custom-days-picker { margin-top:6px; }
+.custom-days-grid { display:flex; gap:4px; }
+.custom-day-btn { width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:0.72rem; font-weight:700; cursor:pointer; transition:all 0.2s; font-family:var(--font-sans); }
+.custom-day-btn.active { background:rgba(99,102,241,0.2); border-color:#6366f1; color:#6366f1; }
+.custom-day-btn:hover:not(.active) { background:rgba(255,255,255,0.05); }

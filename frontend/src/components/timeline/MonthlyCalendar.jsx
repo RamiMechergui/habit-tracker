@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO, addMonths, subMonths, addDays, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, X, BarChart2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, BarChart2, Search } from 'lucide-react';
+import './MonthlyCalendar.css';
 import HeatmapTooltip from './HeatmapTooltip';
 import StatisticsPanel from './StatisticsPanel';
 
@@ -123,8 +124,12 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
   const [hoveredDay,     setHoveredDay]     = useState(null);
   const [tooltipPos,     setTooltipPos]     = useState({ top: true });
   const [showStats,      setShowStats]      = useState(false);
+  const [searchQuery,    setSearchQuery]    = useState('');
+  const [showWeekends,   setShowWeekends]   = useState(() => { try { return localStorage.getItem('mc_show_weekends') !== 'false'; } catch { return true; } });
   const isMobile = useIsMobile();
   const gridRef  = useRef(null);
+
+  const toggleWeekends = () => setShowWeekends(prev => { const n = !prev; try { localStorage.setItem('mc_show_weekends', String(n)); } catch {} return n; });
 
   const daysInMonth = useMemo(() => {
     return eachDayOfInterval({ start: startOfMonth(viewDate), end: endOfMonth(viewDate) });
@@ -134,6 +139,10 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
     const log = logs[dateStr];
     if (!log || !log.tasks || log.tasks.length === 0) return null;
     let tasks = log.tasks;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      tasks = tasks.filter(t => t.title?.toLowerCase().includes(q));
+    }
     if (filterStatus   !== 'all') tasks = tasks.filter(t => t.status   === filterStatus);
     if (filterPriority !== 'all') tasks = tasks.filter(t => t.priority === filterPriority);
     if (filterCategory !== 'all') tasks = tasks.filter(t => t.category === filterCategory);
@@ -167,6 +176,19 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
     <div className="glass-card month-calendar-card">
       {/* Burnout warning */}
       <BurnoutStrip logs={logs} viewDate={viewDate} />
+
+      {/* Search */}
+      <div className="month-search-bar" style={{ margin:'4px 16px', position:'relative' }}>
+        <Search size={14} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)' }} />
+        <input type="search" className="w-full" placeholder="Search tasks across month…"
+          value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          style={{ paddingLeft:'30px', paddingTop:8, paddingBottom:8, fontSize:'0.78rem', background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text-primary)', fontFamily:'var(--font-sans)' }} />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:4 }}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
 
       {/* Month nav */}
       <div className="month-nav-header">
@@ -206,6 +228,10 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
             </button>
           ))}
         </>}
+        <span className="month-filter-divider" />
+        <button onClick={toggleWeekends} className={`month-filter-chip ${showWeekends?'active':''}`} style={{ flexShrink:0 }}>
+          {showWeekends ? 'Weekends on' : 'Weekends off'}
+        </button>
       </div>
 
       {/* Grid header */}
@@ -219,7 +245,7 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
       <div className="month-grid" ref={gridRef}>
         {Array.from({ length: firstDayOffset }).map((_, i) => <div key={`e${i}`} />)}
 
-        {daysInMonth.map(date => {
+        {daysInMonth.filter(date => showWeekends || (date.getDay() !== 0 && date.getDay() !== 6)).map(date => {
           const dateStr = format(date, 'yyyy-MM-dd');
           const today   = isToday(date);
           const data    = getDayData(dateStr);
@@ -306,15 +332,20 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
       </div>
 
       {/* Expanded day panel */}
-      {expandedDay && (
-        <DayExpandPanel
-          dateStr={expandedDay}
-          tasks={logs[expandedDay]?.tasks || []}
-          onClose={() => setExpandedDay(null)}
-          onAddClick={onAddClick || (() => {})}
-          onSelectDate={onSelectDate}
-        />
-      )}
+      {expandedDay && (() => {
+        const raw = logs[expandedDay]?.tasks || [];
+        const q = searchQuery.trim().toLowerCase();
+        const tasksForPanel = q ? raw.filter(t => t.title?.toLowerCase().includes(q)) : raw;
+        return (
+          <DayExpandPanel
+            dateStr={expandedDay}
+            tasks={tasksForPanel}
+            onClose={() => setExpandedDay(null)}
+            onAddClick={onAddClick || (() => {})}
+            onSelectDate={onSelectDate}
+          />
+        );
+      })()}
 
       {/* Legend */}
       <div className="month-legend">

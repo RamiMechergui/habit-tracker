@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useHabits } from '../Store';
 import { format, isAfter, startOfDay, parseISO, addDays, subDays, isToday, startOfWeek, endOfWeek } from 'date-fns';
+import { Play, Pause, Square, Clock as ClockIcon } from 'lucide-react';
 
 // Fallback for startOfWeek in case the imported symbol is undefined at runtime
 const safeStartOfWeek = typeof startOfWeek === 'function'
@@ -19,6 +20,7 @@ import {
   Plus,
   List, CalendarDays, CheckCircle2, Target, Filter, X,
   ChevronLeft, ChevronRight, Search, FileDown,
+  CheckCircle, XCircle, RefreshCw, Trash2,
 } from 'lucide-react';
 
 import { jsPDF } from 'jspdf';
@@ -78,6 +80,58 @@ export default function TasksPage() {
   const [filterCategory,setFilterCategory]= useState('all');
   const [searchQuery,   setSearchQuery]   = useState('');
   const [showSearch,    setShowSearch]    = useState(false);
+  const [saveSaving,    setSaveSaving]    = useState(false);
+  const [undoToast,     setUndoToast]     = useState(null);
+  const [selectedIds,   setSelectedIds]   = useState(new Set());
+  const [bulkMode,      setBulkMode]      = useState(false);
+  const [batchEditMode, setBatchEditMode] = useState(false);
+  const [batchPriority, setBatchPriority] = useState('');
+  const [batchCategory, setBatchCategory] = useState('');
+  const [pomodoroActive, setPomodoroActive] = useState(false);
+  const [pomodoroPhase, setPomodoroPhase] = useState('work'); // work | break
+  const [pomodoroSeconds, setPomodoroSeconds] = useState(25 * 60);
+  const jsonInputRef = useRef(null);
+
+  // #28 — Pomodoro timer tick
+  const pomodoroRef = useRef(null);
+  useEffect(() => {
+    if (!pomodoroActive) { if (pomodoroRef.current) clearInterval(pomodoroRef.current); return; }
+    pomodoroRef.current = setInterval(() => {
+      setPomodoroSeconds(s => {
+        if (s <= 1) {
+          // Cycle
+          const nextPhase = pomodoroPhase === 'work' ? 'break' : 'work';
+          const nextDur = nextPhase === 'work' ? 25 * 60 : 5 * 60;
+          setPomodoroPhase(nextPhase);
+          if (Notification.permission === 'granted') new Notification(`Pomodoro: ${nextPhase === 'work' ? 'Work' : 'Break'} time!`);
+          return nextDur;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(pomodoroRef.current);
+  }, [pomodoroActive, pomodoroPhase]);
+  const [loading,       setLoading]       = useState(true);
+  const [autoRescheduledCount, setAutoRescheduledCount] = useState(0);
+  const mountedRef = useRef(false);
+
+  // #41 — Auto-reschedule missed tasks on mount
+  useEffect(() => {
+    if (!mountedRef.current) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const todayLog = getLog(today);
+    if (!todayLog) return;
+    const todayTasks = getVirtualTasksForDate(today, todayLog.tasks ?? []);
+    const missed = todayTasks.filter(t => t.status === 'Missed' && !t.isVirtual);
+    if (missed.length === 0) return;
+    const updatedTasks = (todayLog.tasks ?? []).map(t => {
+      if (missed.some(m => m.id === t.id)) return { ...t, status: 'Pending' };
+      return t;
+    });
+    saveLog(today, { tasks: updatedTasks });
+    setAutoRescheduledCount(missed.length);
+    setTimeout(() => setAutoRescheduledCount(0), 5000);
+  }, []);
 
 
 
@@ -85,6 +139,10 @@ export default function TasksPage() {
   useEffect(() => {
     setLog(logs[date] ?? getLog(date) ?? { date, tasks: [] });
     setLocalDirty(false);
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      setLoading(false);
+    }
   }, [date, logs, getLog]);
 
   const logRef = React.useRef(log);
@@ -97,10 +155,11 @@ export default function TasksPage() {
     localDirtyRef.current = localDirty;
   }, [log, date, localDirty]);
 
-  // ── Auto-save (1s debounce) ──────────────────────────────────────────────────
+  // ── Auto-save (1s debounce, with save-in-progress guard) ──────────────────────
   useEffect(() => {
-    if (!localDirty) return;
+    if (!localDirty || saveSaving) return;
     const timer = setTimeout(async () => {
+      setSaveSaving(true);
       setSaveStatus('Saving…');
       try {
         await saveLog(date, log);
@@ -109,10 +168,12 @@ export default function TasksPage() {
         setTimeout(() => setSaveStatus(''), 2000);
       } catch {
         setSaveStatus('Error');
+      } finally {
+        setSaveSaving(false);
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [log, date, saveLog, localDirty]);
+  }, [log, date, saveLog, localDirty, saveSaving]);
 
   useEffect(() => {
     const handleSavePending = () => {
@@ -142,11 +203,11 @@ export default function TasksPage() {
 
   // Merge persisted tasks with virtual recurring instances
   const tasks = useMemo(() => {
-    const real = log.tasks ?? [];
-    const virtual = getVirtualTasksForDate(date);
-    // Deduplicate: virtual instances are only added if no real entry with the same recurringId exists
+    const real = (log.tasks ?? []).filter(t => !t.isVirtual);
+    // Pass the real tasks for override detection so deletes are reflected immediately
+    const virtual = getVirtualTasksForDate(date, real);
     return [...real, ...virtual];
-  }, [log.tasks, date, getVirtualTasksForDate]);
+  }, [log.tasks, date, getVirtualTasksForDate, log]);
 
   // #1 — Progress pill stats
   const progressStats = useMemo(() => {
@@ -191,12 +252,97 @@ export default function TasksPage() {
   }, [markDirty]);
 
   const handleUpdateTaskStatus = useCallback((taskIndex, newStatus) => {
+    const prevTasks = log.tasks ?? [];
+    const prevTask = prevTasks[taskIndex];
     markDirty(prev => {
       const updated = [...(prev.tasks ?? [])];
       updated[taskIndex] = { ...updated[taskIndex], status: newStatus };
       return { ...prev, tasks: updated };
     });
-  }, [markDirty]);
+    // Undo toast
+    setUndoToast({ taskIndex, prevStatus: prevTask?.status, newStatus, message: `Marked "${prevTask?.title || 'task'}" as ${newStatus}` });
+    setTimeout(() => setUndoToast(null), 5000);
+  }, [markDirty, log.tasks]);
+
+  const handleUndoStatus = useCallback(() => {
+    if (!undoToast) return;
+    markDirty(prev => {
+      const updated = [...(prev.tasks ?? [])];
+      if (updated[undoToast.taskIndex]) {
+        updated[undoToast.taskIndex] = { ...updated[undoToast.taskIndex], status: undoToast.prevStatus };
+      }
+      return { ...prev, tasks: updated };
+    });
+    setUndoToast(null);
+  }, [undoToast, markDirty]);
+
+  // ── Snooze (postpone to tomorrow) ──────────────────────────────
+  const handleSnooze = useCallback((task) => {
+    const tomorrow = new Date(date);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    markDirty(prev => {
+      // Mark current task as missed
+      const updated = [...(prev.tasks ?? [])];
+      const idx = updated.findIndex(t => t.id === task.id);
+      if (idx >= 0) updated[idx] = { ...updated[idx], status: 'Missed' };
+      // Clone task for tomorrow as Pending
+      const { id, ...rest } = task;
+      const snoozed = { ...rest, status: 'Pending', isSnoozed: true, snoozedFrom: date, id: `${Date.now()}_snooze` };
+      return { ...prev, tasks: [...updated, snoozed] };
+    });
+  }, [date, markDirty]);
+
+  // ── Bulk operations ────────────────────────────────────────────
+  const toggleBulkSelect = useCallback((taskId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+      return next;
+    });
+  }, []);
+
+  const bulkAction = useCallback((newStatus) => {
+    markDirty(prev => {
+      const updated = [...(prev.tasks ?? [])];
+      selectedIds.forEach(id => {
+        const idx = updated.findIndex(t => t.id === id);
+        if (idx >= 0) updated[idx] = { ...updated[idx], status: newStatus };
+      });
+      return { ...prev, tasks: updated };
+    });
+    setSelectedIds(new Set());
+    setBulkMode(false);
+  }, [selectedIds, markDirty]);
+
+  const bulkDelete = useCallback(() => {
+    markDirty(prev => ({
+      ...prev,
+      tasks: (prev.tasks ?? []).filter(t => !selectedIds.has(t.id))
+    }));
+    setSelectedIds(new Set());
+    setBulkMode(false);
+  }, [selectedIds, markDirty]);
+
+  const applyBatchEdit = useCallback(() => {
+    markDirty(prev => {
+      const updated = [...(prev.tasks ?? [])];
+      selectedIds.forEach(id => {
+        const idx = updated.findIndex(t => t.id === id);
+        if (idx < 0) return;
+        const upd = { ...updated[idx] };
+        if (batchPriority) upd.priority = batchPriority;
+        if (batchCategory) upd.category = batchCategory;
+        updated[idx] = upd;
+      });
+      return { ...prev, tasks: updated };
+    });
+    setBatchEditMode(false);
+    setBatchPriority('');
+    setBatchCategory('');
+    setSelectedIds(new Set());
+    setBulkMode(false);
+  }, [selectedIds, markDirty, batchPriority, batchCategory]);
 
   const handleSaveTask = useCallback((taskData) => {
     markDirty(prev => {
@@ -226,6 +372,88 @@ export default function TasksPage() {
     markDirty(prev => ({ ...prev, tasks: [...(prev.tasks ?? []), dup] }));
   }, [markDirty]);
 
+  const handleMoveToDate = useCallback((task, targetDate) => {
+    const dup = {
+      ...task, id: `task_${Date.now()}_moved`, time: task.time || '09:00',
+      status: 'Pending', notificationSent: false, createdAt: new Date().toISOString(),
+    };
+    const targetLog = getLog(targetDate);
+    const existingTasks = targetLog?.tasks ?? [];
+    saveLog(targetDate, { tasks: [...existingTasks, dup] });
+    // Remove from current day
+    markDirty(prev => ({ ...prev, tasks: (prev.tasks ?? []).filter(t => t.id !== task.id) }));
+  }, [getLog, saveLog, markDirty]);
+
+  const handleCloneToDate = useCallback((task, targetDate) => {
+    const dup = {
+      ...task,
+      id:               `task_${Date.now()}_clone`,
+      time:             task.time || '09:00',
+      status:           'Pending',
+      notificationSent: false,
+      createdAt:        new Date().toISOString(),
+    };
+    const targetLog = getLog(targetDate);
+    const existingTasks = targetLog?.tasks ?? [];
+    saveLog(targetDate, { tasks: [...existingTasks, dup] });
+  }, [getLog, saveLog]);
+
+  // #46 — .ics export
+  const exportIcs = useCallback(() => {
+    const fmt = (d) => {
+      const p = (n) => String(n).padStart(2,'0');
+      return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+    };
+    let lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//HabitTracker//EN'];
+    const now = new Date();
+    tasks.filter(t => t.status !== 'Missed' && t.status !== 'Skipped').forEach(t => {
+      const startH = parseInt((t.time||'09:00').split(':')[0]);
+      const startM = parseInt((t.time||'09:00').split(':')[1]);
+      const dur = parseInt(t.duration) || 30;
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startH, startM);
+      const end = new Date(start.getTime() + dur * 60000);
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${t.id}@habittracker`);
+      lines.push(`DTSTART:${fmt(start)}`);
+      lines.push(`DTEND:${fmt(end)}`);
+      lines.push(`SUMMARY:${t.title}`);
+      if (t.description) lines.push(`DESCRIPTION:${t.description}`);
+      lines.push('END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    const blob = new Blob([lines.join('\r\n')], { type:'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `tasks-${date}.ics`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [tasks, date]);
+
+  // #51 — JSON export
+  const exportJson = useCallback(() => {
+    const data = { version:1, exportedAt:new Date().toISOString(), tasks };
+    const blob = new Blob([JSON.stringify(data,null,2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `tasks-${date}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [tasks, date]);
+
+  const importJson = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (data.tasks && Array.isArray(data.tasks)) {
+          markDirty(prev => ({ ...prev, tasks: data.tasks }));
+        }
+      } catch(err) { console.error('Import failed:', err); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, [markDirty]);
+
   const openEdit = useCallback((task) => {
     setEditingTask(task);
     setIsSheetOpen(true);
@@ -242,6 +470,20 @@ export default function TasksPage() {
     setSuggestedHour(h);
     setIsSheetOpen(true);
   }, []);
+
+  // #49 — Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openAdd(); }
+      if (e.key === 'j' || e.key === 'J') { e.preventDefault(); setDate(d => format(addDays(parseISO(d), 1), 'yyyy-MM-dd')); }
+      if (e.key === 'k' || e.key === 'K') { e.preventDefault(); setDate(d => format(subDays(parseISO(d), 1), 'yyyy-MM-dd')); }
+      if (e.key === ' ') { e.preventDefault(); setBulkMode(p => !p); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [openAdd]);
 
   const closeSheet = useCallback(() => {
     setIsSheetOpen(false);
@@ -602,6 +844,15 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="tl-loading-skeleton">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="tl-skeleton-row" style={{ height: 48 + i * 8, marginBottom: 10, borderRadius: 10, background: 'var(--skeleton)', animation: 'tlShimmer 1.5s infinite' }} />
+          ))}
+        </div>
+      )}
+
 
 
       {/* ── Sticky Hub Toolbar ──────────────────────────────────────────────── */}
@@ -700,6 +951,19 @@ export default function TasksPage() {
             </div>
           )}
 
+          {/* Bulk mode toggle */}
+          {timelineView === 'daily' && (
+            <button
+              className={`hub-filter-btn ${bulkMode ? 'hub-filter-btn--active' : ''}`}
+              onClick={() => { setBulkMode(b => !b); if (bulkMode) setSelectedIds(new Set()); }}
+              aria-label="Toggle bulk selection"
+              title="Bulk select"
+            >
+              <span role="img" aria-hidden="true">☑</span>
+              {bulkMode ? 'Done' : 'Bulk'}
+            </button>
+          )}
+
           {/* #11 ── Search toggle */}
           {timelineView === 'daily' && (
             <button
@@ -712,7 +976,7 @@ export default function TasksPage() {
             </button>
           )}
 
-          {/* Filter toggle */}
+          {/* Filter toggle with count badge */}
           {timelineView === 'daily' && (
             <button
               className={`hub-filter-btn ${hasActiveFilter ? 'hub-filter-btn--active' : ''}`}
@@ -812,6 +1076,16 @@ export default function TasksPage() {
             onChange={setFilterCategory}
             display={c => c === 'all' ? 'All' : c}
           />
+          <button onClick={exportIcs} style={{ background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', color:'var(--text-muted)', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)', display:'flex', alignItems:'center', gap:4 }}>
+            <FileDown size={13} /> .ics
+          </button>
+          <button onClick={exportJson} style={{ background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', color:'var(--text-muted)', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)', display:'flex', alignItems:'center', gap:4 }}>
+            <FileDown size={13} /> JSON
+          </button>
+          <input ref={jsonInputRef} type="file" accept=".json" style={{ display:'none' }} onChange={importJson} />
+          <button onClick={() => jsonInputRef.current?.click()} style={{ background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', color:'var(--text-muted)', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)', display:'flex', alignItems:'center', gap:4 }}>
+            <FileDown size={13} /> Import
+          </button>
         </div>
       )}
 
@@ -826,7 +1100,7 @@ export default function TasksPage() {
       ) : (
         <div className="timeline-view-wrap">
           <SmartAlerts date={date} tasks={tasks} logs={logs} recurringTasks={recurringTasks} />
-          <MissedTasksBar tasks={tasks} onUpdateTaskStatus={handleUpdateTaskStatus} />
+          <MissedTasksBar tasks={tasks} onUpdateTaskStatus={handleUpdateTaskStatus} onSnooze={handleSnooze} />
           <LiveFocusBanner tasks={tasks} onUpdateStatus={handleUpdateTaskStatus} />
           <TimelineAnalytics date={date} tasks={tasks} logs={logs} />
           <DailyTimeline
@@ -838,7 +1112,59 @@ export default function TasksPage() {
             isFutureDate={isFuture}
             onSelectDate={handleSelectDate}
             filters={activeFilters}
+            bulkMode={bulkMode}
+            selectedIds={selectedIds}
+            onBulkSelect={toggleBulkSelect}
+            onMoveToDate={handleMoveToDate}
           />
+        </div>
+      )}
+
+      {/* ── Bulk action bar ──────────────────────────────────────────── */}
+      {bulkMode && selectedIds.size > 0 && !batchEditMode && (
+        <div className="bulk-action-bar">
+          <span className="bulk-action-count">{selectedIds.size} selected</span>
+          <button className="bulk-action-btn" onClick={() => bulkAction('Completed')}><CheckCircle2 size={14} /> Complete</button>
+          <button className="bulk-action-btn" onClick={() => bulkAction('Missed')}><XCircle size={14} /> Missed</button>
+          <button className="bulk-action-btn" onClick={() => bulkAction('Pending')}><RefreshCw size={14} /> Reset</button>
+          <button className="bulk-action-btn bulk-action-btn--danger" onClick={bulkDelete}><Trash2 size={14} /> Delete</button>
+          <button className="bulk-action-btn" onClick={() => setBatchEditMode(true)}>Edit</button>
+          <button className="bulk-action-btn" onClick={() => { setSelectedIds(new Set()); setBulkMode(false); }}>Cancel</button>
+        </div>
+      )}
+      {batchEditMode && (
+        <div className="bulk-action-bar" style={{ gap:8, flexWrap:'wrap' }}>
+          <span className="bulk-action-count">Batch edit {selectedIds.size} tasks</span>
+          <select value={batchPriority} onChange={e => setBatchPriority(e.target.value)}
+            style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:'0.75rem', fontFamily:'var(--font-sans)' }}>
+            <option value="">Keep priority</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+          <select value={batchCategory} onChange={e => setBatchCategory(e.target.value)}
+            style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:'0.75rem', fontFamily:'var(--font-sans)' }}>
+            <option value="">Keep category</option>
+            {BASE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button className="bulk-action-btn" onClick={applyBatchEdit}>Apply</button>
+          <button className="bulk-action-btn" onClick={() => { setBatchEditMode(false); setBatchPriority(''); setBatchCategory(''); }}>Cancel</button>
+        </div>
+      )}
+
+      {/* ── Undo toast ────────────────────────────────────────────────── */}
+      {undoToast && (
+        <div className="undo-toast">
+          <span>{undoToast.message}</span>
+          <button className="undo-toast-btn" onClick={handleUndoStatus}>Undo</button>
+          <button className="undo-toast-close" onClick={() => setUndoToast(null)}><X size={14} /></button>
+        </div>
+      )}
+      {autoRescheduledCount > 0 && (
+        <div className="undo-toast" style={{ background:'var(--priority-high)', left:'50%', transform:'translateX(-50%)' }}>
+          <span>{autoRescheduledCount} missed task{autoRescheduledCount > 1 ? 's' : ''} rescheduled to today</span>
+          <button className="undo-toast-close" onClick={() => setAutoRescheduledCount(0)}><X size={14} /></button>
         </div>
       )}
 
@@ -854,6 +1180,44 @@ export default function TasksPage() {
         </button>
       )}
 
+      {/* ── Pomodoro widget ─────────────────────────────────────────────── */}
+      <div style={{ position:'fixed', bottom:100, right:20, zIndex:100, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+        {pomodoroActive && (
+          <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:'12px 16px', boxShadow:'0 8px 24px rgba(0,0,0,0.3)', display:'flex', flexDirection:'column', alignItems:'center', gap:8, minWidth:140 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <ClockIcon size={14} style={{ color:'var(--accent-blue)' }} />
+              <span style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)' }}>{pomodoroPhase === 'work' ? 'FOCUS' : 'BREAK'}</span>
+            </div>
+            <span style={{ fontSize:'2rem', fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'0.03em' }}>
+              {String(Math.floor(pomodoroSeconds/60)).padStart(2,'0')}:{String(pomodoroSeconds%60).padStart(2,'0')}
+            </span>
+            <div style={{ display:'flex', gap:6 }}>
+              {!pomodoroActive ? (
+                <button onClick={() => { setPomodoroActive(true); if (Notification.permission === 'default') Notification.requestPermission(); }} style={{ background:'var(--accent)', border:'none', borderRadius:8, padding:'6px 12px', color:'#fff', cursor:'pointer', fontFamily:'var(--font-sans)', fontSize:'0.72rem', fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                  <Play size={12} /> Start
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => setPomodoroActive(false)} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', color:'var(--text-muted)', cursor:'pointer', fontFamily:'var(--font-sans)', fontSize:'0.72rem', display:'flex', alignItems:'center', gap:4 }}>
+                    <Square size={12} />
+                  </button>
+                  <button onClick={() => { setPomodoroActive(false); setPomodoroSeconds(25*60); setPomodoroPhase('work'); }} style={{ background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:8, padding:'6px 10px', color:'#ef4444', cursor:'pointer', fontFamily:'var(--font-sans)', fontSize:'0.72rem', display:'flex', alignItems:'center', gap:4 }}>
+                    <RefreshCw size={12} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        {!pomodoroActive && (
+          <button onClick={() => { setPomodoroActive(true); setPomodoroSeconds(25*60); setPomodoroPhase('work'); if (Notification.permission === 'default') Notification.requestPermission(); }}
+            style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'50%', width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--accent-blue)', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,0,0,0.2)' }}
+            title="Start Pomodoro timer" aria-label="Start Pomodoro timer">
+            <ClockIcon size={18} />
+          </button>
+        )}
+      </div>
+
       {/* ── Task Bottom Sheet ───────────────────────────────────────────────── */}
       <TaskBottomSheet
         isOpen={isSheetOpen}
@@ -861,9 +1225,11 @@ export default function TasksPage() {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
+        onCloneToDate={handleCloneToDate}
         initialData={editingTask}
         isFutureDate={isFuture}
         suggestedHour={suggestedHour}
+        availableTasks={tasks}
       />
     </div>
   );
