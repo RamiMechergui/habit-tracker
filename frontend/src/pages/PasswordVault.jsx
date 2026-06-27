@@ -17,18 +17,29 @@ const CATEGORY_COLORS = {
 };
 
 // Helper to extract domain for favicon
-const getFaviconUrl = (urlStr) => {
-  if (!urlStr) return null;
-  try {
-    let domain = urlStr.trim();
-    if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
-      domain = 'https://' + domain;
-    }
-    const url = new URL(domain);
-    return `https://www.google.com/s2/favicons?sz=64&domain=${url.hostname}`;
-  } catch (_) {
-    return null;
+const getLogoUrl = (urlStr, serviceName) => {
+  let domain = null;
+  if (urlStr) {
+    try {
+      let urlString = urlStr.trim();
+      if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+        urlString = 'https://' + urlString;
+      }
+      domain = new URL(urlString).hostname;
+    } catch (_) {}
   }
+  
+  if (!domain && serviceName) {
+    // Guess domain from service name if URL is empty
+    domain = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+  }
+
+  if (!domain) return null;
+  
+  return {
+    clearbit: `https://logo.clearbit.com/${domain}`,
+    google: `https://www.google.com/s2/favicons?sz=128&domain=${domain}`
+  };
 };
 
 export default function PasswordVault() {
@@ -57,6 +68,8 @@ export default function PasswordVault() {
     url: '',
     username: '',
     password: '',
+    secondaryUsername: '',
+    secondaryPassword: '',
     category: 'Personal',
     isPinned: false,
     notes: ''
@@ -64,10 +77,13 @@ export default function PasswordVault() {
 
   // Password Visibility toggles
   const [showModalPassword, setShowModalPassword] = useState(false);
+  const [showSecondaryModalPassword, setShowSecondaryModalPassword] = useState(false);
   const [showDetailPassword, setShowDetailPassword] = useState(false);
+  const [showSecondaryDetailPassword, setShowSecondaryDetailPassword] = useState(false);
+  const [showSecondaryAccount, setShowSecondaryAccount] = useState(false);
 
   // Password Generator
-  const [showGenerator, setShowGenerator] = useState(false);
+  const [generatorTarget, setGeneratorTarget] = useState(null);
   const [genLength, setGenLength] = useState(16);
   const [genOptions, setGenOptions] = useState({
     uppercase: true,
@@ -324,13 +340,17 @@ export default function PasswordVault() {
       url: '',
       username: '',
       password: '',
+      secondaryUsername: '',
+      secondaryPassword: '',
       category: 'Personal',
       isPinned: false,
       notes: ''
     });
     setModalError('');
     setShowModalPassword(false);
-    setShowGenerator(false);
+    setShowSecondaryModalPassword(false);
+    setShowSecondaryAccount(false);
+    setGeneratorTarget(null);
     setIsModalOpen(true);
   };
 
@@ -343,18 +363,22 @@ export default function PasswordVault() {
       url: cred.url || '',
       username: cred.username,
       password: cred.password,
+      secondaryUsername: cred.secondaryUsername || '',
+      secondaryPassword: cred.secondaryPassword || '',
       category: cred.category || 'Personal',
       isPinned: !!cred.isPinned,
       notes: cred.notes || ''
     });
     setModalError('');
     setShowModalPassword(false);
-    setShowGenerator(false);
+    setShowSecondaryModalPassword(false);
+    setShowSecondaryAccount(!!(cred.secondaryUsername || cred.secondaryPassword));
+    setGeneratorTarget(null);
     setIsModalOpen(true);
   };
 
   // Custom Password Generator
-  const generatePassword = () => {
+  const generatePassword = (targetField) => {
     const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
     const numberChars = '0123456789';
@@ -377,8 +401,12 @@ export default function PasswordVault() {
       generated += allowedChars[index];
     }
 
-    setModalData(prev => ({ ...prev, password: generated }));
-    setShowModalPassword(true);
+    setModalData(prev => ({ ...prev, [targetField]: generated }));
+    if (targetField === 'password') {
+      setShowModalPassword(true);
+    } else {
+      setShowSecondaryModalPassword(true);
+    }
   };
 
   // Calculate password strength
@@ -801,7 +829,7 @@ export default function PasswordVault() {
                   </div>
                 ) : (
                   filteredCredentials.map(cred => {
-                    const faviconUrl = getFaviconUrl(cred.url);
+                    const logos = getLogoUrl(cred.url, cred.serviceName);
                     return (
                       <div
                         key={cred._id}
@@ -814,16 +842,22 @@ export default function PasswordVault() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div className="favicon-circle">
-                            {faviconUrl ? (
+                          <div className="favicon-circle" style={{ position: 'relative' }}>
+                            <KeyRound size={16} style={{ color: 'var(--accent-blue)', position: 'absolute' }} />
+                            {logos ? (
                               <img
-                                src={faviconUrl}
+                                src={logos.clearbit}
                                 alt=""
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                onError={(e) => { 
+                                  if (e.target.src === logos.clearbit) {
+                                    e.target.src = logos.google;
+                                  } else {
+                                    e.target.style.display = 'none'; 
+                                  }
+                                }}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 1, backgroundColor: 'var(--bg-card)', borderRadius: '50%' }}
                               />
                             ) : null}
-                            <KeyRound size={16} style={{ color: 'var(--accent-blue)' }} />
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
@@ -873,16 +907,23 @@ export default function PasswordVault() {
                   {/* Header info */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="favicon-circle" style={{ width: '52px', height: '52px', fontSize: '1.4rem' }}>
-                        {getFaviconUrl(selectedCred.url) ? (
+                      <div className="favicon-circle" style={{ width: '52px', height: '52px', fontSize: '1.4rem', position: 'relative' }}>
+                        <KeyRound size={22} style={{ color: 'var(--accent-blue)', position: 'absolute' }} />
+                        {getLogoUrl(selectedCred.url, selectedCred.serviceName) ? (
                           <img
-                            src={getFaviconUrl(selectedCred.url)}
+                            src={getLogoUrl(selectedCred.url, selectedCred.serviceName).clearbit}
                             alt=""
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            onError={(e) => { 
+                              const logos = getLogoUrl(selectedCred.url, selectedCred.serviceName);
+                              if (e.target.src === logos.clearbit) {
+                                e.target.src = logos.google;
+                              } else {
+                                e.target.style.display = 'none'; 
+                              }
+                            }}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 1, backgroundColor: 'var(--bg-card)', borderRadius: '50%' }}
                           />
                         ) : null}
-                        <KeyRound size={22} style={{ color: 'var(--accent-blue)' }} />
                       </div>
                       <div>
                         <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>{selectedCred.serviceName}</h3>
@@ -994,6 +1035,68 @@ export default function PasswordVault() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Secondary Account Details */}
+                    {(selectedCred.secondaryUsername || selectedCred.secondaryPassword) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>Secondary Account</div>
+                        
+                        {/* Secondary Username Field */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Secondary Username / Email
+                          </span>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              readOnly
+                              value={selectedCred.secondaryUsername}
+                              className="vault-input"
+                              style={{ background: 'rgba(0,0,0,0.15)', color: 'var(--text-primary)' }}
+                            />
+                            <button
+                              onClick={() => triggerCopy(selectedCred.secondaryUsername, 'secondaryUsername')}
+                              className={`copy-btn ${copyFeedback.secondaryUsername ? 'copied' : ''}`}
+                            >
+                              {copyFeedback.secondaryUsername ? <Check size={14} /> : <Copy size={14} />}
+                              <span>{copyFeedback.secondaryUsername ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Secondary Password Field */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Secondary Password
+                          </span>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <div style={{ position: 'relative', flex: 1 }}>
+                              <input
+                                type={showSecondaryDetailPassword ? "text" : "password"}
+                                readOnly
+                                value={selectedCred.secondaryPassword}
+                                className="vault-input"
+                                style={{ background: 'rgba(0,0,0,0.15)', fontFamily: showSecondaryDetailPassword ? 'inherit' : 'monospace', letterSpacing: showSecondaryDetailPassword ? 'normal' : '4px' }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSecondaryDetailPassword(!showSecondaryDetailPassword)}
+                                style={{ position: 'absolute', right: '12px', top: '13px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                              >
+                                {showSecondaryDetailPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => triggerCopy(selectedCred.secondaryPassword, 'secondaryPassword')}
+                              className={`copy-btn ${copyFeedback.secondaryPassword ? 'copied' : ''}`}
+                            >
+                              {copyFeedback.secondaryPassword ? <Check size={14} /> : <Copy size={14} />}
+                              <span>{copyFeedback.secondaryPassword ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Meta Category & Pin */}
                     <div style={{ display: 'flex', gap: '30px' }}>
@@ -1167,10 +1270,10 @@ export default function PasswordVault() {
                   <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Password *</label>
                   <button
                     type="button"
-                    onClick={() => setShowGenerator(!showGenerator)}
+                    onClick={() => setGeneratorTarget(generatorTarget === 'password' ? null : 'password')}
                     style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
-                    <RefreshCw size={12} /> {showGenerator ? 'Hide Generator' : 'Generate Secure Password'}
+                    <RefreshCw size={12} /> {generatorTarget === 'password' ? 'Hide Generator' : 'Generate Secure Password'}
                   </button>
                 </div>
 
@@ -1212,8 +1315,79 @@ export default function PasswordVault() {
                 )}
               </div>
 
+              {/* ── SECONDARY ACCOUNT (OPTIONAL) ── */}
+              {!showSecondaryAccount ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSecondaryAccount(true)}
+                  style={{ background: 'none', border: '1px dashed var(--border)', color: 'var(--text-muted)', padding: '10px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}
+                >
+                  + Add Secondary Account
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>Secondary Account</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSecondaryAccount(false);
+                        setModalData(prev => ({ ...prev, secondaryUsername: '', secondaryPassword: '' }));
+                        if (generatorTarget === 'secondaryPassword') setGeneratorTarget(null);
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-rose, #ef4444)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  {/* Secondary Username */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Secondary Username / Email</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. user2@mail.com"
+                      className="vault-input"
+                      value={modalData.secondaryUsername}
+                      onChange={(e) => setModalData(prev => ({ ...prev, secondaryUsername: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Secondary Password */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Secondary Password</label>
+                      <button
+                        type="button"
+                        onClick={() => setGeneratorTarget(generatorTarget === 'secondaryPassword' ? null : 'secondaryPassword')}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <RefreshCw size={12} /> {generatorTarget === 'secondaryPassword' ? 'Hide Generator' : 'Generate Secure Password'}
+                      </button>
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showSecondaryModalPassword ? "text" : "password"}
+                        placeholder="Enter secondary password"
+                        className="vault-input"
+                        value={modalData.secondaryPassword}
+                        onChange={(e) => setModalData(prev => ({ ...prev, secondaryPassword: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSecondaryModalPassword(!showSecondaryModalPassword)}
+                        style={{ position: 'absolute', right: '12px', top: '13px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      >
+                        {showSecondaryModalPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ── PASSWORD GENERATOR DRAWER ── */}
-              {showGenerator && (
+              {generatorTarget && (
                 <div className="generator-drawer">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1264,7 +1438,7 @@ export default function PasswordVault() {
 
                     <button
                       type="button"
-                      onClick={generatePassword}
+                      onClick={() => generatePassword(generatorTarget)}
                       className="btn"
                       style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', fontSize: '0.8rem', marginTop: '5px' }}
                     >

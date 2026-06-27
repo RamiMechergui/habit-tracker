@@ -19,6 +19,7 @@ router.get('/', async (req, res) => {
     const decryptedList = credentials.map(c => ({
       ...c,
       password: decrypt(c.password),
+      secondaryPassword: c.secondaryPassword ? decrypt(c.secondaryPassword) : '',
       notes:    c.notes ? decrypt(c.notes) : '',
     }));
     res.json(decryptedList);
@@ -33,6 +34,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       serviceName, url = '', username, password,
+      secondaryUsername = '', secondaryPassword = '',
       notes = '', category = 'Other', isPinned = false, tags = [],
     } = req.body;
     if (!serviceName || !username || !password) {
@@ -43,13 +45,15 @@ router.post('/', async (req, res) => {
       url:         url.trim(),
       username:    username.trim(),
       password:    encrypt(password),
+      secondaryUsername: secondaryUsername.trim(),
+      secondaryPassword: secondaryPassword ? encrypt(secondaryPassword) : '',
       notes:       notes ? encrypt(notes) : '',
       category,
       isPinned,
       tags,
     });
     // Return the plaintext version to the caller
-    res.status(201).json({ ...cred, password, notes });
+    res.status(201).json({ ...cred, password, secondaryPassword, notes });
   } catch (err) {
     console.error('[Credentials] POST error:', err);
     res.status(500).json({ message: 'Failed to create credential' });
@@ -59,12 +63,14 @@ router.post('/', async (req, res) => {
 // PUT /api/credentials/:id — update credential (encrypted)
 router.put('/:id', async (req, res) => {
   try {
-    const { serviceName, url, username, password, notes, category, isPinned, tags } = req.body;
+    const { serviceName, url, username, password, secondaryUsername, secondaryPassword, notes, category, isPinned, tags } = req.body;
     const updates = {};
     if (serviceName !== undefined) updates.serviceName = serviceName.trim();
     if (url         !== undefined) updates.url         = url.trim();
     if (username    !== undefined) updates.username    = username.trim();
     if (password    !== undefined) updates.password    = encrypt(password);
+    if (secondaryUsername !== undefined) updates.secondaryUsername = secondaryUsername.trim();
+    if (secondaryPassword !== undefined) updates.secondaryPassword = secondaryPassword ? encrypt(secondaryPassword) : '';
     if (notes       !== undefined) updates.notes       = notes ? encrypt(notes) : '';
     if (category    !== undefined) updates.category    = category;
     if (isPinned    !== undefined) updates.isPinned    = isPinned;
@@ -76,6 +82,7 @@ router.put('/:id', async (req, res) => {
     res.json({
       ...cred,
       password: password !== undefined ? password : decrypt(cred.password),
+      secondaryPassword: secondaryPassword !== undefined ? secondaryPassword : (cred.secondaryPassword ? decrypt(cred.secondaryPassword) : ''),
       notes:    notes    !== undefined ? notes    : (cred.notes ? decrypt(cred.notes) : ''),
     });
   } catch (err) {
