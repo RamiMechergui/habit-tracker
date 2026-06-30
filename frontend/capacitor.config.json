@@ -4,10 +4,10 @@
   "webDir": "dist",
   "server": {
     "hostname": "app.evolvia.app",
-    "androidScheme": "https"
+    "androidScheme": "http"
   },
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": true
   },
   "plugins": {
     "CapacitorCookies": {

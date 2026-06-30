@@ -1,32 +1,38 @@
-import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 
 /**
  * Resolve the correct API base URL depending on the runtime context:
  *
- * - **Native (Android / iOS)**: The Capacitor WebView cannot reach `localhost`.
- *   Use VITE_API_URL_NATIVE which must be your deployed server's absolute URL
- *   (e.g. https://your-backend.railway.app).
+ * - **Native (Android / iOS)**: window.Capacitor.isNativePlatform() === true
+ *   at runtime inside the WebView. Use the hardcoded EC2 backend URL.
  *
- * - **Web (browser)**: Use VITE_API_URL if set, otherwise fall back to '' so
- *   all fetch calls use relative paths and rely on the same-origin nginx proxy.
+ * - **Web (browser)**: Use empty string so fetch uses same-origin / nginx proxy.
+ *
+ * IMPORTANT: We detect native at RUNTIME (not build time) using window.Capacitor
+ * so that Vite does NOT tree-shake away the EC2 URL during the production build.
  */
-const isNative = Capacitor.isNativePlatform();
 
-const envApiUrl       = import.meta.env.VITE_API_URL;
-const envApiUrlNative = import.meta.env.VITE_API_URL_NATIVE;
+// The deployed EC2 backend (proxied through Nginx on port 80).
+const NATIVE_BACKEND_URL = 'http://54.91.207.131';
 
-if (isNative && !envApiUrlNative) {
-  console.warn(
-    '[App] Running on a native platform but VITE_API_URL_NATIVE is not set. ' +
-    'API calls will likely fail. Set VITE_API_URL_NATIVE to your backend URL ' +
-    '(e.g. https://your-backend.railway.app) in your .env file.'
-  );
-}
+export const API_URL = (() => {
+  // During build-time (Node.js), window is undefined. We return the EC2 URL
+  // to force Vite to keep it in the built bundle instead of tree-shaking it.
+  if (typeof window === 'undefined') {
+    return NATIVE_BACKEND_URL;
+  }
+  
+  // If running inside the Android app WebView (configured hostname in capacitor.config.json)
+  if (window.location.hostname === 'app.evolvia.app') {
+    return NATIVE_BACKEND_URL;
+  }
+  
+  // Fallback for browser / local dev proxy
+  return '';
+})();
 
-export const API_URL = isNative
-  ? (envApiUrlNative || envApiUrl || (import.meta.env.DEV ? 'http://localhost:5001' : window.location.origin))
-  : '';
+
+
 
 // ── Native fetch helper ───────────────────────────────────────
 // On Capacitor native builds, httpOnly cookies may not be forwarded by the

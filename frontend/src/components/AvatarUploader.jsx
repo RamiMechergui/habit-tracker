@@ -35,11 +35,12 @@ export default function AvatarUploader() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [cacheBuster, setCacheBuster] = useState(Date.now());
 
   const avatarUrl = user?.profilePicture
     ? (user.profilePicture.startsWith('data:')
         ? user.profilePicture
-        : `${API_URL}${user.profilePicture}?t=${Date.now()}`)
+        : `${API_URL}${user.profilePicture}?t=${cacheBuster}`)
     : null;
 
   const onFileChange = (e) => {
@@ -64,6 +65,7 @@ export default function AvatarUploader() {
     try {
       const blob = await getCroppedBlob(rawSrc, croppedAreaPixels);
       await updateProfilePicture(blob);
+      setCacheBuster(Date.now()); // Update cache buster ONLY after a successful upload
       setRawSrc(null);
     } catch (e) {
       setError(e?.message || 'Upload failed. Please try again.');

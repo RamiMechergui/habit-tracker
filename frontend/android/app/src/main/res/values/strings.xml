@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Evolvia</string>
-    <string name="title_activity_main">Evolvia</string>
+    <string name="app_name">Evolvio</string>
+    <string name="title_activity_main">Evolvio</string>
     <string name="package_name">com.evolvia.habittracker</string>
     <string name="custom_url_scheme">com.evolvia.habittracker</string>
 </resources>

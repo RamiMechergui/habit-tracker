@@ -8,6 +8,7 @@
 import { dequeueSyncAll, removeSyncItem, clearSyncQueue } from './offlineDb.js';
 
 import { API_URL, nativeFetch } from './config.js';
+import { Network } from '@capacitor/network';
 
 // Shadow global fetch so all sync operations use the native-aware helper
 const fetch = nativeFetch;
@@ -95,10 +96,18 @@ export function startSyncListener() {
   // Replay immediately if we're already online
   replayQueue();
 
-  // Listen for online events
+  // Listen for online events (Standard Browser)
   window.addEventListener('online', () => {
-    console.log('[Sync] Back online — starting replay…');
+    console.log('[Sync] Back online (Browser) — starting replay…');
     replayQueue();
+  });
+
+  // Listen for online events (Capacitor Android/iOS)
+  Network.addListener('networkStatusChange', status => {
+    console.log('[Sync] Network status changed:', status.connected);
+    if (status.connected) {
+      replayQueue();
+    }
   });
 
   // Periodic check every 30 seconds (catches edge cases)

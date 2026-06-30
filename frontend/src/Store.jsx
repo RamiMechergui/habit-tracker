@@ -452,6 +452,16 @@ export const HabitProvider = ({ children }) => {
         const cachedUser = await loadSession();
         if (cachedUser) {
           try {
+            // Restore locally cached avatar data URL (stored after upload for offline access)
+            // Only restore if the current profilePicture is a server path, not already a data URL
+            if (cachedUser.profilePicture && !cachedUser.profilePicture.startsWith('data:')) {
+              try {
+                const { value: savedDataUrl } = await Preferences.get({ key: 'avatar_data_url' });
+                if (savedDataUrl) {
+                  cachedUser.profilePicture = savedDataUrl;
+                }
+              } catch (_) {}
+            }
             setUser(cachedUser);
             // Also sync to IndexedDB as fallback
             db.saveUser(cachedUser);
@@ -888,7 +898,27 @@ export const HabitProvider = ({ children }) => {
       throw new Error(`Upload failed: unexpected server response: ${txt.slice(0,300)}`);
     }
     const data = await res.json();
-    const updated = { ...user, profilePicture: data.profilePicture };
+
+    // Convert the cropped blob to a base64 data URL and store it locally.
+    // This allows the avatar to render on Android (Capacitor) even when offline,
+    // since <img> tags cannot reach the remote server without a network connection.
+    let localAvatarDataUrl = null;
+    try {
+      localAvatarDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(croppedBlob);
+      });
+      // Persist the data URL in Capacitor Preferences for offline access
+      await Preferences.set({ key: 'avatar_data_url', value: localAvatarDataUrl });
+    } catch (e) {
+      console.warn('[Store] Could not convert avatar to data URL:', e);
+    }
+
+    // Prefer the local data URL for immediate display; fall back to server path
+    const pictureValue = localAvatarDataUrl || data.profilePicture;
+    const updated = { ...user, profilePicture: pictureValue, profilePicturePath: data.profilePicture };
     setUser(updated);
     await saveSession(updated);
     db.saveUser(updated);
