@@ -1845,6 +1845,142 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const uploadGermanNotePhoto = useCallback(async (file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await fetch(`${API_URL}/api/german/note/photo`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to upload note photo');
+    logHistory('german_note_photo', `Uploaded note photo`);
+    return data;
+  }, [API_URL]);
+
+  const translateGermanText = useCallback(async (text, source, target) => {
+    const res = await fetch(`${API_URL}/api/german/translate`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, source: source || 'auto', target: target || 'de' }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Translation failed');
+    return data.translatedText;
+  }, [API_URL]);
+
+  const addGermanDialogue = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/dialogue`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create dialogue');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_dialogue_add', `Added German dialogue: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanDialogue = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/dialogue/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update dialogue');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_dialogue_update', `Updated German dialogue`);
+    return data;
+  }, [API_URL]);
+
+  const addGermanMemo = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/memo`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add memorization paragraph');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_memo_add', `Added memorization paragraph: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanMemo = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/memo/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update memorization paragraph');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_memo_update', `Updated memorization paragraph: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const uploadGermanVocabPhoto = useCallback(async (recordId, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}/photo`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to upload photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data.record } : r));
+    logHistory('german_vocab_photo', `Added photo to vocabulary: ${data.record?.word || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const uploadGermanDialogueParticipantPhoto = useCallback(async (recordId, participantIndex, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await fetch(`${API_URL}/api/german/dialogue/${encodeURIComponent(recordId)}/photo/${participantIndex}`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to upload participant photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data.record } : r));
+    logHistory('german_dialogue_photo', `Added photo to dialogue participant`);
+    return data;
+  }, [API_URL]);
+
+  const deleteGermanDialogueParticipantPhoto = useCallback(async (recordId, participantIndex) => {
+    const res = await fetch(`${API_URL}/api/german/dialogue/${encodeURIComponent(recordId)}/photo/${participantIndex}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete participant photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data.record } : r));
+    logHistory('german_dialogue_photo_delete', `Removed photo from dialogue participant`);
+    return data;
+  }, [API_URL]);
+
+  const deleteGermanVocabPhoto = useCallback(async (recordId) => {
+    const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}/photo`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, photoUrl: '' } : r));
+    logHistory('german_vocab_photo_delete', `Removed photo from vocabulary`);
+    return data;
+  }, [API_URL]);
+
   const deleteGermanRecord = useCallback(async (recordId) => {
     // Optimistic
     setGermanData(prev => prev.filter(r => r.recordId !== recordId));
@@ -1952,7 +2088,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, addAwsCert, saveAwsNote, deleteAwsRecord,
       // Planned Books

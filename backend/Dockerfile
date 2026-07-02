@@ -14,7 +14,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+RUN mkdir -p /app/uploads /app/uploads/german-photos /app/uploads/dialogue-photos /app/uploads/note-photos && chown -R node:node /app/uploads
 EXPOSE 5000
 USER node
 CMD ["npm", "run", "dev"]
@@ -23,7 +23,7 @@ FROM base AS production
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .
-RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+RUN mkdir -p /app/uploads /app/uploads/german-photos /app/uploads/dialogue-photos /app/uploads/note-photos && chown -R node:node /app/uploads
 EXPOSE 5000
 USER node
 CMD ["npm", "start"]

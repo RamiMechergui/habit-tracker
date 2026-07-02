@@ -44,10 +44,19 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change_this_admin_dashboard_password}
       - CLIENT_URL=http://localhost
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      # ── MinIO / S3-compatible storage ────────────────────────────
+      - STORAGE_ENDPOINT=http://minio:9000
+      - STORAGE_ACCESS_KEY=admin
+      - STORAGE_SECRET_KEY=password123
+      - STORAGE_BUCKET=learning-german-images
+      - STORAGE_REGION=us-east-1
+      - USE_PATH_STYLE=true
     networks:
       - habit-network
     depends_on:
       dynamodb-local:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   # ── DynamoDB Local ────────────────────────────────────────────────
@@ -69,6 +78,32 @@ services:
       retries: 10
       start_period: 10s
 
+  # ── MinIO Object Storage (S3-compatible) ────────────────────────────
+  # Stores all Learning German images. S3-compatible API — switch to
+  # AWS S3 in production by changing STORAGE_* environment variables.
+  minio:
+    image: minio/minio:latest
+    hostname: minio
+    container_name: minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO Console (web UI)
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password123
+    volumes:
+      - minio-data:/data
+    networks:
+      - habit-network
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   # ── DynamoDB Admin UI ─────────────────────────────────────────────
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin:latest
@@ -88,6 +123,7 @@ services:
 
 volumes:
   dynamodb-data:
+  minio-data:
 
 networks:
   habit-network:

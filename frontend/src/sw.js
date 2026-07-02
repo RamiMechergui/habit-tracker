@@ -43,9 +43,26 @@ registerRoute(
   })
 );
 
-// ─── API Routes — NetworkFirst with cache fallback ──────────────────────────
+// ─── MinIO / S3 Images — CacheFirst (immutable after upload) ──────────────
+// German section images served through the Express proxy are immutable —
+// aggressively cache them.
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'),
+  ({ url }) => url.pathname.startsWith('/api/german/images/'),
+  new CacheFirst({
+    cacheName: 'evolvia-german-images-v1',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+      }),
+    ],
+  })
+);
+
+// ─── API Routes — NetworkFirst with cache fallback ──────────────────────────
+// Exclude image proxy URLs (handled above with CacheFirst).
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/german/images/'),
   new NetworkFirst({
     cacheName: 'evolvia-api-v1',
     networkTimeoutSeconds: 5,

@@ -31,7 +31,7 @@ async function getAllGermanRecords(userId) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now() }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '' }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -48,6 +48,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     mastery,
     favorite,
     sortOrder,
+    photoUrl,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -55,7 +56,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl'];
   const sets = [];
   const names = {};
   const values = {};
@@ -201,6 +202,93 @@ async function updateVerb(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Dialogues ──────────────────────────────────────────────────────────────────
+async function addDialogue(userId, { title, level, participants, exchanges, sortOrder = Date.now() }) {
+  const recordId = `DIALOGUE#${uuidv4()}`;
+  const item = {
+    userId,
+    recordId,
+    type: 'dialogue',
+    title,
+    level,
+    participants,
+    exchanges,
+    sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateDialogue(userId, recordId, updates) {
+  const allowed = ['title', 'level', 'participants', 'exchanges', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
+// ── Memorization Paragraphs ────────────────────────────────────────────────────
+async function addMemo(userId, { title, content, sortOrder = Date.now() }) {
+  const recordId = `MEMO#${uuidv4()}`;
+  const item = {
+    userId, recordId, type: 'memo',
+    title,
+    content,
+    sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateMemo(userId, recordId, updates) {
+  const allowed = ['title', 'content', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 // ── Delete (any type) ─────────────────────────────────────────────────────────
 async function deleteGermanRecord(userId, recordId) {
   await docClient.send(new DeleteCommand({
@@ -221,4 +309,8 @@ module.exports = {
   saveNote,
   getNoteByDate,
   deleteGermanRecord,
+  addDialogue,
+  updateDialogue,
+  addMemo,
+  updateMemo,
 };

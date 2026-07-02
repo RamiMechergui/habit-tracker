@@ -1,12 +1,15 @@
 import jsPDF from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 import { format } from 'date-fns';
+import html2canvas from 'html2canvas';
 
 const C = {
   gold: [234, 179, 8], red: [220, 38, 38], dark: [15, 23, 42],
   muted: [100, 116, 139], white: [255, 255, 255], bg: [241, 245, 249],
-  green: [16, 185, 129], blue: [59, 130, 246], purple: [139, 92, 246], orange: [249, 115, 22],
+  green: [16, 185, 129], blue: [59, 130, 246], purple: [139, 92, 246], orange: [249, 115, 22], pink: [236, 73, 153],
 };
+
+const GENDER_COLORS = { male: C.blue, female: C.pink, other: C.purple };
 
 const articleColor = { der: C.blue, die: C.red, das: C.green };
 
@@ -59,6 +62,7 @@ function addFooter(doc, W) {
 
 function renderVocabCard(doc, v, i, y, W) {
   if (y > 250) return -1;
+  const leftMargin = v.photoUrl ? 62 : 14;
   doc.setFillColor(...C.dark);
   doc.roundedRect(14, y, W - 28, 8, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
@@ -66,6 +70,7 @@ function renderVocabCard(doc, v, i, y, W) {
   doc.setTextColor(...C.gold);
   const num = `${i + 1}.`;
   doc.text(num, 18, y + 5.5);
+  let wx = 24;
   if (v.article) {
     const ac = articleColor[v.article.toLowerCase()] || C.muted;
     doc.setFillColor(...ac);
@@ -74,17 +79,18 @@ function renderVocabCard(doc, v, i, y, W) {
     doc.setFontSize(7);
     doc.setTextColor(...C.white);
     doc.text(v.article, 31, y + 5, { align: 'center' });
+    wx = 42;
   }
-  const wx = v.article ? 42 : 24;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(...C.white);
   doc.text(v.word || '', wx, y + 5.5);
+  const phRight = wx + doc.getTextWidth(v.word || '') + 4;
   if (v.plural) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(7);
     doc.setTextColor(...C.muted);
-    doc.text(`(Pl: ${v.plural})`, wx + doc.getTextWidth(v.word || '') + 4, y + 5.5);
+    doc.text(`(Pl: ${v.plural})`, phRight, y + 5.5);
   }
   if (v.favorite) {
     doc.setTextColor(...C.gold);
@@ -92,31 +98,42 @@ function renderVocabCard(doc, v, i, y, W) {
     doc.text('★', W - 20, y + 5.5, { align: 'center' });
   }
   y += 11;
+  // Photo column
+  if (v.photoUrl) {
+    try {
+      doc.addImage(v.photoUrl, 'JPEG', 14, y, 40, 40);
+    } catch (_) {
+      // Image may not be available in browser context
+    }
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...C.dark);
   const trans = v.translation ? `→ ${v.translation}` : '';
-  doc.text(trans, 18, y);
-  y += 5;
+  doc.text(trans, leftMargin, y + 4);
+  let lineY = y + 4;
   if (v.example) {
+    lineY += 5;
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(...C.muted);
-    doc.text(`"${v.example}"`, 18, y);
-    y += 5;
+    doc.text(`"${v.example}"`, leftMargin, lineY);
   }
   if (v.notes) {
+    lineY += 5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...C.dark);
-    const nl = doc.splitTextToSize(v.notes, W - 36);
-    doc.text(nl, 18, y);
-    y += nl.length * 4 + 2;
+    const nl = doc.splitTextToSize(v.notes, W - leftMargin - 14);
+    doc.text(nl, leftMargin, lineY);
+    lineY += nl.length * 4 + 2;
+  } else {
+    lineY += 2;
   }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(...C.muted);
-  doc.text(v.category || 'General', 18, y);
-  y += 8;
-  return y;
+  doc.text(v.category || 'General', leftMargin, lineY + 4);
+  const cardHeight = Math.max(lineY + 12, y + 44);
+  return cardHeight;
 }
 
 function renderVerbCard(doc, v, i, y, W) {
@@ -197,7 +214,165 @@ function renderGrammarCard(doc, g, i, y, W) {
   return y;
 }
 
-export function exportGermanPDF(data) {
+function renderDialogueCard(doc, d, i, y, W) {
+  if (y > 240) return -1;
+  // Header bar
+  doc.setFillColor(...C.dark);
+  doc.roundedRect(14, y, W - 28, 10, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...C.orange);
+  doc.text(`${i + 1}. ${d.title || 'Dialogue'}`, 18, y + 7);
+  // Level badge
+  const level = d.level || 'B1';
+  const lx = doc.getTextWidth(`${i + 1}. ${d.title || 'Dialogue'} `) + 20;
+  doc.setFillColor(...C.orange);
+  doc.roundedRect(lx, y + 2, 10, 6, 1, 1, 'F');
+  doc.setFontSize(6);
+  doc.setTextColor(...C.white);
+  doc.text(level, lx + 5, y + 6, { align: 'center' });
+  // Date on right
+  if (d.createdAt) {
+    const dateStr = format(new Date(d.createdAt), 'MMM d, yyyy');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...C.muted);
+    doc.text(dateStr, W - 18, y + 7, { align: 'right' });
+  }
+  // Participant names below header
+  const participants = d.participants || [];
+  const pText = participants.map(p => p.name).join(' & ');
+  doc.setFontSize(6);
+  doc.setTextColor(...C.muted);
+  doc.text(pText, 18, y + 14);
+
+  y += 20;
+
+  // Exchanges
+  const exchanges = d.exchanges || [];
+  const colW = (W - 48) / 2; // two equal columns
+  for (let ei = 0; ei < exchanges.length; ei++) {
+    if (y > 256) {
+      doc.addPage();
+      const hdr = d.title || 'Dialogue';
+      const sub = `Exchange ${ei + 1}–${exchanges.length} · ${d.participants?.map(p => p.name).join(' & ') || ''}`;
+      addHeader(doc, `${hdr} (cont.)`, sub.trim());
+      y = 46;
+    }
+    const ex = exchanges[ei];
+    const p = participants[ex.speakerIndex] || { name: '?', gender: 'other' };
+    const pColor = GENDER_COLORS[p.gender] || C.purple;
+
+    // Name row with avatar photo (if available) or colored initial
+    const ny = y + 2;
+    const avatarSize = 5; // mm
+    const avatarX = 16;
+    const avatarY = ny;
+    if (p.photoUrl) {
+      try {
+        doc.addImage(p.photoUrl, 'JPEG', avatarX, avatarY, avatarSize, avatarSize);
+      } catch (_) {
+        // Fallback: render initial on colored circle if image fails
+        doc.setDrawColor(...pColor);
+        doc.setFillColor(pColor[0], pColor[1], pColor[2], 0.2);
+        doc.circle(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 'FD');
+        doc.setFontSize(5);
+        doc.setTextColor(...pColor);
+        doc.text(p.name.charAt(0).toUpperCase(), avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 1.5, { align: 'center' });
+      }
+    } else {
+      doc.setDrawColor(...pColor);
+      doc.setFillColor(pColor[0], pColor[1], pColor[2], 0.2);
+      doc.circle(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 'FD');
+      doc.setFontSize(5);
+      doc.setTextColor(...pColor);
+      doc.text(p.name.charAt(0).toUpperCase(), avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 1.5, { align: 'center' });
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(...pColor);
+    doc.text(p.name, avatarX + avatarSize + 3, ny + 3.5);
+    y = ny + 8;
+
+    // Two-column layout: Original | German
+    const leftX = 18;
+    const rightX = 18 + colW + 6;
+    const colWAdj = colW;
+
+    // Column headers
+    doc.setFillColor(...C.bg);
+    doc.rect(leftX, y, colWAdj, 4, 'F');
+    doc.rect(rightX, y, colWAdj, 4, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...C.muted);
+    doc.text('German', leftX + 2, y + 3);
+    doc.text('English', rightX + 2, y + 3);
+    y += 5;
+
+    // Original text
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C.dark);
+    const oLines = ex.original ? doc.splitTextToSize(ex.original, colWAdj - 4) : [];
+    doc.text(oLines, leftX + 2, y + 2);
+    const oH = oLines.length * 3.5 + 2;
+
+    // German text
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...C.dark);
+    const gLines = ex.german ? doc.splitTextToSize(ex.german, colWAdj - 4) : [];
+    doc.text(gLines, rightX + 2, y + 2);
+    const gH = gLines.length * 3.5 + 2;
+
+    // Divider between columns
+    doc.setDrawColor(...C.muted);
+    doc.setLineWidth(0.2);
+    doc.line(leftX + colWAdj + 2, y, leftX + colWAdj + 2, y + Math.max(oH, gH) + 2);
+
+    y += Math.max(oH, gH) + 4;
+
+    // Row separator
+    doc.setDrawColor(...C.bg);
+    doc.setLineWidth(0.3);
+    doc.line(18, y, W - 18, y);
+    y += 2;
+  }
+  return y + 2;
+}
+
+function renderMemoCard(doc, memo, i, y, W) {
+  if (y > 250) return -1;
+  doc.setFillColor(...C.dark);
+  doc.roundedRect(14, y, W - 28, 10, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...C.green);
+  doc.text(`${i + 1}. ${memo.title}`, 18, y + 7);
+  if (memo.createdAt) {
+    const dateStr = format(new Date(memo.createdAt), 'MMM d, yyyy');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...C.muted);
+    doc.text(dateStr, W - 18, y + 7, { align: 'right' });
+  }
+  y += 15;
+  doc.setFillColor(...C.bg);
+  doc.roundedRect(14, y, W - 28, 4, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(...C.muted);
+  doc.text('Memorization Text', 18, y + 3);
+  y += 7;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...C.dark);
+  const plainText = memo.content.replace(/<[^>]+>/g, '');
+  const lines = doc.splitTextToSize(plainText, W - 40);
+  doc.text(lines, 18, y);
+  y += lines.length * 4 + 8;
+  return y;
+}
+
+export async function exportGermanPDF(data) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = addHeader(doc, 'German Learning Report', `Generated on ${format(new Date(), 'MMMM d, yyyy – HH:mm')}`);
 
@@ -213,6 +388,7 @@ export function exportGermanPDF(data) {
   let y = 52;
 
   // ── STAT BADGES ──────────────────────────────────────────────────────────────
+  const dialogues = data.filter(r => r.type === 'dialogue').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const badges = [
     { label: 'Words', v: vocab.length, c: C.gold },
     { label: 'Grammar', v: grammar.length, c: C.blue },
@@ -232,8 +408,8 @@ export function exportGermanPDF(data) {
   y += 30;
   const badges2 = [
     { label: 'Days', v: notes.length, c: C.green },
-    { label: 'Favorites', v: data.filter(r => r.favorite).length, c: C.red },
-    { label: 'Study Time', v: `${h}h ${m}m`, c: C.orange },
+    { label: 'Dialogues', v: dialogues.length, c: C.orange },
+    { label: 'Study Time', v: `${h}h ${m}m`, c: C.purple },
   ];
   badges2.forEach((b, i) => {
     doc.setFillColor(b.c[0], b.c[1], b.c[2], 0.08);
@@ -310,13 +486,57 @@ export function exportGermanPDF(data) {
     }
   }
 
+  // ── DIALOGUES REVIEW ────────────────────────────────────────────────────────
+  if (dialogues.length > 0) {
+    doc.addPage();
+    addHeader(doc, 'Dialogue Review', `All ${dialogues.length} dialogues with full exchanges`);
+    y = 46;
+    y = addSection(doc, y, `Dialogues (${dialogues.length})`, C.orange);
+    for (let i = 0; i < dialogues.length; i++) {
+      const ny = renderDialogueCard(doc, dialogues[i], i, y, W);
+      if (ny === -1) {
+        doc.addPage();
+        addHeader(doc, 'Dialogue Review (cont.)', `Dialogues ${i + 1}–${dialogues.length}`);
+        y = 46;
+        const ny2 = renderDialogueCard(doc, dialogues[i], i, y, W);
+        if (ny2 === -1) break;
+        y = ny2;
+      } else {
+        y = ny;
+      }
+    }
+  }
+
+  // ── MEMORIZATION PARAGRAPHS ──────────────────────────────────────────────────
+  const memos = (data || []).filter(r => r.type === 'memo');
+  if (memos.length > 0) {
+    doc.addPage();
+    addHeader(doc, 'Memorization Paragraphs', `${memos.length} paragraphs for active recall practice`);
+    y = 46;
+    y = addSection(doc, y, `Memorization (${memos.length})`, C.green);
+    for (let i = 0; i < memos.length; i++) {
+      if (y > 250) {
+        doc.addPage();
+        addHeader(doc, 'Memorization (cont.)', `Paragraph ${i + 1}–${memos.length}`);
+        y = 46;
+      }
+      const ny = renderMemoCard(doc, memos[i], i, y, W);
+      if (ny === -1) break;
+      y = ny;
+    }
+  }
+
   // ── STUDY NOTES REVIEW ──────────────────────────────────────────────────────
   if (notes.length > 0) {
     doc.addPage();
     addHeader(doc, 'Study Notes Review', `All ${notes.length} study sessions with full content`);
     y = 46;
     y = addSection(doc, y, `Study Sessions (${notes.length})`, C.green);
-    for (const note of notes) {
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:700px;background:#fff;padding:16px;font-family:Inter,sans-serif;font-size:13px;line-height:1.6;color:#0f172a;';
+    document.body.appendChild(container);
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i];
       if (y > 250) {
         doc.addPage();
         addHeader(doc, 'Study Notes (cont.)', 'Continued');
@@ -334,13 +554,34 @@ export function exportGermanPDF(data) {
       }
       y += 11;
       if (note.content) {
-        doc.setFontSize(8.5);
-        doc.setTextColor(...C.dark);
-        const lines = doc.splitTextToSize(note.content, W - 36);
-        doc.text(lines, 18, y);
-        y += lines.length * 4.5 + 8;
+        container.innerHTML = note.content;
+        container.querySelectorAll('img').forEach(img => {
+          const src = img.getAttribute('src') || '';
+          if (src.startsWith('/')) img.src = window.location.origin + src;
+        });
+        try {
+          const canvas = await html2canvas(container, {
+            scale: 2, useCORS: true, allowTaint: false,
+            backgroundColor: '#ffffff',
+            width: container.scrollWidth,
+            height: container.scrollHeight,
+          });
+          const imgData = canvas.toDataURL('image/png');
+          const pw = W - 36;
+          const ph = (canvas.height / canvas.width) * pw;
+          doc.addImage(imgData, 'PNG', 18, y, pw, ph);
+          y += ph + 8;
+        } catch (_) {
+          doc.setFontSize(8.5);
+          doc.setTextColor(...C.dark);
+          const plainText = note.content.replace(/<[^>]+>/g, '');
+          const lines = doc.splitTextToSize(plainText, W - 36);
+          doc.text(lines, 18, y);
+          y += lines.length * 4.5 + 8;
+        }
       }
     }
+    document.body.removeChild(container);
   }
 
   addFooter(doc, W);

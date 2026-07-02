@@ -2,16 +2,18 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
+import DialogueBuilder from '../components/DialogueBuilder';
 import { format } from 'date-fns';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Target, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, Image,
 } from 'lucide-react';
 
-const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6' };
+const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899' };
+const PERSON_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 const PRESET_CATEGORIES = ['General', 'Animals', 'Food', 'Travel', 'Work', 'Daily Life', 'Grammar', 'Vocabulary', 'Phrases'];
 
 const inputBase = {
@@ -128,16 +130,29 @@ function GenderBadge({ article }) {
   );
 }
 
-function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
-  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0 });
+function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading }) {
+  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
+  const [newPhotoFile, setNewPhotoFile] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileRef = useRef(null);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
   useEffect(() => {
     if (editRecord) {
-      setForm({ word: editRecord.word || '', translation: editRecord.translation || '', example: editRecord.example || '', notes: editRecord.notes || '', category: editRecord.category || 'General', plural: editRecord.plural || '', mastery: editRecord.mastery || 0 });
+      const detected = detectArticle(editRecord.word || '');
+      setForm({
+        word: detected ? detected.word : (editRecord.word || ''),
+        translation: editRecord.translation || '',
+        example: editRecord.example || '',
+        notes: editRecord.notes || '',
+        category: editRecord.category || 'General',
+        plural: editRecord.plural || '',
+        mastery: editRecord.mastery || 0,
+        article: detected ? detected.article : (editRecord.article || ''),
+      });
       setOpen(true);
     }
   }, [editRecord]);
@@ -146,21 +161,43 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     e.preventDefault();
     if (!form.word.trim() || !form.translation.trim()) return;
     const cat = customCat.trim() || form.category;
-    const payload = { ...form, category: cat };
+    const wordStr = form.article ? `${form.article} ${form.word.trim()}` : form.word.trim();
+    const { article, ...rest } = form;
+    const payload = { ...rest, word: wordStr, category: cat };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
+      if (newPhotoFile) {
+        await onUploadPhoto(editRecord.recordId, newPhotoFile);
+        setNewPhotoFile(null);
+      }
     } else {
-      await onAdd(payload);
+      const created = await onAdd(payload);
+      if (newPhotoFile && created?.recordId) {
+        await onUploadPhoto(created.recordId, newPhotoFile);
+        setNewPhotoFile(null);
+      }
     }
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0 });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
     setCustomCat('');
+    setNewPhotoFile(null);
     setDirty(false);
     setOpen(false);
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (editRecord) {
+      onUploadPhoto(editRecord.recordId, file);
+    } else {
+      setNewPhotoFile(file);
+    }
+    e.target.value = '';
+  };
+
   const handleCancel = () => {
     if (dirty && !window.confirm('Discard unsaved changes?')) return;
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0 });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
     setCustomCat('');
     setDirty(false);
     setOpen(false);
@@ -169,6 +206,8 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
 
   const categoryOptions = [...PRESET_CATEGORIES];
   if (customCat.trim() && !categoryOptions.includes(customCat.trim())) categoryOptions.push(customCat.trim());
+
+  const photoUrl = editRecord?.photoUrl || null;
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
@@ -189,8 +228,19 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
           border: `1px solid ${editRecord ? C.blue + '40' : C.gold + '30'}`, borderRadius: '14px', padding: '1.25rem',
           display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem',
         }}>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>German Word *</label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <select value={form.article} onChange={e => set('article', e.target.value)} style={{ ...inputBase, width: 80, padding: '0.5rem 0.5rem', fontSize: '0.82rem', flexShrink: 0 }}>
+                <option value="">—</option>
+                <option value="der" style={{ color: '#3b82f6', fontWeight: 700 }}>der</option>
+                <option value="die" style={{ color: '#dc2626', fontWeight: 700 }}>die</option>
+                <option value="das" style={{ color: '#10b981', fontWeight: 700 }}>das</option>
+              </select>
+              <input value={form.word} onChange={e => set('word', e.target.value)} placeholder="e.g. Hund" style={{ ...inputBase, flex: 1 }} />
+            </div>
+          </div>
           {[
-            { k: 'word', label: 'German Word *', ph: 'e.g. Hund' },
             { k: 'translation', label: 'Translation *', ph: 'e.g. Dog' },
             { k: 'plural', label: 'Plural Form', ph: 'e.g. Hunde' },
             { k: 'example', label: 'Example Sentence', ph: 'e.g. Der Hund bellt.' },
@@ -217,6 +267,33 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mastery</label>
             <div style={{ marginTop: 4 }}>{masteryStars(form.mastery, v => setForm(p => ({ ...p, mastery: v })))}</div>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Photo</label>
+            <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {editRecord && photoUrl ? (
+                <img src={photoUrl} alt={editRecord.word} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+              ) : newPhotoFile ? (
+                <img src={URL.createObjectURL(newPhotoFile)} alt="preview" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+              ) : null}
+              {editRecord && photoUrl && (
+                <button type="button" onClick={() => onDeletePhoto(editRecord.recordId)} style={{ background: `${C.red}20`, border: `1px solid ${C.red}40`, borderRadius: 6, cursor: 'pointer', color: C.red, padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Trash2 size={12} /> Remove
+                </button>
+              )}
+              {newPhotoFile && (
+                <button type="button" onClick={() => { setNewPhotoFile(null); }} style={{ background: `${C.red}15`, border: `1px solid ${C.red}40`, borderRadius: 6, cursor: 'pointer', color: C.red, padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <X size={12} /> Clear
+                </button>
+              )}
+              <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+              <button type="button" disabled={uploading || photoUploading} onClick={() => fileRef.current?.click()} style={{
+                background: `${C.blue}15`, border: `1px solid ${C.blue}40`, borderRadius: 6, cursor: 'pointer',
+                color: C.blue, padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, opacity: (uploading || photoUploading) ? 0.6 : 1,
+              }}>
+                <Upload size={12} /> {(uploading || photoUploading) ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
           </div>
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{
@@ -764,6 +841,381 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
   );
 }
 
+function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) {
+  const [form, setForm] = useState({ title: '', content: '' });
+  const [open, setOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const editorRef = useRef(null);
+  const colorInputRef = useRef(null);
+  const memoPhotoInputRef = useRef(null);
+  const memoImgReplaceRef = useRef(null);
+  const [memoImgEditor, setMemoImgEditor] = useState(null);
+  const memoImgHandlesRef = useRef(null);
+  const memoImgToolbarRef = useRef(null);
+  const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
+
+  useEffect(() => {
+    if (editRecord) {
+      setForm({ title: editRecord.title || '', content: editRecord.content || '' });
+      setOpen(true);
+    }
+  }, [editRecord]);
+
+  useEffect(() => {
+    if (open && editorRef.current) {
+      editorRef.current.innerHTML = form.content;
+    }
+  }, [open]);
+
+  const exec = (cmd, val) => {
+    document.execCommand(cmd, false, val || null);
+    editorRef.current?.focus();
+    handleContentChange();
+  };
+
+  const handleContentChange = () => {
+    const html = editorRef.current?.innerHTML || '';
+    set('content', html);
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    handleContentChange();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const content = editorRef.current?.innerHTML || '';
+    if (!form.title.trim() || !content.trim()) return;
+    const payload = { title: form.title.trim(), content };
+    if (editRecord) {
+      await onUpdate(editRecord.recordId, payload);
+    } else {
+      await onAdd(payload);
+    }
+    setForm({ title: '', content: '' });
+    if (editorRef.current) editorRef.current.innerHTML = '';
+    setDirty(false);
+    setOpen(false);
+  };
+
+  const handleCancel = () => {
+    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    setForm({ title: '', content: '' });
+    if (editorRef.current) editorRef.current.innerHTML = '';
+    setDirty(false);
+    setOpen(false);
+    if (onCancelEdit) onCancelEdit();
+  };
+
+  // ── Memo image handling ──
+  const insertMemoImage = () => memoPhotoInputRef.current?.click();
+
+  const handleMemoPhotoSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !onUploadPhoto) return;
+    const url = await onUploadPhoto(file);
+    if (url && editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand('insertImage', false, url);
+      handleContentChange();
+    }
+    e.target.value = '';
+  };
+
+  const handleMemoEditorMouseDown = (e) => {
+    const img = e.target.closest('img');
+    if (img && editorRef.current?.contains(img)) {
+      e.preventDefault();
+      const rect = img.getBoundingClientRect();
+      setMemoImgEditor({ el: img, rect });
+    }
+  };
+
+  const memoUpdateOverlayDom = (rect) => {
+    if (memoImgHandlesRef.current) {
+      memoImgHandlesRef.current.style.left = `${rect.left - 4}px`;
+      memoImgHandlesRef.current.style.top = `${rect.top - 4}px`;
+      memoImgHandlesRef.current.style.width = `${rect.width + 8}px`;
+      memoImgHandlesRef.current.style.height = `${rect.height + 8}px`;
+    }
+    if (memoImgToolbarRef.current) {
+      memoImgToolbarRef.current.style.left = `${rect.left}px`;
+      memoImgToolbarRef.current.style.top = `${rect.top - 36 < 4 ? rect.bottom + 4 : rect.top - 36}px`;
+    }
+  };
+
+  const handleMemoImgResizeStart = (e, corner) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const img = memoImgEditor?.el;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = rect.width;
+    const startH = rect.height;
+    const aspect = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : startW / startH || 1;
+    const parent = img.parentElement;
+    const maxW = parent ? parent.clientWidth : 1200;
+    function onMouseMove(ev) {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      let d = dx;
+      if (corner.includes('w')) d = -dx;
+      const dFromY = dy * aspect;
+      if (corner.includes('s')) { if (Math.abs(dFromY) > Math.abs(d)) d = dFromY; }
+      if (corner.includes('n')) { if (Math.abs(-dFromY) > Math.abs(d)) d = -dFromY; }
+      let newW = Math.min(maxW, Math.max(30, startW + d));
+      img.style.width = `${newW}px`;
+      img.style.height = `${newW / aspect}px`;
+      memoUpdateOverlayDom(img.getBoundingClientRect());
+    }
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      handleContentChange();
+      const r = img.getBoundingClientRect();
+      setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
+    }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleMemoImgAlign = (align) => {
+    const img = memoImgEditor?.el;
+    if (!img) return;
+    img.removeAttribute('align');
+    img.style.cssText = (img.style.cssText || '')
+      .replace(/float\s*:[^;]+;?/g, '')
+      .replace(/display\s*:[^;]+;?/g, '')
+      .replace(/margin\s*:[^;]+;?/g, '')
+      .replace(/margin-\w+\s*:[^;]+;?/g, '')
+      .trim();
+    if (align === 'left') { img.style.float = 'left'; img.style.margin = '0.5rem 1rem 0.5rem 0'; }
+    else if (align === 'right') { img.style.float = 'right'; img.style.margin = '0.5rem 0 0.5rem 1rem'; }
+    else if (align === 'center') { img.style.display = 'block'; img.style.margin = '0.5rem auto'; }
+    handleContentChange();
+    const r = img.getBoundingClientRect();
+    setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
+    memoUpdateOverlayDom(r);
+  };
+
+  const handleMemoImgReplace = () => memoImgReplaceRef.current?.click();
+
+  const handleMemoImgReplaceSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !onUploadPhoto) return;
+    const img = memoImgEditor?.el;
+    if (!img) return;
+    const url = await onUploadPhoto(file);
+    if (url) {
+      img.src = url;
+      handleContentChange();
+      const r = img.getBoundingClientRect();
+      setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
+      memoUpdateOverlayDom(r);
+    }
+    e.target.value = '';
+  };
+
+  const handleMemoImgDelete = () => {
+    const img = memoImgEditor?.el;
+    if (!img) return;
+    img.remove();
+    setMemoImgEditor(null);
+    handleContentChange();
+  };
+
+  // Dismiss image selection on outside click
+  useEffect(() => {
+    if (!memoImgEditor) return;
+    function onAnyDown(e) {
+      const ed = editorRef.current;
+      if (!ed) { setMemoImgEditor(null); return; }
+      const insideImg = e.target.closest('img') && ed.contains(e.target.closest('img'));
+      const insideOverlay = e.target.closest('[data-memo-handles]') || e.target.closest('[data-memo-toolbar]');
+      if (!insideImg && !insideOverlay) setMemoImgEditor(null);
+    }
+    document.addEventListener('mousedown', onAnyDown);
+    return () => document.removeEventListener('mousedown', onAnyDown);
+  }, [memoImgEditor]);
+
+  // Scroll-aware overlay positions
+  useEffect(() => {
+    if (!memoImgEditor?.el) return;
+    function onScroll() {
+      const r = memoImgEditor.el.getBoundingClientRect();
+      setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
+      memoUpdateOverlayDom(r);
+    }
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, [memoImgEditor?.el]);
+
+  const TB = { padding: '0.3rem 0.65rem', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 };
+
+  return (
+    <div style={{ marginBottom: '1.25rem' }}>
+      <button onClick={() => { if (!open) setOpen(true); else handleCancel(); }} style={{
+        display: 'flex', alignItems: 'center', gap: '0.5rem',
+        background: `linear-gradient(135deg, ${C.green}, #059669)`,
+        color: '#fff', border: 'none', borderRadius: '10px',
+        padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+        boxShadow: `0 4px 14px ${C.green}40`,
+      }}>
+        {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
+        {editRecord ? 'Edit Paragraph' : 'New Paragraph'}
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      {open && (
+        <form onSubmit={handleSubmit} style={{
+          marginTop: '0.85rem', background: 'var(--bg-card)',
+          border: `1px solid ${C.green}40`, borderRadius: '14px', padding: '1.25rem',
+        }}>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Title *</label>
+            <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Important German Phrases" style={inputBase} />
+          </div>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Content *</label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', padding: '0.4rem 0.6rem', background: 'var(--bg)', borderRadius: '8px 8px 0 0', border: '1px solid var(--border)', borderBottom: 'none' }}>
+              <button type="button" onClick={() => exec('bold')} title="Bold" style={{ ...TB, width: 32, justifyContent: 'center', fontWeight: 900, fontSize: '0.95rem' }}><b>B</b></button>
+              <button type="button" onClick={() => exec('underline')} title="Underline" style={{ ...TB, width: 32, justifyContent: 'center' }}><u>U</u></button>
+              <button type="button" onClick={() => colorInputRef.current?.click()} title="Text color" style={{ ...TB, width: 32, justifyContent: 'center', fontSize: '0.95rem', padding: 0 }}>
+                <span style={{ textDecoration: 'underline', textDecorationColor: C.red }}>A</span>
+              </button>
+              <input ref={colorInputRef} type="color" style={{ display: 'none' }} onChange={e => { exec('foreColor', e.target.value); e.target.value = '#000000'; }} />
+              <button type="button" onClick={() => exec('removeFormat')} title="Clear formatting" style={{ ...TB, fontSize: '0.7rem' }}><X size={13} /></button>
+              <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
+              <button type="button" onClick={insertMemoImage} title="Insert Image" style={{ ...TB, width: 32, justifyContent: 'center', fontSize: '0.8rem' }}><Image size={14} /></button>
+              <input ref={memoPhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleMemoPhotoSelected} />
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={handleContentChange}
+              onPaste={handlePaste}
+              onMouseDown={handleMemoEditorMouseDown}
+              dangerouslySetInnerHTML={{ __html: form.content }}
+              style={{
+                ...inputBase, resize: 'vertical', minHeight: 140, maxHeight: 320, overflow: 'auto',
+                fontFamily: 'inherit', lineHeight: 1.7, borderRadius: '0 0 8px 8px', marginTop: 0,
+              }}
+            />
+            {/* Memo image resize handles */}
+            {memoImgEditor && memoImgEditor.rect && (
+              <div ref={memoImgHandlesRef} data-memo-handles style={{
+                position: 'fixed', pointerEvents: 'none', zIndex: 100,
+                border: '2px solid #10b981', borderRadius: 4,
+              }}>
+                {['nw','ne','sw','se'].map(corner => (
+                  <div key={corner} onMouseDown={e => handleMemoImgResizeStart(e, corner)} style={{
+                    position: 'absolute', width: 10, height: 10, background: '#fff',
+                    border: '2px solid #10b981', borderRadius: 2,
+                    cursor: corner.includes('n') ? (corner.includes('w') ? 'nw-resize' : 'ne-resize') : (corner.includes('w') ? 'sw-resize' : 'se-resize'),
+                    pointerEvents: 'auto', zIndex: 101,
+                    ...(corner === 'nw' ? { top: -5, left: -5 } : {}),
+                    ...(corner === 'ne' ? { top: -5, right: -5 } : {}),
+                    ...(corner === 'sw' ? { bottom: -5, left: -5 } : {}),
+                    ...(corner === 'se' ? { bottom: -5, right: -5 } : {}),
+                  }} />
+                ))}
+              </div>
+            )}
+            {/* Memo image toolbar */}
+            {memoImgEditor && memoImgEditor.rect && (
+              <div ref={memoImgToolbarRef} data-memo-toolbar style={{
+                position: 'fixed', zIndex: 101, display: 'flex', gap: 2,
+                background: '#1e293b', borderRadius: 8, padding: '3px 4px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              }}>
+                {[{a:'left',l:'⬅'},{a:'center',l:'⇔'},{a:'right',l:'➡'}].map(({a,l}) => (
+                  <button key={a} type="button" title={`Align ${a}`} onClick={() => handleMemoImgAlign(a)}
+                    style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#fff',fontSize:'0.75rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                    {l}
+                  </button>
+                ))}
+                <span style={{ width:1,height:20,background:'#ffffff30',margin:'0 2px',alignSelf:'center' }} />
+                <button type="button" title="Replace image" onClick={handleMemoImgReplace}
+                  style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#94a3b8',fontSize:'0.7rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                  ↻
+                </button>
+                <span style={{ width:1,height:20,background:'#ffffff30',margin:'0 2px',alignSelf:'center' }} />
+                <button type="button" title="Delete image" onClick={handleMemoImgDelete}
+                  style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#ef4444',fontSize:'0.85rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                  🗑
+                </button>
+                <input ref={memoImgReplaceRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleMemoImgReplaceSelected} />
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={handleCancel} style={{
+              padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
+              background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)',
+            }}>Cancel</button>
+            <button type="submit" disabled={!form.title.trim() || !(editorRef.current?.innerHTML || '').trim()} style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.2rem',
+              borderRadius: '8px', cursor: 'pointer',
+              background: `linear-gradient(135deg, ${C.green}, #059669)`,
+              border: 'none', color: '#fff', fontWeight: 700,
+              opacity: (!form.title.trim() || !(editorRef.current?.innerHTML || '').trim()) ? 0.6 : 1,
+            }}>
+              <Save size={15} /> {editRecord ? 'Update' : 'Save'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function MemoPractice({ memo, onClose }) {
+  const [hidden, setHidden] = useState(true);
+  if (!memo) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', padding: '1rem',
+    }} onClick={() => onClose()}>
+      <div onClick={e => e.stopPropagation()} style={{
+        maxWidth: 640, width: '100%', maxHeight: '90vh', overflow: 'auto',
+        background: 'var(--bg-card)', borderRadius: '16px', padding: '1.5rem 1.75rem',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BrainCircuit size={20} color={C.green} />
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{memo.title}</h3>
+          </div>
+          <button onClick={() => setHidden(p => !p)} style={{
+            padding: '0.4rem 0.9rem', borderRadius: '8px', cursor: 'pointer',
+            background: hidden ? `${C.green}20` : `${C.blue}20`,
+            border: `1px solid ${hidden ? `${C.green}40` : `${C.blue}40`}`,
+            color: hidden ? C.green : C.blue, fontWeight: 700, fontSize: '0.78rem',
+          }}>
+            {hidden ? 'Reveal' : 'Hide'}
+          </button>
+        </div>
+        <div style={{
+          padding: '1.25rem', borderRadius: '12px', background: 'var(--bg)',
+          border: `1px solid ${C.green}20`, lineHeight: 1.8, fontSize: '0.95rem',
+          color: 'var(--text-primary)', minHeight: 100,
+          filter: hidden ? 'blur(8px)' : 'none', userSelect: hidden ? 'none' : 'auto',
+          transition: 'filter 0.3s ease',
+        }} dangerouslySetInnerHTML={{ __html: memo.content }} />
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.75rem', marginBottom: 0 }}>
+          {hidden ? 'Tap "Reveal" to show the text and test your recall' : 'Tap "Hide" to conceal the text and practice'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ReviewPanel({ vocab, onUpdateVocab, onClose }) {
   const [queue, setQueue] = useState(() => {
     const due = vocab.filter(v => {
@@ -1160,6 +1612,10 @@ export default function LearningGerman() {
     addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar,
     addGermanVerb, updateGermanVerb,
     saveGermanNote, deleteGermanRecord,
+    uploadGermanVocabPhoto, deleteGermanVocabPhoto,
+    uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto,
+    uploadGermanNotePhoto,
+    translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -1174,11 +1630,16 @@ export default function LearningGerman() {
   const [studyMinutes, setStudyMinutes] = useState('');
   const [wordsLearned, setWordsLearned] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [notePhotoUploading, setNotePhotoUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
   const [editGrammar, setEditGrammar] = useState(null);
   const [editVerb, setEditVerb] = useState(null);
+  const [newDialogueOpen, setNewDialogueOpen] = useState(false);
+  const [editDialogue, setEditDialogue] = useState(null);
+  const [dialogueSaving, setDialogueSaving] = useState(false);
+  const [dialogueTranslating, setDialogueTranslating] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showGrammarQuiz, setShowGrammarQuiz] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -1190,6 +1651,19 @@ export default function LearningGerman() {
   const [showWriting, setShowWriting] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
+  const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
+  const [confirmDeleteVerbId, setConfirmDeleteVerbId] = useState(null);
+  const [confirmDeleteDialogue, setConfirmDeleteDialogue] = useState(null);
+  const [editMemo, setEditMemo] = useState(null);
+  const [practiceMemo, setPracticeMemo] = useState(null);
+  const [memoSaving, setMemoSaving] = useState(false);
+  // Image editing in rich text editor
+  const [noteImgEditor, setNoteImgEditor] = useState(null); // { el, rect }
+  const noteImgHandlesRef = useRef(null);
+  const noteImgToolbarRef = useRef(null);
   const PAGE_SIZE = 15;
 
   const [dailyWordGoal, setDailyWordGoal] = useState(() => parseInt(localStorage.getItem('german_wordGoal') || '10'));
@@ -1210,9 +1684,17 @@ export default function LearningGerman() {
     })();
   }, [fetchGermanData]);
 
-  const vocab   = useMemo(() => germanData.filter(r => r.type === 'vocab'), [germanData]);
-  const grammar = useMemo(() => germanData.filter(r => r.type === 'grammar'), [germanData]);
-  const verbs   = useMemo(() => germanData.filter(r => r.type === 'verb'), [germanData]);
+  const vocab     = useMemo(() => germanData.filter(r => r.type === 'vocab'), [germanData]);
+  const grammar   = useMemo(() => germanData.filter(r => r.type === 'grammar'), [germanData]);
+  const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb'), [germanData]);
+  const dialogues = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'dialogue');
+    return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [germanData]);
+  const memos = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'memo');
+    return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [germanData]);
   const notes   = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'note');
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
@@ -1225,6 +1707,12 @@ export default function LearningGerman() {
     setWordsLearned(existing?.wordsLearned ? String(existing.wordsLearned) : '');
     setNoteSaved(false);
   }, [selectedDate, germanData]);
+
+  useEffect(() => {
+    if (noteEditorRef.current && noteEditorRef.current.innerHTML !== noteContent) {
+      noteEditorRef.current.innerHTML = noteContent;
+    }
+  }, [noteContent]);
 
   const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
 
@@ -1298,8 +1786,13 @@ export default function LearningGerman() {
   useEffect(() => { setGrammarPage(1); }, [debouncedSearch, sortGrammar, favoritesOnly]);
   useEffect(() => { setVerbPage(1); }, [tab, favoritesOnly]);
 
+  function isNoteEmpty(html) {
+    if (!html) return true;
+    return html.replace(/<[^>]+>/g, '').trim().length === 0;
+  }
+
   const handleSaveNote = async () => {
-    if (!noteContent.trim()) return;
+    if (isNoteEmpty(noteContent)) return;
     setNoteSaving(true);
     try {
       await saveGermanNote({ date: selectedDate, content: noteContent.trim(), studyMinutes: parseInt(studyMinutes) || 0, wordsLearned: parseInt(wordsLearned) || 0 });
@@ -1308,14 +1801,28 @@ export default function LearningGerman() {
     } catch (e) { setError(e.message); } finally { setNoteSaving(false); }
   };
 
+  const handleUploadNotePhoto = async (file) => {
+    if (!file) return;
+    setNotePhotoUploading(true);
+    try {
+      const result = await uploadGermanNotePhoto(file);
+      return result.url;
+    } catch (e) {
+      setError(e.message);
+      return null;
+    } finally {
+      setNotePhotoUploading(false);
+    }
+  };
+
   const handleAddVocab = async (payload) => {
     setVocabSaving(true);
-    try { await addGermanVocab(payload); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
+    try { return await addGermanVocab(payload); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
   };
 
   const handleUpdateVocab = async (recordId, payload) => {
     setVocabSaving(true);
-    try { await updateGermanVocab(recordId, payload); setEditVocab(null); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
+    try { return await updateGermanVocab(recordId, payload); setEditVocab(null); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
   };
 
   const handleAddGrammar = async (payload) => {
@@ -1342,9 +1849,52 @@ export default function LearningGerman() {
     try { await updateGermanVocab(recordId, updates); } catch (e) { setError(e.message); }
   };
 
-  const handleDelete = async (recordId) => {
-    if (!window.confirm('Delete this record?')) return;
-    try { await deleteGermanRecord(recordId); } catch (e) { setError(e.message); }
+  const handleVocabDeleteClick = (recordId) => {
+    setConfirmDeleteVocabId(recordId);
+  };
+
+  const confirmVocabDeleteAction = async () => {
+    if (!confirmDeleteVocabId) return;
+    try { await deleteGermanRecord(confirmDeleteVocabId); setConfirmDeleteVocabId(null); } catch (e) { setError(e.message); }
+  };
+
+  const handleGrammarDeleteClick = (recordId) => {
+    setConfirmDeleteGrammarId(recordId);
+  };
+
+  const confirmGrammarDeleteAction = async () => {
+    if (!confirmDeleteGrammarId) return;
+    try { await deleteGermanRecord(confirmDeleteGrammarId); setConfirmDeleteGrammarId(null); } catch (e) { setError(e.message); }
+  };
+
+  const handleVerbDeleteClick = (recordId) => {
+    setConfirmDeleteVerbId(recordId);
+  };
+
+  const confirmVerbDeleteAction = async () => {
+    if (!confirmDeleteVerbId) return;
+    try { await deleteGermanRecord(confirmDeleteVerbId); setConfirmDeleteVerbId(null); } catch (e) { setError(e.message); }
+  };
+
+  const handleUploadPhoto = async (recordId, file) => {
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      await uploadGermanVocabPhoto(recordId, file);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (recordId) => {
+    if (!window.confirm('Remove this photo?')) return;
+    try {
+      await deleteGermanVocabPhoto(recordId);
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   const handleToggleFavorite = async (recordId, current) => {
@@ -1383,9 +1933,278 @@ export default function LearningGerman() {
   const handleExport = async () => {
     try {
       const { exportGermanPDF } = await import('../utils/exportGermanPDF');
-      exportGermanPDF(germanData);
+      await exportGermanPDF(germanData);
     } catch (e) { setError(`PDF error: ${e.message}`); console.error(e); }
   };
+
+  // ── Dialogue handlers ─────────────────────────────────────────────────────
+  const handleAddDialogue = async (payload) => {
+    setDialogueSaving(true);
+    try { await addGermanDialogue(payload); setNewDialogueOpen(false); } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
+  };
+
+  const handleUpdateDialogue = async (recordId, payload) => {
+    setDialogueSaving(true);
+    try { await updateGermanDialogue(recordId, payload); setEditDialogue(null); } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
+  };
+
+  const handleDeleteDialogue = async (recordId) => {
+    setConfirmDeleteDialogue(recordId);
+  };
+
+  const confirmDeleteDialogueAction = async () => {
+    if (!confirmDeleteDialogue) return;
+    try { await deleteGermanRecord(confirmDeleteDialogue); setConfirmDeleteDialogue(null); } catch (e) { setError(e.message); }
+  };
+
+  const handleUploadDialogueParticipantPhoto = async (recordId, participantIndex, file) => {
+    return await uploadGermanDialogueParticipantPhoto(recordId, participantIndex, file);
+  };
+
+  const handleDeleteDialogueParticipantPhoto = async (recordId, participantIndex) => {
+    return await deleteGermanDialogueParticipantPhoto(recordId, participantIndex);
+  };
+
+  const handleTranslateDialogue = async (text, target = 'de') => {
+    setDialogueTranslating(true);
+    try {
+      const result = await translateGermanText(text, 'auto', target);
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return text;
+    } finally {
+      setDialogueTranslating(false);
+    }
+  };
+
+  // ── Memo handlers ──────────────────────────────────────────────────────────
+  const handleAddMemo = async (payload) => {
+    setMemoSaving(true);
+    try { const created = await addGermanMemo(payload); setEditMemo(null); return created; } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
+  };
+
+  const handleUpdateMemo = async (recordId, payload) => {
+    setMemoSaving(true);
+    try { await updateGermanMemo(recordId, payload); setEditMemo(null); } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
+  };
+
+  const handleDeleteMemo = async (recordId) => {
+    try { await deleteGermanRecord(recordId); } catch (e) { setError(e.message); }
+  };
+
+  // ── RichNoteEditor ──────────────────────────────────────────────────────────
+  const noteEditorRef = useRef(null);
+  const notePhotoInputRef = useRef(null);
+  const noteImgReplaceRef = useRef(null);
+
+  function execFormat(command, value) {
+    document.execCommand(command, false, value || null);
+    noteEditorRef.current?.focus();
+  }
+
+  function insertNoteImage() {
+    notePhotoInputRef.current?.click();
+  }
+
+  async function handleNotePhotoSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await handleUploadNotePhoto(file);
+    if (url && noteEditorRef.current) {
+      noteEditorRef.current.focus();
+      document.execCommand('insertImage', false, url);
+    }
+    e.target.value = '';
+  }
+
+  function handleNoteEditorInput() {
+    if (noteEditorRef.current) {
+      setNoteContent(noteEditorRef.current.innerHTML);
+    }
+  }
+
+  function handleNoteEditorPaste(e) {
+    e.preventDefault();
+    const text = e.clipboardData?.getData('text/plain') || '';
+    document.execCommand('insertText', false, text);
+  }
+
+  function handleNoteEditorKeyDown(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+    }
+    if (e.key === 'Escape' && noteImgEditor) {
+      setNoteImgEditor(null);
+    }
+  }
+
+  function handleNoteEditorMouseDown(e) {
+    const img = e.target.closest('img');
+    if (img && noteEditorRef.current?.contains(img)) {
+      e.preventDefault();
+      const rect = img.getBoundingClientRect();
+      setNoteImgEditor({ el: img, rect });
+      return;
+    }
+  }
+
+  // Dismiss image selection when clicking outside the editor, handles, or toolbar
+  useEffect(() => {
+    if (!noteImgEditor) return;
+    function onAnyMouseDown(e) {
+      const editor = noteEditorRef.current;
+      if (!editor) { setNoteImgEditor(null); return; }
+      const insideImg = e.target.closest('img') && editor.contains(e.target.closest('img'));
+      const insideOverlay = e.target.closest('[data-img-handles]') || e.target.closest('[data-img-toolbar]');
+      if (!insideImg && !insideOverlay) {
+        setNoteImgEditor(null);
+      }
+    }
+    document.addEventListener('mousedown', onAnyMouseDown);
+    return () => document.removeEventListener('mousedown', onAnyMouseDown);
+  }, [noteImgEditor]);
+
+  function handleNoteImgAlign(align) {
+    const img = noteImgEditor?.el;
+    if (!img) return;
+    img.removeAttribute('align');
+    img.style.cssText = (img.style.cssText || '')
+      .replace(/float\s*:[^;]+;?/g, '')
+      .replace(/display\s*:[^;]+;?/g, '')
+      .replace(/margin\s*:[^;]+;?/g, '')
+      .replace(/margin-\w+\s*:[^;]+;?/g, '')
+      .trim();
+    if (align === 'left') {
+      img.style.float = 'left';
+      img.style.margin = '0.5rem 1rem 0.5rem 0';
+    } else if (align === 'right') {
+      img.style.float = 'right';
+      img.style.margin = '0.5rem 0 0.5rem 1rem';
+    } else if (align === 'center') {
+      img.style.display = 'block';
+      img.style.margin = '0.5rem auto';
+    }
+    triggerNoteContentSave();
+    updateNoteImgRect();
+  }
+
+  function handleNoteImgResizeStart(e, corner) {
+    e.preventDefault();
+    e.stopPropagation();
+    const img = noteImgEditor?.el;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = rect.width;
+    const startH = rect.height;
+    const aspect = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : startW / startH || 1;
+    const imgParent = img.parentElement;
+    const maxW = imgParent ? imgParent.clientWidth : 1200;
+    function onMouseMove(ev) {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      let d = dx;
+      if (corner.includes('w')) d = -dx;
+      const dFromY = dy * aspect;
+      if (corner.includes('s')) { if (Math.abs(dFromY) > Math.abs(d)) d = dFromY; }
+      if (corner.includes('n')) { if (Math.abs(-dFromY) > Math.abs(d)) d = -dFromY; }
+      let newW = Math.min(maxW, Math.max(30, startW + d));
+      img.style.width = `${newW}px`;
+      img.style.height = `${newW / aspect}px`;
+      const r = img.getBoundingClientRect();
+      syncOverlayDom(r);
+    }
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      triggerNoteContentSave();
+      updateNoteImgRect();
+    }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  function handleNoteImgReplace() {
+    noteImgReplaceRef.current?.click();
+  }
+
+  async function handleNoteImgReplaceSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = noteImgEditor?.el;
+    if (!img) return;
+    try {
+      const url = await handleUploadNotePhoto(file);
+      if (url) {
+        img.src = url;
+        // Preserve existing alignment/resize styles
+        triggerNoteContentSave();
+        updateNoteImgRect();
+      }
+    } catch (_) {}
+    e.target.value = '';
+  }
+
+  function handleNoteImgDelete() {
+    const img = noteImgEditor?.el;
+    if (!img) return;
+    img.remove();
+    setNoteImgEditor(null);
+    triggerNoteContentSave();
+  }
+
+  function updateNoteImgRect() {
+    const img = noteImgEditor?.el;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    setNoteImgEditor(prev => prev ? { ...prev, rect } : null);
+    syncOverlayDom(rect);
+  }
+
+  function syncOverlayDom(rect) {
+    if (noteImgHandlesRef.current) {
+      noteImgHandlesRef.current.style.left = `${rect.left - 4}px`;
+      noteImgHandlesRef.current.style.top = `${rect.top - 4}px`;
+      noteImgHandlesRef.current.style.width = `${rect.width + 8}px`;
+      noteImgHandlesRef.current.style.height = `${rect.height + 8}px`;
+    }
+    if (noteImgToolbarRef.current) {
+      noteImgToolbarRef.current.style.left = `${rect.left}px`;
+      noteImgToolbarRef.current.style.top = `${rect.top - 36 < 4 ? rect.bottom + 4 : rect.top - 36}px`;
+    }
+  }
+
+  function triggerNoteContentSave() {
+    if (noteEditorRef.current) {
+      setNoteContent(noteEditorRef.current.innerHTML);
+    }
+  }
+
+  // Keep overlay positions in sync when the user scrolls
+  useEffect(() => {
+    if (!noteImgEditor?.el) return;
+    function onScroll() { updateNoteImgRect(); }
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, [noteImgEditor?.el]);
+
+  function handleNoteColorChange(e) {
+    execFormat('foreColor', e.target.value);
+    e.target.blur();
+  }
+
+  const editorToolbarBtn = (active) => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 30, height: 30, borderRadius: 6, cursor: 'pointer',
+    border: active ? `1px solid ${C.gold}60` : '1px solid transparent',
+    background: active ? `${C.gold}20` : 'transparent',
+    color: active ? C.gold : 'var(--text-muted)',
+    fontSize: '0.82rem', fontWeight: 700, padding: 0,
+    transition: 'all 0.15s ease',
+  });
 
   const cellStyle = {
     padding: '0.65rem 0.8rem', fontSize: '0.85rem',
@@ -1444,6 +2263,8 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'vocab'}   onClick={() => setTab('vocab')}   icon={BookOpen}      label="Vocabulary" />
             <TabBtn active={tab === 'grammar'} onClick={() => setTab('grammar')} icon={GraduationCap} label="Grammar" />
             <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
+            <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
+            <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -1474,6 +2295,8 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'vocab'}   onClick={() => setTab('vocab')}   icon={BookOpen}      label="Vocabulary" />
         <TabBtn active={tab === 'grammar'} onClick={() => setTab('grammar')} icon={GraduationCap} label="Grammar" />
         <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
+        <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
+        <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -1584,7 +2407,7 @@ export default function LearningGerman() {
                     {format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                    {n.studyMinutes ? ` ${n.studyMinutes} min` : ''}{n.wordsLearned ? ` · ${n.wordsLearned} words` : ''} · {n.content?.slice(0, 40)}...
+                    {n.studyMinutes ? ` ${n.studyMinutes} min` : ''}{n.wordsLearned ? ` · ${n.wordsLearned} words` : ''} · {n.content?.replace(/<[^>]+>/g, '').slice(0, 40)}...
                   </div>
                 </div>
               ))}
@@ -1607,17 +2430,141 @@ export default function LearningGerman() {
                 <input type="number" min="0" value={wordsLearned} onChange={e => setWordsLearned(e.target.value)} placeholder="e.g. 15" style={inputBase} />
               </div>
             </div>
-            <div style={{ marginBottom: '0.85rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Study Notes &amp; Reflections</label>
-              <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} placeholder={`What did you study today?\n\nNew words learned\nGrammar topics covered\nDifficulties encountered\nGoals for tomorrow`} rows={12} style={{ ...inputBase, marginTop: 4, padding: '0.75rem 0.85rem', lineHeight: 1.6, resize: 'vertical', fontFamily: 'inherit', borderRadius: '10px' }} />
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Study Notes &amp; Reflections
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>(rich text supported)</span>
+              </label>
+              <div style={{
+                ...inputBase, marginTop: 0, padding: 0, overflow: 'hidden',
+                background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--border)',
+              }}>
+                <div style={{
+                  display: 'flex', gap: 2, padding: '4px 6px', flexWrap: 'wrap',
+                  borderBottom: '1px solid var(--border)', background: 'var(--bg-card)',
+                  alignItems: 'center',
+                }}>
+                  <button type="button" title="Bold" onClick={() => execFormat('bold')} style={editorToolbarBtn()}>
+                    <b style={{ fontSize: '0.85rem' }}>B</b>
+                  </button>
+                  <button type="button" title="Underline" onClick={() => execFormat('underline')} style={editorToolbarBtn()}>
+                    <u style={{ fontSize: '0.85rem' }}>U</u>
+                  </button>
+                  <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
+                  <input type="color" id="noteTextColor" title="Text Color"
+                    onChange={handleNoteColorChange}
+                    style={{ width: 22, height: 22, padding: 0, border: 'none', cursor: 'pointer', background: 'transparent' }}
+                  />
+                  <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
+                  <button type="button" title="Ordered List" onClick={() => execFormat('insertOrderedList')} style={editorToolbarBtn()}>
+                    <span style={{ fontSize: '0.75rem' }}>1.</span>
+                  </button>
+                  <button type="button" title="Unordered List" onClick={() => execFormat('insertUnorderedList')} style={editorToolbarBtn()}>
+                    <span style={{ fontSize: '0.75rem' }}>•</span>
+                  </button>
+                  <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
+                  <button type="button" title="Insert Image" onClick={insertNoteImage}
+                    disabled={notePhotoUploading}
+                    style={{ ...editorToolbarBtn(), opacity: notePhotoUploading ? 0.5 : 1 }}>
+                    <Image size={14} />
+                  </button>
+                  <input ref={notePhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={handleNotePhotoSelected} />
+                </div>
+                <div
+                  ref={noteEditorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleNoteEditorInput}
+                  onPaste={handleNoteEditorPaste}
+                  onKeyDown={handleNoteEditorKeyDown}
+                  onMouseDown={handleNoteEditorMouseDown}
+                  data-placeholder="What did you study today?&#10;&#10;New words learned&#10;Grammar topics covered&#10;Difficulties encountered&#10;Goals for tomorrow"
+                  style={{
+                    minHeight: 180, padding: '0.75rem 0.85rem',
+                    lineHeight: 1.6, fontSize: '0.9rem', color: 'var(--text-primary)',
+                    outline: 'none', fontFamily: 'inherit', cursor: 'text',
+                  }}
+                />
+                {/* Image resize handles + toolbar overlay */}
+                {noteImgEditor && noteImgEditor.rect && (
+                  <div ref={noteImgHandlesRef} data-img-handles style={{
+                    position: 'fixed',
+                    left: noteImgEditor.rect.left - 4,
+                    top: noteImgEditor.rect.top - 4,
+                    width: noteImgEditor.rect.width + 8,
+                    height: noteImgEditor.rect.height + 8,
+                    pointerEvents: 'none', zIndex: 100,
+                    border: '2px solid #3b82f6', borderRadius: 4,
+                  }}>
+                    {/* Corner resize handles */}
+                    {['nw', 'ne', 'sw', 'se'].map(corner => (
+                      <div key={corner} onMouseDown={e => handleNoteImgResizeStart(e, corner)}
+                        style={{
+                          position: 'absolute', width: 10, height: 10,
+                          background: '#fff', border: '2px solid #3b82f6',
+                          borderRadius: 2, cursor: corner.includes('n') ? (corner.includes('w') ? 'nw-resize' : 'ne-resize') : (corner.includes('w') ? 'sw-resize' : 'se-resize'),
+                          pointerEvents: 'auto', zIndex: 101,
+                          ...(corner === 'nw' ? { top: -5, left: -5 } : {}),
+                          ...(corner === 'ne' ? { top: -5, right: -5 } : {}),
+                          ...(corner === 'sw' ? { bottom: -5, left: -5 } : {}),
+                          ...(corner === 'se' ? { bottom: -5, right: -5 } : {}),
+                        }} />
+                    ))}
+                  </div>
+                )}
+                {/* Image alignment toolbar */}
+                {noteImgEditor && noteImgEditor.rect && (
+                  <div ref={noteImgToolbarRef} data-img-toolbar style={{
+                    position: 'fixed',
+                    left: noteImgEditor.rect.left,
+                    top: noteImgEditor.rect.top - 36 < 4 ? noteImgEditor.rect.bottom + 4 : noteImgEditor.rect.top - 36,
+                    zIndex: 101,
+                    display: 'flex', gap: 2,
+                    background: '#1e293b', borderRadius: 8,
+                    padding: '3px 4px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  }}>
+                    {[{ a: 'left', l: '⬅' }, { a: 'center', l: '⇔' }, { a: 'right', l: '➡' }].map(({ a, l }) => (
+                      <button key={a} type="button" title={`Align ${a}`} onClick={() => handleNoteImgAlign(a)}
+                        style={{
+                          width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
+                          border: 'none', background: 'transparent', color: '#fff',
+                          fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                        {l}
+                      </button>
+                    ))}
+                    <span style={{ width: 1, height: 20, background: '#ffffff30', margin: '0 2px', alignSelf: 'center' }} />
+                    <button type="button" title="Replace image" onClick={handleNoteImgReplace}
+                      style={{
+                        width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
+                        border: 'none', background: 'transparent', color: '#94a3b8',
+                        fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                      ↻
+                    </button>
+                    <span style={{ width: 1, height: 20, background: '#ffffff30', margin: '0 2px', alignSelf: 'center' }} />
+                    <button type="button" title="Delete image" onClick={handleNoteImgDelete}
+                      style={{
+                        width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
+                        border: 'none', background: 'transparent', color: '#ef4444',
+                        fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                      🗑
+                    </button>
+                    <input ref={noteImgReplaceRef} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={handleNoteImgReplaceSelected} />
+                  </div>
+                )}
+              </div>
             </div>
-            <button onClick={handleSaveNote} disabled={noteSaving || !noteContent.trim()} style={{
+            <button onClick={handleSaveNote} disabled={noteSaving || isNoteEmpty(noteContent)} style={{
               width: '100%', padding: '0.75rem',
-              background: noteContent.trim() ? `linear-gradient(135deg, ${C.green}, #059669)` : 'var(--bg)',
-              border: 'none', borderRadius: '10px', cursor: noteContent.trim() ? 'pointer' : 'not-allowed',
+              background: isNoteEmpty(noteContent) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
+              border: 'none', borderRadius: '10px', cursor: isNoteEmpty(noteContent) ? 'not-allowed' : 'pointer',
               color: '#fff', fontWeight: 700, fontSize: '0.95rem',
-              boxShadow: noteContent.trim() ? `0 4px 14px ${C.green}40` : 'none',
-              opacity: (!noteContent.trim() || noteSaving) ? 0.6 : 1,
+              boxShadow: isNoteEmpty(noteContent) ? 'none' : `0 4px 14px ${C.green}40`,
+              opacity: (isNoteEmpty(noteContent) || noteSaving) ? 0.6 : 1,
               transition: 'all 0.25s ease',
             }}>
               {noteSaving ? 'Saving...' : 'Save Note'}
@@ -1628,7 +2575,7 @@ export default function LearningGerman() {
 
       {tab === 'vocab' && (
         <div>
-          <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} />
+          <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} onUploadPhoto={handleUploadPhoto} onDeletePhoto={handleDeletePhoto} uploading={photoUploading} />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -1657,12 +2604,12 @@ export default function LearningGerman() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['German Word', 'Translation', 'Plural', 'Category', 'Mastery', 'Notes', ''].map(h => <th key={h} style={headerCellStyle}>{h}</th>)}
+                    {['Photo', 'German Word', 'Translation', 'Plural', 'Category', 'Mastery', 'Notes', ''].map(h => <th key={h} style={headerCellStyle}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedVocab.length === 0 && (
-                    <tr><td colSpan={7} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                    <tr><td colSpan={8} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                       {search ? 'No results found.' : favoritesOnly ? 'No favorited words.' : 'No vocabulary added yet. Click "Add Word" to start!'}
                     </td></tr>
                   )}
@@ -1671,6 +2618,14 @@ export default function LearningGerman() {
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
+                      <td data-label="Photo" style={{ ...cellStyle, width: 60, textAlign: 'center' }}>
+                        {v.photoUrl ? (
+                          <img src={v.photoUrl} alt={v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
+                            onClick={() => setPreviewImage(v.photoUrl)} />
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td data-label="German Word" style={{ ...cellStyle, fontWeight: 700, color: C.gold }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {(() => { const a = detectArticle(v.word); return a ? <GenderBadge article={a.article} /> : null; })()}
@@ -1701,9 +2656,17 @@ export default function LearningGerman() {
                         <button onClick={() => { setEditVocab(v); setEditGrammar(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, padding: '4px', marginLeft: 4 }} title="Edit">
                           <Edit3 size={14} />
                         </button>
-                        <button onClick={() => handleDelete(v.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: '4px' }} title="Delete">
-                          <Trash2 size={14} />
-                        </button>
+                        {confirmDeleteVocabId === v.recordId ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: '0.75rem', color: C.red, whiteSpace: 'nowrap' }}>Delete?</span>
+                            <button onClick={confirmVocabDeleteAction} style={{ background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 4, padding: '2px 6px', fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.4 }}>Yes</button>
+                            <button onClick={() => setConfirmDeleteVocabId(null)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 4, padding: '2px 6px', fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.4 }}>No</button>
+                          </span>
+                        ) : (
+                          <button onClick={() => handleVocabDeleteClick(v.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: '4px' }} title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1773,7 +2736,15 @@ export default function LearningGerman() {
                     <button onClick={() => handleReorder(g.recordId, 'up', sortedGrammar)} disabled={displayedGrammar.indexOf(g) === 0} style={{ background: 'none', border: 'none', cursor: displayedGrammar.indexOf(g) === 0 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)', padding: 2, opacity: displayedGrammar.indexOf(g) === 0 ? 0.3 : 1, verticalAlign: 'middle' }} title="Move Up"><ArrowUp size={13} /></button>
                     <button onClick={() => handleReorder(g.recordId, 'down', sortedGrammar)} disabled={displayedGrammar.indexOf(g) === displayedGrammar.length - 1} style={{ background: 'none', border: 'none', cursor: displayedGrammar.indexOf(g) === displayedGrammar.length - 1 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)', padding: 2, opacity: displayedGrammar.indexOf(g) === displayedGrammar.length - 1 ? 0.3 : 1, verticalAlign: 'middle' }} title="Move Down"><ArrowDown size={13} /></button>
                     <button onClick={() => { setEditGrammar(g); setEditVocab(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, padding: 4 }} title="Edit"><Edit3 size={14} /></button>
-                    <button onClick={() => handleDelete(g.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={14} /></button>
+                    {confirmDeleteGrammarId === g.recordId ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: '0.75rem', color: C.red, whiteSpace: 'nowrap' }}>Delete?</span>
+                        <button onClick={confirmGrammarDeleteAction} style={{ background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 4, padding: '2px 6px', fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.4 }}>Yes</button>
+                        <button onClick={() => setConfirmDeleteGrammarId(null)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 4, padding: '2px 6px', fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.4 }}>No</button>
+                      </span>
+                    ) : (
+                      <button onClick={() => handleGrammarDeleteClick(g.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={14} /></button>
+                    )}
                   </div>
                 </div>
                 <p style={{ margin: '0 0 0.6rem 0', fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>{g.explanation}</p>
@@ -1845,7 +2816,15 @@ export default function LearningGerman() {
                         <button onClick={() => handleReorder(v.recordId, 'up', displayedVerbs)} disabled={displayedVerbs.indexOf(v) === 0} style={{ background: 'none', border: 'none', cursor: displayedVerbs.indexOf(v) === 0 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)', padding: 2, opacity: displayedVerbs.indexOf(v) === 0 ? 0.3 : 1, verticalAlign: 'middle' }} title="Move Up"><ArrowUp size={13} /></button>
                         <button onClick={() => handleReorder(v.recordId, 'down', displayedVerbs)} disabled={displayedVerbs.indexOf(v) === displayedVerbs.length - 1} style={{ background: 'none', border: 'none', cursor: displayedVerbs.indexOf(v) === displayedVerbs.length - 1 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)', padding: 2, opacity: displayedVerbs.indexOf(v) === displayedVerbs.length - 1 ? 0.3 : 1, verticalAlign: 'middle' }} title="Move Down"><ArrowDown size={13} /></button>
                         <button onClick={() => { setEditVerb(v); setEditVocab(null); setEditGrammar(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, padding: 4, marginLeft: 4 }} title="Edit"><Edit3 size={14} /></button>
-                        <button onClick={() => handleDelete(v.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={14} /></button>
+                        {confirmDeleteVerbId === v.recordId ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: '0.75rem', color: C.red, whiteSpace: 'nowrap' }}>Delete?</span>
+                            <button onClick={confirmVerbDeleteAction} style={{ background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 4, padding: '2px 6px', fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.4 }}>Yes</button>
+                            <button onClick={() => setConfirmDeleteVerbId(null)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 4, padding: '2px 6px', fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.4 }}>No</button>
+                          </span>
+                        ) : (
+                          <button onClick={() => handleVerbDeleteClick(v.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={14} /></button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1859,6 +2838,239 @@ export default function LearningGerman() {
             )}
           </div>
         </div>
+      )}
+
+      {tab === 'dialogues' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Dialogues <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8rem' }}>({dialogues.length})</span>
+            </h3>
+            <button
+              onClick={() => setNewDialogueOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.5rem 1rem', borderRadius: '10px', cursor: 'pointer',
+                background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+                border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                boxShadow: `0 4px 12px ${C.blue}40`,
+              }}
+            >
+              <MessageSquare size={15} /> New Dialogue
+            </button>
+          </div>
+
+          {newDialogueOpen && (
+            <DialogueBuilder
+              onSave={handleAddDialogue}
+              onCancelEdit={() => setNewDialogueOpen(false)}
+              isMobile={isMobile}
+              onTranslate={handleTranslateDialogue}
+              translating={dialogueTranslating}
+              onUploadParticipantPhoto={handleUploadDialogueParticipantPhoto}
+              onDeleteParticipantPhoto={handleDeleteDialogueParticipantPhoto}
+            />
+          )}
+
+          {dialogues.length === 0 && !newDialogueOpen && (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+              <MessageSquare size={40} color="var(--text-muted)" style={{ opacity: 0.4, marginBottom: 12 }} />
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>No dialogues yet. Create your first conversation!</p>
+            </div>
+          )}
+
+          {editDialogue && (
+            <DialogueBuilder
+              key={editDialogue.recordId}
+              editDialogue={editDialogue}
+              onSave={handleAddDialogue}
+              onUpdate={handleUpdateDialogue}
+              onCancelEdit={() => setEditDialogue(null)}
+              isMobile={isMobile}
+              onTranslate={handleTranslateDialogue}
+              translating={dialogueTranslating}
+              onUploadParticipantPhoto={handleUploadDialogueParticipantPhoto}
+              onDeleteParticipantPhoto={handleDeleteDialogueParticipantPhoto}
+            />
+          )}
+
+          {confirmDeleteDialogue && (
+            <div style={{
+              background: `${C.red}10`, border: `1px solid ${C.red}40`,
+              borderRadius: '12px', padding: '1rem 1.25rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={18} color={C.red} />
+                <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>Delete this dialogue permanently?</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setConfirmDeleteDialogue(null)} style={{
+                  padding: '0.4rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                  background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600,
+                }}>Cancel</button>
+                <button onClick={confirmDeleteDialogueAction} style={{
+                  padding: '0.4rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                  background: C.red, border: 'none', color: '#fff', fontSize: '0.82rem', fontWeight: 700,
+                }}>Delete</button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {dialogues.map(d => {
+              const participants = d.participants || [];
+              return (
+                <div key={d.recordId} className="glass-card" style={{ padding: '1.25rem', position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2 }}>
+                        <MessageSquare size={16} color={C.blue} />
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                          {d.title || participants.map(p => p.name).join(' & ')}
+                        </span>
+                        <span style={{ background: `${C.purple}20`, color: C.purple, padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600 }}>
+                          {d.level || 'B1'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 24, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {participants.map((p, pi) => (
+                          <span key={pi} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {p.photoUrl ? (
+                              <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', display: 'inline-block', verticalAlign: 'middle', border: `1px solid ${PERSON_COLORS[p.gender] || C.purple}`, flexShrink: 0 }}>
+                                <img src={p.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </span>
+                            ) : (
+                              <span style={{
+                                width: 18, height: 18, borderRadius: '50%', display: 'inline-flex',
+                                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                background: `${PERSON_COLORS[p.gender] || C.purple}20`,
+                                color: PERSON_COLORS[p.gender] || C.purple,
+                                fontWeight: 700, fontSize: '0.6rem',
+                              }}>{p.name?.charAt(0) || '?'}</span>
+                            )}
+                            {p.name}
+                          </span>
+                        ))}
+                        {d.createdAt && <span>· {format(new Date(d.createdAt), 'MMM d, yyyy')}</span>}
+                        <span>· {d.exchanges?.length || 0} exchanges</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, marginLeft: 8 }}>
+                      <button onClick={() => setEditDialogue(d)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, padding: 4 }} title="Edit"><Edit3 size={15} /></button>
+                      <button onClick={() => handleDeleteDialogue(d.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                  {d.exchanges && d.exchanges.slice(0, 4).map((ex, i) => {
+                    const p = participants[ex.speakerIndex] || { name: '?', gender: 'other' };
+                    const pColor = PERSON_COLORS[p.gender] || C.purple;
+                    return (
+                    <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < Math.min(d.exchanges.length, 4) - 1 ? '1px solid var(--border)' : 'none' }}>
+                      {p.photoUrl ? (
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${pColor}` }}>
+                          <img src={p.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                          background: `${pColor}20`,
+                          color: pColor,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase',
+                        }}>
+                          {p.name?.charAt(0) || '?'}
+                        </div>
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: 2 }}>{ex.german}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{ex.original}</div>
+                      </div>
+                    </div>
+                    );
+                  })}
+                  {d.exchanges && d.exchanges.length > 4 && (
+                    <div style={{ textAlign: 'center', paddingTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      +{d.exchanges.length - 4} more exchanges
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {tab === 'memos' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Memorization <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8rem' }}>({memos.length})</span>
+            </h3>
+          </div>
+
+          <MemoForm
+            onAdd={handleAddMemo}
+            onUpdate={handleUpdateMemo}
+            editRecord={editMemo}
+            onCancelEdit={() => setEditMemo(null)}
+            onUploadPhoto={handleUploadNotePhoto}
+          />
+
+          {memos.length === 0 && (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+              <BrainCircuit size={40} color="var(--text-muted)" style={{ opacity: 0.4, marginBottom: 12 }} />
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>No memorization paragraphs yet. Create one to start practicing!</p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {memos.map(m => (
+              <div key={m.recordId} className="glass-card" style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                    <BrainCircuit size={18} color={C.green} style={{ flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{m.title}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                    <button onClick={() => setPracticeMemo(m)} style={{
+                      background: `${C.green}20`, border: `1px solid ${C.green}40`,
+                      borderRadius: '8px', cursor: 'pointer', color: C.green,
+                      padding: '5px 10px', fontSize: '0.72rem', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: 4,
+                    }}>
+                      <BrainCircuit size={13} /> Practice
+                    </button>
+                    <button onClick={() => setEditMemo(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, padding: 4 }} title="Edit"><Edit3 size={15} /></button>
+                    <button onClick={() => handleDeleteMemo(m.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={15} /></button>
+                  </div>
+                </div>
+                <div style={{
+                  padding: '0.85rem 1rem', borderRadius: '10px', background: 'var(--bg)',
+                  border: '1px solid var(--border)', fontSize: '0.88rem', color: 'var(--text-primary)',
+                  lineHeight: 1.7, maxHeight: 120, overflow: 'hidden',
+                  position: 'relative',
+                }} dangerouslySetInnerHTML={{ __html: m.content }} />
+                {m.content.length > 300 && (
+                  <div style={{
+                    position: 'relative', height: 0, marginTop: -40,
+                    background: 'linear-gradient(transparent, var(--bg))',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+                {m.createdAt && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    Added {format(new Date(m.createdAt), 'MMM d, yyyy')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {practiceMemo && (
+        <MemoPractice memo={practiceMemo} onClose={() => setPracticeMemo(null)} />
       )}
 
       {tab === 'progress' && (
@@ -1960,6 +3172,17 @@ export default function LearningGerman() {
       {showMCQuiz && <MultipleChoiceQuiz vocab={vocab} onClose={() => setShowMCQuiz(false)} />}
       {showWriting && <WritingPractice vocab={vocab} onClose={() => setShowWriting(false)} />}
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
+
+      {previewImage && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }} onClick={() => setPreviewImage(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img src={previewImage} alt="Vocabulary" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} />
+            <button onClick={() => setPreviewImage(null)} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', color: '#fff', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

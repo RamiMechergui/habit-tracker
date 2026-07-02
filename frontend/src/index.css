@@ -7640,4 +7640,31 @@ label {
   }
 }
 
+/* ── contentEditable placeholder ── */
+div[contentEditable][data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+/* ── Images in rich text editor ── */
+div[contentEditable] img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  cursor: default;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+div[contentEditable] img:hover {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+div[contentEditable] img[style*="float"] {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
 
