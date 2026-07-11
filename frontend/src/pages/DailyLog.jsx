@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useHabits } from '../Store';
 import { format, parseISO } from 'date-fns';
 import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download } from 'lucide-react';
@@ -6,6 +6,100 @@ import { useSearchParams, Link } from 'react-router-dom';
 
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
+
+/* ─── Meditation Timer ─────────────────────────────────────────── */
+function MeditateTimer({ onComplete, disabled, done }) {
+  const [state, setState] = useState(done ? 'completed' : 'idle');
+  const [timeLeft, setTimeLeft] = useState(180);
+  const intervalRef = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  const playBeep = useCallback(() => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtxRef.current;
+      [880, 1100].forEach((freq, i) => {
+        setTimeout(() => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.4);
+        }, i * 500);
+      });
+    } catch (e) { console.warn('[Meditate] Audio failed', e); }
+  }, []);
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+
+  const handleStart = (e) => {
+    e.stopPropagation();
+    if (disabled || state !== 'idle') return;
+    setState('running');
+    intervalRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+          playBeep();
+          setState('completed');
+          onComplete();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleReset = (e) => {
+    e.stopPropagation();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setState('idle');
+    setTimeLeft(180);
+  };
+
+  const mm = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+  const ss = String(timeLeft % 60).padStart(2, '0');
+
+  if (state === 'completed') {
+    return <span style={{ color: '#10b981', fontWeight: 700, fontSize: '0.85rem' }}>✅ Done</span>;
+  }
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      {state === 'idle' ? (
+        <button onClick={handleStart} disabled={disabled} style={{
+          background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)',
+          borderRadius: '6px', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+          padding: '4px 10px', fontWeight: 600, fontSize: '0.78rem', color: '#a855f7', minHeight: 32,
+        }}>
+          ▶ 3:00
+        </button>
+      ) : (
+        <span style={{
+          fontVariantNumeric: 'tabular-nums', fontWeight: 800, fontSize: '0.95rem', color: '#a855f7',
+          animation: 'meditatePulse 1.5s ease-in-out infinite', minWidth: 48, textAlign: 'center',
+        }}>
+          {mm}:{ss}
+        </span>
+      )}
+      {state !== 'idle' && (
+        <button onClick={handleReset} style={{
+          background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+          padding: 4, fontSize: '0.65rem', fontWeight: 600, lineHeight: 1,
+        }}>
+          ✕
+        </button>
+      )}
+      <style>{`@keyframes meditatePulse{0%,100%{opacity:1}50%{opacity:0.6}}`}</style>
+    </span>
+  );
+}
 
 const formatDuration = (totalMin) => {
   const minVal = parseInt(totalMin);
@@ -693,7 +787,9 @@ export default function DailyLog() {
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.morning[item.id] ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
-                  {item.type === 'time' ? (
+                  {item.id === 'meditate' ? (
+                    <MeditateTimer onComplete={() => updateSection('morning', 'meditate', true)} done={!!log.morning.meditate} disabled={isFuture} />
+                  ) : item.type === 'time' ? (
                     <input type="time" value={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.value)} disabled={isFuture} />
                   ) : (
                     <input type="checkbox" className="habit-checkbox" checked={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.checked)} disabled={isFuture} />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useHabits } from '../Store';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import {
   Plus, Trash2, Edit2, Check, X, Clock, StickyNote,
   WifiOff, CloudOff, Folder, Settings, FolderPlus, ChevronDown,
@@ -181,6 +182,7 @@ export default function DailyNotes() {
   const [collapsedDates, setCollapsedDates] = useState({});
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const showMessage = (text, type = 'success') => {
     setLocalMessage({ text, type });
@@ -366,7 +368,6 @@ export default function DailyNotes() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-
         .compose-textarea:focus { outline: none; }
 
         /* Note card */
@@ -438,34 +439,43 @@ export default function DailyNotes() {
         /* Past day cards */
         .past-day-card { transition: box-shadow 0.2s; }
         .past-day-card:hover { box-shadow: var(--dn-past-hover-shadow); }
+
+        /* Mobile-first: always show note actions */
+        @media (max-width: 768px) {
+          .note-actions { opacity: 1 !important; }
+          .note-card-wrap .note-actions { opacity: 1 !important; }
+          .dn-action-btn { padding: 8px 10px !important; }
+          .section-tab { padding: 10px 16px !important; }
+          .compose-textarea { font-size: 16px !important; }
+        }
       `}</style>
 
       <div className="daily-notes-root" style={{ maxWidth: '860px', margin: '0 auto', paddingBottom: '60px', animation: 'pageSlideIn 0.3s ease' }}>
 
         {/* ══ HEADER ══ */}
-        <div className="glass-card" style={{
-          padding: '22px 24px',
-          marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
+          <div className="glass-card" style={{
+            padding: isMobile ? '16px 16px' : '22px 24px',
+            marginBottom: isMobile ? '16px' : '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: isMobile ? '12px' : '16px',
           background: 'var(--dn-header-gradient)',
           borderLeft: '3px solid var(--accent-amber)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '50px', height: '50px', borderRadius: '14px',
+              width: isMobile ? '40px' : '50px', height: isMobile ? '40px' : '50px', borderRadius: '12px',
               background: 'linear-gradient(135deg, rgba(249,115,22,0.25), rgba(249,115,22,0.08))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: 'var(--accent-amber)', flexShrink: 0,
             }}>
-              <BookOpen size={22} />
+              <BookOpen size={isMobile ? 18 : 22} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0, fontSize: '1.35rem', fontFamily: 'var(--font-heading)', fontWeight: 700 }}>Daily Notes</h2>
+                <h2 style={{ margin: 0, fontSize: isMobile ? '1.15rem' : '1.35rem', fontFamily: 'var(--font-heading)', fontWeight: 700 }}>Daily Notes</h2>
                 {!isOnline && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '2px 8px', borderRadius: '6px' }}>
                     <WifiOff size={11} /> Offline Mode
@@ -494,8 +504,8 @@ export default function DailyNotes() {
         {/* ══ MANAGE SECTIONS PANEL ══ */}
         {showManageSections && (
           <div className="glass-card" style={{
-            padding: '20px 24px',
-            marginBottom: '20px',
+            padding: isMobile ? '16px 16px' : '20px 24px',
+            marginBottom: isMobile ? '16px' : '20px',
             animation: 'panelSlideDown 0.2s ease',
             borderTop: '2px solid var(--accent-amber)',
           }}>
@@ -558,19 +568,19 @@ export default function DailyNotes() {
             )}
 
             {/* Add section */}
-            <form onSubmit={handleAddSection} style={{ display: 'flex', gap: '10px', maxWidth: '440px' }}>
+            <form onSubmit={handleAddSection} style={{ display: 'flex', gap: '10px', maxWidth: '440px', flexDirection: isMobile ? 'column' : 'row' }}>
               <input
                 type="text"
                 placeholder="New notebook name (e.g. Work Notes, Gym log…)"
                 value={newSectionName}
                 onChange={e => setNewSectionName(e.target.value)}
-                style={{ flex: 1, padding: '9px 13px', fontSize: '0.88rem', borderRadius: '8px' }}
+                style={{ flex: 1, padding: isMobile ? '12px 13px' : '9px 13px', fontSize: isMobile ? '16px' : '0.88rem', borderRadius: '8px' }}
               />
               <button
                 type="submit"
                 className="btn"
                 disabled={!newSectionName.trim()}
-                style={{ padding: '9px 18px', background: 'var(--accent-amber)', color: '#000', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', whiteSpace: 'nowrap' }}
+                style={{ padding: isMobile ? '12px 18px' : '9px 18px', background: 'var(--accent-amber)', color: '#000', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', whiteSpace: 'nowrap', justifyContent: 'center', minHeight: isMobile ? '44px' : 'auto' }}
               >
                 <Plus size={14} /> Add
               </button>
@@ -611,13 +621,13 @@ export default function DailyNotes() {
             }}>
               {/* Date header bar */}
               <div style={{
-                padding: '14px 20px',
+                padding: isMobile ? '12px 16px' : '14px 20px',
                 borderBottom: '1px solid var(--border)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 background: 'linear-gradient(90deg, rgba(249,115,22,0.05), transparent)',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1rem', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                  <span style={{ fontSize: isMobile ? '0.9rem' : '1rem', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {formatDateHeader(todayStr)}
                   </span>
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(249,115,22,0.15)', color: 'var(--accent-amber)', padding: '2px 9px', borderRadius: '20px' }}>
@@ -632,8 +642,10 @@ export default function DailyNotes() {
               {/* Section tab bar */}
               {noteSections.length > 1 && (
                 <div style={{
-                  padding: '12px 20px',
-                  display: 'flex', gap: '8px', flexWrap: 'wrap',
+                  padding: isMobile ? '10px 12px' : '12px 20px',
+                  display: 'flex', gap: '8px',
+                  overflowX: 'auto', flexWrap: 'nowrap',
+                  WebkitOverflowScrolling: 'touch',
                   borderBottom: '1px solid var(--border)',
                   background: 'var(--dn-tab-bg)',
                 }}>
@@ -671,7 +683,7 @@ export default function DailyNotes() {
               )}
 
               {/* Notes list for active section */}
-              <div style={{ padding: '16px 20px' }}>
+              <div style={{ padding: isMobile ? '12px 12px' : '16px 20px' }}>
                 {activeSectionNotes.length === 0 ? (
                   <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <StickyNote size={28} style={{ opacity: 0.2, marginBottom: '10px', display: 'inline-block' }} />
@@ -703,65 +715,85 @@ export default function DailyNotes() {
                   </div>
                 )}
 
-                {/* Compose box */}
+                {/* Compose box — always shows save button at bottom */}
                 <div style={{
-                  border: `1.5px solid ${composeFocused ? 'rgba(249,115,22,0.35)' : 'var(--border)'}`,
+                  border: `1.5px solid ${composeContent ? 'rgba(249,115,22,0.35)' : composeFocused ? 'rgba(249,115,22,0.2)' : 'var(--border)'}`,
                   borderRadius: '12px',
                   background: composeFocused ? 'var(--dn-compose-focus)' : 'var(--dn-compose-bg)',
                   transition: 'border-color 0.2s, background 0.2s',
-                  overflow: 'hidden',
                 }}>
                   <textarea
                     ref={textareaRef}
                     className="compose-textarea"
-                    placeholder={`Write in ${activeSection}… (Ctrl+Enter to save)`}
+                    placeholder={`Write in ${activeSection}…`}
                     value={composeContent}
                     onChange={e => setComposeContent(e.target.value)}
                     onFocus={() => setComposeFocused(true)}
                     onBlur={() => { if (!composeContent) setComposeFocused(false); }}
                     onKeyDown={handleComposeKeyDown}
                     style={{
-                      width: '100%', minHeight: composeFocused || composeContent ? '90px' : '44px',
-                      padding: '12px 14px', fontSize: '0.9rem', resize: 'vertical',
+                      width: '100%',
+                      minHeight: composeContent || composeFocused ? '90px' : '52px',
+                      padding: isMobile ? '14px' : '12px 14px',
+                      fontSize: '0.9rem', resize: 'vertical',
                       background: 'transparent', border: 'none', color: 'var(--text-primary)',
                       fontFamily: 'var(--font-sans)', lineHeight: 1.6,
                       transition: 'min-height 0.2s ease',
                       boxSizing: 'border-box',
                     }}
                   />
-                  {(composeFocused || composeContent) && (
-                    <div style={{
-                      padding: '8px 14px',
-                      borderTop: '1px solid var(--border)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      background: 'var(--dn-compose-footer)',
-                    }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Ctrl+Enter to save · Esc to cancel</span>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Always-visible footer bar */}
+                  <div style={{
+                    padding: isMobile ? '10px 14px' : '8px 14px',
+                    borderTop: composeContent || composeFocused ? '1px solid var(--border)' : 'none',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    transition: 'border-color 0.2s',
+                  }}>
+                    {composeContent ? (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Ctrl+Enter to save · Esc to cancel
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.72rem', color: 'transparent', userSelect: 'none' }}> </span>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {composeContent && (
                         <button
                           onClick={() => { setComposeContent(''); setComposeFocused(false); }}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px', fontFamily: 'var(--font-sans)' }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleAddNote}
-                          disabled={!composeContent.trim() || !!savingSection}
                           style={{
-                            padding: '6px 16px', fontSize: '0.84rem', fontWeight: 700,
-                            background: composeContent.trim() ? 'var(--accent-amber)' : 'var(--dn-disabled-bg)',
-                            color: composeContent.trim() ? '#000' : 'var(--text-muted)',
-                            border: 'none', borderRadius: '8px', cursor: composeContent.trim() ? 'pointer' : 'not-allowed',
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            transition: 'all 0.15s', fontFamily: 'var(--font-sans)',
+                            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                            cursor: 'pointer', padding: isMobile ? '8px 12px' : '4px 10px',
+                            fontSize: '0.8rem', borderRadius: '6px', fontFamily: 'var(--font-sans)',
+                            display: 'flex', alignItems: 'center', gap: '4px',
                           }}
                         >
-                          {savingSection ? <div className="spinner" style={{ width: '12px', height: '12px', border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000' }} /> : <Send size={13} />}
-                          Save Note
+                          <X size={14} /> Cancel
                         </button>
-                      </div>
+                      )}
+                      <button
+                        onClick={handleAddNote}
+                        disabled={!composeContent.trim() || !!savingSection}
+                        style={{
+                          padding: isMobile ? '10px 20px' : '6px 16px',
+                          fontSize: '0.84rem', fontWeight: 700,
+                          background: composeContent.trim() ? 'var(--accent-amber)' : 'var(--dn-disabled-bg)',
+                          color: composeContent.trim() ? '#000' : 'var(--text-muted)',
+                          border: 'none', borderRadius: '8px',
+                          cursor: composeContent.trim() ? 'pointer' : 'not-allowed',
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          transition: 'all 0.15s', fontFamily: 'var(--font-sans)',
+                          minHeight: isMobile ? '44px' : 'auto',
+                        }}
+                      >
+                        {savingSection ? (
+                          <div className="spinner" style={{ width: '12px', height: '12px', border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000' }} />
+                        ) : (
+                          <Send size={14} />
+                        )}
+                        {composeContent ? 'Save Note' : 'Add Note'}
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -780,7 +812,7 @@ export default function DailyNotes() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {pastDates.map(dateStr => {
                     const dateNotes = pastGrouped[dateStr] || [];
-                    const isCollapsed = collapsedDates[dateStr] !== false; // default collapsed
+                    const isCollapsed = collapsedDates[dateStr] !== undefined ? collapsedDates[dateStr] : isMobile ? false : true;
                     const uniqueSections = Array.from(new Set(dateNotes.map(n => n.section || 'General')));
 
                     return (
@@ -794,13 +826,13 @@ export default function DailyNotes() {
                           onClick={() => toggleDateCollapse(dateStr)}
                           style={{
                             width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            padding: '14px 20px', background: 'transparent', border: 'none',
+                            padding: isMobile ? '14px 16px' : '14px 20px', background: 'transparent', border: 'none',
                             cursor: 'pointer', color: 'var(--text-secondary)', textAlign: 'left',
                             fontFamily: 'var(--font-sans)',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: isMobile ? '0.85rem' : '0.95rem', color: 'var(--text-secondary)' }}>
                               {formatDateHeader(dateStr)}
                             </span>
                             {/* Section summary pills */}
@@ -828,7 +860,7 @@ export default function DailyNotes() {
 
                         {/* Expanded content */}
                         {!isCollapsed && (
-                          <div style={{ padding: '4px 20px 18px', borderTop: '1px solid var(--border)', animation: 'panelSlideDown 0.2s ease' }}>
+                          <div style={{ padding: isMobile ? '4px 14px 18px' : '4px 20px 18px', borderTop: '1px solid var(--border)', animation: 'panelSlideDown 0.2s ease' }}>
                             {uniqueSections.map(sec => {
                               const secNotes = dateNotes.filter(n => (n.section || 'General') === sec);
                               const col = getSectionColor(sec, noteSections);
@@ -878,9 +910,9 @@ export default function DailyNotes() {
 
             {/* Empty state — no notes at all */}
             {allNotes.length === 0 && !loading && (
-              <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)', marginTop: '8px' }}>
-                <BookOpen size={42} style={{ opacity: 0.18, marginBottom: '16px', display: 'inline-block' }} />
-                <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-secondary)' }}>Your notebook is empty</p>
+              <div className="glass-card" style={{ padding: isMobile ? '40px 16px' : '60px 20px', textAlign: 'center', color: 'var(--text-muted)', marginTop: '8px' }}>
+                <BookOpen size={isMobile ? 32 : 42} style={{ opacity: 0.18, marginBottom: '16px', display: 'inline-block' }} />
+                <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: isMobile ? '0.95rem' : '1.05rem', color: 'var(--text-secondary)' }}>Your notebook is empty</p>
                 <p style={{ margin: 0, fontSize: '0.88rem' }}>Start writing your first note above!</p>
               </div>
             )}

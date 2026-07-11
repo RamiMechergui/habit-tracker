@@ -61,9 +61,9 @@ async function getExpenseByDate(userId, date) {
  * @param {Array}  expenses
  * @returns {Promise<object>}
  */
-async function upsertExpense(userId, date, expenses) {
+async function upsertExpense(userId, date, expenses, income) {
   const ts   = new Date().toISOString();
-  const item = { userId, date, expenses: expenses || [], updatedAt: ts };
+  const item = { userId, date, expenses: expenses || [], income: income || [], updatedAt: ts };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return item;
 }

@@ -360,10 +360,28 @@ export default function Dashboard() {
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <h3 className="mb-6" style={{ opacity: 0.8 }}>Quick Metrics</h3>
           <div className="flex-col gap-4">
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
+              <span className="text-muted">Total Income</span>
+              <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
+                {(Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0).toFixed(3)} TND
+              </strong>
+            </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
               <span className="text-muted">Total Expenses</span>
               <strong className="text-amber" style={{ fontSize: '1.1rem' }}>
                 {(Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND
+              </strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{
+              background: (() => { const bal = (Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0); return bal >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' })(),
+              border: `1px solid ${(() => { const bal = (Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0); return bal >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' })()}`,
+            }}>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>⚖️ Remaining</span>
+              <strong style={{
+                color: (() => { const bal = (Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0); return bal >= 0 ? '#10b981' : '#ef4444' })(),
+                fontSize: '1.25rem',
+              }}>
+                {((Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0)).toFixed(3)} TND
               </strong>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
@@ -1032,7 +1050,7 @@ export default function Dashboard() {
                 {bookError}
               </div>
             )}
-            <div className="flex flex-wrap gap-2" style={{ marginBottom: '1rem' }}>
+            <div className="flex flex-wrap gap-2" style={{ marginBottom: '0.75rem' }}>
               <input
                 type="text"
                 placeholder="Book title"
@@ -1050,6 +1068,7 @@ export default function Dashboard() {
                 style={{ flex: '1 1 80px', maxWidth: '100%' }}
               />
             </div>
+
             <button className="btn btn-primary" onClick={handleSetBook} style={{ width: '100%' }}>
               Start Reading
             </button>
@@ -1057,18 +1076,26 @@ export default function Dashboard() {
         ) : (
           <div>
             <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{bookProgress.bookName}</h4>
-                  {currentBook?.author && (
-                    <p className="text-muted text-sm" style={{ margin: '0.15rem 0' }}>
-                      by {currentBook.author}
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
+                {currentBook?.photoUrl && (
+                  <div style={{ width: 64, height: 80, borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border)' }}>
+                    <img src={currentBook.photoUrl.startsWith('http') ? currentBook.photoUrl : (currentBook.photoUrl.startsWith('/') ? currentBook.photoUrl : `/uploads/${currentBook.photoUrl}`)} alt={bookProgress.bookName} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={e => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{bookProgress.bookName}</h4>
+                    {currentBook?.author && (
+                      <p className="text-muted text-sm" style={{ margin: '0.15rem 0' }}>
+                        by {currentBook.author}
+                      </p>
+                    )}
+                    <p className="text-muted text-sm" style={{ margin: '0.25rem 0' }}>
+                      {bookProgress.currentPage} / {bookProgress.targetPages} pages
                     </p>
-                  )}
-                  <p className="text-muted text-sm" style={{ margin: '0.25rem 0' }}>
-                    {bookProgress.currentPage} / {bookProgress.targetPages} pages
-                  </p>
-                </div>
+                  </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-blue)' }}>
                     {Math.round(bookProgress.progress)}%
@@ -1077,6 +1104,7 @@ export default function Dashboard() {
                     {bookProgress.isFinished ? '✓ Completed' : 'In Progress'}
                   </p>
                 </div>
+              </div>
               </div>
 
               {/* Progress Bar */}

@@ -153,6 +153,34 @@ const TABLES = [
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
+
+  // ── HabitWishlist ─────────────────────────────────────────────────────────
+  {
+    TableName: 'HabitWishlist',
+    KeySchema: [
+      { AttributeName: 'userId', KeyType: 'HASH' },
+      { AttributeName: 'itemId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId', AttributeType: 'S' },
+      { AttributeName: 'itemId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
+
+  // ── HabitMilestones ──────────────────────────────────────────────────────
+  {
+    TableName: 'HabitMilestones',
+    KeySchema: [
+      { AttributeName: 'userId',     KeyType: 'HASH' },
+      { AttributeName: 'milestoneId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId',     AttributeType: 'S' },
+      { AttributeName: 'milestoneId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
 ];
 
 /**

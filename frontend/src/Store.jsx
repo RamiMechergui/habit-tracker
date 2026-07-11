@@ -259,6 +259,12 @@ export const HabitProvider = ({ children }) => {
   // ── AWS Learning state ────────────────────────────────────────
   const [awsData, setAwsData] = useState([]);
 
+  // ── Wishlist state ────────────────────────────────────────────
+  const [wishlist, setWishlist] = useState([]);
+
+  // ── Milestones state ──────────────────────────────────────────
+  const [milestones, setMilestones] = useState([]);
+
   const setNoteSections = useCallback((nextSections) => {
     setNoteSectionsState(nextSections);
     try { localStorage.setItem('noteSections', JSON.stringify(nextSections)); } catch {}
@@ -285,6 +291,7 @@ export const HabitProvider = ({ children }) => {
     system: { todo: false, money: false },
     tasks: [],
     expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime, cigarettesCount: 0 }],
+    income: [],
     morningScore: 0,
     badScore: 0,
     nightScore: 0,
@@ -1268,13 +1275,53 @@ export const HabitProvider = ({ children }) => {
     logHistory('expense_category_edit', `Renamed category "${oldCategory}" to "${trimmedNew}"`);
   };
 
-  const setCurrentBook = async (bookName, targetPages, author) => {
+  // ── Income ──────────────────────────────────────────────────
+  const saveIncome = async (date, income) => {
+    if (!date) return;
+    // Update local log state
+    setLogs(prev => {
+      const existing = prev[date] || createEmptyDay(date);
+      return { ...prev, [date]: { ...existing, income: income || [] } };
+    });
+    db.saveLog(date, { income: income || [] });
+    // Sync to server
+    if (navigator.onLine) {
+      try {
+        await fetch(`${API_URL}/api/expenses/income`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, income: income || [] }),
+        });
+      } catch (e) {
+        db.enqueueSync({ type: 'SAVE_INCOME', url: '/api/expenses/income', method: 'POST', body: { date, income: income || [] } });
+        requestBackgroundSync();
+      }
+    } else {
+      db.enqueueSync({ type: 'SAVE_INCOME', url: '/api/expenses/income', method: 'POST', body: { date, income: income || [] } });
+    }
+    logHistory('income_save', `Saved income for ${date}`);
+  };
+
+  const deleteIncomeEntry = async (date, index) => {
+    const log = logs[date];
+    if (!log || !Array.isArray(log.income) || !log.income[index]) return;
+    const updated = log.income.filter((_, i) => i !== index);
+    await saveIncome(date, updated);
+    logHistory('income_delete', `Deleted income entry for ${date}`);
+  };
+
+  const setCurrentBook = async (bookName, targetPages, author, existingPhotoUrl) => {
     try {
+      const body = new FormData();
+      body.append('bookName', bookName);
+      body.append('targetPages', targetPages);
+      if (author) body.append('author', author);
+      if (existingPhotoUrl) body.append('photoUrl', existingPhotoUrl);
       const res = await fetch(`${API_URL}/api/currentbook`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookName, targetPages, author })
+        body,
       });
       const data = await res.json();
       if (res.ok) {
@@ -1401,12 +1448,26 @@ export const HabitProvider = ({ children }) => {
     }
   }, [API_URL]);
 
-  const addPlannedBook = useCallback(async (bookName, author) => {
+  const addPlannedBook = useCallback(async (bookName, author, photoFile) => {
+    let photoUrl = '';
+    if (photoFile) {
+      const photoFormData = new FormData();
+      photoFormData.append('photo', photoFile);
+      const photoRes = await fetch(`${API_URL}/api/plannedbooks/photo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: photoFormData,
+      });
+      if (photoRes.ok) {
+        const photoData = await photoRes.json();
+        photoUrl = photoData.photoUrl || '';
+      }
+    }
     const res = await fetch(`${API_URL}/api/plannedbooks`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookName, author }),
+      body: JSON.stringify({ bookName, author, photoUrl }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add planned book');
@@ -1415,6 +1476,23 @@ export const HabitProvider = ({ children }) => {
       db.savePlannedBooks(data);
     }
     logHistory('planned_book_add', `Added "${bookName}" to planned books`);
+    return data;
+  }, [API_URL]);
+
+  const uploadPlannedBookPhoto = useCallback(async (index, photoFile) => {
+    const formData = new FormData();
+    formData.append('photo', photoFile);
+    const res = await fetch(`${API_URL}/api/plannedbooks/${index}/photo`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to upload photo');
+    if (Array.isArray(data)) {
+      setPlannedBooks(data);
+      db.savePlannedBooks(data);
+    }
     return data;
   }, [API_URL]);
 
@@ -1438,6 +1516,52 @@ export const HabitProvider = ({ children }) => {
       await fetchPlannedBooks();
     }
   }, [API_URL, fetchPlannedBooks]);
+
+  // ── Archived Books methods ───────────────────────────────────
+  const removeArchivedBook = useCallback(async (index) => {
+    setArchivedBooks(prev => prev.filter((_, i) => i !== index));
+    try {
+      const res = await fetch(`${API_URL}/api/archivedbooks/${index}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setArchivedBooks(data);
+          db.saveArchives(data);
+        }
+      }
+      logHistory('archived_book_delete', 'Deleted an archived book');
+    } catch (e) {
+      console.warn('[Store] removeArchivedBook error:', e.message);
+    }
+  }, [API_URL]);
+
+  const stopReadingBook = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/currentbook`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: false, stopped: true, finalPage: 0 }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const newBook = data.currentBook || data;
+        const newArchives = data.archivedBooks;
+        setCurrentBookState(newBook);
+        db.saveCurrentBook(newBook);
+        if (Array.isArray(newArchives)) {
+          setArchivedBooks(newArchives);
+          db.saveArchives(newArchives);
+        }
+        logHistory('book_stop', `Stopped reading "${currentBook?.bookName}"`);
+      }
+    } catch (e) {
+      console.error('Error stopping book:', e);
+    }
+  }, [API_URL, currentBook]);
 
   // ── History ────────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -2055,6 +2179,34 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const updateAwsService = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/aws/service/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update service');
+    setAwsData(prev => prev.map(r => r.recordId === recordId ? data : r));
+    logHistory('aws_service_update', `Updated AWS service: ${payload?.service || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateAwsCert = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/aws/cert/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update certification');
+    setAwsData(prev => prev.map(r => r.recordId === recordId ? data : r));
+    logHistory('aws_cert_update', `Updated AWS certification: ${payload?.certification || ''}`);
+    return data;
+  }, [API_URL]);
+
   const deleteAwsRecord = useCallback(async (recordId) => {
     setAwsData(prev => prev.filter(r => r.recordId !== recordId));
     try {
@@ -2069,11 +2221,137 @@ export const HabitProvider = ({ children }) => {
     }
   }, [API_URL, fetchAwsData]);
 
+  // ── Wishlist API methods ──────────────────────────────────────
+  const fetchWishlist = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/wishlist`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setWishlist(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchWishlist error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addWishlistItem = useCallback(async ({ name, price, url, photoFile, currency }) => {
+    const formData = new FormData();
+    formData.append('name', name);
+    if (price != null && price !== '') formData.append('price', price);
+    if (url) formData.append('url', url);
+    if (currency) formData.append('currency', currency);
+    if (photoFile) formData.append('photo', photoFile);
+    const res = await fetch(`${API_URL}/api/wishlist`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add item');
+    setWishlist(prev => [...prev, data]);
+    logHistory('wishlist_add', `Added wishlist item: ${name}`);
+    return data;
+  }, [API_URL]);
+
+  const updateWishlistItem = useCallback(async (itemId, { name, price, url, currency, photoFile, existingPhoto }) => {
+    const formData = new FormData();
+    if (name !== undefined) formData.append('name', name);
+    if (price !== undefined) formData.append('price', price);
+    if (url !== undefined) formData.append('url', url);
+    if (currency !== undefined) formData.append('currency', currency);
+    if (photoFile) {
+      formData.append('photo', photoFile);
+    } else {
+      formData.append('existingPhoto', existingPhoto || '');
+    }
+    const res = await fetch(`${API_URL}/api/wishlist/${encodeURIComponent(itemId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update item');
+    setWishlist(prev => prev.map(r => r._id === itemId ? data : r));
+    logHistory('wishlist_update', `Updated wishlist item: ${name || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const deleteWishlistItem = useCallback(async (itemId) => {
+    setWishlist(prev => prev.filter(r => r._id !== itemId));
+    try {
+      await fetch(`${API_URL}/api/wishlist/${encodeURIComponent(itemId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      logHistory('wishlist_delete', 'Deleted a wishlist item');
+    } catch (e) {
+      console.warn('[Store] deleteWishlistItem error:', e.message);
+      await fetchWishlist();
+    }
+  }, [API_URL, fetchWishlist]);
+
+  // ── Milestones API methods ───────────────────────────────────
+  const fetchMilestones = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/milestones`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setMilestones(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchMilestones error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addMilestone = useCallback(async ({ habitName, lastDate }) => {
+    const res = await fetch(`${API_URL}/api/milestones`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ habitName, lastDate }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add milestone');
+    setMilestones(prev => [...prev, data]);
+    logHistory('milestone_add', `Added milestone: ${habitName}`);
+    return data;
+  }, [API_URL]);
+
+  const updateMilestone = useCallback(async (milestoneId, { habitName, lastDate }) => {
+    const res = await fetch(`${API_URL}/api/milestones/${encodeURIComponent(milestoneId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ habitName, lastDate }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update milestone');
+    setMilestones(prev => prev.map(r => r._id === milestoneId ? data : r));
+    logHistory('milestone_update', `Updated milestone: ${habitName || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const deleteMilestone = useCallback(async (milestoneId) => {
+    setMilestones(prev => prev.filter(r => r._id !== milestoneId));
+    try {
+      await fetch(`${API_URL}/api/milestones/${encodeURIComponent(milestoneId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      logHistory('milestone_delete', 'Deleted a milestone');
+    } catch (e) {
+      console.warn('[Store] deleteMilestone error:', e.message);
+      await fetchMilestones();
+    }
+  }, [API_URL, fetchMilestones]);
+
   return (
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData,
       user, login, register, logout, updateProfilePicture, updateProfile, changePassword, loading,
-      expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory,
+      expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, saveIncome, deleteIncomeEntry,
       currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
       isOnline,
       // Essentials
@@ -2090,9 +2368,15 @@ export const HabitProvider = ({ children }) => {
       // German Learning
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
       // AWS Learning
-      awsData, fetchAwsData, addAwsService, addAwsCert, saveAwsNote, deleteAwsRecord,
+      awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
+      // Wishlist
+      wishlist, fetchWishlist, addWishlistItem, updateWishlistItem, deleteWishlistItem,
+      // Milestones
+      milestones, fetchMilestones, addMilestone, updateMilestone, deleteMilestone,
       // Planned Books
-      plannedBooks, fetchPlannedBooks, addPlannedBook, removePlannedBook,
+      plannedBooks, fetchPlannedBooks, addPlannedBook, removePlannedBook, uploadPlannedBookPhoto,
+      // Archived Books
+      removeArchivedBook, stopReadingBook,
       // History
       history, fetchHistory, addHistoryEntry,
     }}>

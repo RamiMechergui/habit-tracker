@@ -3,13 +3,14 @@ import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
+import RichTextEditor from '../components/RichTextEditor';
 import { format } from 'date-fns';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Target, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, Image,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899' };
@@ -137,6 +138,8 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
   const [customCat, setCustomCat] = useState('');
   const [newPhotoFile, setNewPhotoFile] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [confirmPhotoDelete, setConfirmPhotoDelete] = useState(false);
   const fileRef = useRef(null);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
@@ -196,7 +199,11 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
   };
 
   const handleCancel = () => {
-    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    if (dirty && !showCancelConfirm) {
+      setShowCancelConfirm(true);
+      return;
+    }
+    setShowCancelConfirm(false);
     setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
     setCustomCat('');
     setDirty(false);
@@ -264,6 +271,13 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Notes</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." rows={2} style={{ ...inputBase, resize: 'vertical' }} />
           </div>
+          {showCancelConfirm && (
+            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 600 }}>Discard unsaved changes?</span>
+              <button type="button" onClick={handleCancel} style={{ background: '#f59e0b', border: 'none', color: '#fff', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Yes</button>
+              <button type="button" onClick={() => setShowCancelConfirm(false)} style={{ background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Keep editing</button>
+            </div>
+          )}
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mastery</label>
             <div style={{ marginTop: 4 }}>{masteryStars(form.mastery, v => setForm(p => ({ ...p, mastery: v })))}</div>
@@ -277,9 +291,17 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
                 <img src={URL.createObjectURL(newPhotoFile)} alt="preview" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
               ) : null}
               {editRecord && photoUrl && (
-                <button type="button" onClick={() => onDeletePhoto(editRecord.recordId)} style={{ background: `${C.red}20`, border: `1px solid ${C.red}40`, borderRadius: 6, cursor: 'pointer', color: C.red, padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Trash2 size={12} /> Remove
-                </button>
+                confirmPhotoDelete ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: `${C.red}15`, borderRadius: 6, padding: '4px 10px', fontSize: '0.75rem' }}>
+                    <span style={{ color: C.red, fontWeight: 600 }}>Remove?</span>
+                    <button type="button" onClick={() => { onDeletePhoto(editRecord.recordId); setConfirmPhotoDelete(false); }} style={{ background: C.red, border: 'none', color: '#fff', borderRadius: 4, padding: '1px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>Yes</button>
+                    <button type="button" onClick={() => setConfirmPhotoDelete(false)} style={{ background: 'transparent', border: `1px solid ${C.red}`, color: C.red, borderRadius: 4, padding: '1px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>No</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setConfirmPhotoDelete(true)} style={{ background: `${C.red}20`, border: `1px solid ${C.red}40`, borderRadius: 6, cursor: 'pointer', color: C.red, padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Trash2 size={12} /> Remove
+                  </button>
+                )
               )}
               {newPhotoFile && (
                 <button type="button" onClick={() => { setNewPhotoFile(null); }} style={{ background: `${C.red}15`, border: `1px solid ${C.red}40`, borderRadius: 6, cursor: 'pointer', color: C.red, padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -337,6 +359,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
   useEffect(() => {
@@ -367,7 +390,11 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
   };
 
   const handleCancel = () => {
-    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    if (dirty && !showCancelConfirm) {
+      setShowCancelConfirm(true);
+      return;
+    }
+    setShowCancelConfirm(false);
     setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
     setCustomCat('');
     setDirty(false);
@@ -433,6 +460,13 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mastery</label>
             <div style={{ marginTop: 4 }}>{masteryStars(form.mastery, v => setForm(p => ({ ...p, mastery: v })))}</div>
           </div>
+          {showCancelConfirm && (
+            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 600 }}>Discard unsaved changes?</span>
+              <button type="button" onClick={handleCancel} style={{ background: '#f59e0b', border: 'none', color: '#fff', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Yes</button>
+              <button type="button" onClick={() => setShowCancelConfirm(false)} style={{ background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Keep editing</button>
+            </div>
+          )}
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{
               padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
@@ -747,6 +781,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
   useEffect(() => {
@@ -772,7 +807,11 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
   };
 
   const handleCancel = () => {
-    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    if (dirty && !showCancelConfirm) {
+      setShowCancelConfirm(true);
+      return;
+    }
+    setShowCancelConfirm(false);
     setForm({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
     setCustomCat(''); setDirty(false); setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -831,6 +870,13 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
               </div>
             ))}
           </div>
+          {showCancelConfirm && (
+            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 600 }}>Discard unsaved changes?</span>
+              <button type="button" onClick={handleCancel} style={{ background: '#f59e0b', border: 'none', color: '#fff', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Yes</button>
+              <button type="button" onClick={() => setShowCancelConfirm(false)} style={{ background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Keep editing</button>
+            </div>
+          )}
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Cancel</button>
             <button type="submit" disabled={saving} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', cursor: 'pointer', background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, border: 'none', color: '#fff', fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : editRecord ? 'Update Verb' : 'Save Verb'}</button>
@@ -845,13 +891,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
   const [form, setForm] = useState({ title: '', content: '' });
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const editorRef = useRef(null);
-  const colorInputRef = useRef(null);
-  const memoPhotoInputRef = useRef(null);
-  const memoImgReplaceRef = useRef(null);
-  const [memoImgEditor, setMemoImgEditor] = useState(null);
-  const memoImgHandlesRef = useRef(null);
-  const memoImgToolbarRef = useRef(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
   useEffect(() => {
@@ -861,201 +901,31 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
     }
   }, [editRecord]);
 
-  useEffect(() => {
-    if (open && editorRef.current) {
-      editorRef.current.innerHTML = form.content;
-    }
-  }, [open]);
-
-  const exec = (cmd, val) => {
-    document.execCommand(cmd, false, val || null);
-    editorRef.current?.focus();
-    handleContentChange();
-  };
-
-  const handleContentChange = () => {
-    const html = editorRef.current?.innerHTML || '';
-    set('content', html);
-  };
-
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
-    handleContentChange();
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const content = editorRef.current?.innerHTML || '';
-    if (!form.title.trim() || !content.trim()) return;
-    const payload = { title: form.title.trim(), content };
+    if (!form.title.trim() || !form.content.trim()) return;
+    const payload = { title: form.title.trim(), content: form.content.trim() };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
     } else {
       await onAdd(payload);
     }
     setForm({ title: '', content: '' });
-    if (editorRef.current) editorRef.current.innerHTML = '';
     setDirty(false);
     setOpen(false);
   };
 
   const handleCancel = () => {
-    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    if (dirty && !showCancelConfirm) {
+      setShowCancelConfirm(true);
+      return;
+    }
+    setShowCancelConfirm(false);
     setForm({ title: '', content: '' });
-    if (editorRef.current) editorRef.current.innerHTML = '';
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
   };
-
-  // ── Memo image handling ──
-  const insertMemoImage = () => memoPhotoInputRef.current?.click();
-
-  const handleMemoPhotoSelected = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !onUploadPhoto) return;
-    const url = await onUploadPhoto(file);
-    if (url && editorRef.current) {
-      editorRef.current.focus();
-      document.execCommand('insertImage', false, url);
-      handleContentChange();
-    }
-    e.target.value = '';
-  };
-
-  const handleMemoEditorMouseDown = (e) => {
-    const img = e.target.closest('img');
-    if (img && editorRef.current?.contains(img)) {
-      e.preventDefault();
-      const rect = img.getBoundingClientRect();
-      setMemoImgEditor({ el: img, rect });
-    }
-  };
-
-  const memoUpdateOverlayDom = (rect) => {
-    if (memoImgHandlesRef.current) {
-      memoImgHandlesRef.current.style.left = `${rect.left - 4}px`;
-      memoImgHandlesRef.current.style.top = `${rect.top - 4}px`;
-      memoImgHandlesRef.current.style.width = `${rect.width + 8}px`;
-      memoImgHandlesRef.current.style.height = `${rect.height + 8}px`;
-    }
-    if (memoImgToolbarRef.current) {
-      memoImgToolbarRef.current.style.left = `${rect.left}px`;
-      memoImgToolbarRef.current.style.top = `${rect.top - 36 < 4 ? rect.bottom + 4 : rect.top - 36}px`;
-    }
-  };
-
-  const handleMemoImgResizeStart = (e, corner) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const img = memoImgEditor?.el;
-    if (!img) return;
-    const rect = img.getBoundingClientRect();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startW = rect.width;
-    const startH = rect.height;
-    const aspect = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : startW / startH || 1;
-    const parent = img.parentElement;
-    const maxW = parent ? parent.clientWidth : 1200;
-    function onMouseMove(ev) {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      let d = dx;
-      if (corner.includes('w')) d = -dx;
-      const dFromY = dy * aspect;
-      if (corner.includes('s')) { if (Math.abs(dFromY) > Math.abs(d)) d = dFromY; }
-      if (corner.includes('n')) { if (Math.abs(-dFromY) > Math.abs(d)) d = -dFromY; }
-      let newW = Math.min(maxW, Math.max(30, startW + d));
-      img.style.width = `${newW}px`;
-      img.style.height = `${newW / aspect}px`;
-      memoUpdateOverlayDom(img.getBoundingClientRect());
-    }
-    function onMouseUp() {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      handleContentChange();
-      const r = img.getBoundingClientRect();
-      setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
-    }
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
-
-  const handleMemoImgAlign = (align) => {
-    const img = memoImgEditor?.el;
-    if (!img) return;
-    img.removeAttribute('align');
-    img.style.cssText = (img.style.cssText || '')
-      .replace(/float\s*:[^;]+;?/g, '')
-      .replace(/display\s*:[^;]+;?/g, '')
-      .replace(/margin\s*:[^;]+;?/g, '')
-      .replace(/margin-\w+\s*:[^;]+;?/g, '')
-      .trim();
-    if (align === 'left') { img.style.float = 'left'; img.style.margin = '0.5rem 1rem 0.5rem 0'; }
-    else if (align === 'right') { img.style.float = 'right'; img.style.margin = '0.5rem 0 0.5rem 1rem'; }
-    else if (align === 'center') { img.style.display = 'block'; img.style.margin = '0.5rem auto'; }
-    handleContentChange();
-    const r = img.getBoundingClientRect();
-    setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
-    memoUpdateOverlayDom(r);
-  };
-
-  const handleMemoImgReplace = () => memoImgReplaceRef.current?.click();
-
-  const handleMemoImgReplaceSelected = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !onUploadPhoto) return;
-    const img = memoImgEditor?.el;
-    if (!img) return;
-    const url = await onUploadPhoto(file);
-    if (url) {
-      img.src = url;
-      handleContentChange();
-      const r = img.getBoundingClientRect();
-      setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
-      memoUpdateOverlayDom(r);
-    }
-    e.target.value = '';
-  };
-
-  const handleMemoImgDelete = () => {
-    const img = memoImgEditor?.el;
-    if (!img) return;
-    img.remove();
-    setMemoImgEditor(null);
-    handleContentChange();
-  };
-
-  // Dismiss image selection on outside click
-  useEffect(() => {
-    if (!memoImgEditor) return;
-    function onAnyDown(e) {
-      const ed = editorRef.current;
-      if (!ed) { setMemoImgEditor(null); return; }
-      const insideImg = e.target.closest('img') && ed.contains(e.target.closest('img'));
-      const insideOverlay = e.target.closest('[data-memo-handles]') || e.target.closest('[data-memo-toolbar]');
-      if (!insideImg && !insideOverlay) setMemoImgEditor(null);
-    }
-    document.addEventListener('mousedown', onAnyDown);
-    return () => document.removeEventListener('mousedown', onAnyDown);
-  }, [memoImgEditor]);
-
-  // Scroll-aware overlay positions
-  useEffect(() => {
-    if (!memoImgEditor?.el) return;
-    function onScroll() {
-      const r = memoImgEditor.el.getBoundingClientRect();
-      setMemoImgEditor(prev => prev ? { ...prev, rect: r } : null);
-      memoUpdateOverlayDom(r);
-    }
-    window.addEventListener('scroll', onScroll, true);
-    return () => window.removeEventListener('scroll', onScroll, true);
-  }, [memoImgEditor?.el]);
-
-  const TB = { padding: '0.3rem 0.65rem', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 };
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
@@ -1081,89 +951,30 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
           </div>
           <div style={{ marginBottom: '0.5rem' }}>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Content *</label>
-            <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', padding: '0.4rem 0.6rem', background: 'var(--bg)', borderRadius: '8px 8px 0 0', border: '1px solid var(--border)', borderBottom: 'none' }}>
-              <button type="button" onClick={() => exec('bold')} title="Bold" style={{ ...TB, width: 32, justifyContent: 'center', fontWeight: 900, fontSize: '0.95rem' }}><b>B</b></button>
-              <button type="button" onClick={() => exec('underline')} title="Underline" style={{ ...TB, width: 32, justifyContent: 'center' }}><u>U</u></button>
-              <button type="button" onClick={() => colorInputRef.current?.click()} title="Text color" style={{ ...TB, width: 32, justifyContent: 'center', fontSize: '0.95rem', padding: 0 }}>
-                <span style={{ textDecoration: 'underline', textDecorationColor: C.red }}>A</span>
-              </button>
-              <input ref={colorInputRef} type="color" style={{ display: 'none' }} onChange={e => { exec('foreColor', e.target.value); e.target.value = '#000000'; }} />
-              <button type="button" onClick={() => exec('removeFormat')} title="Clear formatting" style={{ ...TB, fontSize: '0.7rem' }}><X size={13} /></button>
-              <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
-              <button type="button" onClick={insertMemoImage} title="Insert Image" style={{ ...TB, width: 32, justifyContent: 'center', fontSize: '0.8rem' }}><Image size={14} /></button>
-              <input ref={memoPhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleMemoPhotoSelected} />
+            <div style={{ marginTop: 4 }}>
+              <RichTextEditor value={form.content} onChange={v => set('content', v)}
+                placeholder="Write your memorization content here..."
+                minHeight={140} onUploadImage={onUploadPhoto} />
             </div>
-            <div
-              ref={editorRef}
-              contentEditable
-              suppressContentEditableWarning
-              onInput={handleContentChange}
-              onPaste={handlePaste}
-              onMouseDown={handleMemoEditorMouseDown}
-              dangerouslySetInnerHTML={{ __html: form.content }}
-              style={{
-                ...inputBase, resize: 'vertical', minHeight: 140, maxHeight: 320, overflow: 'auto',
-                fontFamily: 'inherit', lineHeight: 1.7, borderRadius: '0 0 8px 8px', marginTop: 0,
-              }}
-            />
-            {/* Memo image resize handles */}
-            {memoImgEditor && memoImgEditor.rect && (
-              <div ref={memoImgHandlesRef} data-memo-handles style={{
-                position: 'fixed', pointerEvents: 'none', zIndex: 100,
-                border: '2px solid #10b981', borderRadius: 4,
-              }}>
-                {['nw','ne','sw','se'].map(corner => (
-                  <div key={corner} onMouseDown={e => handleMemoImgResizeStart(e, corner)} style={{
-                    position: 'absolute', width: 10, height: 10, background: '#fff',
-                    border: '2px solid #10b981', borderRadius: 2,
-                    cursor: corner.includes('n') ? (corner.includes('w') ? 'nw-resize' : 'ne-resize') : (corner.includes('w') ? 'sw-resize' : 'se-resize'),
-                    pointerEvents: 'auto', zIndex: 101,
-                    ...(corner === 'nw' ? { top: -5, left: -5 } : {}),
-                    ...(corner === 'ne' ? { top: -5, right: -5 } : {}),
-                    ...(corner === 'sw' ? { bottom: -5, left: -5 } : {}),
-                    ...(corner === 'se' ? { bottom: -5, right: -5 } : {}),
-                  }} />
-                ))}
-              </div>
-            )}
-            {/* Memo image toolbar */}
-            {memoImgEditor && memoImgEditor.rect && (
-              <div ref={memoImgToolbarRef} data-memo-toolbar style={{
-                position: 'fixed', zIndex: 101, display: 'flex', gap: 2,
-                background: '#1e293b', borderRadius: 8, padding: '3px 4px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              }}>
-                {[{a:'left',l:'⬅'},{a:'center',l:'⇔'},{a:'right',l:'➡'}].map(({a,l}) => (
-                  <button key={a} type="button" title={`Align ${a}`} onClick={() => handleMemoImgAlign(a)}
-                    style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#fff',fontSize:'0.75rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                    {l}
-                  </button>
-                ))}
-                <span style={{ width:1,height:20,background:'#ffffff30',margin:'0 2px',alignSelf:'center' }} />
-                <button type="button" title="Replace image" onClick={handleMemoImgReplace}
-                  style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#94a3b8',fontSize:'0.7rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  ↻
-                </button>
-                <span style={{ width:1,height:20,background:'#ffffff30',margin:'0 2px',alignSelf:'center' }} />
-                <button type="button" title="Delete image" onClick={handleMemoImgDelete}
-                  style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#ef4444',fontSize:'0.85rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  🗑
-                </button>
-                <input ref={memoImgReplaceRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleMemoImgReplaceSelected} />
-              </div>
-            )}
           </div>
+          {showCancelConfirm && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 600 }}>Discard unsaved changes?</span>
+              <button type="button" onClick={handleCancel} style={{ background: '#f59e0b', border: 'none', color: '#fff', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Yes</button>
+              <button type="button" onClick={() => setShowCancelConfirm(false)} style={{ background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Keep editing</button>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{
               padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
               background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)',
             }}>Cancel</button>
-            <button type="submit" disabled={!form.title.trim() || !(editorRef.current?.innerHTML || '').trim()} style={{
+            <button type="submit" disabled={!form.title.trim() || !form.content.trim()} style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.2rem',
               borderRadius: '8px', cursor: 'pointer',
               background: `linear-gradient(135deg, ${C.green}, #059669)`,
               border: 'none', color: '#fff', fontWeight: 700,
-              opacity: (!form.title.trim() || !(editorRef.current?.innerHTML || '').trim()) ? 0.6 : 1,
+              opacity: (!form.title.trim() || !form.content.trim()) ? 0.6 : 1,
             }}>
               <Save size={15} /> {editRecord ? 'Update' : 'Save'}
             </button>
@@ -1630,7 +1441,6 @@ export default function LearningGerman() {
   const [studyMinutes, setStudyMinutes] = useState('');
   const [wordsLearned, setWordsLearned] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
-  const [notePhotoUploading, setNotePhotoUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
@@ -1660,10 +1470,6 @@ export default function LearningGerman() {
   const [editMemo, setEditMemo] = useState(null);
   const [practiceMemo, setPracticeMemo] = useState(null);
   const [memoSaving, setMemoSaving] = useState(false);
-  // Image editing in rich text editor
-  const [noteImgEditor, setNoteImgEditor] = useState(null); // { el, rect }
-  const noteImgHandlesRef = useRef(null);
-  const noteImgToolbarRef = useRef(null);
   const PAGE_SIZE = 15;
 
   const [dailyWordGoal, setDailyWordGoal] = useState(() => parseInt(localStorage.getItem('german_wordGoal') || '10'));
@@ -1707,12 +1513,6 @@ export default function LearningGerman() {
     setWordsLearned(existing?.wordsLearned ? String(existing.wordsLearned) : '');
     setNoteSaved(false);
   }, [selectedDate, germanData]);
-
-  useEffect(() => {
-    if (noteEditorRef.current && noteEditorRef.current.innerHTML !== noteContent) {
-      noteEditorRef.current.innerHTML = noteContent;
-    }
-  }, [noteContent]);
 
   const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
 
@@ -1802,16 +1602,13 @@ export default function LearningGerman() {
   };
 
   const handleUploadNotePhoto = async (file) => {
-    if (!file) return;
-    setNotePhotoUploading(true);
+    if (!file) return null;
     try {
       const result = await uploadGermanNotePhoto(file);
       return result.url;
     } catch (e) {
       setError(e.message);
       return null;
-    } finally {
-      setNotePhotoUploading(false);
     }
   };
 
@@ -1889,7 +1686,6 @@ export default function LearningGerman() {
   };
 
   const handleDeletePhoto = async (recordId) => {
-    if (!window.confirm('Remove this photo?')) return;
     try {
       await deleteGermanVocabPhoto(recordId);
     } catch (e) {
@@ -1993,218 +1789,7 @@ export default function LearningGerman() {
     try { await deleteGermanRecord(recordId); } catch (e) { setError(e.message); }
   };
 
-  // ── RichNoteEditor ──────────────────────────────────────────────────────────
-  const noteEditorRef = useRef(null);
-  const notePhotoInputRef = useRef(null);
-  const noteImgReplaceRef = useRef(null);
 
-  function execFormat(command, value) {
-    document.execCommand(command, false, value || null);
-    noteEditorRef.current?.focus();
-  }
-
-  function insertNoteImage() {
-    notePhotoInputRef.current?.click();
-  }
-
-  async function handleNotePhotoSelected(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = await handleUploadNotePhoto(file);
-    if (url && noteEditorRef.current) {
-      noteEditorRef.current.focus();
-      document.execCommand('insertImage', false, url);
-    }
-    e.target.value = '';
-  }
-
-  function handleNoteEditorInput() {
-    if (noteEditorRef.current) {
-      setNoteContent(noteEditorRef.current.innerHTML);
-    }
-  }
-
-  function handleNoteEditorPaste(e) {
-    e.preventDefault();
-    const text = e.clipboardData?.getData('text/plain') || '';
-    document.execCommand('insertText', false, text);
-  }
-
-  function handleNoteEditorKeyDown(e) {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
-    }
-    if (e.key === 'Escape' && noteImgEditor) {
-      setNoteImgEditor(null);
-    }
-  }
-
-  function handleNoteEditorMouseDown(e) {
-    const img = e.target.closest('img');
-    if (img && noteEditorRef.current?.contains(img)) {
-      e.preventDefault();
-      const rect = img.getBoundingClientRect();
-      setNoteImgEditor({ el: img, rect });
-      return;
-    }
-  }
-
-  // Dismiss image selection when clicking outside the editor, handles, or toolbar
-  useEffect(() => {
-    if (!noteImgEditor) return;
-    function onAnyMouseDown(e) {
-      const editor = noteEditorRef.current;
-      if (!editor) { setNoteImgEditor(null); return; }
-      const insideImg = e.target.closest('img') && editor.contains(e.target.closest('img'));
-      const insideOverlay = e.target.closest('[data-img-handles]') || e.target.closest('[data-img-toolbar]');
-      if (!insideImg && !insideOverlay) {
-        setNoteImgEditor(null);
-      }
-    }
-    document.addEventListener('mousedown', onAnyMouseDown);
-    return () => document.removeEventListener('mousedown', onAnyMouseDown);
-  }, [noteImgEditor]);
-
-  function handleNoteImgAlign(align) {
-    const img = noteImgEditor?.el;
-    if (!img) return;
-    img.removeAttribute('align');
-    img.style.cssText = (img.style.cssText || '')
-      .replace(/float\s*:[^;]+;?/g, '')
-      .replace(/display\s*:[^;]+;?/g, '')
-      .replace(/margin\s*:[^;]+;?/g, '')
-      .replace(/margin-\w+\s*:[^;]+;?/g, '')
-      .trim();
-    if (align === 'left') {
-      img.style.float = 'left';
-      img.style.margin = '0.5rem 1rem 0.5rem 0';
-    } else if (align === 'right') {
-      img.style.float = 'right';
-      img.style.margin = '0.5rem 0 0.5rem 1rem';
-    } else if (align === 'center') {
-      img.style.display = 'block';
-      img.style.margin = '0.5rem auto';
-    }
-    triggerNoteContentSave();
-    updateNoteImgRect();
-  }
-
-  function handleNoteImgResizeStart(e, corner) {
-    e.preventDefault();
-    e.stopPropagation();
-    const img = noteImgEditor?.el;
-    if (!img) return;
-    const rect = img.getBoundingClientRect();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startW = rect.width;
-    const startH = rect.height;
-    const aspect = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : startW / startH || 1;
-    const imgParent = img.parentElement;
-    const maxW = imgParent ? imgParent.clientWidth : 1200;
-    function onMouseMove(ev) {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      let d = dx;
-      if (corner.includes('w')) d = -dx;
-      const dFromY = dy * aspect;
-      if (corner.includes('s')) { if (Math.abs(dFromY) > Math.abs(d)) d = dFromY; }
-      if (corner.includes('n')) { if (Math.abs(-dFromY) > Math.abs(d)) d = -dFromY; }
-      let newW = Math.min(maxW, Math.max(30, startW + d));
-      img.style.width = `${newW}px`;
-      img.style.height = `${newW / aspect}px`;
-      const r = img.getBoundingClientRect();
-      syncOverlayDom(r);
-    }
-    function onMouseUp() {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      triggerNoteContentSave();
-      updateNoteImgRect();
-    }
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
-
-  function handleNoteImgReplace() {
-    noteImgReplaceRef.current?.click();
-  }
-
-  async function handleNoteImgReplaceSelected(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const img = noteImgEditor?.el;
-    if (!img) return;
-    try {
-      const url = await handleUploadNotePhoto(file);
-      if (url) {
-        img.src = url;
-        // Preserve existing alignment/resize styles
-        triggerNoteContentSave();
-        updateNoteImgRect();
-      }
-    } catch (_) {}
-    e.target.value = '';
-  }
-
-  function handleNoteImgDelete() {
-    const img = noteImgEditor?.el;
-    if (!img) return;
-    img.remove();
-    setNoteImgEditor(null);
-    triggerNoteContentSave();
-  }
-
-  function updateNoteImgRect() {
-    const img = noteImgEditor?.el;
-    if (!img) return;
-    const rect = img.getBoundingClientRect();
-    setNoteImgEditor(prev => prev ? { ...prev, rect } : null);
-    syncOverlayDom(rect);
-  }
-
-  function syncOverlayDom(rect) {
-    if (noteImgHandlesRef.current) {
-      noteImgHandlesRef.current.style.left = `${rect.left - 4}px`;
-      noteImgHandlesRef.current.style.top = `${rect.top - 4}px`;
-      noteImgHandlesRef.current.style.width = `${rect.width + 8}px`;
-      noteImgHandlesRef.current.style.height = `${rect.height + 8}px`;
-    }
-    if (noteImgToolbarRef.current) {
-      noteImgToolbarRef.current.style.left = `${rect.left}px`;
-      noteImgToolbarRef.current.style.top = `${rect.top - 36 < 4 ? rect.bottom + 4 : rect.top - 36}px`;
-    }
-  }
-
-  function triggerNoteContentSave() {
-    if (noteEditorRef.current) {
-      setNoteContent(noteEditorRef.current.innerHTML);
-    }
-  }
-
-  // Keep overlay positions in sync when the user scrolls
-  useEffect(() => {
-    if (!noteImgEditor?.el) return;
-    function onScroll() { updateNoteImgRect(); }
-    window.addEventListener('scroll', onScroll, true);
-    return () => window.removeEventListener('scroll', onScroll, true);
-  }, [noteImgEditor?.el]);
-
-  function handleNoteColorChange(e) {
-    execFormat('foreColor', e.target.value);
-    e.target.blur();
-  }
-
-  const editorToolbarBtn = (active) => ({
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: 30, height: 30, borderRadius: 6, cursor: 'pointer',
-    border: active ? `1px solid ${C.gold}60` : '1px solid transparent',
-    background: active ? `${C.gold}20` : 'transparent',
-    color: active ? C.gold : 'var(--text-muted)',
-    fontSize: '0.82rem', fontWeight: 700, padding: 0,
-    transition: 'all 0.15s ease',
-  });
 
   const cellStyle = {
     padding: '0.65rem 0.8rem', fontSize: '0.85rem',
@@ -2431,132 +2016,10 @@ export default function LearningGerman() {
               </div>
             </div>
             <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Study Notes &amp; Reflections
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>(rich text supported)</span>
-              </label>
-              <div style={{
-                ...inputBase, marginTop: 0, padding: 0, overflow: 'hidden',
-                background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--border)',
-              }}>
-                <div style={{
-                  display: 'flex', gap: 2, padding: '4px 6px', flexWrap: 'wrap',
-                  borderBottom: '1px solid var(--border)', background: 'var(--bg-card)',
-                  alignItems: 'center',
-                }}>
-                  <button type="button" title="Bold" onClick={() => execFormat('bold')} style={editorToolbarBtn()}>
-                    <b style={{ fontSize: '0.85rem' }}>B</b>
-                  </button>
-                  <button type="button" title="Underline" onClick={() => execFormat('underline')} style={editorToolbarBtn()}>
-                    <u style={{ fontSize: '0.85rem' }}>U</u>
-                  </button>
-                  <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
-                  <input type="color" id="noteTextColor" title="Text Color"
-                    onChange={handleNoteColorChange}
-                    style={{ width: 22, height: 22, padding: 0, border: 'none', cursor: 'pointer', background: 'transparent' }}
-                  />
-                  <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
-                  <button type="button" title="Ordered List" onClick={() => execFormat('insertOrderedList')} style={editorToolbarBtn()}>
-                    <span style={{ fontSize: '0.75rem' }}>1.</span>
-                  </button>
-                  <button type="button" title="Unordered List" onClick={() => execFormat('insertUnorderedList')} style={editorToolbarBtn()}>
-                    <span style={{ fontSize: '0.75rem' }}>•</span>
-                  </button>
-                  <span style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 3px' }} />
-                  <button type="button" title="Insert Image" onClick={insertNoteImage}
-                    disabled={notePhotoUploading}
-                    style={{ ...editorToolbarBtn(), opacity: notePhotoUploading ? 0.5 : 1 }}>
-                    <Image size={14} />
-                  </button>
-                  <input ref={notePhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={handleNotePhotoSelected} />
-                </div>
-                <div
-                  ref={noteEditorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={handleNoteEditorInput}
-                  onPaste={handleNoteEditorPaste}
-                  onKeyDown={handleNoteEditorKeyDown}
-                  onMouseDown={handleNoteEditorMouseDown}
-                  data-placeholder="What did you study today?&#10;&#10;New words learned&#10;Grammar topics covered&#10;Difficulties encountered&#10;Goals for tomorrow"
-                  style={{
-                    minHeight: 180, padding: '0.75rem 0.85rem',
-                    lineHeight: 1.6, fontSize: '0.9rem', color: 'var(--text-primary)',
-                    outline: 'none', fontFamily: 'inherit', cursor: 'text',
-                  }}
-                />
-                {/* Image resize handles + toolbar overlay */}
-                {noteImgEditor && noteImgEditor.rect && (
-                  <div ref={noteImgHandlesRef} data-img-handles style={{
-                    position: 'fixed',
-                    left: noteImgEditor.rect.left - 4,
-                    top: noteImgEditor.rect.top - 4,
-                    width: noteImgEditor.rect.width + 8,
-                    height: noteImgEditor.rect.height + 8,
-                    pointerEvents: 'none', zIndex: 100,
-                    border: '2px solid #3b82f6', borderRadius: 4,
-                  }}>
-                    {/* Corner resize handles */}
-                    {['nw', 'ne', 'sw', 'se'].map(corner => (
-                      <div key={corner} onMouseDown={e => handleNoteImgResizeStart(e, corner)}
-                        style={{
-                          position: 'absolute', width: 10, height: 10,
-                          background: '#fff', border: '2px solid #3b82f6',
-                          borderRadius: 2, cursor: corner.includes('n') ? (corner.includes('w') ? 'nw-resize' : 'ne-resize') : (corner.includes('w') ? 'sw-resize' : 'se-resize'),
-                          pointerEvents: 'auto', zIndex: 101,
-                          ...(corner === 'nw' ? { top: -5, left: -5 } : {}),
-                          ...(corner === 'ne' ? { top: -5, right: -5 } : {}),
-                          ...(corner === 'sw' ? { bottom: -5, left: -5 } : {}),
-                          ...(corner === 'se' ? { bottom: -5, right: -5 } : {}),
-                        }} />
-                    ))}
-                  </div>
-                )}
-                {/* Image alignment toolbar */}
-                {noteImgEditor && noteImgEditor.rect && (
-                  <div ref={noteImgToolbarRef} data-img-toolbar style={{
-                    position: 'fixed',
-                    left: noteImgEditor.rect.left,
-                    top: noteImgEditor.rect.top - 36 < 4 ? noteImgEditor.rect.bottom + 4 : noteImgEditor.rect.top - 36,
-                    zIndex: 101,
-                    display: 'flex', gap: 2,
-                    background: '#1e293b', borderRadius: 8,
-                    padding: '3px 4px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                  }}>
-                    {[{ a: 'left', l: '⬅' }, { a: 'center', l: '⇔' }, { a: 'right', l: '➡' }].map(({ a, l }) => (
-                      <button key={a} type="button" title={`Align ${a}`} onClick={() => handleNoteImgAlign(a)}
-                        style={{
-                          width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
-                          border: 'none', background: 'transparent', color: '#fff',
-                          fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                        {l}
-                      </button>
-                    ))}
-                    <span style={{ width: 1, height: 20, background: '#ffffff30', margin: '0 2px', alignSelf: 'center' }} />
-                    <button type="button" title="Replace image" onClick={handleNoteImgReplace}
-                      style={{
-                        width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
-                        border: 'none', background: 'transparent', color: '#94a3b8',
-                        fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                      ↻
-                    </button>
-                    <span style={{ width: 1, height: 20, background: '#ffffff30', margin: '0 2px', alignSelf: 'center' }} />
-                    <button type="button" title="Delete image" onClick={handleNoteImgDelete}
-                      style={{
-                        width: 26, height: 26, borderRadius: 4, cursor: 'pointer',
-                        border: 'none', background: 'transparent', color: '#ef4444',
-                        fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                      🗑
-                    </button>
-                    <input ref={noteImgReplaceRef} type="file" accept="image/*" style={{ display: 'none' }}
-                      onChange={handleNoteImgReplaceSelected} />
-                  </div>
-                )}
-              </div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Study Notes &amp; Reflections</label>
+              <RichTextEditor value={noteContent} onChange={setNoteContent}
+                placeholder="What did you study today?&#10;&#10;New words learned&#10;Grammar topics covered&#10;Difficulties encountered&#10;Goals for tomorrow"
+                minHeight={180} onUploadImage={handleUploadNotePhoto} />
             </div>
             <button onClick={handleSaveNote} disabled={noteSaving || isNoteEmpty(noteContent)} style={{
               width: '100%', padding: '0.75rem',

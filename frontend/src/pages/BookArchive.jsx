@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHabits } from '../Store';
-import { Calendar, BookOpen, Target, CheckCircle, Library, BookMarked, Plus, Trash2, User, Play, X } from 'lucide-react';
+import { Calendar, BookOpen, Target, CheckCircle, Library, BookMarked, Plus, Trash2, User, Play, X, Camera, StopCircle, Image } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
 
 function TabBtn({ active, onClick, icon: Icon, label, count }) {
@@ -36,24 +36,33 @@ function BookProgressCard({ book, bookProgress, formatDate, onFinishBook }) {
       border: '1px solid rgba(59,130,246,0.25)',
       borderLeft: '3px solid #3b82f6',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <div>
-          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-blue)' }}>
-            <BookMarked size={20} /> {book.bookName}
-          </h3>
-          {book.author && (
-            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              by {book.author}
-            </p>
-          )}
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--accent-blue)' }}>
-            {Math.round(bookProgress?.progress || 0)}%
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
+        {book.photoUrl && (
+          <div style={{ width: 48, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border)' }}>
+            <img src={book.photoUrl.startsWith('http') ? book.photoUrl : (book.photoUrl.startsWith('/') ? book.photoUrl : `/uploads/${book.photoUrl}`)} alt={book.bookName} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={e => { e.target.style.display = 'none'; }}
+            />
           </div>
-          <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {bookProgress?.isFinished ? '✓ Completed' : 'Reading'}
-          </p>
+        )}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-blue)' }}>
+              <BookMarked size={20} /> {book.bookName}
+            </h3>
+            {book.author && (
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                by {book.author}
+              </p>
+            )}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--accent-blue)' }}>
+              {Math.round(bookProgress?.progress || 0)}%
+            </div>
+            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {bookProgress?.isFinished ? '✓ Completed' : 'Reading'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -101,13 +110,18 @@ function BookProgressCard({ book, bookProgress, formatDate, onFinishBook }) {
 }
 
 export default function BookArchive() {
-  const { archivedBooks, plannedBooks, addPlannedBook, removePlannedBook, currentBook, setCurrentBook, getBookProgress } = useHabits();
+  const { archivedBooks, plannedBooks, addPlannedBook, removePlannedBook, uploadPlannedBookPhoto, removeArchivedBook, stopReadingBook, currentBook, setCurrentBook, getBookProgress } = useHabits();
   const navigate = useNavigate();
+  const photoInputRef = useRef(null);
   const [tab, setTab] = useState('completed');
   const [showForm, setShowForm] = useState(false);
   const [bookName, setBookName] = useState('');
   const [author, setAuthor] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [uploadingPhotoIdx, setUploadingPhotoIdx] = useState(null);
 
   // Start Reading modal state
   const [startTarget, setStartTarget] = useState(null);
@@ -115,8 +129,10 @@ export default function BookArchive() {
   const [startSaving, setStartSaving] = useState(false);
   const [startError, setStartError] = useState('');
 
+
   // Inline message when already reading
   const [readingMsgIdx, setReadingMsgIdx] = useState(null);
+  const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -137,11 +153,44 @@ export default function BookArchive() {
     if (!bookName.trim()) return;
     setSaving(true);
     try {
-      await addPlannedBook(bookName.trim(), author.trim());
+      await addPlannedBook(bookName.trim(), author.trim(), photoFile || undefined);
       setBookName('');
       setAuthor('');
+      setPhotoFile(null);
+      setPhotoPreview(null);
       setShowForm(false);
     } finally { setSaving(false); }
+  };
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCardPhotoSelect = async (idx, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhotoIdx(idx);
+    try {
+      await uploadPlannedBookPhoto(idx, file);
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+    } finally {
+      setUploadingPhotoIdx(null);
+    }
+  };
+
+  const handleStopReading = async () => {
+    setStopping(true);
+    try {
+      await stopReadingBook();
+    } finally {
+      setStopping(false);
+    }
   };
 
   const openStartModal = (book, idx) => {
@@ -174,7 +223,7 @@ export default function BookArchive() {
     setStartSaving(true);
     setStartError('');
     try {
-      await setCurrentBook(startTarget.bookName, pages, startTarget.author);
+      await setCurrentBook(startTarget.bookName, pages, startTarget.author, startTarget.photoUrl || undefined);
       await removePlannedBook(startTarget.idx);
       closeStartModal();
       navigate('/dashboard');
@@ -211,7 +260,24 @@ export default function BookArchive() {
       {tab === 'inprogress' && (
         <div style={{ marginTop: '1.5rem' }}>
           {currentBook?.isActive ? (
-            <BookProgressCard book={currentBook} bookProgress={getBookProgress()} formatDate={formatDate} onFinishBook={() => {}} />
+            <>
+              <BookProgressCard book={currentBook} bookProgress={getBookProgress()} formatDate={formatDate} onFinishBook={() => {}} />
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={handleStopReading}
+                  disabled={stopping}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    padding: '0.55rem 1.2rem', borderRadius: '10px', cursor: 'pointer',
+                    background: 'transparent', border: '1px solid #dc2626',
+                    color: '#dc2626', fontWeight: 600, fontSize: '0.85rem',
+                    opacity: stopping ? 0.6 : 1,
+                  }}
+                >
+                  <StopCircle size={16} /> {stopping ? 'Stopping…' : 'Stop Reading'}
+                </button>
+              </div>
+            </>
           ) : (
             <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', marginTop: '0.5rem' }}>
               <BookMarked size={48} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
@@ -241,14 +307,40 @@ export default function BookArchive() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
               {archivedBooks.map((book, idx) => (
-                <div key={idx} className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-blue)' }}>
-                      <CheckCircle size={20} /> {book.bookName}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Completed ✓
-                    </p>
+                <div key={idx} className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+                  {confirmDeleteIdx === idx ? (
+                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(220,38,38,0.1)', padding: '0.35rem 0.5rem', borderRadius: '8px', fontSize: '0.75rem' }}>
+                      <span style={{ color: '#dc2626', fontWeight: 600, whiteSpace: 'nowrap' }}>Delete?</span>
+                      <button onClick={() => removeArchivedBook(idx)} style={{ background: '#dc2626', border: 'none', color: '#fff', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>Yes</button>
+                      <button onClick={() => setConfirmDeleteIdx(null)} style={{ background: 'transparent', border: '1px solid #dc2626', color: '#dc2626', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>No</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteIdx(idx)}
+                      title="Delete from archive"
+                      style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px', opacity: 0.5, transition: 'opacity 0.2s', }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    {book.photoUrl && (
+                      <div style={{ width: 40, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border)' }}>
+                        <img src={book.photoUrl.startsWith('http') ? book.photoUrl : (book.photoUrl.startsWith('/') ? book.photoUrl : `/uploads/${book.photoUrl}`)} alt={book.bookName} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: book.status === 'stopped' ? '#f59e0b' : 'var(--accent-blue)' }}>
+                        {book.status === 'stopped' ? <StopCircle size={20} /> : <CheckCircle size={20} />} {book.bookName}
+                      </h3>
+                      <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {book.status === 'stopped' ? 'Stopped reading' : 'Completed ✓'}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid-2" style={{ fontSize: '0.9rem' }}>
@@ -300,9 +392,13 @@ export default function BookArchive() {
                     </div>
                   </div>
 
-                  <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '6px', padding: '0.75rem', fontSize: '0.8rem', textAlign: 'center' }}>
-                    <p style={{ margin: 0, color: 'var(--accent-green)', fontWeight: '600' }}>
-                      🎉 Great job! You finished this book!
+                  <div style={{
+                    background: book.status === 'stopped' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                    border: book.status === 'stopped' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)',
+                    borderRadius: '6px', padding: '0.75rem', fontSize: '0.8rem', textAlign: 'center'
+                  }}>
+                    <p style={{ margin: 0, color: book.status === 'stopped' ? '#f59e0b' : 'var(--accent-green)', fontWeight: '600' }}>
+                      {book.status === 'stopped' ? '⏹ You stopped reading this book' : '🎉 Great job! You finished this book!'}
                     </p>
                   </div>
                 </div>
@@ -376,6 +472,24 @@ export default function BookArchive() {
                   />
                 </div>
               </div>
+              {/* Photo upload */}
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Book Photo</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: 4 }}>
+                  {photoPreview ? (
+                    <div style={{ position: 'relative', width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                      <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 10, lineHeight: 1 }}>✕</button>
+                    </div>
+                  ) : (
+                    <div onClick={() => photoInputRef.current?.click()} style={{ width: 60, height: 60, borderRadius: 8, border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'var(--bg-card-hover)', flexShrink: 0 }}>
+                      <Camera size={20} style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                  )}
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Add a cover photo</span>
+                </div>
+                <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoSelect} />
+              </div>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowForm(false)} style={{
                   padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
@@ -404,15 +518,31 @@ export default function BookArchive() {
                   display: 'flex', flexDirection: 'column', gap: '0.75rem',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#8b5cf6' }}>
-                        {book.bookName}
-                      </h3>
-                      {book.author && (
-                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <User size={13} /> {book.author}
-                        </p>
-                      )}
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flex: 1 }}>
+                      {/* Book photo */}
+                      <div style={{ position: 'relative', width: 48, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0, cursor: 'pointer' }} onClick={() => document.getElementById(`photo-input-${idx}`)?.click()}>
+                        {book.photoUrl ? (
+                          <img src={book.photoUrl.startsWith('http') ? book.photoUrl : (book.photoUrl.startsWith('/') ? book.photoUrl : `/uploads/${book.photoUrl}`)} alt={book.bookName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card-hover)' }}>
+                            {uploadingPhotoIdx === idx ? <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>...</span> : <Image size={18} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />}
+                          </div>
+                        )}
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s', }} className="photo-overlay">
+                          <Camera size={14} style={{ color: '#fff' }} />
+                        </div>
+                      </div>
+                      <input id={`photo-input-${idx}`} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleCardPhotoSelect(idx, e)} />
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#8b5cf6' }}>
+                          {book.bookName}
+                        </h3>
+                        {book.author && (
+                          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <User size={13} /> {book.author}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => removePlannedBook(idx)}
@@ -526,6 +656,8 @@ export default function BookArchive() {
               }}
             />
 
+
+
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button
                 onClick={closeStartModal}
@@ -554,6 +686,10 @@ export default function BookArchive() {
           </div>
         </div>
       )}
+      <style>{`
+        .photo-overlay { opacity: 0 !important; }
+        div:hover > .photo-overlay { opacity: 1 !important; }
+      `}</style>
     </div>
   );
 }

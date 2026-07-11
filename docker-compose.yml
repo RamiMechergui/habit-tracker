@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     hostname: frontend
     ports:
-      - "80:80"
+      - "5173:80"
     environment:
       - VITE_API_URL_NATIVE=http://backend:5000
       - VITE_API_TARGET=http://backend:5000
@@ -53,6 +53,8 @@ services:
       - USE_PATH_STYLE=true
     networks:
       - habit-network
+    volumes:
+      - uploads-data:/app/uploads
     depends_on:
       dynamodb-local:
         condition: service_healthy
@@ -124,6 +126,7 @@ services:
 volumes:
   dynamodb-data:
   minio-data:
+  uploads-data:
 
 networks:
   habit-network:

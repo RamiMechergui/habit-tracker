@@ -2,7 +2,8 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
-  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X, StickyNote, KeyRound, Languages, Cloud
+  WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X,
+  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -24,6 +25,8 @@ import Admin from './pages/Admin';
 import PasswordVault from './pages/PasswordVault';
 import LearningGerman from './pages/LearningGerman';
 import LearningAws from './pages/LearningAws';
+import Wishlist from './pages/Wishlist';
+import LastDay from './pages/LastDay';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
@@ -43,6 +46,8 @@ const NAV_LINKS = [
   { to: '/essentials',    icon: ShieldCheck,     label: 'Essentials' },
   { to: '/sidehustle',    icon: Rocket,          label: 'Side Hustle' },
   { to: '/video-editing', icon: Video,           label: 'Video Editing' },
+  { to: '/wishlist',      icon: ShoppingBag,     label: 'Wishlist' },
+  { to: '/last-day',      icon: Flag,            label: 'Last Day' },
   { to: '/german',        icon: Languages,       label: 'Learning German' },
   { to: '/aws',           icon: Cloud,           label: 'Learning AWS' },
   { to: '/settings',      icon: SettingsIcon,    label: 'Settings' },
@@ -242,6 +247,8 @@ function App() {
             <Route path="/video-editing" element={<VideoEditing />} />
             <Route path="/german"    element={<LearningGerman />} />
             <Route path="/aws"       element={<LearningAws />} />
+            <Route path="/wishlist"  element={<Wishlist />} />
+            <Route path="/last-day"  element={<LastDay />} />
             <Route path="/settings"  element={<Settings />} />
           </Routes>
         </div>

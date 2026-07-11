@@ -2,19 +2,64 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Doughnut } from 'react-chartjs-2';
 import { format, parseISO, isSameDay, isSameMonth, isSameYear } from 'date-fns';
-import { ChevronLeft, ChevronRight, Wallet, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Wallet, Download, Trash2, Edit3 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 
 export default function ExpenseTracker() {
-  const { logs, expenseCategories } = useHabits();
-  const [viewMode, setViewMode] = useState('monthly'); // 'daily', 'monthly', 'yearly'
+  const { logs, expenseCategories, saveIncome, deleteIncomeEntry } = useHabits();
+  const [viewMode, setViewMode] = useState('monthly');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [incomeSource, setIncomeSource] = useState('');
+  const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeDate, setIncomeDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [editIncomeIdx, setEditIncomeIdx] = useState(null);
+
+  const resetIncomeForm = () => {
+    setIncomeSource('');
+    setIncomeAmount('');
+    setEditIncomeIdx(null);
+  };
+
+  const handleSaveIncome = async () => {
+    const source = incomeSource.trim();
+    const amount = parseFloat(incomeAmount);
+    if (!source || !amount || amount <= 0) return;
+
+    const existing = logs[incomeDate];
+    const currentIncome = existing && Array.isArray(existing.income) ? [...existing.income] : [];
+
+    if (editIncomeIdx !== null) {
+      currentIncome[editIncomeIdx] = { source, amount };
+    } else {
+      currentIncome.push({ source, amount });
+    }
+
+    await saveIncome(incomeDate, currentIncome);
+    resetIncomeForm();
+  };
+
+  const handleEditIncome = (entry, idx) => {
+    setIncomeSource(entry.source);
+    setIncomeAmount(String(entry.amount));
+    setEditIncomeIdx(idx);
+  };
+
+  const handleDeleteIncome = async (idx) => {
+    await deleteIncomeEntry(incomeDate, idx);
+  };
+
+  // Get income entries for the selected date
+  const savedIncome = useMemo(() => {
+    const log = logs[incomeDate];
+    return log && Array.isArray(log.income) ? log.income : [];
+  }, [logs, incomeDate]);
 
   // Aggregate expenses based on the selected viewMode and currentDate
   const aggregatedData = useMemo(() => {
     let categoryTotals = {};
     let totalSpent = 0;
+    let totalIncome = 0;
     
     // Initialize categories with 0
     expenseCategories.forEach(cat => {
@@ -34,19 +79,28 @@ export default function ExpenseTracker() {
         include = isSameYear(logDate, currentDate);
       }
 
-      if (include && Array.isArray(log.expenses) && log.expenses.length > 0) {
-        log.expenses.forEach(exp => {
-          const amt = parseFloat(exp.amount) || 0;
-          if (amt > 0) {
-            const cat = exp.category || 'Other';
-            if (categoryTotals[cat] !== undefined) {
-              categoryTotals[cat] += amt;
-            } else {
-              categoryTotals['Other'] += amt;
+      if (include) {
+        // Expenses
+        if (Array.isArray(log.expenses) && log.expenses.length > 0) {
+          log.expenses.forEach(exp => {
+            const amt = parseFloat(exp.amount) || 0;
+            if (amt > 0) {
+              const cat = exp.category || 'Other';
+              if (categoryTotals[cat] !== undefined) {
+                categoryTotals[cat] += amt;
+              } else {
+                categoryTotals['Other'] += amt;
+              }
+              totalSpent += amt;
             }
-            totalSpent += amt;
-          }
-        });
+          });
+        }
+        // Income
+        if (Array.isArray(log.income)) {
+          log.income.forEach(i => {
+            totalIncome += parseFloat(i.amount) || 0;
+          });
+        }
       }
     });
 
@@ -56,7 +110,7 @@ export default function ExpenseTracker() {
     // Sort by amount descending
     activeCategories.sort((a, b) => b[1] - a[1]);
 
-    return { totalSpent, activeCategories };
+    return { totalSpent, totalIncome, remaining: totalIncome - totalSpent, activeCategories };
   }, [logs, viewMode, currentDate, expenseCategories]);
 
   // Filter logs for transaction history based on current viewMode and date
@@ -165,9 +219,11 @@ export default function ExpenseTracker() {
     doc.text(`Financial Report - ${dateTitle}`, 14, 22);
     
     doc.setFontSize(12);
-    doc.text(`Total Spent: ${aggregatedData.totalSpent.toFixed(3)} TND`, 14, 32);
+    doc.text(`Total Income: ${aggregatedData.totalIncome.toFixed(3)} TND`, 14, 32);
+    doc.text(`Total Spent: ${aggregatedData.totalSpent.toFixed(3)} TND`, 14, 39);
+    doc.text(`Remaining Balance: ${aggregatedData.remaining.toFixed(3)} TND`, 14, 46);
     
-    let yPos = 40;
+    let yPos = 54;
     doc.setFontSize(14);
     doc.text('Category Breakdown:', 14, yPos);
     yPos += 8;
@@ -178,6 +234,33 @@ export default function ExpenseTracker() {
       doc.text(`${category}: ${amount.toFixed(3)} TND (${percentage}%)`, 14, yPos);
       yPos += 6;
     });
+
+    // Income section
+    const periodIncome = Object.entries(logs)
+      .filter(([dateStr]) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        if (viewMode === 'daily') return isSameDay(d, currentDate);
+        if (viewMode === 'monthly') return isSameMonth(d, currentDate);
+        return isSameYear(d, currentDate);
+      })
+      .reduce((arr, [_, log]) => {
+        if (Array.isArray(log.income)) {
+          log.income.forEach(i => arr.push(i));
+        }
+        return arr;
+      }, []);
+
+    if (periodIncome.length > 0) {
+      yPos += 10;
+      doc.setFontSize(14);
+      doc.text('Income Sources:', 14, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      periodIncome.forEach(i => {
+        doc.text(`${i.source}: ${parseFloat(i.amount).toFixed(3)} TND`, 14, yPos);
+        yPos += 6;
+      });
+    }
 
     yPos += 10;
     
@@ -269,6 +352,33 @@ export default function ExpenseTracker() {
 
       {/* Dashboard Content */}
       <div className="grid-2">
+        {/* Summary Card */}
+        <div className="glass-card p-6" style={{ display: 'flex', flexDirection: 'column' }}>
+          <h3 className="mb-4">Period Summary</h3>
+          <div className="flex-col gap-3">
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>💰 Total Income</span>
+              <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>{aggregatedData.totalIncome.toFixed(3)} TND</strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.06)' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>💸 Total Expenses</span>
+              <strong style={{ color: '#ef4444', fontSize: '1.1rem' }}>{aggregatedData.totalSpent.toFixed(3)} TND</strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{
+              background: aggregatedData.remaining >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+              border: `1px solid ${aggregatedData.remaining >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            }}>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>⚖️ Remaining</span>
+              <strong style={{
+                color: aggregatedData.remaining >= 0 ? '#10b981' : '#ef4444',
+                fontSize: '1.25rem',
+              }}>
+                {aggregatedData.remaining.toFixed(3)} TND
+              </strong>
+            </div>
+          </div>
+        </div>
+
         {/* Chart Card */}
         <div className="glass-card p-6" style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 className="mb-4">Spending Breakdown</h3>
@@ -312,12 +422,94 @@ export default function ExpenseTracker() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Detailed List Card */}
+      {/* Income Entry Section */}
+      <div className="glass-card p-6 mt-8">
+        <h3 className="mb-4 flex items-center gap-2">💰 Income Entry</h3>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: '0 0 170px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
+            <input type="date" value={incomeDate} onChange={e => { setIncomeDate(e.target.value); resetIncomeForm(); }}
+              style={{ width: '100%', padding: '0.55rem 0.7rem', minHeight: 44, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ flex: '1 1 180px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Income Title</label>
+            <input value={incomeSource} onChange={e => setIncomeSource(e.target.value)} placeholder="e.g. Salary, Freelance"
+              style={{ width: '100%', padding: '0.55rem 0.7rem', minHeight: 44, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ flex: '0 1 140px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Amount (TND)</label>
+            <input type="number" min="0" step="0.001" value={incomeAmount} onChange={e => setIncomeAmount(e.target.value)} placeholder="0.000"
+              style={{ width: '100%', padding: '0.55rem 0.7rem', minHeight: 44, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+          </div>
+          <button onClick={handleSaveIncome} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.55rem 1.4rem', minHeight: 44, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>
+            {editIncomeIdx !== null ? '✏️ Update' : '➕ Add Income'}
+          </button>
+          {editIncomeIdx !== null && (
+            <button onClick={resetIncomeForm} style={{ padding: '0.55rem 1.2rem', minHeight: 44, background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
+              Cancel
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* Transaction History Card */}
-        <div className="glass-card p-6 mt-12" style={{ gridColumn: '1 / -1' }}>
+      {/* Saved Income List */}
+      <div className="glass-card p-6 mt-8">
+        <h3 className="mb-4 flex items-center gap-2">📋 Income Streams</h3>
+        {savedIncome.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+            <p>No income entries for this date. Add one above!</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.55rem 0.7rem', borderBottom: '2px solid var(--border)', fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ flex: '0 0 100px' }}>Date</div>
+              <div style={{ flex: '1' }}>Income Title</div>
+              <div style={{ flex: '0 0 120px', textAlign: 'right' }}>Amount (TND)</div>
+              <div style={{ flex: '0 0 70px', textAlign: 'center' }}></div>
+            </div>
+            {savedIncome.map((entry, idx) => (
+              <div key={idx} style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem',
+                background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)',
+              }}>
+                <div style={{ flex: '0 0 100px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {format(new Date(incomeDate + 'T00:00:00'), 'MMM dd')}
+                </div>
+                <div style={{ flex: '1', fontSize: '0.9rem', fontWeight: 500 }}>{entry.source}</div>
+                <div style={{ flex: '0 0 120px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 700, color: '#10b981' }}>
+                  {parseFloat(entry.amount).toFixed(3)} TND
+                </div>
+                <div style={{ flex: '0 0 70px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '2px' }}>
+                  <button onClick={() => handleEditIncome(entry, idx)} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6, minHeight: 36 }}>
+                    <Edit3 size={14} />
+                  </button>
+                  <button onClick={() => handleDeleteIncome(idx)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 6, minHeight: 36 }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {/* Total row */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem',
+              marginTop: '0.25rem', borderTop: '2px solid var(--border)', fontWeight: 700, fontSize: '0.95rem',
+            }}>
+              <div style={{ flex: '0 0 100px' }}></div>
+              <div style={{ flex: '1' }}>Total</div>
+              <div style={{ flex: '0 0 120px', textAlign: 'right', color: '#10b981', fontSize: '1.05rem' }}>
+                {savedIncome.reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3)} TND
+              </div>
+              <div style={{ flex: '0 0 70px' }}></div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Transaction History Card */}
+      <div className="glass-card p-6 mt-8">
           <h3 className="mb-4 flex items-center gap-2">📑 Transaction History</h3>
           <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }} className="evolvia-scrollbar">
             {filteredHistoryLogs.length > 0 ? (

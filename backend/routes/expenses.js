@@ -93,9 +93,9 @@ router.get('/:date', protect, async (req, res) => {
 // POST /api/expenses — create or update for a date
 router.post('/', protect, async (req, res) => {
   try {
-    const { date, expenses } = req.body;
+    const { date, expenses, income } = req.body;
     if (!date) return res.status(400).json({ message: 'Date is required' });
-    const result = await upsertExpense(req.user.userId, date, expenses || []);
+    const result = await upsertExpense(req.user.userId, date, expenses || [], income);
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -105,7 +105,20 @@ router.post('/', protect, async (req, res) => {
 // PUT /api/expenses/:date
 router.put('/:date', protect, async (req, res) => {
   try {
-    const result = await upsertExpense(req.user.userId, req.params.date, req.body.expenses || []);
+    const result = await upsertExpense(req.user.userId, req.params.date, req.body.expenses || [], req.body.income);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/expenses/income — save income entries for a date
+router.post('/income', protect, async (req, res) => {
+  try {
+    const { date, income } = req.body;
+    if (!date) return res.status(400).json({ message: 'Date is required' });
+    const existing = await getExpenseByDate(req.user.userId, date);
+    const result = await upsertExpense(req.user.userId, date, existing.expenses, income || []);
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });

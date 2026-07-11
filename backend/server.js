@@ -58,6 +58,8 @@ app.use('/api/profile',     require('./routes/profile'));
 app.use('/api/login/admin', require('./routes/admin'));
 app.use('/api/german',      require('./routes/german'));
 app.use('/api/aws',         require('./routes/aws'));
+app.use('/api/wishlist',    require('./routes/wishlist'));
+app.use('/api/milestones',  require('./routes/milestones'));
 app.use('/api/history',     require('./routes/history'));
 
 // ── Flat-path aliases (used by frontend Store) ────────────────────────────────
@@ -93,7 +95,12 @@ app.post('/api/archives', (req, res) => res.json({ success: true, ...req.body })
 // Planned Books
 app.get('/api/plannedbooks',    (req, res, next) => { req.url = '/planned';  booksRoutes(req, res, next); });
 app.post('/api/plannedbooks',   (req, res, next) => { req.url = '/planned';  booksRoutes(req, res, next); });
+app.post('/api/plannedbooks/photo', (req, res, next) => { req.url = '/planned/photo'; booksRoutes(req, res, next); });
+app.post('/api/plannedbooks/:index/photo', (req, res, next) => { req.url = '/planned/' + req.params.index + '/photo'; booksRoutes(req, res, next); });
 app.delete('/api/plannedbooks/:index', (req, res, next) => { req.url = '/planned/' + req.params.index; booksRoutes(req, res, next); });
+
+// Archived Books (delete)
+app.delete('/api/archivedbooks/:index', (req, res, next) => { req.url = '/archived/' + req.params.index; booksRoutes(req, res, next); });
 
 // History
 const historyRoutes = require('./routes/history');
@@ -121,6 +128,12 @@ app.get('/api/notifications/vapidPublicKey', (_req, res) => res.json({ publicKey
 // Pattern: /api/german/images/{encodedKey}
 // Supports AWS S3 migration: only the storage service internals change.
 app.get('/api/german/images/:key(*)', async (req, res) => {
+  const objectKey = decodeURIComponent(req.params.key);
+  await storage.streamImage(objectKey, res);
+});
+
+// Wishlist image proxy (MinIO/S3)
+app.get('/api/wishlist/images/:key(*)', async (req, res) => {
   const objectKey = decodeURIComponent(req.params.key);
   await storage.streamImage(objectKey, res);
 });
