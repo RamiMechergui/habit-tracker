@@ -75,6 +75,28 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
   }
 });
 
+// POST /api/wishlist/:id/buy — mark item as bought
+router.post('/:id/buy', async (req, res) => {
+  try {
+    const { actualPrice } = req.body;
+    const updates = {
+      bought: true,
+      actualPrice: actualPrice != null ? Number(actualPrice) : null,
+      paidAt: new Date().toISOString(),
+    };
+    const item = await updateItem(req.user.userId, req.params.id, updates);
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+    // Fetch the fully updated item
+    const { getAll } = require('../db/wishlist');
+    const items = await getAll(req.user.userId);
+    const updated = items.find(i => i.itemId === req.params.id);
+    res.json(updated || item);
+  } catch (err) {
+    console.error('[Wishlist] POST /buy error:', err);
+    res.status(500).json({ message: err.message || 'Failed to buy item' });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const deleted = await deleteItem(req.user.userId, req.params.id);

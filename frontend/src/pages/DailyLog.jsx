@@ -123,6 +123,7 @@ export default function DailyLog() {
   const [videoWarning, setVideoWarning] = useState(false);
   const [saveStatus, setSaveStatus] = useState('Saved'); // 'Saved', 'Saving...', 'Error'
   const [submitError, setSubmitError] = useState('');
+  const [pdfError, setPdfError] = useState('');
   const [localDirty, setLocalDirty] = useState(false);
   const [expenseErrorIdx, setExpenseErrorIdx] = useState(null);
 
@@ -426,6 +427,7 @@ export default function DailyLog() {
   const totalCigarettes = expenseCigs;
 
   const handleDownloadPDF = () => {
+    setPdfError('');
     try {
       const doc = new jsPDF();
       const reportDateStr = format(parseISO(date), 'EEEE, MMMM d, yyyy');
@@ -707,7 +709,7 @@ export default function DailyLog() {
       doc.save(`Evolvia_DailyLog_${date}.pdf`);
     } catch (err) {
       console.error('Error generating PDF report:', err);
-      alert('Could not generate PDF. Please try again.');
+      setPdfError('Could not generate PDF. Please try again.');
     }
   };
 
@@ -750,6 +752,7 @@ export default function DailyLog() {
             <Download size={13} aria-hidden="true" />
             <span>Export PDF</span>
           </button>
+          {pdfError && <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600 }}>{pdfError}</span>}
           <div style={{ minWidth: '90px', textAlign: 'right', fontSize: '0.9rem', color: saveStatus === 'Error' ? '#ef4444' : saveStatus === 'Saved' ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
             {saveStatus === 'Saved' && <CheckCircle2 size={16} />}
             {saveStatus === 'Saving...' && <div style={{ width: 14, height: 14, border: '2px solid #94a3b8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'adm-spin 1s linear infinite' }} />}

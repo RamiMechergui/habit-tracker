@@ -4,7 +4,7 @@ import { API_URL } from '../config';
 import {
   Lock, Unlock, KeyRound, Search, Plus, Trash2, Edit3,
   Eye, EyeOff, Copy, Check, Star, Folder, ExternalLink,
-  Shield, ShieldAlert, ShieldCheck, RefreshCw, X, ArrowLeft
+  Shield, ShieldAlert, ShieldCheck, RefreshCw, X, ArrowLeft, PiggyBank
 } from 'lucide-react';
 
 const CATEGORIES = ['Personal', 'Work', 'Finance', 'Social Media', 'Other'];
@@ -829,7 +829,8 @@ export default function PasswordVault() {
                   </div>
                 ) : (
                   filteredCredentials.map(cred => {
-                    const logos = getLogoUrl(cred.url, cred.serviceName);
+                    const isSavingVault = cred.serviceName === 'Saving Vault';
+                    const logos = isSavingVault ? null : getLogoUrl(cred.url, cred.serviceName);
                     return (
                       <div
                         key={cred._id}
@@ -842,22 +843,32 @@ export default function PasswordVault() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div className="favicon-circle" style={{ position: 'relative' }}>
-                            <KeyRound size={16} style={{ color: 'var(--accent-blue)', position: 'absolute' }} />
-                            {logos ? (
-                              <img
-                                src={logos.clearbit}
-                                alt=""
-                                onError={(e) => { 
-                                  if (e.target.src === logos.clearbit) {
-                                    e.target.src = logos.google;
-                                  } else {
-                                    e.target.style.display = 'none'; 
-                                  }
-                                }}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 1, backgroundColor: 'var(--bg-card)', borderRadius: '50%' }}
-                              />
-                            ) : null}
+                          <div className="favicon-circle" style={{
+                            position: 'relative',
+                            background: isSavingVault ? 'linear-gradient(135deg, rgba(249,115,22,0.25), rgba(249,115,22,0.08))' : undefined,
+                            borderColor: isSavingVault ? 'rgba(249,115,22,0.3)' : undefined,
+                          }}>
+                            {isSavingVault ? (
+                              <PiggyBank size={16} style={{ color: 'var(--accent-amber)', position: 'relative', zIndex: 1 }} />
+                            ) : (
+                              <>
+                                <KeyRound size={16} style={{ color: 'var(--accent-blue)', position: 'absolute' }} />
+                                {logos ? (
+                                  <img
+                                    src={logos.clearbit}
+                                    alt=""
+                                    onError={(e) => { 
+                                      if (e.target.src === logos.clearbit) {
+                                        e.target.src = logos.google;
+                                      } else {
+                                        e.target.style.display = 'none'; 
+                                      }
+                                    }}
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 1, backgroundColor: 'var(--bg-card)', borderRadius: '50%' }}
+                                  />
+                                ) : null}
+                              </>
+                            )}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
@@ -907,23 +918,33 @@ export default function PasswordVault() {
                   {/* Header info */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="favicon-circle" style={{ width: '52px', height: '52px', fontSize: '1.4rem', position: 'relative' }}>
-                        <KeyRound size={22} style={{ color: 'var(--accent-blue)', position: 'absolute' }} />
-                        {getLogoUrl(selectedCred.url, selectedCred.serviceName) ? (
-                          <img
-                            src={getLogoUrl(selectedCred.url, selectedCred.serviceName).clearbit}
-                            alt=""
-                            onError={(e) => { 
-                              const logos = getLogoUrl(selectedCred.url, selectedCred.serviceName);
-                              if (e.target.src === logos.clearbit) {
-                                e.target.src = logos.google;
-                              } else {
-                                e.target.style.display = 'none'; 
-                              }
-                            }}
-                            style={{ width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 1, backgroundColor: 'var(--bg-card)', borderRadius: '50%' }}
-                          />
-                        ) : null}
+                      <div className="favicon-circle" style={{
+                        width: '52px', height: '52px', fontSize: '1.4rem', position: 'relative',
+                        background: selectedCred.serviceName === 'Saving Vault' ? 'linear-gradient(135deg, rgba(249,115,22,0.25), rgba(249,115,22,0.08))' : undefined,
+                        borderColor: selectedCred.serviceName === 'Saving Vault' ? 'rgba(249,115,22,0.3)' : undefined,
+                      }}>
+                        {selectedCred.serviceName === 'Saving Vault' ? (
+                          <PiggyBank size={22} style={{ color: 'var(--accent-amber)', position: 'relative', zIndex: 1 }} />
+                        ) : (
+                          <>
+                            <KeyRound size={22} style={{ color: 'var(--accent-blue)', position: 'absolute' }} />
+                            {getLogoUrl(selectedCred.url, selectedCred.serviceName) ? (
+                              <img
+                                src={getLogoUrl(selectedCred.url, selectedCred.serviceName).clearbit}
+                                alt=""
+                                onError={(e) => { 
+                                  const logos = getLogoUrl(selectedCred.url, selectedCred.serviceName);
+                                  if (e.target.src === logos.clearbit) {
+                                    e.target.src = logos.google;
+                                  } else {
+                                    e.target.style.display = 'none'; 
+                                  }
+                                }}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 1, backgroundColor: 'var(--bg-card)', borderRadius: '50%' }}
+                              />
+                            ) : null}
+                          </>
+                        )}
                       </div>
                       <div>
                         <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>{selectedCred.serviceName}</h3>

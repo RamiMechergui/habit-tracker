@@ -3,7 +3,7 @@ import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
   WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X,
-  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag
+  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -23,6 +23,7 @@ import VideoEditing from './pages/VideoEditing';
 import Essentials from './pages/Essentials';
 import Admin from './pages/Admin';
 import PasswordVault from './pages/PasswordVault';
+import SavingsVault from './pages/SavingsVault';
 import LearningGerman from './pages/LearningGerman';
 import LearningAws from './pages/LearningAws';
 import Wishlist from './pages/Wishlist';
@@ -47,6 +48,7 @@ const NAV_LINKS = [
   { to: '/sidehustle',    icon: Rocket,          label: 'Side Hustle' },
   { to: '/video-editing', icon: Video,           label: 'Video Editing' },
   { to: '/wishlist',      icon: ShoppingBag,     label: 'Wishlist' },
+  { to: '/savings',       icon: PiggyBank,       label: 'Savings' },
   { to: '/last-day',      icon: Flag,            label: 'Last Day' },
   { to: '/german',        icon: Languages,       label: 'Learning German' },
   { to: '/aws',           icon: Cloud,           label: 'Learning AWS' },
@@ -248,6 +250,7 @@ function App() {
             <Route path="/german"    element={<LearningGerman />} />
             <Route path="/aws"       element={<LearningAws />} />
             <Route path="/wishlist"  element={<Wishlist />} />
+            <Route path="/savings"   element={<SavingsVault />} />
             <Route path="/last-day"  element={<LastDay />} />
             <Route path="/settings"  element={<Settings />} />
           </Routes>

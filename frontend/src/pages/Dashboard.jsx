@@ -40,12 +40,14 @@ export default function Dashboard() {
   const [editCategory, setEditCategory] = useState('Other');
   const [editError, setEditError] = useState('');
 
-  // Gather all tasks
+  // Gather today's tasks only
   const allTasks = React.useMemo(() => {
     const list = [];
-    Object.entries(logs || {}).forEach(([dateStr, logData]) => {
+    const ds = format(new Date(), 'yyyy-MM-dd');
+    const logData = getLog(ds);
+    if (logData) {
       let tasksForDate = [];
-      if (logData && logData.tasks) {
+      if (logData.tasks) {
         if (Array.isArray(logData.tasks)) {
           tasksForDate = logData.tasks;
         } else if (logData.tasks.tasks && Array.isArray(logData.tasks.tasks)) {
@@ -55,12 +57,12 @@ export default function Dashboard() {
       tasksForDate.forEach(task => {
         list.push({
           ...task,
-          date: dateStr
+          date: ds
         });
       });
-    });
+    }
     return list;
-  }, [logs]);
+  }, [logs, getLog]);
 
   // Derived Categories
   const allCategories = React.useMemo(() => {
@@ -747,7 +749,7 @@ export default function Dashboard() {
             <h3 style={{ margin: 0 }}>Protocol Tasks Hub</h3>
           </div>
           <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
-            {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+            {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'} today
           </span>
         </div>
 

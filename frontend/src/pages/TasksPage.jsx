@@ -113,6 +113,7 @@ export default function TasksPage() {
   }, [pomodoroActive, pomodoroPhase]);
   const [loading,       setLoading]       = useState(true);
   const [autoRescheduledCount, setAutoRescheduledCount] = useState(0);
+  const [pdfError, setPdfError] = useState('');
   const mountedRef = useRef(false);
 
   // #41 — Auto-reschedule missed tasks on mount
@@ -829,7 +830,7 @@ export default function TasksPage() {
       doc.save(`Evolvio_DailyReport_${date}.pdf`);
     } catch (err) {
       console.error('[PDF] Error generating report:', err);
-      alert('Could not generate PDF. Please try again.');
+      setPdfError('Could not generate PDF. Please try again.');
     }
   }, [date, tasks, logs]);
 
@@ -1005,7 +1006,7 @@ export default function TasksPage() {
           {timelineView === 'daily' && (
             <button
               className="hub-pdf-btn"
-              onClick={handleDownloadPDF}
+              onClick={() => { setPdfError(''); handleDownloadPDF(); }}
               aria-label="Download Daily PDF Report"
               title="Download PDF Report"
             >
@@ -1013,6 +1014,7 @@ export default function TasksPage() {
               <span>Export PDF</span>
             </button>
           )}
+          {pdfError && <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, marginLeft: '0.5rem' }}>{pdfError}</span>}
 
           {/* Save status */}
           <div

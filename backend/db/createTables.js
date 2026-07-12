@@ -181,6 +181,20 @@ const TABLES = [
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
+
+  // ── HabitSavings ─────────────────────────────────────────────────────────
+  {
+    TableName: 'HabitSavings',
+    KeySchema: [
+      { AttributeName: 'userId',  KeyType: 'HASH' },
+      { AttributeName: 'entryId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId',  AttributeType: 'S' },
+      { AttributeName: 'entryId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
 ];
 
 /**

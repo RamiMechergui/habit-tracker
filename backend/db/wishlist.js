@@ -14,9 +14,12 @@ function toShape(item) {
     price: item.price || null,
     url: item.url || '',
     photoUrl: item.photoUrl || '',
-    currency: item.currency || 'USD',
+    currency: item.currency || 'TND',
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    bought: item.bought || false,
+    actualPrice: item.actualPrice != null ? item.actualPrice : null,
+    paidAt: item.paidAt || null,
   };
 }
 
@@ -40,7 +43,7 @@ async function getAll(userId) {
 async function createItem(userId, { name, price, url, photoUrl, currency }) {
   const ts = new Date().toISOString();
   const itemId = randomUUID();
-  const item = { userId, itemId, name, price: price != null ? Number(price) : null, url: url || '', photoUrl: photoUrl || '', currency: currency || 'USD', createdAt: ts, updatedAt: ts };
+  const item = { userId, itemId, name, price: price != null ? Number(price) : null, url: url || '', photoUrl: photoUrl || '', currency: currency || 'TND', bought: false, actualPrice: null, paidAt: null, createdAt: ts, updatedAt: ts };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return toShape(item);
 }
@@ -55,7 +58,10 @@ async function updateItem(userId, itemId, updates) {
   if (updates.price !== undefined) { expr.push('#pr = :pr'); attrValues[':pr'] = updates.price != null ? Number(updates.price) : null; attrNames['#pr'] = 'price'; }
   if (updates.url !== undefined) { expr.push('#ur = :ur'); attrValues[':ur'] = updates.url || ''; attrNames['#ur'] = 'url'; }
   if (updates.photoUrl !== undefined) { expr.push('#ph = :ph'); attrValues[':ph'] = updates.photoUrl || ''; attrNames['#ph'] = 'photoUrl'; }
-  if (updates.currency !== undefined) { expr.push('#cu = :cu'); attrValues[':cu'] = updates.currency || 'USD'; attrNames['#cu'] = 'currency'; }
+  if (updates.currency !== undefined) { expr.push('#cu = :cu'); attrValues[':cu'] = updates.currency || 'TND'; attrNames['#cu'] = 'currency'; }
+  if (updates.bought !== undefined) { expr.push('#bo = :bo'); attrValues[':bo'] = updates.bought; attrNames['#bo'] = 'bought'; }
+  if (updates.actualPrice !== undefined) { expr.push('#ap = :ap'); attrValues[':ap'] = updates.actualPrice != null ? Number(updates.actualPrice) : null; attrNames['#ap'] = 'actualPrice'; }
+  if (updates.paidAt !== undefined) { expr.push('#pa = :pa'); attrValues[':pa'] = updates.paidAt || null; attrNames['#pa'] = 'paidAt'; }
   expr.push('#up = :ts');
   attrNames['#up'] = 'updatedAt';
 

@@ -70,6 +70,9 @@ export const HabitProvider = ({ children }) => {
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
   const [plannedBooks, setPlannedBooks] = useState([]);
+  const [savings, setSavings] = useState([]);
+  const [vaultLocked, setVaultLocked] = useState(true);
+  const [vaultHasPassword, setVaultHasPassword] = useState(false);
   const [history, setHistory] = useState([]);
   const [pageOpenTime] = useState(format(new Date(), 'HH:mm'));
   const [timelinePrefs, setTimelinePrefsState] = useState(loadTimelinePrefs);
@@ -1107,6 +1110,28 @@ export const HabitProvider = ({ children }) => {
     data.totalScore = score;
     data.rank = rank;
     data.isSubmitted = true;
+
+    // Auto-deposit 1 TND when "1 TND Saved" habit is checked
+    if (data.night?.saves) {
+      const alreadySaved = Array.isArray(savings) && savings.some(e => e.date === dateStr && e.note === '1 TND Saved');
+      if (!alreadySaved) {
+        try {
+          const res = await fetch(`${API_URL}/api/savings`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: dateStr, amount: 1, type: 'deposit', note: '1 TND Saved' }),
+          });
+          if (res.ok) {
+            const entry = await res.json();
+            setSavings(prev => [entry, ...prev]);
+            logHistory('savings_auto', `Auto-saved 1 TND from habit check on ${dateStr}`);
+          }
+        } catch (e) {
+          console.warn('[Store] Failed to auto-save 1 TND from habit:', e.message);
+        }
+      }
+    }
 
     // Optimistic Update — save to state + IndexedDB immediately
     setLogs(prev => ({ ...prev, [dateStr]: data }));
@@ -2291,6 +2316,20 @@ export const HabitProvider = ({ children }) => {
     }
   }, [API_URL, fetchWishlist]);
 
+  const buyWishlistItem = useCallback(async (itemId, actualPrice) => {
+    const res = await fetch(`${API_URL}/api/wishlist/${encodeURIComponent(itemId)}/buy`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actualPrice }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to buy item');
+    setWishlist(prev => prev.map(r => r._id === itemId ? data : r));
+    logHistory('wishlist_buy', `Bought wishlist item: ${data.name} for ${actualPrice}`);
+    return data;
+  }, [API_URL]);
+
   // ── Milestones API methods ───────────────────────────────────
   const fetchMilestones = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -2347,6 +2386,100 @@ export const HabitProvider = ({ children }) => {
     }
   }, [API_URL, fetchMilestones]);
 
+  // ── Savings Vault API methods ─────────────────────────────────
+  const checkVaultStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/savings/status`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setVaultHasPassword(data.hasPassword);
+        return data.hasPassword;
+      }
+    } catch (e) {
+      console.warn('[Store] checkVaultStatus error:', e.message);
+    }
+    return false;
+  }, [API_URL]);
+
+  const fetchSavings = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/savings`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setSavings(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchSavings error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addSavingsEntry = useCallback(async ({ date, amount, type, note }) => {
+    const res = await fetch(`${API_URL}/api/savings`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, amount, type, note }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add savings entry');
+    setSavings(prev => [data, ...prev]);
+    logHistory('savings_add', `${type === 'withdrawal' ? 'Withdrew' : 'Saved'} ${amount} TND on ${date}`);
+    return data;
+  }, [API_URL]);
+
+  const updateSavingsEntry = useCallback(async (entryId, { date, amount, type, note }) => {
+    const res = await fetch(`${API_URL}/api/savings/${encodeURIComponent(entryId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, amount, type, note }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update savings entry');
+    setSavings(prev => prev.map(e => e._id === entryId ? data : e));
+    logHistory('savings_edit', `Updated savings entry ${entryId}`);
+    return data;
+  }, [API_URL]);
+
+  const deleteSavingsEntry = useCallback(async (entryId) => {
+    setSavings(prev => prev.filter(e => e._id !== entryId));
+    try {
+      await fetch(`${API_URL}/api/savings/${encodeURIComponent(entryId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      logHistory('savings_delete', 'Deleted a savings entry');
+    } catch (e) {
+      console.warn('[Store] deleteSavingsEntry error:', e.message);
+      await fetchSavings();
+    }
+  }, [API_URL, fetchSavings]);
+
+  const setVaultPassword = useCallback(async (password) => {
+    const res = await fetch(`${API_URL}/api/savings/password`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to set vault password');
+    setVaultHasPassword(true);
+    return data;
+  }, [API_URL]);
+
+  const verifyVaultPassword = useCallback(async (password) => {
+    const res = await fetch(`${API_URL}/api/savings/verify-password`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Incorrect password');
+    return data;
+  }, [API_URL]);
+
   return (
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData,
@@ -2370,9 +2503,13 @@ export const HabitProvider = ({ children }) => {
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist
-      wishlist, fetchWishlist, addWishlistItem, updateWishlistItem, deleteWishlistItem,
+      wishlist, fetchWishlist, addWishlistItem, updateWishlistItem, deleteWishlistItem, buyWishlistItem,
       // Milestones
       milestones, fetchMilestones, addMilestone, updateMilestone, deleteMilestone,
+      // Savings Vault
+      savings, fetchSavings, addSavingsEntry, updateSavingsEntry, deleteSavingsEntry,
+      vaultLocked, setVaultLocked, vaultHasPassword, setVaultHasPassword,
+      checkVaultStatus, setVaultPassword, verifyVaultPassword,
       // Planned Books
       plannedBooks, fetchPlannedBooks, addPlannedBook, removePlannedBook, uploadPlannedBookPhoto,
       // Archived Books

@@ -60,6 +60,7 @@ app.use('/api/german',      require('./routes/german'));
 app.use('/api/aws',         require('./routes/aws'));
 app.use('/api/wishlist',    require('./routes/wishlist'));
 app.use('/api/milestones',  require('./routes/milestones'));
+app.use('/api/savings',     require('./routes/savings'));
 app.use('/api/history',     require('./routes/history'));
 
 // ── Flat-path aliases (used by frontend Store) ────────────────────────────────
