@@ -55,9 +55,8 @@ function computeMonthlyStats(logs, viewDate) {
     tasks.forEach(t => {
       const mins = parseInt(t.duration) || 0;
       totalDurationMins += mins;
-      const cat = t.category || 'Other';
-      if (!catMap[cat]) catMap[cat] = 0;
-      catMap[cat] += mins;
+      const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+      cats.forEach(c => { catMap[c] = (catMap[c] || 0) + mins; });
     });
 
     dayScores.push({ date: ds, score: computeScore(tasks), total: tasks.length });
@@ -75,8 +74,8 @@ function computeMonthlyStats(logs, viewDate) {
   days.forEach(day => {
     const ds = format(day, 'yyyy-MM-dd');
     (logs[ds]?.tasks || []).filter(t => t.status === 'Delayed').forEach(t => {
-      const cat = t.category || 'Other';
-      delayedByCategory[cat] = (delayedByCategory[cat] || 0) + 1;
+      const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+      cats.forEach(c => { delayedByCategory[c] = (delayedByCategory[c] || 0) + 1; });
     });
   });
   const mostDelayedCat = Object.entries(delayedByCategory).sort((a, b) => b[1] - a[1])[0]?.[0] || null;

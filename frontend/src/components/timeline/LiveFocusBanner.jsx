@@ -91,7 +91,7 @@ export default function LiveFocusBanner({ tasks, onUpdateStatus }) {
             <div className="lfb-meta">
               <span className="lfb-priority">{task.priority} Priority</span>
               <span className="lfb-dot" aria-hidden="true">•</span>
-              <span>{task.category}</span>
+              <span>{(Array.isArray(task.categories) ? task.categories : [task.category].filter(Boolean)).join(', ')}</span>
             </div>
           </div>
         </div>

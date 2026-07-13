@@ -11,13 +11,15 @@ const PRIORITIES = [
 ];
 
 const CATEGORIES = [
-  { key: 'Work',     color: 'var(--cat-work)',     icon: '💼' },
-  { key: 'Health',   color: 'var(--cat-health)',   icon: '🏃' },
-  { key: 'Personal', color: 'var(--cat-personal)', icon: '🌟' },
-  { key: 'Learning', color: 'var(--cat-learning)', icon: '📚' },
-  { key: 'Finance',  color: 'var(--cat-finance)',  icon: '💰' },
-  { key: 'Social',   color: 'var(--cat-social)',   icon: '👥' },
-  { key: 'Other',    color: 'var(--cat-other)',    icon: '📌' },
+  { key: 'Work',          color: 'var(--cat-work)',          icon: '💼' },
+  { key: 'Health',        color: 'var(--cat-health)',        icon: '🏃' },
+  { key: 'Personal',      color: 'var(--cat-personal)',      icon: '🌟' },
+  { key: 'Learning',      color: 'var(--cat-learning)',      icon: '📚' },
+  { key: 'Finance',       color: 'var(--cat-finance)',       icon: '💰' },
+  { key: 'Social',        color: 'var(--cat-social)',        icon: '👥' },
+  { key: 'Video Editing', color: 'var(--cat-video-editing)', icon: '🎬' },
+  { key: 'Side Hustle',   color: 'var(--cat-side-hustle)',   icon: '🚀' },
+  { key: 'Other',         color: 'var(--cat-other)',         icon: '📌' },
 ];
 
 const STATUSES = ['Pending', 'Completed', 'Delayed', 'Missed'];
@@ -111,7 +113,7 @@ export default function TaskBottomSheet({
   const [endTime,             setEndTimeRaw]          = useState('09:30');
   const [userEditedEnd,       setUserEditedEnd]       = useState(false);
   const [priority,            setPriority]            = useState('medium');
-  const [category,            setCategory]            = useState('Other');
+  const [categories,          setCategories]          = useState(['Other']);
   const [status,              setStatus]              = useState('Pending');
   const [delayReason,         setDelayReason]         = useState('');
   const [reasonConfirmed,     setReasonConfirmed]     = useState(false);
@@ -123,6 +125,7 @@ export default function TaskBottomSheet({
   const [tagInput,            setTagInput]            = useState('');
   const [cloneDate,           setCloneDate]           = useState('');
   const [linkedPage,          setLinkedPage]          = useState('');
+  const [deepWorkHours,       setDeepWorkHours]       = useState(0);
   const [subtasks,            setSubtasks]            = useState([]);
   const [subtaskInput,        setSubtaskInput]        = useState('');
   const [dependsOn,           setDependsOn]           = useState([]);
@@ -175,7 +178,7 @@ export default function TaskBottomSheet({
       setEndTimeRaw(toStr(end.h, end.m));
       setUserEditedEnd(false);
       setPriority(initialData.priority || 'medium');
-      setCategory(initialData.category || 'Other');
+      setCategories(initialData.categories?.length ? [...initialData.categories] : [initialData.category || 'Other']);
       setStatus(initialData.status || 'Pending');
       setDelayReason(initialData.delayReason || '');
       setReasonConfirmed(!!initialData.delayReason);
@@ -184,6 +187,7 @@ export default function TaskBottomSheet({
       setEndDate(initialData.endDate || '');
       setTags(initialData.tags || []);
       setLinkedPage(initialData.linkedPage || '');
+      setDeepWorkHours(initialData.deepWorkHours || 0);
       setSubtasks(initialData.subtasks || []);
       setDependsOn(initialData.dependsOn || []);
       setEditScope('this');
@@ -196,8 +200,9 @@ export default function TaskBottomSheet({
       const end = addDuration(h, m, defaultDuration);
       setTitle(''); setDescription('');
       setStartTimeRaw(st); setEndTimeRaw(toStr(end.h, end.m)); setUserEditedEnd(false);
-      setPriority('medium'); setCategory('Other'); setStatus('Pending');
+      setPriority('medium'); setCategories(['Other']); setStatus('Pending');
       setDelayReason(''); setRecurrence('none'); setCustomDays([]); setEndDate(''); setEditScope('this');
+      setDeepWorkHours(0);
     }
   }, [initialData, isOpen, suggestedHour, defaultDuration, intervalGranularity]);
 
@@ -209,17 +214,17 @@ export default function TaskBottomSheet({
     setEndTimeRaw(toStr(end.h, end.m));
     setUserEditedEnd(true);
     setPriority(tmpl.priority || 'medium');
-    setCategory(tmpl.category || 'Other');
+    setCategories([tmpl.category || 'Other']);
     setShowTemplates(false);
   }, [defaultDuration]);
 
   const saveAsTemplate = useCallback(() => {
     if (!title.trim()) return;
-    const newTmpl = { title: title.trim(), priority, category, time: startTime, duration: String(duration) };
+    const newTmpl = { title: title.trim(), priority, category: categories[0] || 'Other', time: startTime, duration: String(duration) };
     const updated = [newTmpl, ...templates.filter(t => t.title !== newTmpl.title)].slice(0, 20);
     setTemplates(updated);
     saveTemplates(updated);
-  }, [title, priority, category, startTime, duration, templates]);
+  }, [title, priority, categories, startTime, duration, templates]);
 
   const removeTemplate = useCallback((tmplTitle) => {
     const updated = templates.filter(t => t.title !== tmplTitle);
@@ -243,7 +248,8 @@ export default function TaskBottomSheet({
       endTime,
       duration:            String(duration),
       priority,
-      category,
+      category:             categories[0] || 'Other',
+      categories,
       status,
       delayReason:         (['Delayed','Missed'].includes(status)) ? delayReason.trim() : '',
       recurrence,
@@ -251,6 +257,7 @@ export default function TaskBottomSheet({
       endDate:             recurrence !== 'none' ? endDate : '',
       tags:                tags.length > 0 ? tags : undefined,
       linkedPage:          linkedPage || undefined,
+      deepWorkHours:       deepWorkHours || 0,
       subtasks:            subtasks.length > 0 ? subtasks : undefined,
       dependsOn:           dependsOn.length > 0 ? dependsOn : undefined,
       createdAt:           initialData?.createdAt || new Date().toISOString(),
@@ -264,7 +271,7 @@ export default function TaskBottomSheet({
     } else if (isEditingRecurring && editScope === 'all') {
       // Update recurring definition for all future occurrences
       const recId = initialData.recurringId;
-      updateRecurringTask(recId, { title: taskData.title, priority: taskData.priority, category: taskData.category, time: taskData.time, duration: taskData.duration, recurrence: taskData.recurrence, customDays: taskData.customDays });
+      updateRecurringTask(recId, { title: taskData.title, priority: taskData.priority, category: taskData.category, categories: taskData.categories, time: taskData.time, duration: taskData.duration, recurrence: taskData.recurrence, customDays: taskData.customDays });
     }
 
     // For this specific day's occurrence (always save to the daily log)
@@ -442,7 +449,18 @@ export default function TaskBottomSheet({
                 <option value="/learn/german">German</option>
                 <option value="/learn/aws">AWS</option>
                 <option value="/learn/finance">Finance</option>
+                <option value="/video-editing">Video Editing</option>
+                <option value="/sidehustle">Side Hustle</option>
               </select>
+            </div>
+
+            {/* Deep Work Hours */}
+            <div>
+              <span className="sheet-field-label">Deep Work Hours <span style={{ fontWeight:400, fontSize:'0.7rem', opacity:0.5 }}>(optional)</span></span>
+              <input type="number" min="0" step="0.5" value={deepWorkHours}
+                onChange={e => setDeepWorkHours(parseFloat(e.target.value) || 0)}
+                style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'var(--font-sans)', outline:'none' }}
+              />
             </div>
 
             {/* #33 — Task dependencies */}
@@ -517,16 +535,27 @@ export default function TaskBottomSheet({
               </div>
             </div>
 
-            {/* Category */}
+            {/* Category (multi-select) */}
             <div>
-              <span className="sheet-field-label">Category</span>
+              <span className="sheet-field-label">Categories <span style={{ fontWeight:400, fontSize:'0.7rem', opacity:0.5 }}>(tap multiple)</span></span>
               <div className="category-picker">
-                {CATEGORIES.map(c => (
-                  <button key={c.key} className={`cat-btn ${category===c.key?'active':''}`} onClick={() => setCategory(c.key)}
-                    style={category===c.key?{background:c.color,borderColor:c.color}:{}}>
-                    {c.icon} {c.key}
-                  </button>
-                ))}
+                {CATEGORIES.map(c => {
+                  const active = categories.includes(c.key);
+                  return (
+                    <button key={c.key}
+                      className={`cat-btn ${active?'active':''}`}
+                      onClick={() => {
+                        if (active) {
+                          if (categories.length > 1) setCategories(prev => prev.filter(k => k !== c.key));
+                        } else {
+                          setCategories(prev => [...prev, c.key]);
+                        }
+                      }}
+                      style={active?{background:c.color,borderColor:c.color}:{}}>
+                      {c.icon} {c.key}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

@@ -65,7 +65,11 @@ function computeMonthlyStats(logs, date) {
     totalTasks     += tasks.length;
     completedTasks += tasks.filter(t => t.status === 'Completed').length;
     criticalUnfinished += tasks.filter(t => t.priority === 'critical' && t.status !== 'Completed').length;
-    tasks.forEach(t => { const cat = t.category || 'Other'; catMins[cat] = (catMins[cat]||0) + (parseInt(t.duration)||0); });
+    tasks.forEach(t => {
+      const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+      const mins = parseInt(t.duration) || 0;
+      cats.forEach(c => { catMins[c] = (catMins[c]||0) + mins; });
+    });
     dayScores.push(computeDayStats(tasks).productivityScore);
   });
   const avgScore = dayScores.length ? Math.round(dayScores.reduce((a,b)=>a+b,0)/dayScores.length) : 0;

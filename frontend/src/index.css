@@ -3323,6 +3323,8 @@ label {
   --cat-finance:  #f59e0b;
   --cat-social:   #a78bfa;
   --cat-other:    #94a3b8;
+  --cat-video-editing: #a855f7;
+  --cat-side-hustle:   #f97316;
 
   /* Time-of-day section accent colors */
   --tl-morning-color:   #f59e0b;
@@ -7973,6 +7975,11 @@ div[contentEditable] img[style*="float"] {
   .tiptap-toolbar::-webkit-scrollbar {
     display: none;
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 

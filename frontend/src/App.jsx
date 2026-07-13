@@ -3,7 +3,7 @@ import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
   WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X,
-  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank
+  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank, Brain
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -27,6 +27,7 @@ import SavingsVault from './pages/SavingsVault';
 import LearningGerman from './pages/LearningGerman';
 import LearningAws from './pages/LearningAws';
 import Wishlist from './pages/Wishlist';
+import DeepFocusPage from './pages/DeepFocusPage';
 import LastDay from './pages/LastDay';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
@@ -38,6 +39,8 @@ const NAV_LINKS = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/daily',         icon: CheckSquare,     label: 'Daily Log' },
   { to: '/tasks',         icon: Clock,           label: 'Timeline' },
+  { to: '/deep/work',     icon: Brain,           label: 'Deep Work' },
+  { to: '/deep/learning', icon: BookOpen,        label: 'Deep Learning' },
   { to: '/notes',         icon: StickyNote,      label: 'Daily Notes' },
   { to: '/vault',         icon: KeyRound,        label: 'Password Vault' },
   { to: '/weekly',        icon: CalendarDays,    label: 'Weekly' },
@@ -238,6 +241,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/daily"     element={<DailyLog />} />
             <Route path="/tasks"     element={<TasksPage />} />
+            <Route path="/deep/:type" element={<DeepFocusPage />} />
             <Route path="/notes"     element={<DailyNotes />} />
             <Route path="/vault"     element={<PasswordVault />} />
             <Route path="/weekly"    element={<WeeklyReview />} />

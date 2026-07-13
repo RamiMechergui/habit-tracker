@@ -22,13 +22,15 @@ const PRIORITY_COLORS = {
 };
 
 const CATEGORY_COLORS = {
-  Work:     'var(--cat-work)',
-  Health:   'var(--cat-health)',
-  Personal: 'var(--cat-personal)',
-  Learning: 'var(--cat-learning)',
-  Finance:  'var(--cat-finance)',
-  Social:   'var(--cat-social)',
-  Other:    'var(--cat-other)',
+  Work:          'var(--cat-work)',
+  Health:        'var(--cat-health)',
+  Personal:      'var(--cat-personal)',
+  Learning:      'var(--cat-learning)',
+  Finance:       'var(--cat-finance)',
+  Social:        'var(--cat-social)',
+  'Video Editing': 'var(--cat-video-editing)',
+  'Side Hustle':   'var(--cat-side-hustle)',
+  Other:         'var(--cat-other)',
 };
 
 const STATUS_META = {
@@ -184,7 +186,8 @@ export default function TaskCard({
   const statusKey    = task.status || 'Pending';
   const statusMeta   = STATUS_META[statusKey] ?? STATUS_META.Pending;
   const priorityColor = PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.medium;
-  const catColor      = CATEGORY_COLORS[task.category] ?? CATEGORY_COLORS.Other;
+  const taskCats = Array.isArray(task.categories) ? task.categories : (task.category ? [task.category] : ['Other']);
+  const catColor = CATEGORY_COLORS[taskCats[0]] ?? CATEGORY_COLORS.Other;
   const pVisual       = PRIORITY_VISUALS[task.priority] || PRIORITY_VISUALS.medium;
 
   const showProgress = task.status === 'Pending' && progress > 0 && progress < 100;
@@ -327,13 +330,17 @@ export default function TaskCard({
                 style={{ background:'none', border:'none', color:timerOn?'var(--status-completed)':'var(--text-muted)', cursor:'pointer', padding:'2px 4px', fontSize:'0.6rem', fontWeight:600, fontFamily:'var(--font-sans)' }}
                 title={timerOn ? 'Stop timer' : 'Start timer'}>{timerOn ? '■' : '▶'}</button>
               <span className={`task-status-pill ${statusMeta.cls}`}>{statusMeta.label}</span>
-              {task.category && task.category !== 'Other' && (
-                <span className="category-chip"
-                  style={{ background:`color-mix(in srgb, ${catColor} 15%, transparent)`, border:`1px solid color-mix(in srgb, ${catColor} 35%, transparent)`, color:catColor }}>
-                  <span className="category-chip-dot" style={{ background:catColor }} aria-hidden="true" />
-                  {task.category}
-                </span>
-              )}
+              {taskCats.map(cat => {
+                if (cat === 'Other') return null;
+                const cc = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.Other;
+                return (
+                  <span key={cat} className="category-chip"
+                    style={{ background:`color-mix(in srgb, ${cc} 15%, transparent)`, border:`1px solid color-mix(in srgb, ${cc} 35%, transparent)`, color:cc }}>
+                    <span className="category-chip-dot" style={{ background:cc }} aria-hidden="true" />
+                    {cat}
+                  </span>
+                );
+              })}
               {task.delayReason && (
                 <AlertTriangle size={10} className="task-card-delay-icon" title={`Reason: ${task.delayReason}`} aria-label={`Delay reason: ${task.delayReason}`} />
               )}
@@ -341,6 +348,12 @@ export default function TaskCard({
               {task.linkedPage && (
                 <span style={{ background:'rgba(139,92,246,0.1)', color:'#8b5cf6', borderRadius:3, padding:'1px 6px', fontSize:'0.6rem', fontWeight:600 }}>
                   📘 {task.linkedPage.split('/').pop()}
+                </span>
+              )}
+              {/* Deep Work hours badge */}
+              {task.deepWorkHours > 0 && (
+                <span style={{ background:'rgba(249,115,22,0.12)', color:'#f97316', borderRadius:3, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700 }}>
+                  🧠 {task.deepWorkHours}h
                 </span>
               )}
               {/* #38 — Skip this occurrence for recurring tasks */}

@@ -3,7 +3,6 @@ import { useHabits } from '../Store';
 import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal } from 'lucide-react';
-
 export default function Dashboard() {
   const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
   
@@ -68,7 +67,8 @@ export default function Dashboard() {
   const allCategories = React.useMemo(() => {
     const cats = new Set(['Work', 'Health', 'Personal', 'Learning', 'Finance', 'Social', 'Other']);
     allTasks.forEach(t => {
-      if (t.category) cats.add(t.category);
+      if (t.categories) t.categories.forEach(c => cats.add(c));
+      else if (t.category) cats.add(t.category);
     });
     return Array.from(cats);
   }, [allTasks]);
@@ -85,7 +85,10 @@ export default function Dashboard() {
         }
         if (taskStatusFilter !== 'all' && t.status !== taskStatusFilter) return false;
         if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
-        if (taskCategoryFilter !== 'all' && t.category !== taskCategoryFilter) return false;
+        if (taskCategoryFilter !== 'all') {
+          const tCats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+          if (!tCats.includes(taskCategoryFilter)) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -122,7 +125,7 @@ export default function Dashboard() {
     setEditEndTime(task.endTime || '');
     setEditPriority(task.priority || 'medium');
     setEditStatus(task.status || 'Pending');
-    setEditCategory(task.category || 'Other');
+    setEditCategory(Array.isArray(task.categories) ? task.categories[0] : (task.category || 'Other'));
     setEditError('');
   };
 
@@ -871,11 +874,11 @@ export default function Dashboard() {
                           <span className={`badge badge-status-${(task.status || 'Pending').toLowerCase()}`}>
                             {task.status || 'Pending'}
                           </span>
-                          {task.category && (
-                            <span className="badge badge-category">
-                              {task.category}
+                          {(Array.isArray(task.categories) ? task.categories : [task.category].filter(Boolean)).map(cat => (
+                            <span key={cat} className="badge badge-category" style={{ marginLeft: 2 }}>
+                              {cat}
                             </span>
-                          )}
+                          ))}
                         </div>
                       </div>
 

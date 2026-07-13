@@ -218,11 +218,24 @@ export default function TasksPage() {
     return { total, completed, pct };
   }, [tasks]);
 
+  const totalDeepWork = useMemo(() => {
+    const qualifying = ['Video Editing', 'Side Hustle'];
+    return tasks
+      .filter(t => {
+        const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+        return cats.some(c => qualifying.includes(c));
+      })
+      .reduce((sum, t) => sum + (parseFloat(t.deepWorkHours) || 0), 0);
+  }, [tasks]);
+
   // #12 — Derive categories dynamically from all logs + base set
   const categoryFilters = useMemo(() => {
     const cats = new Set(BASE_CATEGORIES);
     Object.values(logs).forEach(log => {
-      (log?.tasks ?? []).forEach(t => { if (t.category) cats.add(t.category); });
+      (log?.tasks ?? []).forEach(t => {
+        if (t.categories) t.categories.forEach(c => cats.add(c));
+        else if (t.category) cats.add(t.category);
+      });
     });
     return ['all', ...Array.from(cats)];
   }, [logs]);
@@ -948,6 +961,15 @@ export default function TasksPage() {
               </div>
               <span className="hub-progress-label">
                 {progressStats.completed}<span className="hub-progress-sep">/</span>{progressStats.total}
+              </span>
+            </div>
+          )}
+
+          {/* Deep Work total */}
+          {totalDeepWork > 0 && (
+            <div className="hub-progress-pill" style={{ background:'rgba(249,115,22,0.1)', border:'1px solid rgba(249,115,22,0.2)' }} title="Total Deep Work hours (Video Editing + Side Hustle)">
+              <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f97316', display:'flex', alignItems:'center', gap:4 }}>
+                🧠 {totalDeepWork < 1 ? `${Math.round(totalDeepWork * 60)}m` : `${totalDeepWork}h`}
               </span>
             </div>
           )}

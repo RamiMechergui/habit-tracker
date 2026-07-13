@@ -348,7 +348,10 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
     let t = tasks || [];
     if (filters.status   && filters.status   !== 'all') t = t.filter(x => x.status   === filters.status);
     if (filters.priority && filters.priority !== 'all') t = t.filter(x => x.priority === filters.priority);
-    if (filters.category && filters.category !== 'all') t = t.filter(x => x.category === filters.category);
+    if (filters.category && filters.category !== 'all') t = t.filter(x => {
+      const cats = Array.isArray(x.categories) ? x.categories : [x.category || 'Other'];
+      return cats.includes(filters.category);
+    });
     if (filters.search   && filters.search.trim())      t = t.filter(x => x.title?.toLowerCase().includes(filters.search.toLowerCase()));
     return t;
   }, [tasks, filters]);

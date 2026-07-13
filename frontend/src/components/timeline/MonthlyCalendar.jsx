@@ -145,7 +145,10 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
     }
     if (filterStatus   !== 'all') tasks = tasks.filter(t => t.status   === filterStatus);
     if (filterPriority !== 'all') tasks = tasks.filter(t => t.priority === filterPriority);
-    if (filterCategory !== 'all') tasks = tasks.filter(t => t.category === filterCategory);
+    if (filterCategory !== 'all') tasks = tasks.filter(t => {
+      const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+      return cats.includes(filterCategory);
+    });
     if (tasks.length === 0) return null;
     const total     = tasks.length;
     const completed = tasks.filter(t => t.status === 'Completed').length;

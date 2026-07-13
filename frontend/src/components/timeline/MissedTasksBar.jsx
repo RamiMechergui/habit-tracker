@@ -136,7 +136,8 @@ export default function MissedTasksBar({ tasks, onUpdateTaskStatus, onSnooze }) 
 
 // ── Task Alert Card ───────────────────────────────────────────────────────────
 function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMark, onSnooze }) {
-  const catColor = CATEGORY_COLORS[task.category] ?? CATEGORY_COLORS.Other;
+  const taskCats = Array.isArray(task.categories) ? task.categories : (task.category ? [task.category] : ['Other']);
+  const catColor = CATEGORY_COLORS[taskCats[0]] ?? CATEGORY_COLORS.Other;
 
   return (
     <div className={`task-alert-card task-alert-card--${variant}`}>
@@ -148,18 +149,22 @@ function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMa
             <Clock size={11} aria-hidden="true" />
             {task.time}{task.duration ? ` · ${task.duration}m` : ''}
           </span>
-          {task.category && (
-            <span
-              className="task-alert-category"
-              style={{
-                background: `color-mix(in srgb, ${catColor} 15%, transparent)`,
-                color:      catColor,
-                border:     `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
-              }}
-            >
-              {task.category}
-            </span>
-          )}
+          {taskCats.map(cat => {
+            if (cat === 'Other') return null;
+            const cc = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.Other;
+            return (
+              <span key={cat}
+                className="task-alert-category"
+                style={{
+                  background: `color-mix(in srgb, ${cc} 15%, transparent)`,
+                  color:      cc,
+                  border:     `1px solid color-mix(in srgb, ${cc} 30%, transparent)`,
+                }}
+              >
+                {cat}
+              </span>
+            );
+          })}
           {task.priority && (
             <span className="task-alert-priority">
               {task.priority} priority
