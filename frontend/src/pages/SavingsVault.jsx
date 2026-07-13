@@ -10,7 +10,7 @@ import { useHabits } from '../Store';
 export default function SavingsVault() {
   const {
     savings, fetchSavings, addSavingsEntry, updateSavingsEntry, deleteSavingsEntry,
-    vaultLocked, setVaultLocked, vaultHasPassword,
+    vaultLocked, setVaultLocked, vaultHasPassword, setVaultHasPassword,
     checkVaultStatus, setVaultPassword, verifyVaultPassword,
     addHistoryEntry,
   } = useHabits();
