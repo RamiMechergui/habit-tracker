@@ -1,44 +1,24 @@
-name: Deploy to EC2
+# deploy.yml — DISABLED (superseded by deploy-ec2.yml)
+#
+# This file previously used `docker compose up -d --build` which served
+# the frontend on port 5173.  The production setup uses nginx (port 80)
+# + PM2 backend, managed by deploy-ec2.sh via deploy-ec2.yml.
+#
+# Keeping this file here for reference only — the `on:` trigger has been
+# removed so GitHub Actions will NOT pick it up.
+
+name: "[DISABLED] Deploy via Docker Compose"
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:   # manual only — not triggered on push
+    inputs:
+      confirm:
+        description: "Type CONFIRM to run (this workflow is deprecated)"
+        required: true
 
 jobs:
-  deploy:
+  disabled:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Check if the project directory exists, if not, clone the repository
-            if [ ! -d "${{ secrets.PROJECT_PATH }}" ]; then
-              echo "Project directory not found. Cloning repository..."
-              git clone https://github.com/RamiMechergui/habit-tracker.git ${{ secrets.PROJECT_PATH }}
-            fi
-            
-            cd ${{ secrets.PROJECT_PATH }}
-            
-            # Stash any local changes on the server to prevent merge conflicts
-            git stash
-            
-            # Pull the latest code from the main branch
-            git pull origin main
-            
-            # Rebuild and restart the docker containers
-            # --build ensures any new dependencies or Dockerfile changes are applied
-            # -d runs them in the background
-            docker compose down
-            docker compose up -d --build
-            
-            # Clean up dangling images to save disk space on your EC2 instance
-            docker image prune -f
+      - name: Notice
+        run: echo "This workflow is disabled. Use deploy-ec2.yml instead."

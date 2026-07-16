@@ -9,9 +9,9 @@ on:
 
 jobs:
   deploy:
-    name: Deploy – Monolith
+    name: Deploy – Monolith on EC2 (port 80 via Nginx + PM2)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       # ── 1. Show commit info in the Actions log ──────────────────────────
@@ -24,45 +24,44 @@ jobs:
           echo "Triggered  : ${{ github.event_name }}"
 
       # ── 2. SSH into EC2 and run the deploy script ───────────────────────
-      - name: 🔑 SSH → EC2 deploy
+      # deploy-ec2.sh:
+      #   1. git pull (latest code)
+      #   2. npm ci --omit=dev  (backend deps)
+      #   3. npm ci + VITE_API_URL="" npm run build  (frontend build)
+      #   4. rsync dist/ → /var/www/html  (nginx serves on port 80)
+      #   5. nginx -t && nginx reload  (zero-downtime static refresh)
+      #   6. pm2 reload habit-tracker-api  (zero-downtime API restart)
+      #
+      # ⚠ DynamoDB data is NEVER touched — only code + static files change.
+      - name: 🔑 SSH → EC2 → run deploy-ec2.sh
         uses: appleboy/ssh-action@v1.2.0
         with:
           host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key:      ${{ secrets.EC2_SSH_KEY }}
-          # Give the deploy script plenty of time (build can take a few mins)
-          command_timeout: 12m
+          # Give the deploy script plenty of time (npm ci + vite build)
+          command_timeout: 18m
           script: |
             set -e
             echo "=== [EC2] Deploy triggered by GitHub Actions ==="
-            echo "Commit: ${{ github.sha }}"
-            echo "Author: ${{ github.actor }}"
+            echo "Commit : ${{ github.sha }}"
+            echo "Author : ${{ github.actor }}"
 
-            REPO_DIR=~/habit-tracker
+            REPO_DIR="${{ secrets.PROJECT_PATH || '~/habit-tracker' }}"
+            # Fall back to default path if secret not set
+            REPO_DIR="${REPO_DIR:-$HOME/habit-tracker}"
 
-            # ── Clone if the directory doesn't exist yet ──────────────────
+            # ── Clone repo on first deploy ────────────────────────────────
             if [ ! -d "$REPO_DIR" ]; then
-              echo ">>> Repo not found. Cloning for the first time..."
+              echo ">>> Repo not found — cloning for the first time..."
               git clone https://github.com/RamiMechergui/habit-tracker.git "$REPO_DIR"
             fi
 
             cd "$REPO_DIR"
 
-            # ── Pull latest code ──────────────────────────────────────────
-            git fetch origin main
-            git reset --hard origin/main
-
-            # ── Rebuild and restart Docker Compose ────────────────────────
-            # '|| true' prevents failure when no containers are running yet (first deploy)
-            docker compose down --remove-orphans || true
-
-            docker compose up -d --build
-
-            # ── Verify containers started ─────────────────────────────────
-            echo "=== Running containers after deploy ==="
-            docker compose ps
-
-            # ── Clean up old images ───────────────────────────────────────
-            docker image prune -f
+            # ── Make deploy script executable and run it ──────────────────
+            chmod +x deploy-ec2.sh
+            bash deploy-ec2.sh
 
             echo "=== [EC2] Deploy finished successfully ==="
+            echo "App is live on http://${{ secrets.EC2_HOST }} (port 80)"
