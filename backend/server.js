@@ -62,12 +62,14 @@ app.use('/api/wishlist',    require('./routes/wishlist'));
 app.use('/api/milestones',  require('./routes/milestones'));
 app.use('/api/savings',     require('./routes/savings'));
 app.use('/api/history',     require('./routes/history'));
+app.use('/api/ai',          require('./routes/ai'));
 
 // ── Flat-path aliases (used by frontend Store) ────────────────────────────────
 const authRoutes    = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const booksRoutes   = require('./routes/books');
 const expRoutes     = require('./routes/expenses');
+const aiRoutes      = require('./routes/ai');
 
 // Auth
 app.post('/api/login',    (req, res, next) => { req.url = '/login';    authRoutes(req, res, next); });

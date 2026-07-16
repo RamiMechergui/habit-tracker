@@ -30,8 +30,12 @@ const {
   updateDialogue,
   addMemo,
   updateMemo,
+  addDocument,
+  updateDocument,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
+const { exportToPdf } = require('../services/pdfExporter');
+const { exportNoteToPdf } = require('../services/notesPdfExporter');
 
 router.use(protect);
 
@@ -100,6 +104,51 @@ router.put('/vocab/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT vocab error:', err);
     res.status(500).json({ message: 'Failed to update vocabulary' });
+  }
+});
+
+// ── POST /api/german/vocab/:recordId/review ──────────────────────────────
+router.post('/vocab/:recordId/review', async (req, res) => {
+  try {
+    const { score } = req.body; // 1=Again, 2=Hard, 3=Good, 4=Easy
+    if (![1, 2, 3, 4].includes(score)) {
+      return res.status(400).json({ message: 'Invalid score' });
+    }
+
+    const records = await getAllGermanRecords(req.user.userId);
+    const current = records.find(r => r.recordId === req.params.recordId);
+    if (!current) return res.status(404).json({ message: 'Record not found' });
+
+    let easeFactor = current.easeFactor || 2.5;
+    let interval = current.interval || 0;
+    let lapses = current.lapses || 0;
+
+    if (score < 3) {
+      lapses += 1;
+      interval = 1;
+      easeFactor = Math.max(1.3, easeFactor - 0.2);
+    } else {
+      if (interval === 0) interval = 1;
+      else if (interval === 1) interval = 6;
+      else interval = Math.round(interval * easeFactor);
+      
+      if (score === 4) easeFactor += 0.15;
+    }
+
+    const nextReviewDate = new Date(Date.now() + interval * 24 * 60 * 60 * 1000).toISOString();
+
+    const updated = await updateVocab(req.user.userId, req.params.recordId, {
+      easeFactor,
+      interval,
+      lapses,
+      nextReviewDate,
+      lastReviewDate: new Date().toISOString()
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] POST vocab review error:', err);
+    res.status(500).json({ message: 'Failed to process review' });
   }
 });
 
@@ -428,6 +477,85 @@ router.delete('/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] DELETE error:', err);
     res.status(500).json({ message: 'Failed to delete record' });
+  }
+});
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+
+router.post('/documents', async (req, res) => {
+  try {
+    const created = await addDocument(req.user.id, req.body);
+    res.status(201).json(created);
+  } catch (err) {
+    console.error('Add document error:', err);
+    res.status(500).json({ message: 'Server error adding document' });
+  }
+});
+
+router.put('/documents/:recordId', async (req, res) => {
+  try {
+    const updated = await updateDocument(req.user.id, req.params.recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Document not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('Update document error:', err);
+    res.status(500).json({ message: 'Server error updating document' });
+  }
+});
+
+router.post('/documents/:recordId/export-pdf', async (req, res) => {
+  try {
+    // Fetch the document from the DB
+    const allRecords = await getAllGermanRecords(req.user.id);
+    const doc = allRecords.find(r => r.recordId === req.params.recordId);
+    if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+    const pdfBuffer = await exportToPdf({
+      title: doc.title || 'Untitled',
+      author: req.user.name || req.user.email || 'Evolvia User',
+      content: doc.content || {},
+      docType: doc.docType || 'textbook',
+      createdAt: doc.createdAt,
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.title || 'document')}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.end(pdfBuffer);
+  } catch (err) {
+    console.error('PDF export error:', err);
+    res.status(500).json({ message: 'Failed to generate PDF' });
+  }
+});
+
+// ── Daily Note PDF Export ──────────────────────────────────────────────────
+// Accepts { date, content (HTML), studyMinutes, wordsLearned } in body.
+// Returns a ready-to-download PDF buffer.
+
+router.post('/notes/export-pdf', async (req, res) => {
+  try {
+    const { date, content, studyMinutes, wordsLearned } = req.body;
+    if (!date) return res.status(400).json({ message: 'date is required' });
+
+    const pdfBuffer = await exportNoteToPdf({
+      date,
+      content: content || '',
+      studyMinutes: parseInt(studyMinutes) || 0,
+      wordsLearned: parseInt(wordsLearned) || 0,
+      author: req.user.name || req.user.email || 'Evolvia User',
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="German-Study-Note-${date}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.end(pdfBuffer);
+  } catch (err) {
+    console.error('Note PDF export error:', err);
+    res.status(500).json({ message: 'Failed to generate note PDF' });
   }
 });
 

@@ -2,15 +2,34 @@
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install --no-audit --no-fund
+# --legacy-peer-deps: resolves TipTap peer dependency conflicts
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Backend & Nginx Gateway
 FROM node:20-alpine
 
-RUN apk add --no-cache nginx && mkdir -p /run/nginx
+# Install nginx + system Chromium for Puppeteer PDF export
+# Puppeteer uses the system Chromium instead of downloading a bundled binary
+RUN apk add --no-cache \
+    nginx \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto \
+    udev \
+ && mkdir -p /run/nginx
+
 RUN npm install -g pm2
+
+# Point Puppeteer at the system Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 WORKDIR /app
 
 # Copy Frontend Build
@@ -19,7 +38,7 @@ COPY --from=frontend-build /app/frontend/dist /var/www/html
 # Copy backend folder
 COPY backend ./backend
 
-# Install consolidated dependencies for all services at once
+# Install backend dependencies
 RUN cd backend && \
     npm install --omit=dev --no-audit --no-fund && \
     npm cache clean --force
@@ -31,4 +50,3 @@ RUN chmod +x start.sh
 
 # Start Native Setup
 CMD ["./start.sh"]
-

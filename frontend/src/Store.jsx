@@ -1935,6 +1935,20 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const reviewGermanVocab = useCallback(async (recordId, score) => {
+    const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}/review`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ score }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to review vocab');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_vocab_review', `Reviewed German vocabulary: ${data?.word || ''}`);
+    return data;
+  }, [API_URL]);
+
   const updateGermanGrammar = useCallback(async (recordId, payload) => {
     const res = await fetch(`${API_URL}/api/german/grammar/${encodeURIComponent(recordId)}`, {
       method: 'PUT',
@@ -2073,6 +2087,32 @@ export const HabitProvider = ({ children }) => {
     if (!res.ok) throw new Error(data.message || 'Failed to update memorization paragraph');
     setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
     logHistory('german_memo_update', `Updated memorization paragraph: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const addDocument = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/documents`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create document');
+    setGermanData(prev => [...prev, data]);
+    return data;
+  }, [API_URL]);
+
+  const updateDocument = useCallback(async (recordId, updates) => {
+    const res = await fetch(`${API_URL}/api/german/documents/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update document');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
     return data;
   }, [API_URL]);
 
@@ -2499,7 +2539,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist

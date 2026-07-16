@@ -56,7 +56,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'easeFactor', 'interval', 'nextReviewDate', 'lapses'];
   const sets = [];
   const names = {};
   const values = {};
@@ -289,6 +289,52 @@ async function updateMemo(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Documents ─────────────────────────────────────────────────────────────────
+async function addDocument(userId, { title = 'Untitled Document', docType = 'notebook', content = {}, metadata = {} }) {
+  const recordId = `DOC#${uuidv4()}`;
+  const item = {
+    userId,
+    recordId,
+    type: 'document',
+    docType,
+    title,
+    content,
+    metadata,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateDocument(userId, recordId, updates) {
+  const allowed = ['title', 'docType', 'content', 'metadata'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 // ── Delete (any type) ─────────────────────────────────────────────────────────
 async function deleteGermanRecord(userId, recordId) {
   await docClient.send(new DeleteCommand({
@@ -313,4 +359,6 @@ module.exports = {
   updateDialogue,
   addMemo,
   updateMemo,
+  addDocument,
+  updateDocument,
 };

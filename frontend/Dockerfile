@@ -6,7 +6,7 @@ ENV CHOKIDAR_USEPOLLING=true
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 COPY . .
 

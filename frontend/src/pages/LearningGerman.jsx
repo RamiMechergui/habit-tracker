@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { API_URL, nativeFetch } from '../config';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
+import AIWritingCorrector from '../components/AIWritingCorrector';
+import DocumentEditor from '../components/DocumentEditor';
 import { format } from 'date-fns';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
@@ -1027,13 +1030,11 @@ function MemoPractice({ memo, onClose }) {
   );
 }
 
-function ReviewPanel({ vocab, onUpdateVocab, onClose }) {
+function ReviewPanel({ vocab, onReviewVocab, onClose }) {
   const [queue, setQueue] = useState(() => {
     const due = vocab.filter(v => {
-      if (v.leitnerBox === undefined || v.leitnerBox === 0) return !v.lastReviewDate;
-      const next = new Date(v.lastReviewDate);
-      next.setDate(next.getDate() + (LEITNER_INTERVALS[v.leitnerBox] || 1));
-      return next <= new Date();
+      if (!v.nextReviewDate) return true;
+      return new Date(v.nextReviewDate) <= new Date();
     });
     return due.sort(() => Math.random() - 0.5);
   });
@@ -1043,12 +1044,10 @@ function ReviewPanel({ vocab, onUpdateVocab, onClose }) {
   const [correctCount, setCorrectCount] = useState(0);
   const current = queue[index];
 
-  const advance = (knewIt) => {
+  const advance = (score) => {
     if (!current) { setDone(true); return; }
-    const newBox = knewIt ? Math.min((current.leitnerBox || 0) + 1, 4) : 0;
-    const today = new Date().toISOString().slice(0, 10);
-    onUpdateVocab(current.recordId, { leitnerBox: newBox, lastReviewDate: today });
-    if (knewIt) setCorrectCount(p => p + 1);
+    onReviewVocab(current.recordId, score);
+    if (score >= 3) setCorrectCount(p => p + 1);
     if (index + 1 >= queue.length) { setDone(true); return; }
     setIndex(p => p + 1);
     setRevealed(false);
@@ -1099,8 +1098,10 @@ function ReviewPanel({ vocab, onUpdateVocab, onClose }) {
             <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>{current?.translation}</div>
             {current?.example && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>"{current.example}"</div>}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
-              <button onClick={() => advance(false)} style={{ padding: '10px 20px', borderRadius: '10px', border: `1px solid ${C.red}50`, background: `${C.red}10`, color: C.red, fontWeight: 700, cursor: 'pointer' }}>Didn't Know</button>
-              <button onClick={() => advance(true)} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.green}, #059669)`, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Knew It ✓</button>
+              <button onClick={() => advance(1)} style={{ padding: '10px 15px', borderRadius: '10px', border: `1px solid ${C.red}50`, background: `${C.red}10`, color: C.red, fontWeight: 700, cursor: 'pointer' }}>Again</button>
+              <button onClick={() => advance(2)} style={{ padding: '10px 15px', borderRadius: '10px', border: `1px solid ${C.gold}50`, background: `${C.gold}10`, color: C.gold, fontWeight: 700, cursor: 'pointer' }}>Hard</button>
+              <button onClick={() => advance(3)} style={{ padding: '10px 15px', borderRadius: '10px', border: `1px solid ${C.blue}50`, background: `${C.blue}10`, color: C.blue, fontWeight: 700, cursor: 'pointer' }}>Good</button>
+              <button onClick={() => advance(4)} style={{ padding: '10px 15px', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.green}, #059669)`, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Easy</button>
             </div>
           </div>
         ) : (
@@ -1420,13 +1421,14 @@ function GlobalSearchModal({ germanData, onClose }) {
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
-    addGermanVocab, addGermanGrammar, updateGermanVocab, updateGermanGrammar,
+    addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar,
     addGermanVerb, updateGermanVerb,
     saveGermanNote, deleteGermanRecord,
     uploadGermanVocabPhoto, deleteGermanVocabPhoto,
     uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto,
     uploadGermanNotePhoto,
     translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
+    addDocument, updateDocument,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -1470,6 +1472,10 @@ export default function LearningGerman() {
   const [editMemo, setEditMemo] = useState(null);
   const [practiceMemo, setPracticeMemo] = useState(null);
   const [memoSaving, setMemoSaving] = useState(false);
+  const [activeDocId, setActiveDocId] = useState(null);
+  const [docSaving, setDocSaving] = useState(false);
+  const [docTitleEdit, setDocTitleEdit] = useState('');
+  const docSaveTimer = React.useRef(null);
   const PAGE_SIZE = 15;
 
   const [dailyWordGoal, setDailyWordGoal] = useState(() => parseInt(localStorage.getItem('german_wordGoal') || '10'));
@@ -1501,6 +1507,7 @@ export default function LearningGerman() {
     const filtered = germanData.filter(r => r.type === 'memo');
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [germanData]);
+  const documents = useMemo(() => germanData.filter(r => r.type === 'document'), [germanData]);
   const notes   = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'note');
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
@@ -1644,6 +1651,10 @@ export default function LearningGerman() {
 
   const handleReviewUpdate = async (recordId, updates) => {
     try { await updateGermanVocab(recordId, updates); } catch (e) { setError(e.message); }
+  };
+
+  const handleReviewAction = async (recordId, score) => {
+    try { await reviewGermanVocab(recordId, score); } catch (e) { setError(e.message); }
   };
 
   const handleVocabDeleteClick = (recordId) => {
@@ -1850,6 +1861,8 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
             <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
             <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
+            <TabBtn active={tab === 'documents'} onClick={() => setTab('documents')} icon={FileText} label="Textbooks" />
+            <TabBtn active={tab === 'tutor'} onClick={() => setTab('tutor')} icon={BrainCircuit} label="AI Tutor" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -1882,6 +1895,8 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
         <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
         <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
+        <TabBtn active={tab === 'documents'} onClick={() => setTab('documents')} icon={FileText} label="Textbooks" />
+        <TabBtn active={tab === 'tutor'} onClick={() => setTab('tutor')} icon={BrainCircuit} label="AI Tutor" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -2015,23 +2030,70 @@ export default function LearningGerman() {
                 <input type="number" min="0" value={wordsLearned} onChange={e => setWordsLearned(e.target.value)} placeholder="e.g. 15" style={inputBase} />
               </div>
             </div>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Study Notes &amp; Reflections</label>
+            <div style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                Study Notes &amp; Reflections
+                <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.7 }}>— paste or drag images directly into the editor, click any image to resize &amp; position it</span>
+              </label>
               <RichTextEditor value={noteContent} onChange={setNoteContent}
-                placeholder="What did you study today?&#10;&#10;New words learned&#10;Grammar topics covered&#10;Difficulties encountered&#10;Goals for tomorrow"
-                minHeight={180} onUploadImage={handleUploadNotePhoto} />
+                placeholder={`What did you study today?\n\nNew words learned\nGrammar topics covered\nDifficulties encountered\nGoals for tomorrow`}
+                minHeight={320} onUploadImage={handleUploadNotePhoto} />
             </div>
-            <button onClick={handleSaveNote} disabled={noteSaving || isNoteEmpty(noteContent)} style={{
-              width: '100%', padding: '0.75rem',
-              background: isNoteEmpty(noteContent) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
-              border: 'none', borderRadius: '10px', cursor: isNoteEmpty(noteContent) ? 'not-allowed' : 'pointer',
-              color: '#fff', fontWeight: 700, fontSize: '0.95rem',
-              boxShadow: isNoteEmpty(noteContent) ? 'none' : `0 4px 14px ${C.green}40`,
-              opacity: (isNoteEmpty(noteContent) || noteSaving) ? 0.6 : 1,
-              transition: 'all 0.25s ease',
-            }}>
-              {noteSaving ? 'Saving...' : 'Save Note'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.65rem' }}>
+              <button onClick={handleSaveNote} disabled={noteSaving || isNoteEmpty(noteContent)} style={{
+                flex: 1, padding: '0.75rem',
+                background: isNoteEmpty(noteContent) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
+                border: isNoteEmpty(noteContent) ? '1px solid var(--border)' : 'none',
+                borderRadius: '10px', cursor: isNoteEmpty(noteContent) ? 'not-allowed' : 'pointer',
+                color: isNoteEmpty(noteContent) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.95rem',
+                boxShadow: isNoteEmpty(noteContent) ? 'none' : `0 4px 14px ${C.green}40`,
+                opacity: (isNoteEmpty(noteContent) || noteSaving) ? 0.6 : 1,
+                transition: 'all 0.25s ease',
+              }}>
+                {noteSaving ? 'Saving…' : '💾 Save Note'}
+              </button>
+              <button
+                onClick={async () => {
+                  if (isNoteEmpty(noteContent)) return;
+                  try {
+                    const res = await nativeFetch(`${API_URL}/api/german/notes/export-pdf`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        date: selectedDate,
+                        content: noteContent,
+                        studyMinutes: parseInt(studyMinutes) || 0,
+                        wordsLearned: parseInt(wordsLearned) || 0,
+                      }),
+                    });
+                    if (!res.ok) throw new Error('PDF export failed');
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `German-Study-Note-${selectedDate}.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (err) {
+                    setError('PDF export failed. Please try again.');
+                  }
+                }}
+                disabled={isNoteEmpty(noteContent)}
+                title="Export this note as a professional Evolvia LaTeX-styled PDF"
+                style={{
+                  padding: '0.75rem 1.1rem', borderRadius: '10px',
+                  background: isNoteEmpty(noteContent) ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+                  border: isNoteEmpty(noteContent) ? '1px solid var(--border)' : 'none',
+                  color: isNoteEmpty(noteContent) ? 'var(--text-muted)' : '#fff',
+                  fontWeight: 700, fontSize: '0.88rem', cursor: isNoteEmpty(noteContent) ? 'not-allowed' : 'pointer',
+                  boxShadow: isNoteEmpty(noteContent) ? 'none' : `0 4px 14px ${C.blue}40`,
+                  opacity: isNoteEmpty(noteContent) ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                  transition: 'all 0.25s ease',
+                }}>
+                📄 Export PDF
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2536,6 +2598,114 @@ export default function LearningGerman() {
         <MemoPractice memo={practiceMemo} onClose={() => setPracticeMemo(null)} />
       )}
 
+      {tab === 'documents' && (() => {
+        const activeDoc = documents.find(d => d.recordId === activeDocId) || documents[0] || null;
+
+        const handleDocContentChange = (newContent) => {
+          if (!activeDoc) return;
+          clearTimeout(docSaveTimer.current);
+          docSaveTimer.current = setTimeout(async () => {
+            setDocSaving(true);
+            await updateDocument(activeDoc.recordId, { content: newContent });
+            setDocSaving(false);
+          }, 1200);
+        };
+
+        const handleNewDoc = async () => {
+          const created = await addDocument({ title: 'New Textbook', docType: 'textbook', content: {} });
+          if (created) setActiveDocId(created.recordId);
+        };
+
+        const handleExportDocPdf = async () => {
+          if (!activeDoc) return;
+          try {
+            const res = await fetch(`/api/german/documents/${encodeURIComponent(activeDoc.recordId)}/export-pdf`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+              body: JSON.stringify({ title: activeDoc.title }),
+            });
+            if (!res.ok) throw new Error('PDF export failed');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${activeDoc.title || 'evolvia-document'}.pdf`;
+            a.click(); URL.revokeObjectURL(url);
+          } catch (err) {
+            alert('PDF export failed. Please try again.');
+          }
+        };
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr', gap: '1rem', minHeight: '75vh' }}>
+            {/* ── Document Sidebar ── */}
+            <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>📚 Your Books</span>
+                <button onClick={handleNewDoc} style={{ background: `${C.blue}20`, border: 'none', color: C.blue, padding: '3px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>+ New</button>
+              </div>
+              {documents.length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', padding: '1rem 0' }}>No textbooks yet. Click "+ New"!</div>
+              )}
+              {documents.map(d => {
+                const isActive = (activeDocId ? d.recordId === activeDocId : d === documents[0]);
+                return (
+                  <div key={d.recordId}
+                    onClick={() => { setActiveDocId(d.recordId); setDocTitleEdit(d.title || ''); }}
+                    style={{
+                      padding: '0.65rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
+                      background: isActive ? `${C.blue}18` : 'var(--bg)',
+                      border: `1px solid ${isActive ? C.blue : 'var(--border)'}`,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem', color: isActive ? C.blue : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title || 'Untitled'}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{d.docType} · {new Date(d.updatedAt).toLocaleDateString()}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Editor Area ── */}
+            {activeDoc ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {/* Title input */}
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <input
+                    value={docTitleEdit !== '' ? docTitleEdit : (activeDoc.title || '')}
+                    onChange={(e) => setDocTitleEdit(e.target.value)}
+                    onBlur={() => docTitleEdit && updateDocument(activeDoc.recordId, { title: docTitleEdit })}
+                    style={{
+                      flex: 1, fontSize: '1.35rem', fontWeight: 700, border: 'none', borderBottom: `2px solid ${C.blue}`,
+                      background: 'transparent', color: 'var(--text-primary)', outline: 'none', padding: '4px 2px',
+                    }}
+                    placeholder="Document title..."
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {docSaving ? '🔄 Saving...' : '✅ Saved'}
+                  </span>
+                </div>
+                <DocumentEditor
+                  document={activeDoc}
+                  onChange={handleDocContentChange}
+                  onExportPdf={handleExportDocPdf}
+                  isSaving={docSaving}
+                />
+              </div>
+            ) : (
+              <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '4rem', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '3rem' }}>📖</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Select or create a textbook to begin</div>
+                <button onClick={handleNewDoc} style={{ padding: '0.6rem 1.5rem', borderRadius: '10px', background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 12px ${C.blue}40` }}>+ Create New Textbook</button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {tab === 'tutor' && (
+        <AIWritingCorrector />
+      )}
+
       {tab === 'progress' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
@@ -2629,7 +2799,7 @@ export default function LearningGerman() {
         </div>
       )}
 
-      {showReview && <ReviewPanel vocab={vocab} onUpdateVocab={handleReviewUpdate} onClose={() => setShowReview(false)} />}
+      {showReview && <ReviewPanel vocab={vocab} onReviewVocab={handleReviewAction} onClose={() => setShowReview(false)} />}
       {showQuiz && <QuizModal vocab={vocab} onClose={() => setShowQuiz(false)} />}
       {showGrammarQuiz && <GrammarQuizModal grammar={grammar} onClose={() => setShowGrammarQuiz(false)} />}
       {showMCQuiz && <MultipleChoiceQuiz vocab={vocab} onClose={() => setShowMCQuiz(false)} />}

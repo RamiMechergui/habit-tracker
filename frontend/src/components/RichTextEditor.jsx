@@ -5,76 +5,396 @@ import { Underline } from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
-import { Image as ImageExt } from '@tiptap/extension-image';
 import { Placeholder } from '@tiptap/extension-placeholder';
+import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ResizableImage — custom TipTap Node
+   ═══════════════════════════════════════════════════════════════════════════
+   Fixes vs previous version:
+   1. applySize() now directly updates imgRef.current.style + node attrs
+   2. Float-based alignment so text wraps BESIDE the image
+   3. NodeViewWrapper uses float on the wrapper root (not flexbox)
+   4. Correct aspect-ratio math: ratio is stored on dragStart, not re-read
+*/
+const ResizableImageComponent = ({ node, updateAttributes }) => {
+  const [showControls, setShowControls] = useState(false);
+  const [aspectLocked, setAspectLocked] = useState(true);
+  const [wInput, setWInput] = useState('');
+  const [hInput, setHInput] = useState('');
+  const imgRef  = useRef(null);
+  const ratioRef = useRef(null); // stored aspect ratio during drag
+
+  const align   = node.attrs.align  || 'center';
+  const border  = node.attrs.border || false;
+  const shadow  = node.attrs.shadow || false;
+  const caption = node.attrs.caption || '';
+
+  /* ── sync input fields from node attrs ─────────────────────────────── */
+  useEffect(() => {
+    const w = node.attrs.width;
+    const h = node.attrs.height;
+    setWInput(typeof w === 'number' ? String(w) : '');
+    setHInput(typeof h === 'number' ? String(h) : '');
+  }, [node.attrs.width, node.attrs.height]);
+
+  /* ── derive CSS for the image itself ────────────────────────────────── */
+  const getImgStyle = () => {
+    const w = node.attrs.width;
+    const h = node.attrs.height;
+    return {
+      display:   'block',
+      width:     typeof w === 'number' ? `${w}px` : (w || '100%'),
+      height:    typeof h === 'number' ? `${h}px` : (h || 'auto'),
+      maxWidth:  '100%',
+      borderRadius: '6px',
+      border:    border ? '2px solid #94a3b8' : 'none',
+      boxShadow: shadow ? '0 4px 20px rgba(0,0,0,0.22)' : 'none',
+      outline:   showControls ? '2px solid #3b82f6' : 'none',
+      outlineOffset: 2,
+      cursor:    'pointer',
+    };
+  };
+
+  /* ── CSS float wrapper (lets text wrap beside the image) ─────────────  */
+  const getWrapperStyle = () => {
+    if (align === 'left')  return { float: 'left',  margin: '0.4rem 1.1rem 0.4rem 0', display: 'inline-block' };
+    if (align === 'right') return { float: 'right', margin: '0.4rem 0 0.4rem 1.1rem', display: 'inline-block' };
+    // center
+    return { display: 'block', clear: 'both', margin: '0.75rem auto', textAlign: 'center' };
+  };
+
+  /* ── Fix 1: applySize directly updates DOM AND node attrs ─────────── */
+  const applySize = useCallback(() => {
+    const nw = parseInt(wInput) || null;
+    const nh = parseInt(hInput) || null;
+    const img = imgRef.current;
+    if (img) {
+      img.style.width  = nw ? `${nw}px` : '';
+      img.style.height = nh && !aspectLocked ? `${nh}px` : (nw && aspectLocked && ratioRef.current ? `${Math.round(nw / ratioRef.current)}px` : '');
+    }
+    updateAttributes({ width: nw || undefined, height: nh && !aspectLocked ? nh : undefined });
+  }, [wInput, hInput, aspectLocked, updateAttributes]);
+
+  /* ── Drag resize ─────────────────────────────────────────────────────  */
+  const startCornerDrag = useCallback((e, corner) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const img = imgRef.current;
+    if (!img) return;
+    const rect   = img.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = rect.width;
+    const startH = rect.height;
+    const aspect = startW / (startH || 1);
+    ratioRef.current = aspect;
+
+    const onMove = (ev) => {
+      let dX = ev.clientX - startX;
+      let dY = ev.clientY - startY;
+      if (corner.includes('w')) dX = -dX;
+      if (corner.includes('n')) dY = -dY;
+      const delta = Math.abs(dX) > Math.abs(dY) ? dX : dY;
+      const newW = Math.max(40, Math.min(1400, startW + delta));
+      const newH = aspectLocked ? Math.round(newW / aspect) : Math.max(40, startH + (corner.includes('n') ? -(ev.clientY - startY) : (ev.clientY - startY)));
+      img.style.width  = `${newW}px`;
+      img.style.height = `${newH}px`;
+      setWInput(String(Math.round(newW)));
+      setHInput(String(Math.round(newH)));
+    };
+
+    const onUp = (ev) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      let dX = ev.clientX - startX;
+      let dY = ev.clientY - startY;
+      if (corner.includes('w')) dX = -dX;
+      if (corner.includes('n')) dY = -dY;
+      const delta = Math.abs(dX) > Math.abs(dY) ? dX : dY;
+      const newW = Math.max(40, Math.min(1400, startW + delta));
+      const newH = aspectLocked ? Math.round(newW / aspect) : Math.max(40, startH + (corner.includes('n') ? -(ev.clientY - startY) : (ev.clientY - startY)));
+      // FIX: also directly set style before updateAttributes
+      img.style.width  = `${newW}px`;
+      img.style.height = `${newH}px`;
+      updateAttributes({ width: Math.round(newW), height: Math.round(newH) });
+      setWInput(String(Math.round(newW)));
+      setHInput(String(Math.round(newH)));
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [aspectLocked, updateAttributes]);
+
+  /* ── Preset size buttons ─────────────────────────────────────────────  */
+  const applyPreset = useCallback((preset) => {
+    const img = imgRef.current;
+    if (img) {
+      img.style.width  = preset;
+      img.style.height = 'auto';
+    }
+    updateAttributes({ width: preset, height: 'auto' });
+    setWInput(''); setHInput('');
+  }, [updateAttributes]);
+
+  const btn = (active, children, onClick, title, style = {}) => (
+    <button type="button" onClick={onClick} title={title} style={{
+      border: 'none', borderRadius: 5, cursor: 'pointer', padding: '3px 7px',
+      fontSize: '0.72rem', fontWeight: 600, transition: 'all 0.15s',
+      background: active ? '#3b82f6' : 'rgba(255,255,255,0.12)',
+      color: active ? '#fff' : '#e2e8f0',
+      ...style,
+    }}>{children}</button>
+  );
+
+  const CORNERS = ['nw', 'ne', 'sw', 'se'];
+  const cornerPos = { nw: { top: -6, left: -6 }, ne: { top: -6, right: -6 }, sw: { bottom: -6, left: -6 }, se: { bottom: -6, right: -6 } };
+
+  return (
+    <NodeViewWrapper style={getWrapperStyle()} data-drag-handle contentEditable={false}>
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+
+        {/* ── Image ── */}
+        <img
+          ref={imgRef}
+          src={node.attrs.src}
+          alt={node.attrs.alt || ''}
+          style={getImgStyle()}
+          onClick={() => setShowControls(s => !s)}
+          draggable={false}
+        />
+
+        {/* ── Resize handles ── */}
+        {showControls && CORNERS.map(corner => (
+          <div key={corner}
+            onMouseDown={(e) => startCornerDrag(e, corner)}
+            style={{
+              position: 'absolute', ...cornerPos[corner],
+              width: 12, height: 12,
+              background: '#3b82f6', border: '2px solid #fff',
+              borderRadius: 3, cursor: `${corner}-resize`, zIndex: 20,
+              boxShadow: '0 1px 5px rgba(0,0,0,0.35)',
+            }}
+          />
+        ))}
+
+        {/* ── Floating toolbar ── */}
+        {showControls && (
+          <div style={{
+            position: 'absolute',
+            top: -48, left: '50%', transform: 'translateX(-50%)',
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: 10,
+            padding: '4px 6px',
+            display: 'flex', gap: 3, alignItems: 'center',
+            zIndex: 9999,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+          }}>
+            {/* Alignment */}
+            {btn(align === 'left',   '⬛◻◻', () => updateAttributes({ align: 'left' }),   'Align left — text flows beside image')}
+            {btn(align === 'center', '◻⬛◻', () => updateAttributes({ align: 'center' }), 'Centre — image on own line')}
+            {btn(align === 'right',  '◻◻⬛', () => updateAttributes({ align: 'right' }),  'Align right — text flows beside image')}
+
+            <span style={{ width: 1, background: '#475569', height: 18, margin: '0 2px', flexShrink: 0 }} />
+
+            {/* Presets */}
+            {[['25%', '¼'], ['50%', '½'], ['75%', '¾'], ['100%', 'Full']].map(([v, l]) =>
+              btn(node.attrs.width === v, l, () => applyPreset(v), `Set width to ${v}`, { minWidth: 28 })
+            )}
+
+            <span style={{ width: 1, background: '#475569', height: 18, margin: '0 2px', flexShrink: 0 }} />
+
+            {/* Pixel inputs */}
+            <input
+              type="number" value={wInput}
+              onChange={e => {
+                setWInput(e.target.value);
+                if (aspectLocked && imgRef.current && ratioRef.current === null) {
+                  const r = imgRef.current.getBoundingClientRect();
+                  ratioRef.current = r.width / (r.height || 1);
+                }
+                if (aspectLocked && ratioRef.current && e.target.value) {
+                  setHInput(String(Math.round(parseInt(e.target.value) / ratioRef.current)));
+                }
+              }}
+              placeholder="W px"
+              style={{ width: 50, fontSize: '0.7rem', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#f8fafc', padding: '2px 4px', outline: 'none', textAlign: 'center' }}
+            />
+            <button type="button" onClick={() => setAspectLocked(l => !l)} title={aspectLocked ? 'Aspect locked — click to unlock' : 'Aspect unlocked — click to lock'}
+              style={{ fontSize: '0.85rem', background: 'transparent', border: 'none', cursor: 'pointer', color: aspectLocked ? '#10b981' : '#64748b', padding: '0 2px' }}>
+              {aspectLocked ? '🔒' : '🔓'}
+            </button>
+            <input
+              type="number" value={hInput}
+              onChange={e => setHInput(e.target.value)}
+              disabled={aspectLocked}
+              placeholder="H px"
+              style={{ width: 50, fontSize: '0.7rem', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: aspectLocked ? '#475569' : '#f8fafc', padding: '2px 4px', outline: 'none', textAlign: 'center' }}
+            />
+            {/* ── Fix: green ✓ directly updates DOM style ── */}
+            <button type="button" onClick={applySize} title="Apply size"
+              style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', padding: '3px 8px', fontWeight: 700, fontSize: '0.8rem' }}>
+              ✓
+            </button>
+
+            <span style={{ width: 1, background: '#475569', height: 18, margin: '0 2px', flexShrink: 0 }} />
+
+            {/* Border / Shadow toggles */}
+            {btn(border, '▣', () => updateAttributes({ border: !border }), 'Toggle border')}
+            {btn(shadow, '◈', () => updateAttributes({ shadow: !shadow }), 'Toggle shadow')}
+
+            <span style={{ width: 1, background: '#475569', height: 18, margin: '0 2px', flexShrink: 0 }} />
+
+            {/* Close */}
+            <button type="button" onClick={() => setShowControls(false)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.9rem', padding: '0 2px' }} title="Close toolbar">
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Caption ── */}
+      <div style={{ textAlign: 'center', marginTop: 3 }}>
+        <input
+          type="text"
+          value={caption}
+          onChange={e => updateAttributes({ caption: e.target.value })}
+          placeholder="Add a caption…"
+          style={{
+            border: 'none', background: 'transparent',
+            borderBottom: caption ? '1px solid #475569' : '1px dashed #334155',
+            outline: 'none', fontSize: '0.78rem', color: '#94a3b8',
+            fontStyle: 'italic', textAlign: 'center',
+            width: '80%', padding: '1px 0',
+          }}
+        />
+      </div>
+    </NodeViewWrapper>
+  );
+};
+
+/* ── TipTap Node definition ─────────────────────────────────────────────── */
+const ResizableImage = Node.create({
+  name: 'resizableImage',
+  group: 'block',
+  atom: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      src:     { default: null },
+      alt:     { default: '' },
+      width:   { default: '100%' },
+      height:  { default: 'auto' },
+      align:   { default: 'center' },
+      caption: { default: '' },
+      border:  { default: false },
+      shadow:  { default: false },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'div[data-resizable-image]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    const { src, alt, width, height, align, caption, border, shadow } = HTMLAttributes;
+    const floatStyle = align === 'left'
+      ? 'float:left;margin:0.4rem 1.1rem 0.4rem 0;'
+      : align === 'right'
+      ? 'float:right;margin:0.4rem 0 0.4rem 1.1rem;'
+      : 'display:block;clear:both;margin:0.75rem auto;text-align:center;';
+    const imgStyle = [
+      `width:${typeof width === 'number' ? width + 'px' : (width || '100%')}`,
+      `height:${typeof height === 'number' ? height + 'px' : (height || 'auto')}`,
+      'max-width:100%',
+      'border-radius:6px',
+      border ? 'border:2px solid #94a3b8' : '',
+      shadow ? 'box-shadow:0 4px 20px rgba(0,0,0,0.22)' : '',
+    ].filter(Boolean).join(';');
+
+    const nodes = [
+      ['img', { src, alt, style: imgStyle }],
+    ];
+    if (caption) {
+      nodes.push(['p', { style: 'text-align:center;font-size:0.8rem;color:#6b7280;font-style:italic;margin:3px 0 0;' }, caption]);
+    }
+    return ['div', { 'data-resizable-image': '1', style: floatStyle }, ...nodes];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageComponent);
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Toolbar constants
+   ═══════════════════════════════════════════════════════════════════════════ */
 const COLORS = [
-  { label: 'Default', value: '#000000' },
-  { label: 'Red', value: '#dc2626' },
-  { label: 'Blue', value: '#3b82f6' },
-  { label: 'Green', value: '#10b981' },
-  { label: 'Orange', value: '#f59e0b' },
-  { label: 'Purple', value: '#8b5cf6' },
-  { label: 'Pink', value: '#ec4899' },
-  { label: 'Gray', value: '#6b7280' },
+  { label: 'Default',  value: '#000000' }, { label: 'Red',    value: '#dc2626' },
+  { label: 'Blue',     value: '#3b82f6' }, { label: 'Green',  value: '#10b981' },
+  { label: 'Orange',   value: '#f59e0b' }, { label: 'Purple', value: '#8b5cf6' },
+  { label: 'Pink',     value: '#ec4899' }, { label: 'Gray',   value: '#6b7280' },
 ];
-
 const HIGHLIGHTS = [
-  { label: 'None', value: 'transparent' },
-  { label: 'Yellow', value: '#fef08a' },
-  { label: 'Green', value: '#bbf7d0' },
-  { label: 'Blue', value: '#bfdbfe' },
-  { label: 'Pink', value: '#fbcfe8' },
-  { label: 'Orange', value: '#fed7aa' },
-  { label: 'Red', value: '#fecaca' },
+  { label: 'None',   value: 'transparent' }, { label: 'Yellow', value: '#fef08a' },
+  { label: 'Green',  value: '#bbf7d0' },     { label: 'Blue',   value: '#bfdbfe' },
+  { label: 'Pink',   value: '#fbcfe8' },     { label: 'Orange', value: '#fed7aa' },
+  { label: 'Red',    value: '#fecaca' },
 ];
-
 const HEADINGS = [
   { label: 'Paragraph', value: 0 },
-  { label: 'H1', value: 1 },
-  { label: 'H2', value: 2 },
-  { label: 'H3', value: 3 },
+  { label: 'Heading 1', value: 1 },
+  { label: 'Heading 2', value: 2 },
+  { label: 'Heading 3', value: 3 },
 ];
-
 const TB = {
   width: 30, height: 28, borderRadius: 5, cursor: 'pointer',
   border: 'none', background: 'transparent', color: 'var(--text-primary)',
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   fontSize: '0.78rem', transition: 'background 0.15s',
 };
-const TB_ACTIVE = { background: 'rgba(59,130,246,0.15)', color: '#3b82f6' };
+const TB_ACT = { background: 'rgba(59,130,246,0.15)', color: '#3b82f6' };
 
-export default function RichTextEditor({ value, onChange, placeholder, minHeight = 180, onUploadImage }) {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [headingOpen, setHeadingOpen] = useState(false);
-  const [colorOpen, setColorOpen] = useState(false);
-  const [highlightOpen, setHighlightOpen] = useState(false);
-  const containerRef = useRef(null);
-  const fileRef = useRef(null);
-  const headingRef = useRef(null);
-  const colorRef = useRef(null);
-  const highlightRef = useRef(null);
+/* ═══════════════════════════════════════════════════════════════════════════
+   RichTextEditor
+   ═══════════════════════════════════════════════════════════════════════════
+   Fix: isInternalChange ref prevents value-sync loop when
+        updateAttributes() fires → onChange() → parent sets noteContent
+        → value prop changes → setContent resets editor.
+*/
+export default function RichTextEditor({ value, onChange, placeholder, minHeight = 240, onUploadImage }) {
+  const [headingOpen,    setHeadingOpen]    = useState(false);
+  const [colorOpen,      setColorOpen]      = useState(false);
+  const [highlightOpen,  setHighlightOpen]  = useState(false);
+  const containerRef   = useRef(null);
+  const fileRef        = useRef(null);
+  const headingRef     = useRef(null);
+  const colorRef       = useRef(null);
+  const highlightRef   = useRef(null);
+  const isInternalChange = useRef(false); // ← prevents reset loop
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-        history: { depth: 50 },
-      }),
-      Underline,
-      TextStyle,
-      Color,
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, history: { depth: 50 } }),
+      Underline, TextStyle, Color,
       Highlight.configure({ multicolor: true }),
-      ImageExt.configure({ allowBase64: true }),
-      Placeholder.configure({ placeholder: placeholder || 'Type here...' }),
+      ResizableImage,
+      Placeholder.configure({ placeholder: placeholder || 'Type here…' }),
     ],
     content: value || '',
     onUpdate: ({ editor }) => {
+      isInternalChange.current = true;
       onChange?.(editor.getHTML());
     },
     editorProps: {
       attributes: {
-        style: `min-height: ${minHeight}px; padding: 0.75rem 0.85rem; line-height: 1.7; font-size: 0.9rem; color: var(--text-primary); outline: none; font-family: inherit; cursor: text;`,
+        style: `min-height:${minHeight}px;padding:0.85rem 1rem;line-height:1.75;font-size:0.95rem;color:var(--text-primary);outline:none;font-family:inherit;cursor:text;`,
       },
       handlePaste: (view, event) => {
         const items = event.clipboardData?.items;
@@ -82,12 +402,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         for (const item of items) {
           if (item.type.startsWith('image/')) {
             event.preventDefault();
-            const file = item.getAsFile();
-            if (file && onUploadImage) {
-              onUploadImage(file).then(url => {
-                if (url) editor?.chain().focus().setImage({ src: url }).run();
-              });
-            }
+            insertImageFile(item.getAsFile());
             return true;
           }
         }
@@ -95,20 +410,11 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       },
       handleDrop: (view, event) => {
         const files = event.dataTransfer?.files;
-        if (!files) return false;
+        if (!files?.length) return false;
         for (const file of files) {
           if (file.type.startsWith('image/')) {
             event.preventDefault();
-            if (onUploadImage) {
-              const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
-              onUploadImage(file).then(url => {
-                if (url && editor) {
-                  const chain = editor.chain().focus();
-                  if (pos) chain.setTextSelection(pos.pos);
-                  chain.setImage({ src: url }).run();
-                }
-              });
-            }
+            insertImageFile(file);
             return true;
           }
         }
@@ -117,193 +423,119 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     },
   });
 
+  /* ── Sync external value only when it comes from OUTSIDE the editor ── */
   useEffect(() => {
+    if (isInternalChange.current) {
+      isInternalChange.current = false;
+      return;
+    }
     if (editor && value !== undefined && value !== editor.getHTML()) {
-      const { from, to } = editor.state.selection;
       editor.commands.setContent(value || '', false);
-      if (from && to) editor.commands.setTextSelection({ from, to });
     }
   }, [value, editor]);
 
-  useEffect(() => {
-    if (!editor) return;
-    const onSelect = () => {
-      const { selection } = editor.state;
-      if (selection.node && selection.node.type.name === 'image') {
-        const dom = editor.view.nodeDOM(selection.from);
-        if (dom) {
-          const rect = dom.getBoundingClientRect();
-          setSelectedImage({ el: dom, rect });
-        }
-      } else {
-        setSelectedImage(null);
-      }
-    };
-    editor.on('selectionUpdate', onSelect);
-    return () => { editor.off('selectionUpdate', onSelect); };
-  }, [editor]);
-
-  useEffect(() => {
-    if (!selectedImage) return;
-    function onScroll() {
-      const el = selectedImage.el;
-      if (el && el.parentNode) {
-        const r = el.getBoundingClientRect();
-        setSelectedImage(prev => prev ? { ...prev, rect: r } : null);
-      }
-    }
-    window.addEventListener('scroll', onScroll, true);
-    return () => window.removeEventListener('scroll', onScroll, true);
-  }, [selectedImage]);
-
-  useEffect(() => {
-    if (!selectedImage) return;
-    function onAnyMouseDown(e) {
-      const isImg = e.target.closest('img') && editor?.view?.dom?.contains(e.target.closest('img'));
-      const isOverlay = e.target.closest('[data-richtext-image-overlay]');
-      if (!isImg && !isOverlay) setSelectedImage(null);
-    }
-    document.addEventListener('mousedown', onAnyMouseDown);
-    return () => document.removeEventListener('mousedown', onAnyMouseDown);
-  }, [selectedImage, editor]);
-
+  /* ── Close dropdowns on outside click ───────────────────────────────── */
   useEffect(() => {
     if (!headingOpen && !colorOpen && !highlightOpen) return;
-    function onOutside(e) {
-      if (headingOpen && headingRef.current && !headingRef.current.contains(e.target)) setHeadingOpen(false);
-      if (colorOpen && colorRef.current && !colorRef.current.contains(e.target)) setColorOpen(false);
+    const cb = (e) => {
+      if (headingOpen   && headingRef.current   && !headingRef.current.contains(e.target))   setHeadingOpen(false);
+      if (colorOpen     && colorRef.current     && !colorRef.current.contains(e.target))     setColorOpen(false);
       if (highlightOpen && highlightRef.current && !highlightRef.current.contains(e.target)) setHighlightOpen(false);
-    }
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
+    };
+    document.addEventListener('mousedown', cb);
+    return () => document.removeEventListener('mousedown', cb);
   }, [headingOpen, colorOpen, highlightOpen]);
 
-  const isActive = (name, attrs) => editor?.isActive(name, attrs) || false;
-  const insertImage = useCallback(() => fileRef.current?.click(), []);
+  const isAct = (name, attrs) => editor?.isActive(name, attrs) || false;
+
+  /* ── Image insertion ─────────────────────────────────────────────────── */
+  const insertImageFile = useCallback(async (file) => {
+    if (!editor || !file) return;
+    let src;
+    if (onUploadImage) {
+      src = await onUploadImage(file);
+    } else {
+      src = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(file);
+      });
+    }
+    if (src) {
+      editor.chain().focus().insertContent({
+        type: 'resizableImage',
+        attrs: { src, alt: file.name, width: '100%', height: 'auto', align: 'center' },
+      }).run();
+    }
+  }, [editor, onUploadImage]);
 
   const handleFileSelected = useCallback(async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !onUploadImage) return;
-    const url = await onUploadImage(file);
-    if (url && editor) editor.chain().focus().setImage({ src: url }).run();
+    if (file) await insertImageFile(file);
     e.target.value = '';
-  }, [editor, onUploadImage]);
-
-  const handleImgResizeStart = useCallback((e, corner) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const img = selectedImage?.el;
-    if (!img) return;
-    const rect = img.getBoundingClientRect();
-    const startX = e.clientX, startY = e.clientY;
-    const startW = rect.width, startH = rect.height;
-    const aspect = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : startW / startH || 1;
-    const maxW = containerRef.current?.clientWidth || 1200;
-
-    function onMove(ev) {
-      let d = ev.clientX - startX;
-      if (corner.includes('w')) d = -d;
-      const dFromY = (ev.clientY - startY) * aspect;
-      if (corner.includes('s') && Math.abs(dFromY) > Math.abs(d)) d = dFromY;
-      if (corner.includes('n') && Math.abs(-dFromY) > Math.abs(d)) d = -dFromY;
-      let newW = Math.min(maxW, Math.max(30, startW + d));
-      img.style.width = `${newW}px`;
-      img.style.height = `${newW / aspect}px`;
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      if (editor) {
-        const w = img.style.width ? parseInt(img.style.width) : null;
-        editor.chain().focus().updateAttributes('image', { width: w }).run();
-      }
-      const r = img.getBoundingClientRect();
-      setSelectedImage(prev => prev ? { ...prev, rect: r } : null);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [selectedImage, editor]);
-
-  const handleImgAlign = useCallback((align) => {
-    const imgEl = selectedImage?.el;
-    if (!imgEl || !editor) return;
-    const s = imgEl.style;
-    // eslint-disable-next-line react-hooks/immutability
-    s.float = '';
-    s.display = '';
-    s.margin = '';
-    if (align === 'left') { s.float = 'left'; s.margin = '0.5rem 1rem 0.5rem 0'; }
-    else if (align === 'right') { s.float = 'right'; s.margin = '0.5rem 0 0.5rem 1rem'; }
-    else if (align === 'center') { s.display = 'block'; s.margin = '0.5rem auto'; }
-    const r = imgEl.getBoundingClientRect();
-    setSelectedImage(prev => prev ? { ...prev, rect: r } : null);
-  }, [selectedImage, editor]);
-
-  const handleImgDelete = useCallback(() => {
-    if (!editor || !selectedImage) return;
-    editor.chain().focus().deleteSelection().run();
-    setSelectedImage(null);
-  }, [editor, selectedImage]);
-
-  const toggleBold = () => editor?.chain().focus().toggleBold().run();
-  const toggleItalic = () => editor?.chain().focus().toggleItalic().run();
-  const toggleUnderline = () => editor?.chain().focus().toggleUnderline().run();
-  const toggleStrike = () => editor?.chain().focus().toggleStrike().run();
-  const toggleBullet = () => editor?.chain().focus().toggleBulletList().run();
-  const toggleOrdered = () => editor?.chain().focus().toggleOrderedList().run();
-  const setHeading = (level) => editor?.chain().focus().toggleHeading({ level }).run();
-  const setParagraph = () => editor?.chain().focus().setParagraph().run();
-  const setColor = (c) => editor?.chain().focus().setColor(c === '#000000' ? '' : c).run();
-  const setHighlight = (c) => editor?.chain().focus().toggleHighlight({ color: c === 'transparent' ? undefined : c }).run();
-  const undo = () => editor?.chain().focus().undo().run();
-  const redo = () => editor?.chain().focus().redo().run();
+  }, [insertImageFile]);
 
   if (!editor) return null;
 
+  const currentH = HEADINGS.find(h => h.value !== 0 && isAct('heading', { level: h.value }))?.label || 'Para';
+
   return (
-    <div ref={containerRef} style={{
-      border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden',
-      background: 'var(--bg)',
-    }}>
+    <div ref={containerRef} style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg)' }}>
       <style>{`
-        .rte-toolbar { display: flex; gap: 1px; flex-wrap: wrap; padding: 4px 6px; border-bottom: 1px solid var(--border); background: var(--bg-card); align-items: center; }
-        .rte-toolbar button:hover { background: var(--dn-hover-bg, rgba(128,128,128,0.08)); }
-        .rte-divider { width: 1px; height: 20px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
-        .rte-dropdown-btn { position: relative; }
-        .rte-dropdown-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; z-index: 200; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 120px; overflow: hidden; }
-        .rte-dropdown-menu button { display: block; width: 100%; text-align: left; padding: 7px 14px; font-size: 0.82rem; background: none; border: none; color: var(--text-primary); cursor: pointer; }
-        .rte-dropdown-menu button:hover { background: var(--dn-hover-bg, rgba(128,128,128,0.08)); }
-        .rte-dropdown-menu button.active { background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: 600; }
-        .rte-color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; }
-        .rte-color-grid button { width: 26px; height: 26px; border-radius: 5px; border: 1px solid var(--border); cursor: pointer; padding: 0; }
-        .rte-color-grid button:hover { transform: scale(1.15); }
-        .rte-color-grid button.active { outline: 2px solid #3b82f6; outline-offset: 2px; }
-        .ProseMirror p.is-editor-empty:first-child::before { color: var(--text-muted); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
-        .ProseMirror img { max-width: 100%; height: auto; }
-        .ProseMirror ul, .ProseMirror ol { padding-left: 1.5rem; }
-        .ProseMirror h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
-        .ProseMirror h2 { font-size: 1.25rem; font-weight: 700; margin: 0.4rem 0; }
-        .ProseMirror h3 { font-size: 1.1rem; font-weight: 600; margin: 0.3rem 0; }
+        .rte-toolbar { display:flex; gap:1px; flex-wrap:wrap; padding:5px 8px; border-bottom:1px solid var(--border); background:var(--bg-card); align-items:center; }
+        .rte-toolbar button:hover { background:rgba(128,128,128,0.1); }
+        .rte-sep { width:1px; height:20px; background:var(--border); margin:0 4px; flex-shrink:0; }
+        .rte-dd { position:relative; }
+        .rte-menu { position:absolute; top:calc(100% + 4px); left:0; z-index:600; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,0.2); min-width:130px; overflow:hidden; }
+        .rte-menu button { display:block; width:100%; text-align:left; padding:7px 14px; font-size:0.82rem; background:none; border:none; color:var(--text-primary); cursor:pointer; }
+        .rte-menu button:hover { background:rgba(59,130,246,0.08); }
+        .rte-menu button.on { background:rgba(59,130,246,0.12); color:#3b82f6; font-weight:600; }
+        .rte-cgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:8px; }
+        .rte-cgrid button { width:26px; height:26px; border-radius:5px; border:1px solid var(--border); cursor:pointer; padding:0; }
+        .rte-cgrid button:hover { transform:scale(1.15); }
+        .rte-cgrid button.on { outline:2px solid #3b82f6; outline-offset:2px; }
+
+        /* ProseMirror body */
+        .rte-body .ProseMirror { outline:none; overflow:auto; }
+        .rte-body .ProseMirror::after { content:''; display:table; clear:both; }
+        .rte-body .ProseMirror p.is-editor-empty:first-child::before { color:var(--text-muted); content:attr(data-placeholder); float:left; height:0; pointer-events:none; }
+        .rte-body .ProseMirror h1 { font-size:1.55rem; font-weight:800; margin:1rem 0 0.4rem; }
+        .rte-body .ProseMirror h2 { font-size:1.25rem; font-weight:700; margin:0.85rem 0 0.35rem; }
+        .rte-body .ProseMirror h3 { font-size:1.05rem; font-weight:600; margin:0.75rem 0 0.3rem; }
+        .rte-body .ProseMirror ul, .rte-body .ProseMirror ol { padding-left:1.5rem; }
+        .rte-body .ProseMirror li+li { margin-top:0.2rem; }
+        .rte-body .ProseMirror blockquote { border-left:3px solid #3b82f6; padding-left:1rem; margin:0.75rem 0; color:var(--text-muted); font-style:italic; }
+        .rte-body .ProseMirror code { background:rgba(128,128,128,0.1); border-radius:3px; padding:1px 4px; font-size:0.88em; font-family:monospace; }
+        .rte-body .ProseMirror hr { border:none; border-top:1px solid var(--border); margin:1rem 0; }
+        .rte-body .ProseMirror mark { border-radius:3px; padding:1px 2px; }
+        /* clearfix so floated images don't overflow the editor */
+        .rte-body .ProseMirror > *:last-child { clear:both; }
       `}</style>
 
-      {/* Toolbar */}
+      {/* ── Toolbar ── */}
       <div className="rte-toolbar">
-        <button type="button" onClick={toggleBold} title="Bold" style={{ ...TB, fontWeight: 800, ...(isActive('bold') ? TB_ACTIVE : {}) }}><b>B</b></button>
-        <button type="button" onClick={toggleItalic} title="Italic" style={{ ...TB, fontStyle: 'italic', ...(isActive('italic') ? TB_ACTIVE : {}) }}><i>I</i></button>
-        <button type="button" onClick={toggleUnderline} title="Underline" style={{ ...TB, ...(isActive('underline') ? TB_ACTIVE : {}) }}><u>U</u></button>
-        <button type="button" onClick={toggleStrike} title="Strikethrough" style={{ ...TB, ...(isActive('strike') ? TB_ACTIVE : {}) }}><s>S</s></button>
+        {/* Text format */}
+        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} title="Bold"
+          style={{ ...TB, fontWeight:800, ...(isAct('bold') ? TB_ACT : {}) }}><b>B</b></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic"
+          style={{ ...TB, fontStyle:'italic', ...(isAct('italic') ? TB_ACT : {}) }}><i>I</i></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline"
+          style={{ ...TB, ...(isAct('underline') ? TB_ACT : {}) }}><u>U</u></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} title="Strike"
+          style={{ ...TB, ...(isAct('strike') ? TB_ACT : {}) }}><s>S</s></button>
 
-        <div className="rte-divider" />
+        <div className="rte-sep" />
 
-        <div className="rte-dropdown-btn" ref={headingRef}>
-          <button type="button" onClick={() => setHeadingOpen(p => !p)} style={{ ...TB, minWidth: 52, fontSize: '0.72rem', gap: 2 }}>
-            {HEADINGS.find(h => isActive('heading', { level: h.value }))?.label || 'P'} ▾
-          </button>
+        {/* Headings */}
+        <div className="rte-dd" ref={headingRef}>
+          <button type="button" onClick={() => setHeadingOpen(p => !p)}
+            style={{ ...TB, minWidth:58, fontSize:'0.72rem' }}>{currentH} ▾</button>
           {headingOpen && (
-            <div className="rte-dropdown-menu">
+            <div className="rte-menu">
               {HEADINGS.map(h => (
-                <button key={h.value} type="button" className={isActive('heading', { level: h.value }) ? 'active' : ''}
-                  onClick={() => { h.value === 0 ? setParagraph() : setHeading(h.value); setHeadingOpen(false); }}>
+                <button key={h.value} type="button"
+                  className={isAct('heading', { level: h.value }) || (h.value===0 && !isAct('heading')) ? 'on' : ''}
+                  onClick={() => { h.value===0 ? editor.chain().focus().setParagraph().run() : editor.chain().focus().toggleHeading({ level:h.value }).run(); setHeadingOpen(false); }}>
                   {h.label}
                 </button>
               ))}
@@ -311,105 +543,79 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
           )}
         </div>
 
-        <div className="rte-divider" />
+        <div className="rte-sep" />
 
-        <button type="button" onClick={toggleBullet} title="Bullet List" style={{ ...TB, ...(isActive('bulletList') ? TB_ACTIVE : {}) }}>•</button>
-        <button type="button" onClick={toggleOrdered} title="Numbered List" style={{ ...TB, ...(isActive('orderedList') ? TB_ACTIVE : {}) }}>1.</button>
+        {/* Lists & quote */}
+        <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} title="Bullet list"
+          style={{ ...TB, ...(isAct('bulletList') ? TB_ACT : {}) }}>•≡</button>
+        <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Numbered list"
+          style={{ ...TB, ...(isAct('orderedList') ? TB_ACT : {}) }}>1≡</button>
+        <button type="button" onClick={() => editor.chain().focus().toggleBlockquote().run()} title="Quote"
+          style={{ ...TB, ...(isAct('blockquote') ? TB_ACT : {}) }}>❝</button>
 
-        <div className="rte-divider" />
+        <div className="rte-sep" />
 
-        <div className="rte-dropdown-btn" ref={colorRef}>
-          <button type="button" onClick={() => setColorOpen(p => !p)} title="Text Color" style={{ ...TB }}>
-            <span style={{ textDecoration: 'underline', textDecorationColor: '#dc2626', textUnderlineOffset: 3 }}>A</span>
+        {/* Text color */}
+        <div className="rte-dd" ref={colorRef}>
+          <button type="button" onClick={() => setColorOpen(p => !p)} title="Text color" style={TB}>
+            <span style={{ textDecoration:'underline', textDecorationColor:'#dc2626', textUnderlineOffset:3 }}>A</span>
           </button>
           {colorOpen && (
-            <div className="rte-dropdown-menu" style={{ minWidth: 130 }}>
-              <div className="rte-color-grid">
+            <div className="rte-menu" style={{ minWidth:130 }}>
+              <div className="rte-cgrid">
                 {COLORS.map(c => (
-                  <button key={c.value} type="button" title={c.label} className={isActive('textStyle', { color: c.value }) ? 'active' : ''}
-                    style={{ background: c.value }} onClick={() => { setColor(c.value); setColorOpen(false); }} />
+                  <button key={c.value} type="button" title={c.label}
+                    style={{ background:c.value }}
+                    onClick={() => { editor.chain().focus().setColor(c.value==='#000000' ? '' : c.value).run(); setColorOpen(false); }} />
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        <div className="rte-dropdown-btn" ref={highlightRef}>
-          <button type="button" onClick={() => setHighlightOpen(p => !p)} title="Highlight Color" style={{ ...TB }}>
-            <span style={{ background: '#fef08a', padding: '0 2px', borderRadius: 2, lineHeight: 1.2 }}>A</span>
+        {/* Highlight */}
+        <div className="rte-dd" ref={highlightRef}>
+          <button type="button" onClick={() => setHighlightOpen(p => !p)} title="Highlight" style={TB}>
+            <span style={{ background:'#fef08a', padding:'0 2px', borderRadius:2 }}>A</span>
           </button>
           {highlightOpen && (
-            <div className="rte-dropdown-menu" style={{ minWidth: 130 }}>
-              <div className="rte-color-grid">
+            <div className="rte-menu" style={{ minWidth:130 }}>
+              <div className="rte-cgrid">
                 {HIGHLIGHTS.map(h => (
                   <button key={h.value} type="button" title={h.label}
-                    style={{ background: h.value, border: h.value === 'transparent' ? '1px dashed #ccc' : '1px solid var(--border)' }}
-                    onClick={() => { setHighlight(h.value); setHighlightOpen(false); }} />
+                    style={{ background:h.value, border:h.value==='transparent'?'1px dashed #ccc':'1px solid var(--border)' }}
+                    onClick={() => { editor.chain().focus().toggleHighlight({ color:h.value==='transparent'?undefined:h.value }).run(); setHighlightOpen(false); }} />
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        <div className="rte-divider" />
+        <div className="rte-sep" />
 
-        <button type="button" onClick={insertImage} title="Insert Image" style={TB}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        </button>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" style={{ display: 'none' }} onChange={handleFileSelected} />
+        {/* Image insert */}
+        <button type="button" onClick={() => fileRef.current?.click()}
+          title="Insert image — or paste / drag & drop into editor"
+          style={{ ...TB, fontSize:'1rem' }}>🖼</button>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" style={{ display:'none' }} onChange={handleFileSelected} />
 
-        <div className="rte-divider" />
+        <div className="rte-sep" />
 
-        <button type="button" onClick={undo} title="Undo" style={{ ...TB, fontSize: '0.85rem' }}>↶</button>
-        <button type="button" onClick={redo} title="Redo" style={{ ...TB, fontSize: '0.85rem' }}>↷</button>
+        {/* Undo / Redo */}
+        <button type="button" onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)"
+          style={{ ...TB, fontSize:'0.9rem' }}>↶</button>
+        <button type="button" onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)"
+          style={{ ...TB, fontSize:'0.9rem' }}>↷</button>
+
+        <span style={{ marginLeft:'auto', fontSize:'0.67rem', color:'var(--text-muted)', flexShrink:0, paddingRight:4 }}>
+          🖼 Click image to resize &amp; position
+        </span>
       </div>
 
-      {/* Editor */}
-      <EditorContent editor={editor} />
-
-      {/* Image overlay */}
-      {selectedImage && selectedImage.rect && (
-        <div data-richtext-image-overlay style={{
-          position: 'fixed', pointerEvents: 'none', zIndex: 100,
-          left: selectedImage.rect.left - 4, top: selectedImage.rect.top - 4,
-          width: selectedImage.rect.width + 8, height: selectedImage.rect.height + 8,
-          border: '2px solid #3b82f6', borderRadius: 4,
-        }}>
-          {['nw','ne','sw','se'].map(corner => (
-            <div key={corner} onMouseDown={e => handleImgResizeStart(e, corner)} style={{
-              position: 'absolute', width: 10, height: 10, background: '#fff',
-              border: '2px solid #3b82f6', borderRadius: 2, pointerEvents: 'auto', zIndex: 101,
-              cursor: corner.includes('n') ? (corner.includes('w') ? 'nw-resize' : 'ne-resize') : (corner.includes('w') ? 'sw-resize' : 'se-resize'),
-              ...(corner === 'nw' ? { top: -5, left: -5 } : {}),
-              ...(corner === 'ne' ? { top: -5, right: -5 } : {}),
-              ...(corner === 'sw' ? { bottom: -5, left: -5 } : {}),
-              ...(corner === 'se' ? { bottom: -5, right: -5 } : {}),
-            }} />
-          ))}
-        </div>
-      )}
-      {/* Image toolbar */}
-      {selectedImage && selectedImage.rect && (
-        <div data-richtext-image-overlay style={{
-          position: 'fixed', zIndex: 101, display: 'flex', gap: 2,
-          left: selectedImage.rect.left,
-          top: selectedImage.rect.top - 36 < 4 ? selectedImage.rect.bottom + 4 : selectedImage.rect.top - 36,
-          background: '#1e293b', borderRadius: 8, padding: '3px 4px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        }}>
-          {[{a:'left',l:'⬅'},{a:'center',l:'⇔'},{a:'right',l:'➡'}].map(({a,l}) => (
-            <button key={a} type="button" title={`Align ${a}`} onClick={() => handleImgAlign(a)}
-              style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#fff',fontSize:'0.75rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
-              {l}
-            </button>
-          ))}
-          <span style={{ width:1,height:20,background:'#ffffff30',margin:'0 2px',alignSelf:'center' }} />
-          <button type="button" title="Delete image" onClick={handleImgDelete}
-            style={{ width:26,height:26,borderRadius:4,cursor:'pointer',border:'none',background:'transparent',color:'#ef4444',fontSize:'0.85rem',display:'flex',alignItems:'center',justifyContent:'center' }}>
-            🗑
-          </button>
-        </div>
-      )}
+      {/* ── Editor body ── */}
+      <div className="rte-body">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }
