@@ -77,6 +77,23 @@ export default function TaskCard({
   const [progress,       setProgress]       = useState(() => getTimeProgress(task.time, task.duration));
   const [timerOn,        setTimerOn]        = useState(false);
   const [timerSeconds,   setTimerSeconds]   = useState(0);
+  const [completionFlash, setCompletionFlash] = useState(false);
+
+  // ── Deep focus ring calculation ──
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 11; // r=11
+  const targetDurationMins = task.targetDuration || 0;               // minutes
+  const accumulatedMins    = (task.deepWorkHours || 0) * 60;         // deepWorkHours is in hours
+  const deepFocusPct = targetDurationMins > 0
+    ? Math.min(100, (accumulatedMins / targetDurationMins) * 100)
+    : 0;
+  const ringState = targetDurationMins === 0 ? 'none'
+    : deepFocusPct >= 100 ? 'done'
+    : deepFocusPct > 0    ? 'progressing'
+    : 'planned';
+  const dashOffset = RING_CIRCUMFERENCE * (1 - deepFocusPct / 100);
+  const ringBadgeLabel = targetDurationMins > 0
+    ? `${Math.round(accumulatedMins)}/${targetDurationMins}m`
+    : '';
 
   // #27 — Ambient timer tick
   useEffect(() => {
@@ -117,7 +134,7 @@ export default function TaskCard({
     }
     try { navigator.vibrate?.(10); } catch {}
     onUpdateStatus(status);
-  }, [task.status, onUpdateStatus]);
+  }, [task.status, task.title, onUpdateStatus]);
 
   const handleTouchEnd = useCallback(() => {
     if (longPress.current) { clearTimeout(longPress.current); longPress.current = null; }
@@ -245,6 +262,26 @@ export default function TaskCard({
         {task.priority === 'critical' && statusKey !== 'Completed' && (
           <div className="critical-pulse-ring" aria-hidden="true" />
         )}
+
+        {/* Deep Focus progress ring */}
+        {ringState !== 'none' && (
+          <div className={`focus-ring-wrap focus-ring--${ringState}`} aria-hidden="true">
+            <svg className="focus-ring-svg" viewBox="0 0 28 28">
+              <circle className="focus-ring-track" cx="14" cy="14" r="11" />
+              <circle
+                className="focus-ring-fill"
+                cx="14" cy="14" r="11"
+                style={{ strokeDashoffset: dashOffset }}
+              />
+            </svg>
+            {durationH >= 56 && (
+              <div className={`focus-ring-badge ${ringState}`}>{ringBadgeLabel}</div>
+            )}
+          </div>
+        )}
+
+        {/* Completion flash overlay */}
+        {completionFlash && <div className="focus-ring-complete-flash" aria-hidden="true" />}
 
         <div className="task-card-body">
           {/* Title row */}

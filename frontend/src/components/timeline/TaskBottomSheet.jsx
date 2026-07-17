@@ -126,6 +126,7 @@ export default function TaskBottomSheet({
   const [cloneDate,           setCloneDate]           = useState('');
   const [linkedPage,          setLinkedPage]          = useState('');
   const [deepWorkHours,       setDeepWorkHours]       = useState(0);
+  const [targetDuration,      setTargetDuration]      = useState(0);   // minutes, 0 = disabled
   const [subtasks,            setSubtasks]            = useState([]);
   const [subtaskInput,        setSubtaskInput]        = useState('');
   const [dependsOn,           setDependsOn]           = useState([]);
@@ -188,6 +189,7 @@ export default function TaskBottomSheet({
       setTags(initialData.tags || []);
       setLinkedPage(initialData.linkedPage || '');
       setDeepWorkHours(initialData.deepWorkHours || 0);
+      setTargetDuration(initialData.targetDuration || 0);
       setSubtasks(initialData.subtasks || []);
       setDependsOn(initialData.dependsOn || []);
       setEditScope('this');
@@ -203,6 +205,7 @@ export default function TaskBottomSheet({
       setPriority('medium'); setCategories(['Other']); setStatus('Pending');
       setDelayReason(''); setRecurrence('none'); setCustomDays([]); setEndDate(''); setEditScope('this');
       setDeepWorkHours(0);
+      setTargetDuration(0);
     }
   }, [initialData, isOpen, suggestedHour, defaultDuration, intervalGranularity]);
 
@@ -258,6 +261,7 @@ export default function TaskBottomSheet({
       tags:                tags.length > 0 ? tags : undefined,
       linkedPage:          linkedPage || undefined,
       deepWorkHours:       deepWorkHours || 0,
+      targetDuration:      targetDuration || 0,
       subtasks:            subtasks.length > 0 ? subtasks : undefined,
       dependsOn:           dependsOn.length > 0 ? dependsOn : undefined,
       createdAt:           initialData?.createdAt || new Date().toISOString(),
@@ -461,6 +465,61 @@ export default function TaskBottomSheet({
                 onChange={e => setDeepWorkHours(parseFloat(e.target.value) || 0)}
                 style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'rgba(255,255,255,0.04)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'var(--font-sans)', outline:'none' }}
               />
+            </div>
+
+            {/* Deep Focus Target — auto-completion */}
+            <div>
+              <span className="sheet-field-label">
+                🎯 Deep Focus Target
+                <span style={{ fontWeight:400, fontSize:'0.7rem', opacity:0.5 }}>  (auto-completes when reached)</span>
+              </span>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:4, flex:1 }}>
+                  <select
+                    id="target-hours"
+                    value={Math.floor((targetDuration || 0) / 60)}
+                    onChange={e => {
+                      const h = parseInt(e.target.value) || 0;
+                      const m = (targetDuration || 0) % 60;
+                      setTargetDuration(h * 60 + m);
+                    }}
+                    style={{ flex:1, padding:'8px 6px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', fontSize:'0.85rem', fontWeight:700, fontFamily:'var(--font-sans)', outline:'none', textAlign:'center' }}
+                    aria-label="Target hours"
+                  >
+                    {Array.from({length:9},(_,i)=>(
+                      <option key={i} value={i}>{i}h</option>
+                    ))}
+                  </select>
+                  <span style={{ color:'var(--text-muted)', fontWeight:700 }}>:</span>
+                  <select
+                    id="target-mins"
+                    value={Math.round(((targetDuration || 0) % 60) / 15) * 15}
+                    onChange={e => {
+                      const h = Math.floor((targetDuration || 0) / 60);
+                      const m = parseInt(e.target.value) || 0;
+                      setTargetDuration(h * 60 + m);
+                    }}
+                    style={{ flex:1, padding:'8px 6px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', fontSize:'0.85rem', fontWeight:700, fontFamily:'var(--font-sans)', outline:'none', textAlign:'center' }}
+                    aria-label="Target minutes"
+                  >
+                    {[0,15,30,45].map(m=>(
+                      <option key={m} value={m}>{String(m).padStart(2,'0')}m</option>
+                    ))}
+                  </select>
+                </div>
+                {targetDuration > 0 && (
+                  <button
+                    onClick={() => setTargetDuration(0)}
+                    style={{ background:'rgba(239,68,68,0.1)', border:'none', borderRadius:8, padding:'8px 10px', color:'#ef4444', cursor:'pointer', fontSize:'0.72rem', fontWeight:600, fontFamily:'var(--font-sans)', whiteSpace:'nowrap' }}
+                    title="Remove target"
+                  >✕ Off</button>
+                )}
+              </div>
+              {targetDuration > 0 && (
+                <div style={{ marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', color:'#818cf8', fontSize:'0.72rem', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
+                  ⚡ Task auto-completes after {Math.floor(targetDuration/60) > 0 ? `${Math.floor(targetDuration/60)}h ` : ''}{targetDuration % 60 > 0 ? `${targetDuration % 60}m ` : ''}of validated Deep Focus
+                </div>
+              )}
             </div>
 
             {/* #33 — Task dependencies */}

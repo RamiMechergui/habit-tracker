@@ -266,6 +266,7 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
     section.lessons = [...(section.lessons || []), summary];
     section.deepWorkSessions = [...(section.deepWorkSessions || []), ...blocks];
     updatedLog[targetSection] = section;
+
     // Update the task's deepWorkHours field
     const focusHours = focusMins / 60;
     let tasksArr = [];
@@ -273,12 +274,52 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
     else if (updatedLog.tasks?.tasks && Array.isArray(updatedLog.tasks.tasks)) tasksArr = [...updatedLog.tasks.tasks];
     const tIdx = tasksArr.findIndex(t => t.id === task.id);
     if (tIdx >= 0) {
-      tasksArr[tIdx] = { ...tasksArr[tIdx], deepWorkHours: (tasksArr[tIdx].deepWorkHours || 0) + focusHours };
+      const prevHours = tasksArr[tIdx].deepWorkHours || 0;
+      const newHours  = prevHours + focusHours;
+      tasksArr[tIdx] = { ...tasksArr[tIdx], deepWorkHours: newHours };
+
+      // ── AUTO-COMPLETION CHECK ──
+      const targetMins = tasksArr[tIdx].targetDuration || 0;
+      if (
+        targetMins > 0 &&
+        tasksArr[tIdx].status !== 'Completed' &&
+        newHours * 60 >= targetMins
+      ) {
+        tasksArr[tIdx] = { ...tasksArr[tIdx], status: 'Completed' };
+        // Fire the completion event (TaskCard listens for confetti)
+        window.dispatchEvent(new CustomEvent('task-completed', {
+          detail: { title: tasksArr[tIdx].title, autoCompleted: true },
+        }));
+        // Play a 3-note reward chime
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          [[880, 0], [1108, 0.18], [1320, 0.36]].forEach(([freq, delay]) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+            gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + delay + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.5);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.6);
+          });
+        } catch {}
+        // Show a celebratory toast
+        setSessionMsg({ type: 'complete', text: `🏆 "${tasksArr[tIdx].title}" auto-completed! ${targetMins >= 60 ? Math.floor(targetMins/60)+'h ' : ''}${targetMins % 60 > 0 ? targetMins%60+'m' : ''} deep focus reached.` });
+        setTimeout(() => setSessionMsg(null), 5000);
+      }
+
       updatedLog.tasks = tasksArr;
     }
     await saveLog(today, updatedLog);
-    setSessionMsg({ type: 'log', text: `Logged to ${targetSection === 'video' ? 'Video Editing' : 'Side Hustle'}` });
-    setTimeout(() => setSessionMsg(null), 3000);
+    // Only set the generic log message if we didn't already set a completion one
+    setSessionMsg(prev => {
+      if (prev?.type === 'complete') return prev;
+      return { type: 'log', text: `Logged to ${targetSection === 'video' ? 'Video Editing' : 'Side Hustle'}` };
+    });
+    setTimeout(() => setSessionMsg(prev => prev?.type === 'complete' ? prev : null), 3000);
   }, [getLog, saveLog]);
 
   // ── Toggle task completion ──
@@ -379,12 +420,17 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
       {sessionMsg && (
         <div style={{
           marginBottom: '12px', padding: '8px 14px', borderRadius: '8px',
-          background: sessionMsg.type === 'log' ? 'rgba(16,185,129,0.12)' : 'rgba(59,130,246,0.12)',
-          color: sessionMsg.type === 'log' ? '#10b981' : '#60a5fa',
+          background: sessionMsg.type === 'complete'
+            ? 'rgba(16,185,129,0.18)'
+            : sessionMsg.type === 'log'
+            ? 'rgba(16,185,129,0.12)'
+            : 'rgba(59,130,246,0.12)',
+          color: sessionMsg.type === 'complete' ? '#10b981' : sessionMsg.type === 'log' ? '#10b981' : '#60a5fa',
           fontSize: '0.8rem', fontWeight: 600, textAlign: 'center',
           animation: 'fadeIn 0.2s ease',
+          border: sessionMsg.type === 'complete' ? '1px solid rgba(16,185,129,0.3)' : 'none',
         }}>
-          {sessionMsg.type === 'log' ? <CheckCheck size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> : null}
+          {(sessionMsg.type === 'log' || sessionMsg.type === 'complete') ? <CheckCheck size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> : null}
           {sessionMsg.text}
         </div>
       )}
@@ -502,6 +548,14 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
             const isActive = activeTaskId === task.id;
             const times = taskTimeRef.current[task.id];
             const hasTimes = times && (times.focusMinutes > 0 || times.restMinutes > 0);
+
+            // Deep focus progress toward target
+            const targetMins      = task.targetDuration || 0;
+            const savedFocusMins  = (task.deepWorkHours || 0) * 60;
+            const sessionFocusMins = times?.focusMinutes || 0;
+            const totalFocusMins  = savedFocusMins + sessionFocusMins;
+            const focusPct        = targetMins > 0 ? Math.min(100, (totalFocusMins / targetMins) * 100) : 0;
+
             return (
               <div
                 key={task.id}
@@ -548,7 +602,35 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
                         {times.restMinutes > 0 && `${times.restMinutes}m rest`}
                       </span>
                     )}
+                    {/* Deep focus target label */}
+                    {targetMins > 0 && (
+                      <span style={{
+                        fontSize: '0.68rem', fontWeight: 700,
+                        color: focusPct >= 100 ? '#10b981' : focusPct > 0 ? '#f59e0b' : 'var(--text-muted)',
+                      }}>
+                        {focusPct >= 100 ? '✅ Goal reached!' : `🎯 ${Math.round(totalFocusMins)}/${targetMins}m`}
+                      </span>
+                    )}
                   </div>
+                  {/* Mini deep focus progress bar */}
+                  {targetMins > 0 && !done && (
+                    <div style={{
+                      marginTop: '4px', height: '3px', borderRadius: '2px',
+                      background: 'rgba(255,255,255,0.07)', overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%', borderRadius: '2px',
+                        width: `${focusPct}%`,
+                        background: focusPct >= 100
+                          ? 'linear-gradient(90deg,#10b981,#06b6d4)'
+                          : focusPct > 0
+                          ? 'linear-gradient(90deg,#f59e0b,#f97316)'
+                          : '#6366f1',
+                        transition: 'width 1s ease, background 0.5s ease',
+                        minWidth: focusPct > 0 ? '4px' : '0',
+                      }} />
+                    </div>
+                  )}
                 </div>
                 {isActive ? (
                   <Zap size={14} style={{ color: accentColor, flexShrink: 0 }} />
