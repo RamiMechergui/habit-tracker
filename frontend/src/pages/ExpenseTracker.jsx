@@ -42,17 +42,33 @@ export default function ExpenseTracker() {
   const handleEditIncome = (entry, idx) => {
     setIncomeSource(entry.source);
     setIncomeAmount(String(entry.amount));
-    setEditIncomeIdx(idx);
+    setIncomeDate(entry.date);
+    setEditIncomeIdx(entry.originalIndex);
   };
 
-  const handleDeleteIncome = async (idx) => {
-    await deleteIncomeEntry(incomeDate, idx);
+  const handleDeleteIncome = async (entry) => {
+    await deleteIncomeEntry(entry.date, entry.originalIndex);
   };
 
-  // Get income entries for the selected date
+  // Get income entries for the month of the selected date
   const savedIncome = useMemo(() => {
-    const log = logs[incomeDate];
-    return log && Array.isArray(log.income) ? log.income : [];
+    const targetMonth = parseISO(incomeDate);
+    const entries = [];
+    Object.entries(logs).forEach(([dateStr, log]) => {
+      const d = parseISO(dateStr);
+      if (isSameMonth(d, targetMonth)) {
+        if (Array.isArray(log.income)) {
+          log.income.forEach((entry, idx) => {
+            entries.push({
+              ...entry,
+              date: dateStr,
+              originalIndex: idx
+            });
+          });
+        }
+      }
+    });
+    return entries.sort((a, b) => a.date.localeCompare(b.date));
   }, [logs, incomeDate]);
 
   // Aggregate expenses based on the selected viewMode and currentDate
@@ -459,7 +475,7 @@ export default function ExpenseTracker() {
         <h3 className="mb-4 flex items-center gap-2">📋 Income Streams</h3>
         {savedIncome.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
-            <p>No income entries for this date. Add one above!</p>
+            <p>No income entries for this month. Add one above!</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -476,7 +492,7 @@ export default function ExpenseTracker() {
                 background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)',
               }}>
                 <div style={{ flex: '0 0 100px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {format(new Date(incomeDate + 'T00:00:00'), 'MMM dd')}
+                  {format(new Date(entry.date + 'T00:00:00'), 'MMM dd')}
                 </div>
                 <div style={{ flex: '1', fontSize: '0.9rem', fontWeight: 500 }}>{entry.source}</div>
                 <div style={{ flex: '0 0 120px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 700, color: '#10b981' }}>
@@ -486,7 +502,7 @@ export default function ExpenseTracker() {
                   <button onClick={() => handleEditIncome(entry, idx)} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6, minHeight: 36 }}>
                     <Edit3 size={14} />
                   </button>
-                  <button onClick={() => handleDeleteIncome(idx)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 6, minHeight: 36 }}>
+                  <button onClick={() => handleDeleteIncome(entry)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 6, minHeight: 36 }}>
                     <Trash2 size={14} />
                   </button>
                 </div>

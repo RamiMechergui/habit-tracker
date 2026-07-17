@@ -202,6 +202,32 @@ export default function Dashboard() {
   const todayLog = getLog(todayStr);
   
   const monthData = getMonthlyData(calendarDate);
+
+  const monthlyTotals = React.useMemo(() => {
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    monthData.forEach(day => {
+      const log = day.log;
+      if (log) {
+        if (Array.isArray(log.income)) {
+          log.income.forEach(i => {
+            totalIncome += parseFloat(i.amount) || 0;
+          });
+        }
+        if (Array.isArray(log.expenses)) {
+          log.expenses.forEach(e => {
+            totalExpenses += parseFloat(e.amount) || 0;
+          });
+        }
+      }
+    });
+    return {
+      totalIncome,
+      totalExpenses,
+      remaining: totalIncome - totalExpenses
+    };
+  }, [monthData]);
+
   const firstDay = startOfMonth(calendarDate);
   const emptyCells = getDay(firstDay);
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -368,25 +394,25 @@ export default function Dashboard() {
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
               <span className="text-muted">Total Income</span>
               <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
-                {(Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0).toFixed(3)} TND
+                {monthlyTotals.totalIncome.toFixed(3)} TND
               </strong>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
               <span className="text-muted">Total Expenses</span>
               <strong className="text-amber" style={{ fontSize: '1.1rem' }}>
-                {(Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0).toFixed(3)} TND
+                {monthlyTotals.totalExpenses.toFixed(3)} TND
               </strong>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{
-              background: (() => { const bal = (Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0); return bal >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' })(),
-              border: `1px solid ${(() => { const bal = (Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0); return bal >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' })()}`,
+              background: monthlyTotals.remaining >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+              border: `1px solid ${monthlyTotals.remaining >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
             }}>
               <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>⚖️ Remaining</span>
               <strong style={{
-                color: (() => { const bal = (Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0); return bal >= 0 ? '#10b981' : '#ef4444' })(),
+                color: monthlyTotals.remaining >= 0 ? '#10b981' : '#ef4444',
                 fontSize: '1.25rem',
               }}>
-                {((Array.isArray(todayLog.income) ? todayLog.income : []).reduce((t, i) => t + (parseFloat(i.amount)||0), 0) - (Array.isArray(todayLog.expenses) ? todayLog.expenses : []).reduce((t, e) => t + (parseFloat(e.amount)||0), 0)).toFixed(3)} TND
+                {monthlyTotals.remaining.toFixed(3)} TND
               </strong>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
