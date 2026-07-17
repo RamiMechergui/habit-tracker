@@ -1303,27 +1303,51 @@ export const HabitProvider = ({ children }) => {
   // ── Income ──────────────────────────────────────────────────
   const saveIncome = async (date, income) => {
     if (!date) return;
-    // Update local log state
-    setLogs(prev => {
-      const existing = prev[date] || createEmptyDay(date);
-      return { ...prev, [date]: { ...existing, income: income || [] } };
-    });
-    db.saveLog(date, { income: income || [] });
-    // Sync to server
+
+    // Build the full merged log so both local and server state are consistent.
+    // Using logs[date] here is safe because saveIncome is NOT wrapped in
+    // useCallback, so it always closes over the latest logs value.
+    const existing = logs[date] || createEmptyDay(date);
+    const mergedLog = { ...existing, income: income || [] };
+
+    // Update local React state
+    setLogs(prev => ({ ...prev, [date]: mergedLog }));
+
+    // FIX: persist the *full* merged log to IndexedDB (not just an income stub).
+    // The old code wrote only { income } which caused refreshFromServer to
+    // overwrite the IndexedDB entry with server data that had no income field.
+    db.saveLog(date, mergedLog);
+
+    // FIX: persist via /api/daily/:date (writes to HabitLogs).
+    // refreshFromServer reads from HabitLogs, so income now survives a refresh.
+    // The old endpoint /api/expenses/income wrote to HabitExpenses, a completely
+    // different DynamoDB table that is never read back on page load.
     if (navigator.onLine) {
       try {
-        await fetch(`${API_URL}/api/expenses/income`, {
+        const res = await fetch(`${API_URL}/api/daily/${date}`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date, income: income || [] }),
+          body: JSON.stringify(mergedLog),
         });
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
       } catch (e) {
-        db.enqueueSync({ type: 'SAVE_INCOME', url: '/api/expenses/income', method: 'POST', body: { date, income: income || [] } });
+        console.warn('[Store] saveIncome sync failed, queuing:', e.message);
+        db.enqueueSync({
+          type: 'SAVE_LOG',
+          url: `/api/daily/${date}`,
+          method: 'POST',
+          body: mergedLog,
+        });
         requestBackgroundSync();
       }
     } else {
-      db.enqueueSync({ type: 'SAVE_INCOME', url: '/api/expenses/income', method: 'POST', body: { date, income: income || [] } });
+      db.enqueueSync({
+        type: 'SAVE_LOG',
+        url: `/api/daily/${date}`,
+        method: 'POST',
+        body: mergedLog,
+      });
     }
     logHistory('income_save', `Saved income for ${date}`);
   };
@@ -2482,15 +2506,26 @@ export const HabitProvider = ({ children }) => {
   }, [API_URL]);
 
   const deleteSavingsEntry = useCallback(async (entryId) => {
+    // Optimistic UI update — remove the entry immediately so the UI feels instant.
     setSavings(prev => prev.filter(e => e._id !== entryId));
     try {
-      await fetch(`${API_URL}/api/savings/${encodeURIComponent(entryId)}`, {
+      const res = await fetch(`${API_URL}/api/savings/${encodeURIComponent(entryId)}`, {
         method: 'DELETE',
         credentials: 'include',
       });
+      // FIX: the old code never checked res.ok, so a 404 or 500 from the server
+      // was silently ignored. The record stayed in DynamoDB and reappeared on
+      // the next refresh. Now we roll back the optimistic update on any failure.
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.warn('[Store] deleteSavingsEntry server error:', data.message || res.status);
+        await fetchSavings(); // roll back optimistic UI update
+        return;
+      }
       logHistory('savings_delete', 'Deleted a savings entry');
     } catch (e) {
-      console.warn('[Store] deleteSavingsEntry error:', e.message);
+      // Network-level failure — roll back optimistic UI update
+      console.warn('[Store] deleteSavingsEntry network error:', e.message);
       await fetchSavings();
     }
   }, [API_URL, fetchSavings]);
