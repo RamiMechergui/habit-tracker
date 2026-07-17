@@ -2,6 +2,29 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { CheckCircle2, Video, ChevronDown, ChevronUp, Clock, Brain } from 'lucide-react';
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const s = String(timeStr).trim().toLowerCase();
+  const hrMinMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?\s*(\d+)\s*m(?:in)?s?/);
+  if (hrMinMatch) {
+    return Math.round(parseFloat(hrMinMatch[1]) * 60 + parseFloat(hrMinMatch[2]));
+  }
+  const hrMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?/);
+  if (hrMatch) {
+    return Math.round(parseFloat(hrMatch[1]) * 60);
+  }
+  const minMatch = s.match(/(\d+)\s*m(?:in)?s?/);
+  if (minMatch) {
+    return parseInt(minMatch[1], 10);
+  }
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num <= 24) return Math.round(num * 60);
+    return Math.round(num);
+  }
+  return 0;
+}
+
 function extractTotalFocus(history, sectionKey) {
   let total = 0;
   const re = /You passed(?: today)? (\d+) minutes of Deep Work/;
@@ -38,7 +61,36 @@ export default function VideoEditing() {
     [logs]
   );
 
-  const totalFocus = extractTotalFocus(videoHistory, 'video');
+  const totalFocus = useMemo(() => {
+    let grandTotalMinutes = 0;
+    for (const log of Object.values(logs || {})) {
+      // 1. Task deepWorkHours
+      let tasksArr = [];
+      if (Array.isArray(log.tasks)) tasksArr = log.tasks;
+      else if (log.tasks?.tasks && Array.isArray(log.tasks.tasks)) tasksArr = log.tasks.tasks;
+      
+      const taskMins = tasksArr
+        .filter(t => {
+          const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];
+          return cats.some(c => c === 'Video Editing' || c === 'Learning');
+        })
+        .reduce((sum, t) => sum + (parseFloat(t.deepWorkHours) || 0) * 60, 0);
+        
+      // 2. Timer deepWorkSessions focus blocks
+      let timerMins = 0;
+      if (log.video?.deepWorkSessions) {
+        const focusBlocks = log.video.deepWorkSessions.filter(b => b.type === 'focus');
+        timerMins = focusBlocks.length * 20;
+      }
+      
+      // 3. Manual time spent in the Daily Log
+      const manualMins = parseTimeToMinutes(log.video?.time);
+      
+      // Use the max of these to prevent double-counting on the same day
+      grandTotalMinutes += Math.max(taskMins, timerMins, manualMins);
+    }
+    return grandTotalMinutes;
+  }, [logs]);
 
   const allSessions = useMemo(() => {
     const blocks = [];

@@ -8,6 +8,9 @@ const RELEASE_MIN = 15;
 const SECTION_ROUTES = {
   '/sidehustle': 'hustle',
   '/video-editing': 'video',
+  '/learn/german': 'video',
+  '/learn/aws': 'video',
+  '/learn/finance': 'video',
 };
 
 function getTargetSection(task) {
@@ -17,7 +20,7 @@ function getTargetSection(task) {
   const cats = Array.isArray(task.categories) ? task.categories : [task.category || 'Other'];
   for (const c of cats) {
     const cl = c.toLowerCase();
-    if (cl === 'video editing') return 'video';
+    if (cl === 'video editing' || cl === 'learning') return 'video';
     if (cl === 'side hustle') return 'hustle';
   }
   return 'hustle';
