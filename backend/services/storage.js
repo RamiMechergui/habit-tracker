@@ -90,6 +90,8 @@ async function initBucket() {
         console.log(`[Storage] Creating bucket "${BUCKET}" ...`);
         await c.send(new CreateBucketCommand({ Bucket: BUCKET }));
         console.log(`[Storage] Bucket "${BUCKET}" created successfully`);
+      } else if (err.$metadata?.httpStatusCode === 403 || err.name === 'AccessDenied' || err.name === 'Forbidden') {
+        console.log(`[Storage] Bucket "${BUCKET}" returned 403 Forbidden on HeadBucket — assuming bucket exists with object-level permissions.`);
       } else {
         throw err;
       }
