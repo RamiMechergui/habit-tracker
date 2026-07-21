@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.habittracker"
         minSdk = 23
         targetSdk = 36
-        versionCode = 3
-        versionName = "3.0"
+        versionCode = 4
+        versionName = "4.0"
     }
 
     buildTypes {
