@@ -809,13 +809,13 @@ export const HabitProvider = ({ children }) => {
     logHistory('profile_update', `Updated profile: ${firstName} ${lastName}`);
   };
 
-  const changePassword = async (currentPassword, newPassword) => {
+  const changePassword = async (currentPassword, newPassword, logoutOtherDevices = false) => {
     if (!user) return;
     const res = await fetch(`${API_URL}/api/login/change-password`, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, newPassword })
+      body: JSON.stringify({ currentPassword, newPassword, logoutOtherDevices })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
@@ -927,13 +927,79 @@ export const HabitProvider = ({ children }) => {
     }
 
     // Prefer the local data URL for immediate display; fall back to server path
-    const pictureValue = localAvatarDataUrl || data.profilePicture;
-    const updated = { ...user, profilePicture: pictureValue, profilePicturePath: data.profilePicture };
+    const serverUrl = data.url || data.profilePicture;
+    const pictureValue = localAvatarDataUrl || serverUrl;
+    const updated = { ...user, profilePicture: pictureValue, profilePicturePath: serverUrl };
     setUser(updated);
     await saveSession(updated);
     db.saveUser(updated);
     logHistory('profile_picture', 'Updated profile picture');
   };
+
+  const [avatarHistory, setAvatarHistory] = useState([]);
+
+  const fetchAvatarHistory = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/avatar/history`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setAvatarHistory(data.items || []);
+    } catch (_) {}
+  }, []);
+
+  const uploadAvatar = useCallback(async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await fetch(`${API_URL}/api/avatar`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) {
+      let msg = 'Upload failed';
+      try {
+        const err = await res.json();
+        if (err?.message) msg = err.message;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    setUser(prev => ({ ...prev, profilePicture: data.url, avatarVersion: data.versionNumber }));
+    await fetchAvatarHistory();
+    logHistory('avatar', 'Updated profile picture');
+    return data;
+  }, [fetchAvatarHistory]);
+
+  const revertAvatar = useCallback(async (versionId) => {
+    const res = await fetch(`${API_URL}/api/avatar/revert`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ versionId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Revert failed');
+    }
+    const data = await res.json();
+    setUser(prev => ({ ...prev, profilePicture: data.url, avatarVersion: data.versionNumber }));
+    await fetchAvatarHistory();
+    logHistory('avatar', 'Reverted to previous avatar');
+    return data;
+  }, [fetchAvatarHistory]);
+
+  const deleteAvatarVersion = useCallback(async (versionId) => {
+    const res = await fetch(`${API_URL}/api/avatar/history/${versionId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Delete failed');
+    }
+    await fetchAvatarHistory();
+    logHistory('avatar', 'Deleted avatar version');
+  }, [fetchAvatarHistory]);
 
   const getLog = useCallback((dateStr) => {
     const existingLog = logs[dateStr];
@@ -1528,10 +1594,27 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
-  const uploadPlannedBookPhoto = useCallback(async (index, photoFile) => {
+  const editPlannedBook = useCallback(async (bookId, bookName, author) => {
+    const res = await fetch(`${API_URL}/api/plannedbooks/${bookId}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookName, author }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to edit planned book');
+    if (Array.isArray(data)) {
+      setPlannedBooks(data);
+      db.savePlannedBooks(data);
+    }
+    logHistory('planned_book_edit', `Edited "${bookName}"`);
+    return data;
+  }, [API_URL]);
+
+  const uploadPlannedBookPhoto = useCallback(async (bookId, photoFile) => {
     const formData = new FormData();
     formData.append('photo', photoFile);
-    const res = await fetch(`${API_URL}/api/plannedbooks/${index}/photo`, {
+    const res = await fetch(`${API_URL}/api/plannedbooks/${bookId}/photo`, {
       method: 'POST',
       credentials: 'include',
       body: formData,
@@ -1545,10 +1628,10 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
-  const removePlannedBook = useCallback(async (index) => {
-    setPlannedBooks(prev => prev.filter((_, i) => i !== index));
+  const removePlannedBook = useCallback(async (bookId) => {
+    setPlannedBooks(prev => prev.filter(b => (b.bookId || b._id) !== bookId));
     try {
-      const res = await fetch(`${API_URL}/api/plannedbooks/${index}`, {
+      const res = await fetch(`${API_URL}/api/plannedbooks/${bookId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -1567,10 +1650,10 @@ export const HabitProvider = ({ children }) => {
   }, [API_URL, fetchPlannedBooks]);
 
   // ── Archived Books methods ───────────────────────────────────
-  const removeArchivedBook = useCallback(async (index) => {
-    setArchivedBooks(prev => prev.filter((_, i) => i !== index));
+  const removeArchivedBook = useCallback(async (bookId) => {
+    setArchivedBooks(prev => prev.filter(b => (b.bookId || b._id) !== bookId));
     try {
-      const res = await fetch(`${API_URL}/api/archivedbooks/${index}`, {
+      const res = await fetch(`${API_URL}/api/archivedbooks/${bookId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -2559,6 +2642,7 @@ export const HabitProvider = ({ children }) => {
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData,
       user, login, register, logout, updateProfilePicture, updateProfile, changePassword, loading,
+      avatarHistory, fetchAvatarHistory, uploadAvatar, revertAvatar, deleteAvatarVersion,
       expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, saveIncome, deleteIncomeEntry,
       currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
       isOnline,
@@ -2586,7 +2670,7 @@ export const HabitProvider = ({ children }) => {
       vaultLocked, setVaultLocked, vaultHasPassword, setVaultHasPassword,
       checkVaultStatus, setVaultPassword, verifyVaultPassword,
       // Planned Books
-      plannedBooks, fetchPlannedBooks, addPlannedBook, removePlannedBook, uploadPlannedBookPhoto,
+      plannedBooks, fetchPlannedBooks, addPlannedBook, editPlannedBook, removePlannedBook, uploadPlannedBookPhoto,
       // Archived Books
       removeArchivedBook, stopReadingBook,
       // History

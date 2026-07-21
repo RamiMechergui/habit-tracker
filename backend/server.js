@@ -63,6 +63,8 @@ app.use('/api/milestones',  require('./routes/milestones'));
 app.use('/api/savings',     require('./routes/savings'));
 app.use('/api/history',     require('./routes/history'));
 app.use('/api/ai',          require('./routes/ai'));
+app.use('/api/sessions',    require('./routes/sessions'));
+app.use('/api/avatar',      require('./routes/avatar'));
 
 // ── Flat-path aliases (used by frontend Store) ────────────────────────────────
 const authRoutes    = require('./routes/auth');
@@ -80,9 +82,8 @@ app.get('/api/verify',    (req, res, next) => { req.url = '/verify';   authRoute
 // Settings / avatar
 app.get('/api/settings',  (req, res, next) => { req.url = '/';       profileRoutes(req, res, next); });
 app.put('/api/settings',  (req, res, next) => { req.url = '/';       profileRoutes(req, res, next); });
-app.get('/api/avatar',    (req, res, next) => { req.url = '/';       profileRoutes(req, res, next); });
-app.post('/api/avatar',   (req, res, next) => { req.url = '/avatar'; profileRoutes(req, res, next); });
-app.put('/api/login/change-password', (req, res, next) => { req.url = '/change-password'; profileRoutes(req, res, next); });
+app.post('/api/avatar',   (req, res, next) => { req.url = '/upload'; require('./routes/avatar')(req, res, next); });
+app.put('/api/login/change-password', (req, res, next) => { req.url = '/change-password'; authRoutes(req, res, next); });
 
 // Books (frontend Store uses /api/currentbook)
 app.get('/api/currentbook',          (req, res, next) => { req.url = '/current';  booksRoutes(req, res, next); });
@@ -99,11 +100,12 @@ app.post('/api/archives', (req, res) => res.json({ success: true, ...req.body })
 app.get('/api/plannedbooks',    (req, res, next) => { req.url = '/planned';  booksRoutes(req, res, next); });
 app.post('/api/plannedbooks',   (req, res, next) => { req.url = '/planned';  booksRoutes(req, res, next); });
 app.post('/api/plannedbooks/photo', (req, res, next) => { req.url = '/planned/photo'; booksRoutes(req, res, next); });
-app.post('/api/plannedbooks/:index/photo', (req, res, next) => { req.url = '/planned/' + req.params.index + '/photo'; booksRoutes(req, res, next); });
-app.delete('/api/plannedbooks/:index', (req, res, next) => { req.url = '/planned/' + req.params.index; booksRoutes(req, res, next); });
+app.post('/api/plannedbooks/:bookId/photo', (req, res, next) => { req.url = '/planned/' + req.params.bookId + '/photo'; booksRoutes(req, res, next); });
+app.put('/api/plannedbooks/:bookId', (req, res, next) => { req.url = '/planned/' + req.params.bookId; booksRoutes(req, res, next); });
+app.delete('/api/plannedbooks/:bookId', (req, res, next) => { req.url = '/planned/' + req.params.bookId; booksRoutes(req, res, next); });
 
 // Archived Books (delete)
-app.delete('/api/archivedbooks/:index', (req, res, next) => { req.url = '/archived/' + req.params.index; booksRoutes(req, res, next); });
+app.delete('/api/archivedbooks/:bookId', (req, res, next) => { req.url = '/archived/' + req.params.bookId; booksRoutes(req, res, next); });
 
 // History
 const historyRoutes = require('./routes/history');
@@ -137,6 +139,12 @@ app.get('/api/german/images/:key(*)', async (req, res) => {
 
 // Wishlist image proxy (MinIO/S3)
 app.get('/api/wishlist/images/:key(*)', async (req, res) => {
+  const objectKey = decodeURIComponent(req.params.key);
+  await storage.streamImage(objectKey, res);
+});
+
+// Avatar image proxy (MinIO/S3)
+app.get('/api/avatar/images/:key(*)', async (req, res) => {
   const objectKey = decodeURIComponent(req.params.key);
   await storage.streamImage(objectKey, res);
 });

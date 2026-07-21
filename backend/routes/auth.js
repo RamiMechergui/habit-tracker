@@ -5,17 +5,44 @@ const bcrypt               = require('bcryptjs');
 const { randomUUID }       = require('crypto');
 const { createUser, getUserById, getUserByEmail, updateUser } = require('../db/users');
 const { protect }          = require('../middleware/auth');
+const sessionsDb           = require('../db/sessions');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod';
 
-const generateToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: '30d' });
+const generateToken = (id, sessionId) => jwt.sign({ id, sid: sessionId }, JWT_SECRET, { expiresIn: '30d' });
 
 const cookieOpts = (req) => ({
   httpOnly: true,
   secure:   req.secure || req.headers['x-forwarded-proto'] === 'https',
   sameSite: 'lax',
-  maxAge:   30 * 24 * 60 * 60 * 1000, // 30 days
+  maxAge:   30 * 24 * 60 * 60 * 1000,
 });
+
+function detectDevice(ua) {
+  if (!ua) return 'Desktop';
+  const s = ua.toLowerCase();
+  if (s.includes('iphone') || s.includes('ipad') || s.includes('ipod') || (s.includes('android') && s.includes('mobile')) || s.includes('windows phone') || s.includes('mobile')) return 'Mobile';
+  if (s.includes('android') || s.includes('tablet') || s.includes('kindle') || s.includes('playbook')) return 'Tablet';
+  return 'Desktop';
+}
+
+async function logHistoryEntry(user, action, description, req) {
+  try {
+    const ua = req.headers['user-agent'] || '';
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown';
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      action,
+      description,
+      ip,
+      device: detectDevice(ua),
+      userAgent: ua.slice(0, 300),
+      timestamp: new Date().toISOString(),
+    };
+    const history = [...(user.history || []), entry];
+    await updateUser(user.userId, { history }).catch(() => {});
+  } catch (_) {}
+}
 
 // POST /register
 router.post('/register', async (req, res) => {
@@ -31,31 +58,15 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const userId       = randomUUID();
     const user         = await createUser({ userId, email, passwordHash, firstName: firstName || '', lastName: lastName || '' });
-    // Log registration to history (fire-and-forget)
-    try {
-      const ua = req.headers['user-agent'] || '';
-      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown';
-      const s = ua.toLowerCase();
-      const device = s.includes('iphone') || s.includes('ipad') || s.includes('ipod') || (s.includes('android') && s.includes('mobile')) || s.includes('windows phone') || s.includes('mobile')
-        ? 'Mobile'
-        : (s.includes('android') || s.includes('tablet') || s.includes('kindle') || s.includes('playbook')
-          ? 'Tablet'
-          : 'Desktop');
 
-      const logEntry = {
-        id:           Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        action:       'register',
-        description:  'User registered a new account',
-        ip,
-        device,
-        userAgent:    ua.slice(0, 300),
-        timestamp:    new Date().toISOString(),
-      };
-      const history = [...(user.history || []), logEntry];
-      await updateUser(user.userId, { history }).catch(() => {});
-    } catch (_) { /* non-blocking */ }
+    const session = await sessionsDb.createSession(userId, {
+      ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown',
+      userAgent: req.headers['user-agent'] || '',
+    });
 
-    const token        = generateToken(userId);
+    logHistoryEntry(user, 'register', 'User registered a new account', req);
+
+    const token = generateToken(userId, session.sessionId);
     res.cookie('habitToken', token, cookieOpts(req));
     res.status(201).json({
       _id:               user._id,
@@ -82,33 +93,15 @@ router.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match)  return res.status(401).json({ message: 'Invalid email or password' });
 
-    const token = generateToken(user.userId);
+    const session = await sessionsDb.createSession(user.userId, {
+      ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown',
+      userAgent: req.headers['user-agent'] || '',
+    });
+
+    logHistoryEntry(user, 'login', 'User logged in', req);
+
+    const token = generateToken(user.userId, session.sessionId);
     res.cookie('habitToken', token, cookieOpts(req));
-
-    // Log login to history (fire-and-forget)
-    try {
-      const ua = req.headers['user-agent'] || '';
-      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown';
-      const s = ua.toLowerCase();
-      const device = s.includes('iphone') || s.includes('ipad') || s.includes('ipod') || (s.includes('android') && s.includes('mobile')) || s.includes('windows phone') || s.includes('mobile')
-        ? 'Mobile'
-        : (s.includes('android') || s.includes('tablet') || s.includes('kindle') || s.includes('playbook')
-          ? 'Tablet'
-          : 'Desktop');
-
-      const logEntry = {
-        id:           Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        action:       'login',
-        description:  'User logged in',
-        ip,
-        device,
-        userAgent:    ua.slice(0, 300),
-        timestamp:    new Date().toISOString(),
-      };
-      const history = [...(user.history || []), logEntry];
-      await updateUser(user.userId, { history }).catch(() => {});
-    } catch (_) { /* non-blocking */ }
-
     res.json({
       _id:               user._id,
       firstName:         user.firstName,
@@ -125,9 +118,18 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /logout
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
+  const token = req.cookies?.habitToken || req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.sid) {
+        await sessionsDb.disconnectSession(decoded.id, decoded.sid).catch(() => {});
+      }
+    } catch (_) {}
+  }
   res.clearCookie('habitToken', cookieOpts(req));
-  res.json({ message: 'Logged out successfully' });
+  res.json({ message: 'Logged out' });
 });
 
 // POST /verify-password
@@ -144,6 +146,39 @@ router.post('/verify-password', protect, async (req, res) => {
   }
 });
 
+// PUT /change-password — password change with cascade option
+router.put('/change-password', protect, async (req, res) => {
+  const { currentPassword, newPassword, logoutOtherDevices } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Both passwords required' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'New password must be >= 6 chars' });
+  }
+  try {
+    const user  = await getUserById(req.user.userId);
+    const match = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!match) return res.status(401).json({ message: 'Current password incorrect' });
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await updateUser(req.user.userId, { passwordHash: newHash });
+
+    logHistoryEntry(user, 'password_change', 'Changed account password', req);
+
+    // Cascade: revoke all other sessions if requested
+    if (logoutOtherDevices && req.sessionId) {
+      const revoked = await sessionsDb.revokeAllSessionsExcept(req.user.userId, req.sessionId);
+      if (revoked > 0) {
+        logHistoryEntry(user, 'sessions_revoked', `Logged out ${revoked} other device(s) after password change`, req);
+      }
+    }
+
+    res.json({ message: 'Password updated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // GET /verify
 router.get('/verify', async (req, res) => {
   const token = req.cookies.habitToken || req.headers.authorization?.split(' ')[1];
@@ -152,6 +187,15 @@ router.get('/verify', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user    = await getUserById(decoded.id);
     if (!user) return res.status(401).json({ message: 'User not found' });
+
+    // If JWT has a sessionId, verify it's not revoked
+    if (decoded.sid) {
+      const session = await sessionsDb.getSession(decoded.id, decoded.sid);
+      if (!session || session.isRevoked) {
+        return res.status(401).json({ message: 'Session revoked, please log in again' });
+      }
+    }
+
     res.json({
       userId:       user.userId,
       email:        user.email,

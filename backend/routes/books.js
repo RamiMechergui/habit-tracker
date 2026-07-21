@@ -5,8 +5,10 @@ const path    = require('path');
 const fs      = require('fs');
 const { protect }                 = require('../middleware/auth');
 const { getUserById, updateUser } = require('../db/users');
+const plannedBooksDb              = require('../db/plannedBooks');
+const archivedBooksDb             = require('../db/archivedBooks');
 
-// Multer setup for planned book photo uploads
+// Multer setup for book photo uploads
 const photoDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(photoDir)) fs.mkdirSync(photoDir, { recursive: true });
 
@@ -14,7 +16,7 @@ const photoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, photoDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `planned_${req.user.userId}_${Date.now()}${ext}`);
+    cb(null, `book_${req.user.userId}_${Date.now()}${ext}`);
   },
 });
 
@@ -29,6 +31,13 @@ const photoUpload = multer({
     cb(null, true);
   },
 });
+
+function multerError(err, _req, res, _next) {
+  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ message: 'File size exceeds 5 MB' });
+  }
+  if (err) return res.status(400).json({ message: err.message });
+}
 
 // GET /api/books/current
 router.get('/current', protect, async (req, res) => {
@@ -65,12 +74,7 @@ router.post('/current', protect, photoUpload.single('photo'), async (req, res) =
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}, (err, _req, res, _next) => {
-  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ message: 'File size exceeds 5 MB' });
-  }
-  if (err) return res.status(400).json({ message: err.message });
-});
+}, multerError);
 
 // PUT /api/books/current — update / archive / stop current book
 router.put('/current', protect, async (req, res) => {
@@ -79,7 +83,7 @@ router.put('/current', protect, async (req, res) => {
     const user = await getUserById(req.user.userId);
     if (!user.currentBook.bookName) return res.status(400).json({ message: 'No active book' });
 
-    let { currentBook, archivedBooks } = user;
+    let { currentBook } = user;
 
     if (isActive === false && currentBook.isActive === true) {
       const archivedBook = {
@@ -92,14 +96,16 @@ router.put('/current', protect, async (req, res) => {
         status:         stopped ? 'stopped' : 'completed',
         photoUrl:       currentBook.photoUrl || '',
       };
-      archivedBooks = [...(archivedBooks || []), archivedBook];
-      currentBook   = { bookName: '', targetPages: 0, startDate: '', isActive: false, photoUrl: '' };
+      await archivedBooksDb.createItem(req.user.userId, archivedBook);
+      currentBook = { bookName: '', targetPages: 0, startDate: '', isActive: false, photoUrl: '' };
     } else {
       currentBook = { ...currentBook, isActive: isActive !== undefined ? isActive : false };
     }
 
-    const updated = await updateUser(req.user.userId, { currentBook, archivedBooks });
-    res.json({ currentBook: updated.currentBook, archivedBooks: updated.archivedBooks || [] });
+    await updateUser(req.user.userId, { currentBook });
+
+    const archivedBooks = await archivedBooksDb.getAll(req.user.userId);
+    res.json({ currentBook, archivedBooks });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -108,8 +114,8 @@ router.put('/current', protect, async (req, res) => {
 // GET /api/books/archived
 router.get('/archived', protect, async (req, res) => {
   try {
-    const user = await getUserById(req.user.userId);
-    res.json({ archivedBooks: user.archivedBooks || [] });
+    const archivedBooks = await archivedBooksDb.getAll(req.user.userId);
+    res.json({ archivedBooks });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -120,8 +126,8 @@ router.get('/archived', protect, async (req, res) => {
 // GET /api/books/planned
 router.get('/planned', protect, async (req, res) => {
   try {
-    const user = await getUserById(req.user.userId);
-    res.json({ plannedBooks: user.plannedBooks || [] });
+    const plannedBooks = await plannedBooksDb.getAll(req.user.userId);
+    res.json({ plannedBooks });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -135,12 +141,7 @@ router.post('/planned/photo', protect, photoUpload.single('photo'), async (req, 
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}, (err, _req, res, _next) => {
-  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ message: 'File size exceeds 5 MB' });
-  }
-  if (err) return res.status(400).json({ message: err.message });
-});
+}, multerError);
 
 // POST /api/books/planned — add a planned book
 router.post('/planned', protect, async (req, res) => {
@@ -148,64 +149,66 @@ router.post('/planned', protect, async (req, res) => {
     const { bookName, author, photoUrl } = req.body;
     if (!bookName?.trim()) return res.status(400).json({ message: 'Book name is required' });
 
-    const user = await getUserById(req.user.userId);
-    const plannedBooks = [...(user.plannedBooks || []), {
+    await plannedBooksDb.createItem(req.user.userId, {
       bookName: bookName.trim(),
       author: (author || '').trim(),
-      addedAt: new Date().toISOString().split('T')[0],
       photoUrl: photoUrl || '',
-    }];
-    const updated = await updateUser(req.user.userId, { plannedBooks });
-    res.status(201).json(updated.plannedBooks);
+    });
+
+    const plannedBooks = await plannedBooksDb.getAll(req.user.userId);
+    res.status(201).json(plannedBooks);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST /api/books/planned/:index/photo — upload photo for a planned book
-router.post('/planned/:index/photo', protect, photoUpload.single('photo'), async (req, res) => {
+// POST /api/books/planned/:bookId/photo — upload photo for a planned book
+router.post('/planned/:bookId/photo', protect, photoUpload.single('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-    const idx = parseInt(req.params.index, 10);
-    const user = await getUserById(req.user.userId);
-    const plannedBooks = [...(user.plannedBooks || [])];
-    if (idx < 0 || idx >= plannedBooks.length) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-    plannedBooks[idx] = { ...plannedBooks[idx], photoUrl: `/uploads/${req.file.filename}` };
-    const updated = await updateUser(req.user.userId, { plannedBooks });
-    res.json(updated.plannedBooks);
+    await plannedBooksDb.updatePhoto(req.user.userId, req.params.bookId, `/uploads/${req.file.filename}`);
+    const plannedBooks = await plannedBooksDb.getAll(req.user.userId);
+    res.json(plannedBooks);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}, (err, _req, res, _next) => {
-  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ message: 'File size exceeds 5 MB' });
-  }
-  if (err) return res.status(400).json({ message: err.message });
-});
+}, multerError);
 
-// DELETE /api/books/planned/:index — remove a planned book by index
-router.delete('/planned/:index', protect, async (req, res) => {
+// PUT /api/books/planned/:bookId — edit a planned book
+router.put('/planned/:bookId', protect, async (req, res) => {
   try {
-    const idx = parseInt(req.params.index, 10);
-    const user = await getUserById(req.user.userId);
-    const plannedBooks = (user.plannedBooks || []).filter((_, i) => i !== idx);
-    const updated = await updateUser(req.user.userId, { plannedBooks });
-    res.json(updated.plannedBooks);
+    const { bookName, author } = req.body;
+    if (!bookName?.trim()) return res.status(400).json({ message: 'Book name is required' });
+
+    await plannedBooksDb.updateItem(req.user.userId, req.params.bookId, {
+      bookName: bookName.trim(),
+      author: (author || '').trim(),
+    });
+
+    const plannedBooks = await plannedBooksDb.getAll(req.user.userId);
+    res.json(plannedBooks);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// DELETE /api/books/archived/:index — remove an archived book by index
-router.delete('/archived/:index', protect, async (req, res) => {
+// DELETE /api/books/planned/:bookId — remove a planned book
+router.delete('/planned/:bookId', protect, async (req, res) => {
   try {
-    const idx = parseInt(req.params.index, 10);
-    const user = await getUserById(req.user.userId);
-    const archivedBooks = (user.archivedBooks || []).filter((_, i) => i !== idx);
-    const updated = await updateUser(req.user.userId, { archivedBooks });
-    res.json(updated.archivedBooks);
+    await plannedBooksDb.deleteItem(req.user.userId, req.params.bookId);
+    const plannedBooks = await plannedBooksDb.getAll(req.user.userId);
+    res.json(plannedBooks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/books/archived/:bookId — remove an archived book
+router.delete('/archived/:bookId', protect, async (req, res) => {
+  try {
+    await archivedBooksDb.deleteItem(req.user.userId, req.params.bookId);
+    const archivedBooks = await archivedBooksDb.getAll(req.user.userId);
+    res.json(archivedBooks);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

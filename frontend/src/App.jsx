@@ -13,6 +13,7 @@ import WeeklyReview from './pages/WeeklyReview';
 import MonthlyReview from './pages/MonthlyReview';
 import BookArchive from './pages/BookArchive';
 import Settings from './pages/Settings';
+import Security from './pages/Security';
 import Splash from './pages/Splash';
 import DailyNotes from './pages/DailyNotes';
 import TasksPage from './pages/TasksPage';
@@ -45,6 +46,7 @@ const NAV_LINKS = [
   { to: '/vault',         icon: KeyRound,        label: 'Password Vault' },
   { to: '/weekly',        icon: CalendarDays,    label: 'Weekly' },
   { to: '/monthly',       icon: CalendarRange,   label: 'Monthly' },
+
   { to: '/archive',       icon: BookOpen,        label: 'Archive' },
   { to: '/expenses',      icon: Wallet,          label: 'Expenses' },
   { to: '/essentials',    icon: ShieldCheck,     label: 'Essentials' },
@@ -56,6 +58,7 @@ const NAV_LINKS = [
   { to: '/german',        icon: Languages,       label: 'Learning German' },
   { to: '/aws',           icon: Cloud,           label: 'Learning AWS' },
   { to: '/settings',      icon: SettingsIcon,    label: 'Settings' },
+  { to: '/security',      icon: ShieldCheck,     label: 'Security' },
 ];
 
 function App() {
@@ -77,6 +80,19 @@ function App() {
       }).catch(() => {});
     }
   }, [theme, userId]);
+
+  // Periodically heartbeat the current session to keep it marked as connected
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (navigator.onLine) {
+        fetch(`${API_URL}/api/sessions/heartbeat`, {
+          method: 'POST', credentials: 'include',
+        }).catch(() => {});
+      }
+    }, 120000); // every 2 minutes
+    return () => clearInterval(interval);
+  }, [user]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
@@ -246,6 +262,7 @@ function App() {
             <Route path="/vault"     element={<PasswordVault />} />
             <Route path="/weekly"    element={<WeeklyReview />} />
             <Route path="/monthly"   element={<MonthlyReview />} />
+
             <Route path="/archive"   element={<BookArchive />} />
             <Route path="/expenses"  element={<ExpenseTracker />} />
             <Route path="/essentials" element={<Essentials />} />
@@ -257,6 +274,7 @@ function App() {
             <Route path="/savings"   element={<SavingsVault />} />
             <Route path="/last-day"  element={<LastDay />} />
             <Route path="/settings"  element={<Settings />} />
+            <Route path="/security"  element={<Security />} />
           </Routes>
         </div>
       </main>

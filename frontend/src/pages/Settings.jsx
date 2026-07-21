@@ -1,39 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { User, Mail, Lock, Eye, EyeOff, Save, Check, AlertCircle, Shield, LogOut, Clock, Timer, Layers, History, Globe, Monitor, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Mail, Save, Check, AlertCircle, Clock, Timer, Layers, History, Globe, Monitor, Smartphone, ChevronDown, ChevronUp, Camera, Trash2, RotateCcw, Upload, Lock } from 'lucide-react';
 
 export default function Settings() {
-  const { user, updateProfile, changePassword, logout, timelinePrefs, setTimelinePrefs, history } = useHabits();
+  const { user, updateProfile, timelinePrefs, setTimelinePrefs, history, avatarHistory, fetchAvatarHistory, uploadAvatar, revertAvatar, deleteAvatarVersion } = useHabits();
   const [expandedEntry, setExpandedEntry] = useState(null);
 
   // Profile fields
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
 
-  // Password fields
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
+  // Avatar state
+  const [uploading, setUploading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [revertLoading, setRevertLoading] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   // Feedback states
   const [profileMsg, setProfileMsg] = useState(null);
   const [profileError, setProfileError] = useState(null);
   const [profileSaving, setProfileSaving] = useState(false);
 
-  const [pwMsg, setPwMsg] = useState(null);
-  const [pwError, setPwError] = useState(null);
-  const [pwSaving, setPwSaving] = useState(false);
-
-  // Re-sync fields whenever the store user object is updated (e.g. after /api/verify
-  // or /api/settings returns the real name from the server)
+  // Re-sync fields whenever the store user object is updated
   useEffect(() => {
     if (user?.firstName) setFirstName(user.firstName);
     if (user?.lastName)  setLastName(user.lastName);
   }, [user?.firstName, user?.lastName]);
+
+  // Fetch avatar history when modal opens
+  useEffect(() => {
+    if (showHistory) fetchAvatarHistory();
+  }, [showHistory, fetchAvatarHistory]);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -51,31 +50,40 @@ export default function Settings() {
     }
   };
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    setPwMsg(null);
-    setPwError(null);
-
-    if (newPassword.length < 6) {
-      return setPwError('New password must be at least 6 characters');
-    }
-    if (newPassword !== confirmNewPassword) {
-      return setPwError('New passwords do not match');
-    }
-
-    setPwSaving(true);
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
     try {
-      await changePassword(currentPassword, newPassword);
-      setPwMsg('Password changed successfully!');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
-      setShowPasswordSection(false);
-      setTimeout(() => setPwMsg(null), 3000);
+      await uploadAvatar(file);
     } catch (err) {
-      setPwError(err.message);
+      alert(err.message);
     } finally {
-      setPwSaving(false);
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRevert = async (versionId) => {
+    setRevertLoading(versionId);
+    try {
+      await revertAvatar(versionId);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setRevertLoading(null);
+    }
+  };
+
+  const handleDelete = async (versionId) => {
+    setDeleteLoading(versionId);
+    try {
+      await deleteAvatarVersion(versionId);
+      setConfirmDeleteId(null);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -169,126 +177,58 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* ─── Security / Password Card ─── */}
+      {/* ─── Avatar Card ─── */}
       <div className="glass-card settings-card">
         <div className="settings-card-header">
-          <div className="settings-icon-badge security-badge">
-            <Shield size={22} />
+          <div className="settings-icon-badge" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05))', color: '#8b5cf6' }}>
+            <Camera size={22} />
           </div>
           <div>
-            <h3>Security</h3>
-            <p className="settings-subtitle">Manage your password</p>
+            <h3>Profile Photo</h3>
+            <p className="settings-subtitle">Upload and manage your avatar photos</p>
           </div>
         </div>
 
-        {pwMsg && (
-          <div className="settings-alert success" style={{ margin: '0 0 1rem 0' }}>
-            <Check size={16} /> {pwMsg}
-          </div>
-        )}
-
-        {!showPasswordSection ? (
-          <button
-            className="btn btn-secondary settings-pw-toggle"
-            onClick={() => { setShowPasswordSection(true); setPwError(null); setPwMsg(null); }}
-          >
-            <Lock size={16} /> Change Password
-          </button>
-        ) : (
-          <form onSubmit={handlePasswordChange} className="settings-form settings-pw-form">
-            <div className="settings-field">
-              <label htmlFor="settings-currentPw">Current Password</label>
-              <div className="settings-input-wrap">
-                <Lock size={16} className="settings-input-icon" />
-                <input
-                  id="settings-currentPw"
-                  type={showCurrentPw ? 'text' : 'password'}
-                  placeholder="Enter current password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
+        <div className="settings-form">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <div style={{
+              width: 80, height: 80, borderRadius: '50%', overflow: 'hidden',
+              border: '3px solid var(--border)', flexShrink: 0,
+              background: 'var(--bg-card-hover)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {user?.profilePicture ? (
+                <img src={user.profilePicture} alt="Avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={e => { e.target.style.display = 'none'; }}
                 />
-                <button
-                  type="button"
-                  className="settings-eye-btn"
-                  onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  tabIndex={-1}
-                >
-                  {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              ) : (
+                <User size={32} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+              )}
             </div>
-
-            <div className="settings-field">
-              <label htmlFor="settings-newPw">New Password</label>
-              <div className="settings-input-wrap">
-                <Lock size={16} className="settings-input-icon" />
-                <input
-                  id="settings-newPw"
-                  type={showNewPw ? 'text' : 'password'}
-                  placeholder="At least 6 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  className="settings-eye-btn"
-                  onClick={() => setShowNewPw(!showNewPw)}
-                  tabIndex={-1}
-                >
-                  {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="settings-field">
-              <label htmlFor="settings-confirmNewPw">Confirm New Password</label>
-              <div className="settings-input-wrap">
-                <Lock size={16} className="settings-input-icon" />
-                <input
-                  id="settings-confirmNewPw"
-                  type="password"
-                  placeholder="Repeat new password"
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {pwError && (
-              <div className="settings-alert error">
-                <AlertCircle size={16} /> {pwError}
-              </div>
-            )}
-
-            <div className="settings-pw-actions">
-              <button type="submit" className="btn settings-save-btn" disabled={pwSaving}>
-                {pwSaving ? (
-                  <span className="settings-spinner" />
-                ) : (
-                  <Shield size={16} />
-                )}
-                {pwSaving ? 'Updating...' : 'Update Password'}
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label className="btn" style={{
+                padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)', color: '#fff',
+                border: 'none', fontWeight: 600, fontSize: '0.85rem',
+                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                opacity: uploading ? 0.6 : 1,
+              }}>
+                <Upload size={14} />
+                {uploading ? 'Uploading...' : 'Upload Photo'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} disabled={uploading} />
+              </label>
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => {
-                  setShowPasswordSection(false);
-                  setCurrentPassword('');
-                  setNewPassword('');
-                  setConfirmNewPassword('');
-                  setPwError(null);
-                }}
+                onClick={() => setShowHistory(true)}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
               >
-                Cancel
+                <Camera size={14} />
+                View History
               </button>
             </div>
-          </form>
-        )}
+          </div>
+        </div>
       </div>
       {/* ─── Timeline Preferences Card ─── */}
       <div className="glass-card settings-card">
@@ -457,6 +397,112 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      {/* ─── Avatar History Modal ─── */}
+      {showHistory && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          padding: '1rem',
+        }} onClick={() => setShowHistory(false)}>
+          <div className="glass-card" style={{
+            maxWidth: '520px', width: '100%', maxHeight: '80vh',
+            padding: '1.5rem', borderRadius: '18px', position: 'relative',
+            overflow: 'auto',
+          }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setShowHistory(false)}
+              style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem' }}
+            >
+              ✕
+            </button>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Camera size={18} style={{ color: '#8b5cf6' }} />
+              Avatar History
+            </h3>
+
+            {avatarHistory.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
+                No previous avatar versions found.
+              </p>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: '1rem',
+                padding: '0.25rem 0',
+              }}>
+                {avatarHistory.map(v => (
+                  <div key={v.versionId} style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem',
+                    padding: '0.85rem 0.6rem 0.6rem', borderRadius: '14px', position: 'relative',
+                    background: v.isCurrent ? 'rgba(139,92,246,0.1)' : 'var(--bg-card-hover)',
+                    border: `2px solid ${v.isCurrent ? '#8b5cf6' : 'rgba(255,255,255,0.06)'}`,
+                  }}>
+                    {v.isCurrent && (
+                      <div style={{ position: 'absolute', top: -1, right: -1, background: '#8b5cf6', color: '#fff', fontSize: '0.5rem', fontWeight: 700, padding: '2px 7px', borderRadius: '0 14px 0 10px', letterSpacing: '0.3px' }}>
+                        ACTIVE
+                      </div>
+                    )}
+                    <div style={{
+                      width: 90, height: 90, borderRadius: '50%', overflow: 'hidden',
+                      border: `3px solid ${v.isCurrent ? '#8b5cf6' : 'var(--border)'}`,
+                      background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: v.isCurrent ? '0 0 0 3px rgba(139,92,246,0.3)' : '0 2px 8px rgba(0,0,0,0.15)',
+                    }}>
+                      <img src={v.url} alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => { e.target.style.display = 'none'; }}
+                      />
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: '0.75rem', color: v.isCurrent ? '#8b5cf6' : 'var(--text-primary)' }}>
+                        v{v.versionNumber}
+                      </p>
+                      <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                        {v.createdAt ? format(new Date(v.createdAt), 'MMM d') : ''}
+                      </p>
+                    </div>
+                    {!v.isCurrent && (
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <button
+                          onClick={() => handleRevert(v.versionId)}
+                          disabled={revertLoading === v.versionId}
+                          style={{
+                            width: '100%', padding: '0.3rem 0', borderRadius: '6px', border: 'none',
+                            background: revertLoading === v.versionId ? 'rgba(22,163,74,0.3)' : '#16a34a',
+                            color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.65rem',
+                          }}
+                        >
+                          {revertLoading === v.versionId ? '...' : 'Set as profile photo'}
+                        </button>
+                        {confirmDeleteId === v.versionId ? (
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center', background: 'rgba(220,38,38,0.1)', padding: '0.25rem 0.35rem', borderRadius: '6px' }}>
+                            <span style={{ fontSize: '0.6rem', color: '#dc2626', fontWeight: 600 }}>Delete?</span>
+                            <button onClick={() => handleDelete(v.versionId)} disabled={deleteLoading === v.versionId} style={{ background: '#dc2626', border: 'none', color: '#fff', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.6rem', lineHeight: '1.2' }}>Yes</button>
+                            <button onClick={() => setConfirmDeleteId(null)} style={{ background: 'transparent', border: '1px solid #dc2626', color: '#dc2626', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.6rem', lineHeight: '1.2' }}>No</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(v.versionId)}
+                            style={{
+                              width: '100%', padding: '0.3rem 0', borderRadius: '6px', border: '1px solid rgba(220,38,38,0.4)',
+                              background: 'rgba(220,38,38,0.1)', color: '#dc2626', cursor: 'pointer', fontWeight: 600, fontSize: '0.65rem',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

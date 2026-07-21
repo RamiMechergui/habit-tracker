@@ -168,6 +168,48 @@ const TABLES = [
     BillingMode: 'PAY_PER_REQUEST',
   },
 
+  // ── HabitSessions ────────────────────────────────────────────────────────
+  {
+    TableName: 'HabitSessions',
+    KeySchema: [
+      { AttributeName: 'userId',    KeyType: 'HASH' },
+      { AttributeName: 'sessionId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId',    AttributeType: 'S' },
+      { AttributeName: 'sessionId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
+
+  // ── HabitPlannedBooks ────────────────────────────────────────────────────
+  {
+    TableName: 'HabitPlannedBooks',
+    KeySchema: [
+      { AttributeName: 'userId', KeyType: 'HASH' },
+      { AttributeName: 'bookId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId', AttributeType: 'S' },
+      { AttributeName: 'bookId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
+
+  // ── HabitArchivedBooks ───────────────────────────────────────────────────
+  {
+    TableName: 'HabitArchivedBooks',
+    KeySchema: [
+      { AttributeName: 'userId', KeyType: 'HASH' },
+      { AttributeName: 'bookId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId', AttributeType: 'S' },
+      { AttributeName: 'bookId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
+
   // ── HabitMilestones ──────────────────────────────────────────────────────
   {
     TableName: 'HabitMilestones',
@@ -192,6 +234,31 @@ const TABLES = [
     AttributeDefinitions: [
       { AttributeName: 'userId',  AttributeType: 'S' },
       { AttributeName: 'entryId', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
+
+  // ── HabitAvatarHistory ──────────────────────────────────────────────────
+  {
+    TableName: 'HabitAvatarHistory',
+    KeySchema: [
+      { AttributeName: 'userId',    KeyType: 'HASH' },
+      { AttributeName: 'versionId', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'userId',      AttributeType: 'S' },
+      { AttributeName: 'versionId',   AttributeType: 'S' },
+      { AttributeName: 'versionNumber', AttributeType: 'N' },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'UserIdVersionIndex',
+        KeySchema: [
+          { AttributeName: 'userId',        KeyType: 'HASH' },
+          { AttributeName: 'versionNumber', KeyType: 'RANGE' },
+        ],
+        Projection: { ProjectionType: 'ALL' },
+      },
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },

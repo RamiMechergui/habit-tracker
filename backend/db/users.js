@@ -48,6 +48,7 @@ function toUserShape(item) {
     firstName:         item.firstName  || '',
     lastName:          item.lastName   || '',
     profilePicture:    item.profilePicture || '',
+    avatarVersion:     item.avatarVersion || 0,
     expenseCategories: item.expenseCategories || DEFAULT_EXPENSE_CATEGORIES,
     currentBook:       item.currentBook ? { ...item.currentBook, photoUrl: item.currentBook.photoUrl || '', author: item.currentBook.author || '' } : { bookName: '', targetPages: 0, startDate: '', isActive: false, photoUrl: '', author: '' },
     archivedBooks:     item.archivedBooks || [],
