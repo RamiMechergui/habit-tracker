@@ -557,7 +557,7 @@ function QuizModal({ vocab, onClose }) {
               </button>
             </div>
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ fontSize: '2.2rem', fontWeight: 900, color: C.gold, marginBottom: 12 }}>{current.word}</div>
+              <div style={{ fontSize: isMobile ? '1.5rem' : '2.2rem', fontWeight: 900, color: C.gold, marginBottom: 12 }}>{current.word}</div>
               {revealed ? (
                 <div style={{ animation: 'evolvia-up 0.3s ease' }}>
                   <div style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: 8, fontWeight: 600 }}>{current.translation}</div>
@@ -2102,7 +2102,7 @@ export default function LearningGerman() {
         <div>
           <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} onUploadPhoto={handleUploadPhoto} onDeletePhoto={handleDeletePhoto} uploading={photoUploading} />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? 140 : 200 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search vocabulary..." style={{ ...inputBase, padding: '0.6rem 0.75rem 0.6rem 2.2rem', background: 'var(--bg-card)' }} />
               {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>}
@@ -2214,7 +2214,7 @@ export default function LearningGerman() {
         <div>
           <GrammarForm onAdd={handleAddGrammar} onUpdate={handleUpdateGrammar} editRecord={editGrammar} onCancelEdit={() => setEditGrammar(null)} saving={grammarSaving} isMobile={isMobile} />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? 140 : 200 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search grammar rules..." style={{ ...inputBase, padding: '0.6rem 0.75rem 0.6rem 2.2rem', background: 'var(--bg-card)' }} />
               {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>}
@@ -2573,7 +2573,7 @@ export default function LearningGerman() {
                 <div style={{
                   padding: '0.85rem 1rem', borderRadius: '10px', background: 'var(--bg)',
                   border: '1px solid var(--border)', fontSize: '0.88rem', color: 'var(--text-primary)',
-                  lineHeight: 1.7, maxHeight: 120, overflow: 'hidden',
+                  lineHeight: 1.7, maxHeight: isMobile ? 200 : 120, overflowY: 'auto',
                   position: 'relative',
                 }} dangerouslySetInnerHTML={{ __html: m.content }} />
                 {m.content.length > 300 && (

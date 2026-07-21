@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useHabits } from '../Store';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal } from 'lucide-react';
 export default function Dashboard() {
   const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   
   const displayName = user?.firstName || user?.lastName
     ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
@@ -275,9 +277,11 @@ export default function Dashboard() {
 
   const handleAddCategoryClick = () => {
     const cat = newCategory.trim();
-    if (cat) {
-      setConfirmModal({ isOpen: true, action: 'add', category: cat });
+    if (!cat) {
+      showMessage('Please enter a category name.', 'error');
+      return;
     }
+    setConfirmModal({ isOpen: true, action: 'add', category: cat });
   };
 
   const handleDeleteCategoryClick = (cat) => {
@@ -346,7 +350,7 @@ export default function Dashboard() {
     <>
       <div className="dashboard-welcome mb-8" style={{ animation: 'evolvia-up 0.5s ease-out' }}>
         <h1 style={{ 
-          fontSize: '2.5rem', 
+          fontSize: isMobile ? '1.5rem' : '2.5rem', 
           fontWeight: 900, 
           background: 'linear-gradient(to right, #fff, #94a3b8)', 
           WebkitBackgroundClip: 'text', 
@@ -367,7 +371,7 @@ export default function Dashboard() {
           borderColor: 'rgba(59, 130, 246, 0.2)'
         }}>
           <h3 className="mb-2" style={{ opacity: 0.8 }}>Today's Performance</h3>
-          <div className="stat-number" style={{ fontSize: '3.5rem', fontWeight: 900, letterSpacing: '-2px' }}>
+          <div className="stat-number" style={{ fontSize: isMobile ? '2.5rem' : '3.5rem', fontWeight: 900, letterSpacing: '-2px' }}>
             {todayLog.totalScore}<span className="pts" style={{ fontSize: '1rem', opacity: 0.5 }}>/100</span>
           </div>
           <div className="flex justify-center mt-3">
@@ -1211,7 +1215,12 @@ export default function Dashboard() {
 
       {/* Expense Categories Management */}
       <div className="glass-card p-6 mb-6">
-        <h3 className="mb-4">Manage Expense Classifications</h3>
+        <h3 className="mb-4" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          Manage Expense Classifications
+          <span style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: '12px', whiteSpace: 'nowrap' }}>
+            {expenseCategories.length} {expenseCategories.length === 1 ? 'category' : 'categories'}
+          </span>
+        </h3>
         <p className="text-muted text-sm mb-4">Define custom categories for your daily expenses.</p>
         
         <div className="flex flex-wrap gap-2 mb-4 evolvia-scrollbar" style={{ maxHeight: '180px', overflowY: 'auto', padding: '2px', alignContent: 'flex-start' }}>
@@ -1224,7 +1233,7 @@ export default function Dashboard() {
                     value={editCategoryValue} 
                     onChange={(e) => setEditCategoryValue(e.target.value)} 
                     onKeyDown={(e) => { if(e.key === 'Enter') handleSaveCategory(cat); else if(e.key === 'Escape') cancelEditCategory(); }}
-                    style={{ padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--accent-blue)', background: 'transparent', color: 'var(--text-primary)', outline: 'none', width: '120px' }}
+                    style={{ padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--accent-blue)', background: 'transparent', color: 'var(--text-primary)', outline: 'none', width: '90px', maxWidth: '100%' }}
                     autoFocus
                   />
                   <button type="button" onClick={() => handleSaveCategory(cat)} title="Save" style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex' }}>

@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Trash2, ShieldCheck, Loader } from 'lucide-react';
 import { useHabits } from '../Store';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 // Preset emoji icons for hygiene items
 const PRESET_ICONS = [
@@ -30,6 +31,7 @@ const FILTER_MAP = { 'All': null, 'Available': 'A', 'Buy Soon': 'BS', 'Not Avail
 
 export default function Essentials() {
   const { essentials, addEssential, updateEssential, deleteEssential, essentialsLoading } = useHabits();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Add-item form state
   const [newName, setNewName] = useState('');
@@ -137,7 +139,7 @@ export default function Essentials() {
             <ShieldCheck size={24} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Essentials</h1>
+            <h1 style={{ margin: 0, fontSize: isMobile ? '1.3rem' : '1.8rem', fontWeight: 800 }}>Essentials</h1>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               Track your personal hygiene products
             </p>

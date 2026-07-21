@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 // ── Shared chart defaults (theme-aware) ───────────────────────────
 const getChartDefaults = () => {
@@ -140,6 +141,7 @@ function ChartCard({ title, colorGradient, icon, borderColor, height = 320, chil
 export default function MonthlyReview() {
   const { getMonthlyData } = useHabits();
   const [date, setDate] = useState(new Date());
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const goPrevMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
   const goNextMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1));
@@ -164,6 +166,46 @@ export default function MonthlyReview() {
     0
   ).toFixed(3);
   const eliteDays = submittedDays.filter(d => d.log.totalScore >= 90).length;
+
+  // ── Phone & Social Media average (in minutes) ──────────────
+  const daysWithPhone = monthlyData.filter(d => d.log.bad?.phone?.min > 0);
+  const avgPhoneMin = daysWithPhone.length
+    ? Math.round(daysWithPhone.reduce((s, d) => s + (d.log.bad.phone.min || 0), 0) / daysWithPhone.length)
+    : 0;
+  const daysWithSocial = monthlyData.filter(d => d.log.bad?.social?.min > 0);
+  const avgSocialMin = daysWithSocial.length
+    ? Math.round(daysWithSocial.reduce((s, d) => s + (d.log.bad.social.min || 0), 0) / daysWithSocial.length)
+    : 0;
+  const fmtMin = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+  // ── Average wake time (among days with non-empty time) ───
+  const wakeDays = monthlyData.filter(d => d.log.morning?.wakeTime);
+  const avgWakeTime = wakeDays.length
+    ? wakeDays.reduce((s, d) => {
+        const [h, m] = d.log.morning.wakeTime.split(':').map(Number);
+        return s + h * 60 + m;
+      }, 0) / wakeDays.length
+    : null;
+  const fmtWake = (totalMinutes) => {
+    if (totalMinutes === null) return '\u2014';
+    const h = Math.floor(totalMinutes / 60);
+    const m = Math.round(totalMinutes % 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  // ── Average cigarettes per day (among days with >0 cigs) ─
+  const daysWithCigs = monthlyData.filter(d => {
+    if (!Array.isArray(d.log.expenses)) return false;
+    return d.log.expenses.some(e => (e.category === 'smoking' || e.category === 'smocking') && parseInt(e.cigarettesCount) > 0);
+  });
+  const avgCigs = daysWithCigs.length
+    ? Math.round(daysWithCigs.reduce((s, d) => {
+        if (!Array.isArray(d.log.expenses)) return s;
+        return s + d.log.expenses
+          .filter(e => e.category === 'smoking' || e.category === 'smocking')
+          .reduce((acc, cur) => acc + (parseInt(cur.cigarettesCount) || 0), 0);
+      }, 0) / daysWithCigs.length)
+    : 0;
 
   // ── Chart Datasets ──────────────────────────────────────────
   const disciplineData = {
@@ -411,7 +453,7 @@ export default function MonthlyReview() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
             <Calendar size={20} style={{ color: '#8b5cf6' }} />
             <h2 className="review-title" style={{
-              margin: 0, fontSize: '1.75rem', fontWeight: '900', letterSpacing: '-0.03em',
+              margin: 0, fontSize: isMobile ? '1.2rem' : '1.75rem', fontWeight: '900', letterSpacing: '-0.03em',
               background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
@@ -529,8 +571,12 @@ export default function MonthlyReview() {
         marginBottom: '1.75rem',
       }}>
         <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} colorRgb="59,130,246" />
+        <StatBadge icon={Clock} label="Avg Wake" value={fmtWake(avgWakeTime)} colorRgb="20,184,166" />
         <StatBadge icon={Star} label="Best Day" value={`${bestScore}`} colorRgb="16,185,129" />
         <StatBadge icon={BarChart2} label="Elite Days (90+)" value={`${eliteDays}`} colorRgb="139,92,246" />
+        <StatBadge icon={Smartphone} label="Avg Phone" value={fmtMin(avgPhoneMin)} colorRgb="99,102,241" />
+        <StatBadge icon={MessageCircle} label="Avg Social" value={fmtMin(avgSocialMin)} colorRgb="236,72,153" />
+        <StatBadge icon={Ban} label="Avg Cigs" value={`${avgCigs}`} colorRgb="239,68,68" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalMonthlySpend} colorRgb="245,158,11" />
       </div>
 
@@ -645,7 +691,7 @@ export default function MonthlyReview() {
 
     {/* ── Weekend Completion Rate ───────────────────────────── */}
     <div className="monthly-weekend-grid" style={{
-      display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+      display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr',
       gap: '0.6rem', marginBottom: '1.5rem',
     }}>
       {[

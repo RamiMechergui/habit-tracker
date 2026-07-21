@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import CircularTracker from '../components/CircularTracker';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Clock, CheckSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Clock, CheckSquare, Smartphone, MessageCircle, Ban } from 'lucide-react';
 import { format, addDays, subDays, isToday } from 'date-fns';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 // ── Shared chart defaults (theme-aware) ──────────────────────
 const getChartDefaults = () => {
@@ -164,6 +165,7 @@ function ChartCard({ title, color, icon, height = 300, children }) {
 export default function WeeklyReview() {
   const { getWeeklyData } = useHabits();
   const [date, setDate] = useState(new Date());
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const goPrevWeek = () => setDate(d => subDays(d, 7));
   const goNextWeek = () => setDate(d => addDays(d, 7));
@@ -191,6 +193,46 @@ export default function WeeklyReview() {
     (t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0),
     0
   ).toFixed(3);
+
+  // ── Phone & Social Media average (in minutes) ──────────────
+  const daysWithPhone = weeklyData.filter(d => d.log.bad?.phone?.min > 0);
+  const avgPhoneMin = daysWithPhone.length
+    ? Math.round(daysWithPhone.reduce((s, d) => s + (d.log.bad.phone.min || 0), 0) / daysWithPhone.length)
+    : 0;
+  const daysWithSocial = weeklyData.filter(d => d.log.bad?.social?.min > 0);
+  const avgSocialMin = daysWithSocial.length
+    ? Math.round(daysWithSocial.reduce((s, d) => s + (d.log.bad.social.min || 0), 0) / daysWithSocial.length)
+    : 0;
+  const fmtMin = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+  // ── Average wake time (among days with non-empty time) ───
+  const wakeDays = weeklyData.filter(d => d.log.morning?.wakeTime);
+  const avgWakeTime = wakeDays.length
+    ? wakeDays.reduce((s, d) => {
+        const [h, m] = d.log.morning.wakeTime.split(':').map(Number);
+        return s + h * 60 + m;
+      }, 0) / wakeDays.length
+    : null;
+  const fmtWake = (totalMinutes) => {
+    if (totalMinutes === null) return '\u2014';
+    const h = Math.floor(totalMinutes / 60);
+    const m = Math.round(totalMinutes % 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  // ── Average cigarettes per day (among days with >0 cigs) ─
+  const daysWithCigs = weeklyData.filter(d => {
+    if (!Array.isArray(d.log.expenses)) return false;
+    return d.log.expenses.some(e => (e.category === 'smoking' || e.category === 'smocking') && parseInt(e.cigarettesCount) > 0);
+  });
+  const avgCigs = daysWithCigs.length
+    ? Math.round(daysWithCigs.reduce((s, d) => {
+        if (!Array.isArray(d.log.expenses)) return s;
+        return s + d.log.expenses
+          .filter(e => e.category === 'smoking' || e.category === 'smocking')
+          .reduce((acc, cur) => acc + (parseInt(cur.cigarettesCount) || 0), 0);
+      }, 0) / daysWithCigs.length)
+    : 0;
 
   const parseWakeTime = (timeStr) => {
     if (!timeStr) return null;
@@ -440,7 +482,7 @@ export default function WeeklyReview() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
             <Calendar size={20} style={{ color: '#f59e0b' }} />
             <h2 className="review-title" style={{
-              margin: 0, fontSize: '1.65rem', fontWeight: '900', letterSpacing: '-0.02em',
+              margin: 0, fontSize: isMobile ? '1.2rem' : '1.65rem', fontWeight: '900', letterSpacing: '-0.02em',
               background: 'linear-gradient(135deg, #3b82f6 0%, #f59e0b 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
@@ -558,7 +600,10 @@ export default function WeeklyReview() {
         marginBottom: '1.75rem',
       }}>
         <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} color="245,158,11" />
-        <StatBadge icon={TrendingUp} label="Best Score" value={`${bestScore}`} color="16,185,129" />
+        <StatBadge icon={Clock} label="Avg Wake" value={fmtWake(avgWakeTime)} color="34,211,238" />
+        <StatBadge icon={Smartphone} label="Avg Phone" value={fmtMin(avgPhoneMin)} color="99,102,241" />
+        <StatBadge icon={MessageCircle} label="Avg Social" value={fmtMin(avgSocialMin)} color="236,72,153" />
+        <StatBadge icon={Ban} label="Avg Cigs" value={`${avgCigs}`} color="239,68,68" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalExpenses} color="59,130,246" />
         <StatBadge icon={CheckSquare} label="Days Logged" value={`${submittedDays.length}/7`} color="139,92,246" />
       </div>

@@ -773,13 +773,13 @@ export default function DailyLog() {
 
             <div className="flex-col gap-3">
               {[
-                { id: 'wakeTime', label: 'Wake up time', pts: '14pts', type: 'time' },
-                { id: 'meditate', label: 'Meditate 3 mins', pts: '1pt' },
-                { id: 'bed', label: 'Make bed', pts: '2pts' },
-                { id: 'teeth', label: 'Brush teeth & tongue', pts: '2pts' },
-                { id: 'shower', label: 'Scottish Shower', pts: '8pts' },
-                { id: 'gel', label: 'Apply hair gel', pts: '1pt' },
-                { id: 'perfume', label: 'Put on perfume', pts: '2pts' }
+                { id: 'wakeTime', label: '⏰ Wake up time', pts: '14pts', type: 'time' },
+                { id: 'meditate', label: '🧘 Meditate 3 mins', pts: '1pt' },
+                { id: 'bed', label: '🛏️ Make bed', pts: '2pts' },
+                { id: 'teeth', label: '🪥 Brush teeth & tongue', pts: '2pts' },
+                { id: 'shower', label: '🚿 Scottish Shower', pts: '8pts' },
+                { id: 'gel', label: '💇 Apply hair gel', pts: '1pt' },
+                { id: 'perfume', label: '👃 Put on perfume', pts: '2pts' }
               ].map(item => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.morning[item.id] ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
@@ -817,13 +817,13 @@ export default function DailyLog() {
 
             <div className="flex-col gap-3">
               {[
-                { id: 'smoking', label: '1. Smoking', pts: '10pts', extra: 'count', placeholder: 'Manual Qty' },
-                { id: 'sexual', label: '2. Sexual discipline', pts: '4pts' },
-                { id: 'social', label: '3. Social Media', pts: '2pts', extra: 'min', placeholder: 'Min' },
-                { id: 'phone', label: '4. Phone Usage', pts: '6pts', extra: 'min', placeholder: 'Min' },
-                { id: 'coffee', label: '5. Coffee', pts: '2pts' },
-                { id: 'eating', label: '6. Eating out', pts: '2pts' },
-                { id: 'noSugar', label: '7. No sugar', pts: '2pts' },
+                { id: 'smoking', label: '🚬 1. Smoking', pts: '10pts', extra: 'count', placeholder: 'Manual Qty' },
+                { id: 'sexual', label: '🔞 2. Sexual discipline', pts: '4pts' },
+                { id: 'social', label: '📱 3. Social Media', pts: '2pts', extra: 'min', placeholder: 'Min' },
+                { id: 'phone', label: '📲 4. Phone Usage', pts: '6pts', extra: 'min', placeholder: 'Min' },
+                { id: 'coffee', label: '☕ 5. Coffee', pts: '2pts' },
+                { id: 'eating', label: '🍔 6. Eating out', pts: '2pts' },
+                { id: 'noSugar', label: '🍬 7. No sugar', pts: '2pts' },
               ].map(item => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
@@ -846,8 +846,8 @@ export default function DailyLog() {
                               max="999"
                               placeholder="Total"
                               style={{
-                                width: '85px',
-                                padding: '0.4rem 0.4rem 0.4rem 28px',
+                                width: '72px',
+                                padding: '0.4rem 0.4rem 0.4rem 24px',
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.4)',
                                 borderRadius: '8px',
@@ -876,8 +876,8 @@ export default function DailyLog() {
                                   min="0"
                                   placeholder="H"
                                   style={{
-                                    width: '45px',
-                                    padding: '0.4rem',
+                                    width: '38px',
+                                    padding: '0.3rem',
                                     background: 'rgba(0,0,0,0.2)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '6px',
@@ -899,8 +899,8 @@ export default function DailyLog() {
                                   max="59"
                                   placeholder="M"
                                   style={{
-                                    width: '45px',
-                                    padding: '0.4rem',
+                                    width: '38px',
+                                    padding: '0.3rem',
                                     background: 'rgba(0,0,0,0.2)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '6px',
@@ -927,7 +927,7 @@ export default function DailyLog() {
                             max="999"
                             placeholder={item.placeholder}
                             style={{ 
-                              width: '80px', padding: '0.4rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
+                              width: '65px', padding: '0.3rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
                             }}
                             value={log.bad?.[item.id]?.[item.extra] || ''} 
                             onChange={e => {
@@ -956,19 +956,19 @@ export default function DailyLog() {
             </div>
             <div className="flex-col gap-3">
               {[
-                { id: 'gym', label: '1. Gym & Laundry', pts: '10pts' },
-                { id: 'cleanTable', label: '2. Clean small table', pts: '1pt' },
-                { id: 'orgTable', label: '3. Organize PC table', pts: '1pt' },
-                { id: 'teeth', label: '4. Brush teeth & tongue', pts: '2pts' },
-                { id: 'shave', label: '5. Shave beard', pts: '2pts' },
-                { id: 'washFace', label: '6. Wash face', pts: '1pt' },
-                { id: 'hotShower', label: '7. Hot shower', pts: '4pts' },
-                { id: 'hygiene', label: '8. Hygiene areas', pts: '2pts' },
-                { id: 'fingerNails', label: '9. Trim fingernails', pts: '1pt' },
-                { id: 'toeNails', label: '10. Trim toenails', pts: '1pt' },
-                { id: 'wiseSpend', label: '11. Wise spending', pts: '1pt' },
-                { id: 'saves', label: '12. 1 TND Saved', pts: '1pt' },
-                { id: 'fillApp', label: '13. Fill web app', pts: '3pts' },
+                { id: 'gym', label: '🏋️ 1. Gym & Laundry', pts: '10pts' },
+                { id: 'cleanTable', label: '🧹 2. Clean small table', pts: '1pt' },
+                { id: 'orgTable', label: '🖥️ 3. Organize PC table', pts: '1pt' },
+                { id: 'teeth', label: '🪥 4. Brush teeth & tongue', pts: '2pts' },
+                { id: 'shave', label: '🪒 5. Shave beard', pts: '2pts' },
+                { id: 'washFace', label: '🧼 6. Wash face', pts: '1pt' },
+                { id: 'hotShower', label: '🛁 7. Hot shower', pts: '4pts' },
+                { id: 'hygiene', label: '🧴 8. Hygiene areas', pts: '2pts' },
+                { id: 'fingerNails', label: '✂️ 9. Trim fingernails', pts: '1pt' },
+                { id: 'toeNails', label: '✂️ 10. Trim toenails', pts: '1pt' },
+                { id: 'wiseSpend', label: '💰 11. Wise spending', pts: '1pt' },
+                { id: 'saves', label: '🏦 12. 1 TND Saved', pts: '1pt' },
+                { id: 'fillApp', label: '📝 13. Fill web app', pts: '3pts' },
               ].map(item => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.night[item.id] ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.02)',
@@ -995,7 +995,7 @@ export default function DailyLog() {
                     background: log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                     border: `1px solid ${log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.saturday?.preLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Pre-laundry arrangement</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.saturday?.preLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>🧺 1. Pre-laundry arrangement</span>
                     <input
                       type="checkbox"
                       className="habit-checkbox"
@@ -1014,7 +1014,7 @@ export default function DailyLog() {
                       background: log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                     }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. Cleaning Room</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)' }}>🧹 1. Cleaning Room</span>
                       <input
                         type="checkbox"
                         className="habit-checkbox"
@@ -1027,7 +1027,7 @@ export default function DailyLog() {
                       background: log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                     }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Regular laundry</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>🧺 2. Regular laundry</span>
                       <input
                         type="checkbox"
                         className="habit-checkbox"
@@ -1040,7 +1040,7 @@ export default function DailyLog() {
                       background: log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                     }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)' }}>3. 1 share bought</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)' }}>📈 3. 1 share bought</span>
                       <input
                         type="checkbox"
                         className="habit-checkbox"
@@ -1450,7 +1450,7 @@ export default function DailyLog() {
                 border: `1px solid ${log.system?.todo ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
                 <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>1. EVLVIO TIMELINE Updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>📅 1. Evolvia TIMELINE Updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
@@ -1466,7 +1466,7 @@ export default function DailyLog() {
                 border: `1px solid ${log.system?.money ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
               }}>
                 <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>2. Evolvio Expense Tracker updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>💰 2. Evolvia Expense Tracker updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
@@ -1500,13 +1500,13 @@ export default function DailyLog() {
                       fontWeight: 600,
                       color: 'var(--text-muted)',
                     background: 'rgba(255,255,255,0.03)',
-                    padding: '8px 12px',
+                    padding: '8px 10px',
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    minWidth: '85px',
+                    minWidth: '65px',
                     justifyContent: 'center'
                   }}>
                     <Clock size={12} className="text-blue" />

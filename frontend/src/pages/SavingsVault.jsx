@@ -6,8 +6,10 @@ import {
   CalendarDays, ArrowUpRight, ArrowDownRight, ChevronDown, X
 } from 'lucide-react';
 import { useHabits } from '../Store';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 export default function SavingsVault() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const {
     savings, fetchSavings, addSavingsEntry, updateSavingsEntry, deleteSavingsEntry,
     vaultLocked, setVaultLocked, vaultHasPassword, setVaultHasPassword,
@@ -169,7 +171,7 @@ export default function SavingsVault() {
           }}>
             <ShieldCheck size={40} color="#fff" />
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '0.5rem', fontFamily: 'var(--font-heading)', letterSpacing: '-0.03em' }}>
+          <h1 style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, marginBottom: '0.5rem', fontFamily: 'var(--font-heading)', letterSpacing: '-0.03em' }}>
             Secure Your Vault
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6, maxWidth: '320px', margin: '0 auto' }}>
@@ -278,7 +280,7 @@ export default function SavingsVault() {
         </div>
 
         <div style={{
-          fontSize: '2.6rem', fontWeight: 900, fontFamily: 'var(--font-heading)',
+          fontSize: isMobile ? '1.7rem' : '2.6rem', fontWeight: 900, fontFamily: 'var(--font-heading)',
           letterSpacing: '-0.03em', position: 'relative', zIndex: 1,
           color: vaultLocked ? 'transparent' : (balance >= 0 ? '#e2e8f0' : '#fca5a5'),
           filter: vaultLocked ? 'blur(20px)' : 'none',

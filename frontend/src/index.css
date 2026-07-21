@@ -1327,6 +1327,12 @@ label {
     padding: 0.75rem !important;
   }
 
+  /* ── Bad-habit rows: allow wrap so fixed-width inputs don't overflow ── */
+  .flex.items-center.justify-between.p-3.rounded-xl {
+    flex-wrap: wrap !important;
+    gap: 0.5rem;
+  }
+
   /* ── Prevent tables / wide content overflow ── */
   table {
     display: block;

@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHabits } from '../Store';
-import { Calendar, BookOpen, Target, CheckCircle, Library, BookMarked, Plus, Trash2, User, Play, X, Camera, StopCircle, Image } from 'lucide-react';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { Calendar, BookOpen, Target, CheckCircle, Library, BookMarked, Plus, Trash2, User, Play, X, Camera, StopCircle, Image, Edit } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
 
 function TabBtn({ active, onClick, icon: Icon, label, count }) {
@@ -110,7 +111,8 @@ function BookProgressCard({ book, bookProgress, formatDate, onFinishBook }) {
 }
 
 export default function BookArchive() {
-  const { archivedBooks, plannedBooks, addPlannedBook, removePlannedBook, uploadPlannedBookPhoto, removeArchivedBook, stopReadingBook, currentBook, setCurrentBook, getBookProgress } = useHabits();
+  const { archivedBooks, plannedBooks, addPlannedBook, editPlannedBook, removePlannedBook, uploadPlannedBookPhoto, removeArchivedBook, stopReadingBook, currentBook, setCurrentBook, getBookProgress } = useHabits();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const navigate = useNavigate();
   const photoInputRef = useRef(null);
   const [tab, setTab] = useState('completed');
@@ -130,9 +132,60 @@ export default function BookArchive() {
   const [startError, setStartError] = useState('');
 
 
+  // Edit Planned Book modal state
+  const [editBook, setEditBook] = useState(null);
+  const [editBookName, setEditBookName] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
+  const [editPhotoFile, setEditPhotoFile] = useState(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
+
   // Inline message when already reading
   const [readingMsgIdx, setReadingMsgIdx] = useState(null);
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null);
+
+  const openEditModal = (book, bookId) => {
+    setEditBook(book);
+    setEditBookName(book.bookName || '');
+    setEditAuthor(book.author || '');
+    setEditPhotoFile(null);
+    setEditPhotoPreview(null);
+  };
+
+  const closeEditModal = () => {
+    setEditBook(null);
+    setEditBookName('');
+    setEditAuthor('');
+    setEditPhotoFile(null);
+    setEditPhotoPreview(null);
+    setEditSaving(false);
+  };
+
+  const handleEditPlanned = async (e) => {
+    e.preventDefault();
+    if (!editBookName.trim() || !editBook) return;
+    setEditSaving(true);
+    try {
+      const bookId = editBook.bookId || editBook._id;
+      await editPlannedBook(bookId, editBookName.trim(), editAuthor.trim());
+      // If user selected a new photo, upload it after saving metadata
+      if (editPhotoFile) {
+        await uploadPlannedBookPhoto(bookId, editPhotoFile);
+      }
+      closeEditModal();
+    } catch (err) {
+      alert(err.message);
+    } finally { setEditSaving(false); }
+  };
+
+  const handleEditPhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setEditPhotoPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -171,12 +224,12 @@ export default function BookArchive() {
     reader.readAsDataURL(file);
   };
 
-  const handleCardPhotoSelect = async (idx, e) => {
+  const handleCardPhotoSelect = async (bookId, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingPhotoIdx(idx);
+    setUploadingPhotoIdx(bookId);
     try {
-      await uploadPlannedBookPhoto(idx, file);
+      await uploadPlannedBookPhoto(bookId, file);
     } catch (err) {
       console.error('Failed to upload photo:', err);
     } finally {
@@ -193,17 +246,17 @@ export default function BookArchive() {
     }
   };
 
-  const openStartModal = (book, idx) => {
+  const openStartModal = (book, bookId) => {
     setStartError('');
     setStartPages('');
     setReadingMsgIdx(null);
     // If an active book already exists, show inline message on the card
     if (currentBook?.isActive) {
-      setReadingMsgIdx(idx);
+      setReadingMsgIdx(bookId);
       setTimeout(() => setReadingMsgIdx(null), 4000);
       return;
     }
-    setStartTarget({ ...book, idx });
+    setStartTarget({ ...book, bookId });
   };
 
   const closeStartModal = () => {
@@ -224,7 +277,7 @@ export default function BookArchive() {
     setStartError('');
     try {
       await setCurrentBook(startTarget.bookName, pages, startTarget.author, startTarget.photoUrl || undefined);
-      await removePlannedBook(startTarget.idx);
+      await removePlannedBook(startTarget.bookId);
       closeStartModal();
       navigate('/dashboard');
     } catch (e) {
@@ -306,17 +359,19 @@ export default function BookArchive() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-              {archivedBooks.map((book, idx) => (
-                <div key={idx} className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
-                  {confirmDeleteIdx === idx ? (
+              {archivedBooks.map((book) => {
+                const bookId = book.bookId || book._id;
+                return (
+                <div key={bookId} className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+                  {confirmDeleteIdx === bookId ? (
                     <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(220,38,38,0.1)', padding: '0.35rem 0.5rem', borderRadius: '8px', fontSize: '0.75rem' }}>
                       <span style={{ color: '#dc2626', fontWeight: 600, whiteSpace: 'nowrap' }}>Delete?</span>
-                      <button onClick={() => removeArchivedBook(idx)} style={{ background: '#dc2626', border: 'none', color: '#fff', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>Yes</button>
+                      <button onClick={() => { removeArchivedBook(bookId); setConfirmDeleteIdx(null); }} style={{ background: '#dc2626', border: 'none', color: '#fff', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>Yes</button>
                       <button onClick={() => setConfirmDeleteIdx(null)} style={{ background: 'transparent', border: '1px solid #dc2626', color: '#dc2626', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem' }}>No</button>
                     </div>
                   ) : (
                     <button
-                      onClick={() => setConfirmDeleteIdx(idx)}
+                      onClick={() => setConfirmDeleteIdx(bookId)}
                       title="Delete from archive"
                       style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px', opacity: 0.5, transition: 'opacity 0.2s', }}
                       onMouseEnter={e => e.currentTarget.style.opacity = '1'}
@@ -402,7 +457,8 @@ export default function BookArchive() {
                     </p>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </>
         ) : (
@@ -442,7 +498,7 @@ export default function BookArchive() {
                 display: 'flex', flexDirection: 'column', gap: '0.85rem',
               }}
             >
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.85rem' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Book Name *</label>
                   <input
@@ -510,8 +566,10 @@ export default function BookArchive() {
           {/* Planned books list */}
           {plannedBooks && plannedBooks.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {plannedBooks.map((book, idx) => (
-                <div key={idx} className="glass-card" style={{
+              {plannedBooks.map((book) => {
+                const bookId = book.bookId || book._id;
+                return (
+                <div key={book.bookId || book._id} className="glass-card" style={{
                   padding: '1.25rem',
                   border: '1px solid rgba(139,92,246,0.2)',
                   borderLeft: '3px solid #8b5cf6',
@@ -520,19 +578,19 @@ export default function BookArchive() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flex: 1 }}>
                       {/* Book photo */}
-                      <div style={{ position: 'relative', width: 48, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0, cursor: 'pointer' }} onClick={() => document.getElementById(`photo-input-${idx}`)?.click()}>
+                      <div style={{ position: 'relative', width: 48, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0, cursor: 'pointer' }} onClick={() => document.getElementById(`photo-input-${bookId}`)?.click()}>
                         {book.photoUrl ? (
                           <img src={book.photoUrl.startsWith('http') ? book.photoUrl : (book.photoUrl.startsWith('/') ? book.photoUrl : `/uploads/${book.photoUrl}`)} alt={book.bookName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card-hover)' }}>
-                            {uploadingPhotoIdx === idx ? <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>...</span> : <Image size={18} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />}
+                            {uploadingPhotoIdx === bookId ? <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>...</span> : <Image size={18} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />}
                           </div>
                         )}
-                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s', }} className="photo-overlay">
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7, transition: 'opacity 0.2s' }}>
                           <Camera size={14} style={{ color: '#fff' }} />
                         </div>
                       </div>
-                      <input id={`photo-input-${idx}`} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleCardPhotoSelect(idx, e)} />
+                      <input id={`photo-input-${bookId}`} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleCardPhotoSelect(bookId, e)} />
                       <div>
                         <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#8b5cf6' }}>
                           {book.bookName}
@@ -544,13 +602,22 @@ export default function BookArchive() {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => removePlannedBook(idx)}
-                      title="Remove from list"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px', flexShrink: 0 }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
+                      <button
+                        onClick={() => openEditModal(book, bookId)}
+                        title="Edit"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}
+                      >
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteIdx(bookId)}
+                        title="Remove from list"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px' }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -560,7 +627,7 @@ export default function BookArchive() {
 
                   {/* Start Reading button */}
                   <button
-                    onClick={() => openStartModal(book, idx)}
+                    onClick={() => openStartModal(book, bookId)}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
                       padding: '0.55rem 0', borderRadius: '8px', cursor: 'pointer',
@@ -575,7 +642,7 @@ export default function BookArchive() {
                   </button>
 
                   {/* Inline message when already reading */}
-                  {readingMsgIdx === idx && (
+                  {readingMsgIdx === bookId && (
                     <div style={{
                       background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)',
                       borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8rem',
@@ -585,7 +652,8 @@ export default function BookArchive() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="glass-card" style={{ padding: '3rem', textAlign: 'center' }}>
@@ -596,6 +664,145 @@ export default function BookArchive() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Edit Planned Book Modal ── */}
+      {editBook && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          padding: '1rem',
+        }} onClick={closeEditModal}>
+          <div className="glass-card" style={{
+            maxWidth: '440px', width: '100%', padding: '2rem',
+            borderRadius: '18px', position: 'relative',
+          }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={closeEditModal}
+              style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+            ><X size={20} /></button>
+            <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '1.15rem', fontWeight: 700 }}>
+              <Edit size={18} style={{ display: 'inline', marginRight: '0.4rem' }} />
+              Edit Planned Book
+            </h3>
+            <form onSubmit={handleEditPlanned} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }}>Book Name *</label>
+                <input
+                  value={editBookName}
+                  onChange={e => setEditBookName(e.target.value)}
+                  placeholder="Enter book name"
+                  required
+                  style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }}>Author</label>
+                <input
+                  value={editAuthor}
+                  onChange={e => setEditAuthor(e.target.value)}
+                  placeholder="Author name (optional)"
+                  style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }}>Cover Photo</label>
+                <div style={{
+                  width: '100%', maxHeight: 220, borderRadius: 8, overflow: 'hidden',
+                  border: '1px solid var(--border)', marginBottom: '0.5rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg)',
+                }}>
+                  {editPhotoPreview ? (
+                    <img src={editPhotoPreview} alt="" style={{ width: '100%', height: 'auto', maxHeight: 220, objectFit: 'contain', display: 'block' }} />
+                  ) : editBook?.photoUrl ? (
+                    <img
+                      src={editBook.photoUrl.startsWith('http') ? editBook.photoUrl : (editBook.photoUrl.startsWith('/') ? editBook.photoUrl : `/uploads/${editBook.photoUrl}`)}
+                      alt="" style={{ width: '100%', height: 'auto', maxHeight: 220, objectFit: 'contain', display: 'block' }}
+                    />
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                      <Image size={32} style={{ display: 'block', margin: '0 auto 0.3rem' }} />
+                      <span style={{ fontSize: '0.85rem' }}>No cover photo</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('edit-photo-input')?.click()}
+                  style={{
+                    padding: '0.45rem 0.9rem', borderRadius: '6px', border: '1px solid var(--border)',
+                    background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer',
+                    fontWeight: 500, fontSize: '0.8rem', width: '100%',
+                  }}
+                >
+                  {editPhotoPreview ? 'Change Photo' : 'Update Cover Photo'}
+                </button>
+                <input id="edit-photo-input" type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditPhotoSelect} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button type="button" onClick={closeEditModal} style={{
+                  padding: '0.55rem 1rem', borderRadius: '8px', border: '1px solid var(--border)',
+                  background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                }}>Cancel</button>
+                <button type="submit" disabled={editSaving || !editBookName.trim()} style={{
+                  padding: '0.55rem 1rem', borderRadius: '8px', border: 'none',
+                  background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)', color: '#fff', cursor: 'pointer',
+                  fontWeight: 600, fontSize: '0.85rem',
+                  opacity: editSaving || !editBookName.trim() ? 0.6 : 1,
+                }}>
+                  {editSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {confirmDeleteIdx !== null && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          padding: '1rem',
+        }} onClick={() => setConfirmDeleteIdx(null)}>
+          <div className="glass-card" style={{
+            maxWidth: '380px', width: '100%', padding: '2rem',
+            borderRadius: '18px', textAlign: 'center', position: 'relative',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🗑️</div>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700 }}>
+              Remove this book?
+            </h3>
+            <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              This action cannot be undone. The book will be permanently removed from your planned list.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setConfirmDeleteIdx(null)}
+                style={{
+                  padding: '0.55rem 1.25rem', borderRadius: '8px', border: '1px solid var(--border)',
+                  background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer',
+                  fontWeight: 600, fontSize: '0.9rem', flex: 1, maxWidth: 120,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { removePlannedBook(confirmDeleteIdx); setConfirmDeleteIdx(null); }}
+                style={{
+                  padding: '0.55rem 1.25rem', borderRadius: '8px', border: 'none',
+                  background: '#dc2626', color: '#fff', cursor: 'pointer',
+                  fontWeight: 600, fontSize: '0.9rem', flex: 1, maxWidth: 120,
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
