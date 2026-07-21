@@ -84,7 +84,7 @@ success "Backend dependencies installed"
 # ── Step 3: Frontend build ────────────────────────────────────────────────────
 info "Step 3/5 — Building frontend..."
 cd "$APP_DIR/frontend"
-npm ci --prefer-offline 2>&1 | tail -5
+npm install --legacy-peer-deps --prefer-offline 2>&1 | tail -5
 
 # Build with VITE_API_URL unset (empty string) so all /api/ calls are relative.
 # Nginx on EC2 proxies /api/ → localhost:5001, so this is correct.
