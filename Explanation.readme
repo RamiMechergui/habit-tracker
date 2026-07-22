@@ -1,7 +1,7 @@
-# Evolvia (Habit Tracker) — AWS Hosting Architecture
+# Evolvio (Habit Tracker) — AWS Hosting Architecture
 
 ## Overview
-The Habit Tracker app ("Evolvia") is hosted on **AWS EC2** as a monolith. It uses **Nginx** to serve the React frontend and reverse-proxy API calls to a **Node.js/Express** backend, which persists data in **Amazon DynamoDB**. Deployment is automated via **GitHub Actions**.
+The Habit Tracker app ("Evolvio") is hosted on **AWS EC2** as a monolith. It uses **Nginx** to serve the React frontend and reverse-proxy API calls to a **Node.js/Express** backend, which persists data in **Amazon DynamoDB**. Deployment is automated via **GitHub Actions**.
 
 ---
 
@@ -48,7 +48,7 @@ Internet
 3. Installs PM2 globally and registers its startup hook (survives reboots)
 4. Clones the repository from GitHub
 5. Creates `.env` from `.env.example`
-6. Configures Nginx (copies `nginx.ec2.conf` to `/etc/nginx/sites-available/evolvia`)
+6. Configures Nginx (copies `nginx.ec2.conf` to `/etc/nginx/sites-available/evolvio`)
 7. Runs the first deploy
 
 ---
