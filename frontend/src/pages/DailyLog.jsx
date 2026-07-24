@@ -1180,12 +1180,18 @@ export default function DailyLog() {
               </span>
             )}
 
-            <label className="flex items-center gap-3 mt-4" style={{
-              cursor: isFuture ? 'default' : 'pointer'
+            <div className="flex items-center justify-between p-3 rounded-xl transition-all mt-4" style={{
+              background: log.hustle.achieved ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.02)',
+              border: `1px solid ${log.hustle.achieved ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+              gap: '0.5rem'
             }}>
+              <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: log.hustle.achieved ? '#3b82f6' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>🎯 Task Achieved</span>
+              </div>
               <input
                 type="checkbox"
                 className="habit-checkbox"
+                style={{ flexShrink: 0 }}
                 checked={log.hustle.achieved}
                 onChange={e => {
                   if (e.target.checked && (!log.hustle.task.trim() || !log.hustle.time.trim())) {
@@ -1197,8 +1203,7 @@ export default function DailyLog() {
                 }}
                 disabled={isFuture}
               />
-              <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
-            </label>
+            </div>
 
             <div className="mt-10 pt-5" style={{ borderTop: '1px dashed var(--border)' }}>
               <div className="flex justify-between items-center mb-3">
@@ -1292,12 +1297,18 @@ export default function DailyLog() {
 
 
             <div className="flex flex-col gap-3 mt-4">
-              <label className="flex items-center gap-3" style={{
-                cursor: isFuture ? 'default' : 'pointer'
+              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                background: log.video.achieved ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${log.video.achieved ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                gap: '0.5rem'
               }}>
+                <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: log.video.achieved ? '#818cf8' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>🎬 Task Achieved</span>
+                </div>
                 <input
                   type="checkbox"
                   className="habit-checkbox"
+                  style={{ flexShrink: 0 }}
                   checked={log.video.achieved}
                   onChange={e => {
                     if (e.target.checked && (!log.video.task.trim() || !log.video.time.trim())) {
@@ -1309,8 +1320,7 @@ export default function DailyLog() {
                   }}
                   disabled={isFuture}
                 />
-                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Task Achieved</span>
-              </label>
+              </div>
 
               <div className="flex gap-2 p-1 bg-[rgba(0,0,0,0.2)] rounded-xl border border-[var(--border)]">
                 {[
@@ -1528,10 +1538,17 @@ export default function DailyLog() {
                   ⚠️ Page number cannot exceed {bookProgress.targetPages} pages
                 </div>
               )}
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="habit-checkbox" checked={log.books.read} onChange={e => updateSection('books', 'read', e.target.checked)} disabled={isFuture} />
-                Reading Finished (10pts)
-              </label>
+              <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                background: log.books.read ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${log.books.read ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                gap: '0.5rem'
+              }}>
+                <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.books.read ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>📖 Reading Finished</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>10pts</span>
+                </div>
+                <input type="checkbox" className="habit-checkbox" style={{ flexShrink: 0 }} checked={log.books.read} onChange={e => updateSection('books', 'read', e.target.checked)} disabled={isFuture} />
+              </div>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
                 {bookProgress
                   ? '💡 Tip: Enter your page number daily to track your reading progress on the Dashboard.'
