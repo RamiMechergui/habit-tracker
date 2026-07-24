@@ -9501,9 +9501,35 @@ div[contentEditable] img[style*="float"] {
     font-size: 0.8rem !important;
   }
 
+  .expense-row-2 {
+    gap: 0.25rem;
+  }
+
+  .expense-smoking-qty {
+    flex: 0 0 48px !important;
+  }
+
   .expense-amount-row {
     flex: 1;
     min-width: 0;
+    gap: 0.35rem !important;
+  }
+
+  .expense-amount-row input {
+    font-size: 0.82rem !important;
+    padding: 0.3rem 0.2rem !important;
+  }
+
+  .expense-delete-btn {
+    padding: 0.3rem !important;
+  }
+  .expense-delete-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .bad-habit-controls {
+    gap: 0.25rem !important;
   }
 
   /* ── Book section inputs ── */
@@ -9739,11 +9765,20 @@ div[contentEditable] img[style*="float"] {
   .expense-amount-row {
     flex: 1;
     min-width: 0;
+    gap: 0.35rem !important;
   }
 
   .expense-amount-row input {
     font-size: 0.76rem !important;
     padding: 0.25rem 0.2rem !important;
+  }
+
+  .expense-delete-btn {
+    padding: 0.25rem !important;
+  }
+  .expense-delete-btn svg {
+    width: 14px !important;
+    height: 14px !important;
   }
 
   .expense-time-badge {
@@ -10018,10 +10053,19 @@ div[contentEditable] img[style*="float"] {
   .expense-amount-row {
     flex: 1;
     min-width: 0;
+    gap: 0.3rem !important;
   }
   .expense-amount-row input {
     font-size: 0.74rem !important;
     padding: 0.2rem 0.15rem !important;
+  }
+
+  .expense-delete-btn {
+    padding: 0.2rem !important;
+  }
+  .expense-delete-btn svg {
+    width: 13px !important;
+    height: 13px !important;
   }
 
   .expense-time-badge {
