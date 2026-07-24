@@ -9091,10 +9091,12 @@ div[contentEditable] img[style*="float"] {
 @media (max-width: 415px) {
   .expense-row-2 {
     flex-wrap: wrap;
+    gap: 0.25rem;
   }
 
   .expense-cat-select {
     flex: 1 1 100%;
+    min-width: 0;
   }
 
   .expense-smoking-qty {
@@ -9107,7 +9109,8 @@ div[contentEditable] img[style*="float"] {
   }
 
   .expense-amount-row {
-    flex: 0 0 95px;
+    flex: 1;
+    min-width: 0;
   }
 
   /* Bad habits: even more compact on tiny screens */
@@ -9314,7 +9317,8 @@ div[contentEditable] img[style*="float"] {
   }
 
   .expense-amount-row {
-    flex: 0 0 88px;
+    flex: 1;
+    min-width: 0;
   }
 
   .expense-amount-row input {
@@ -9498,7 +9502,8 @@ div[contentEditable] img[style*="float"] {
   }
 
   .expense-amount-row {
-    flex: 0 0 90px;
+    flex: 1;
+    min-width: 0;
   }
 
   /* ── Book section inputs ── */
@@ -9732,7 +9737,8 @@ div[contentEditable] img[style*="float"] {
   }
 
   .expense-amount-row {
-    flex: 0 0 82px;
+    flex: 1;
+    min-width: 0;
   }
 
   .expense-amount-row input {
@@ -10010,7 +10016,8 @@ div[contentEditable] img[style*="float"] {
   }
 
   .expense-amount-row {
-    flex: 0 0 72px;
+    flex: 1;
+    min-width: 0;
   }
   .expense-amount-row input {
     font-size: 0.74rem !important;
