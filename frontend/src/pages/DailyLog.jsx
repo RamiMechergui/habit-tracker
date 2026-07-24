@@ -3,7 +3,7 @@ import { useHabits } from '../Store';
 import { format, parseISO } from 'date-fns';
 import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download, RefreshCw } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { registerPlugin } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 
 const UsageStats = registerPlugin('UsageStats');
 
@@ -264,7 +264,7 @@ export default function DailyLog() {
   const isToday = date === format(new Date(), 'yyyy-MM-dd');
 
   const fetchUsageStats = useCallback(async () => {
-    if (!isToday) return;
+    if (!isToday || !Capacitor.isNativePlatform()) return;
     try {
       const permResult = await UsageStats.isPermissionGranted();
       const granted = permResult.granted || false;
@@ -297,6 +297,7 @@ export default function DailyLog() {
   }, [date, isToday]);
 
   const openUsageSettings = async () => {
+    if (!Capacitor.isNativePlatform()) return;
     try {
       await UsageStats.openSettings();
     } catch (err) {
