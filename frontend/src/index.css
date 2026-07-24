@@ -7958,6 +7958,307 @@ div[contentEditable] img[style*="float"] {
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   UNIFIED MOBILE RESPONSIVE DESIGN (max-width: 600px)
+   Covers Samsung Galaxy A15, iPhone, Pixel, & all 320-430px mobile screens
+   ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── 1. Page Root & Main Content Padding Protection ── */
+  html, body, #root, .layout, .page-transition {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .main-content {
+    padding: 0.5rem !important;
+    padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── 2. Single Column Grid & Compact Cards ── */
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .glass-card,
+  .glass-card.p-6 {
+    padding: 0.5rem 0.65rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ── 3. Daily Log Header & Badges ── */
+  .dailylog-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.45rem !important;
+    width: 100% !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .dailylog-badges {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+  }
+
+  .dailylog-badges .glass-card {
+    padding: 3px 8px !important;
+    font-size: 0.76rem !important;
+    flex: 1 1 0 !important;
+    justify-content: center !important;
+    border-radius: 20px !important;
+    white-space: nowrap !important;
+  }
+
+  .dailylog-badges .glass-card span {
+    font-size: 0.75rem !important;
+  }
+
+  .dailylog-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+  }
+
+  .dailylog-header-actions input[type="date"] {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* ── 4. Habit Rows (Morning, Night, Weekend, Side Hustle) ── */
+  .section-morning .flex.items-center.justify-between,
+  .section-night .flex.items-center.justify-between,
+  .section-weekend .flex.items-center.justify-between,
+  .glass-card .flex.items-center.justify-between {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.35rem !important;
+    padding: 0.4rem 0.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Title Column: flex-1 min-w-0 to truncate long titles */
+  .section-morning .flex.items-center.justify-between .flex.flex-col,
+  .section-night .flex.items-center.justify-between .flex.flex-col,
+  .glass-card .flex.items-center.justify-between .flex.flex-col,
+  .bad-habit-label {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .section-morning .flex.items-center.justify-between .flex.flex-col > span:first-child,
+  .section-night .flex.items-center.justify-between .flex.flex-col > span:first-child,
+  .glass-card .flex.items-center.justify-between .flex.flex-col > span:first-child,
+  .bad-habit-label > span:first-child {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+    width: 100% !important;
+    font-size: 0.82rem !important;
+  }
+
+  .section-morning .flex.items-center.justify-between .flex.flex-col > span:last-child,
+  .section-night .flex.items-center.justify-between .flex.flex-col > span:last-child,
+  .glass-card .flex.items-center.justify-between .flex.flex-col > span:last-child,
+  .bad-habit-label > span:last-child {
+    font-size: 0.65rem !important;
+  }
+
+  /* Controls Always Visible inside Card */
+  .section-morning .flex.items-center.justify-between > div:last-child,
+  .section-night .flex.items-center.justify-between > div:last-child,
+  .glass-card .flex.items-center.justify-between > div:last-child,
+  .bad-habit-controls,
+  .habit-checkbox {
+    flex-shrink: 0 !important;
+  }
+
+  .habit-checkbox {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    margin-left: auto !important;
+  }
+
+  .section-morning input[type="time"],
+  .section-night input[type="time"] {
+    width: 94px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    font-size: 0.78rem !important;
+    padding: 0.15rem 0.2rem !important;
+  }
+
+  /* ── 5. Bad Habits Controls ── */
+  .bad-habit-item {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.3rem !important;
+    padding: 0.4rem 0.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .bad-habit-controls {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.2rem !important;
+  }
+
+  .section-bad .bad-habit-controls input[placeholder="H"],
+  .section-bad .bad-habit-controls input[placeholder="M"] {
+    width: 28px !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    font-size: 0.74rem !important;
+    padding: 0.1rem !important;
+    text-align: center !important;
+  }
+
+  .section-bad input[placeholder="Total"],
+  .section-bad input[placeholder="Manual Qty"],
+  .section-bad input[placeholder="Min"] {
+    width: 52px !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    font-size: 0.74rem !important;
+    padding: 0.15rem 0.3rem !important;
+  }
+
+  /* ── 6. Expenses Section ── */
+  .expense-item {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+    padding: 0.5rem 0.4rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .expense-row-1 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .expense-desc-input {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    font-size: 0.8rem !important;
+    min-height: 34px !important;
+    height: 34px !important;
+  }
+
+  .expense-time-badge {
+    flex-shrink: 0 !important;
+    font-size: 0.65rem !important;
+    padding: 2px 4px !important;
+  }
+
+  .expense-row-2 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+  }
+
+  .expense-cat-select {
+    width: 100% !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .expense-row-2 > div:not(.expense-cat-select),
+  .expense-amount-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+  }
+
+  .expense-smoking-qty {
+    flex: 0 0 52px !important;
+    width: 52px !important;
+  }
+
+  .expense-smoking-qty input {
+    width: 100% !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding-left: 18px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .expense-amount-row input {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    font-size: 0.82rem !important;
+    padding: 0.25rem 0.35rem !important;
+  }
+
+  .expense-delete-btn {
+    flex-shrink: 0 !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+  }
+
+  /* Total Spent summary row */
+  .glass-card .mt-4.pt-4.flex.justify-between {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding: 0 0.15rem !important;
+  }
+
+  .glass-card .mt-4.pt-4.flex.justify-between strong {
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+  }
+}
+
 /* ── Link input in toolbar ──────────────────────────────────────────── */
 .tiptap-link-input {
   width: 160px;
