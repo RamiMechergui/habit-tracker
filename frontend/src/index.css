@@ -1378,11 +1378,12 @@ label {
 
 
 /* ═══════════════════════════════════════════════════
-   RESPONSIVE — MOBILE  ≤ 430px
-   (Covers iPhone XR 414px, iPhone 12/13/14 390px, etc.)
+   RESPONSIVE — LARGE MOBILE  ≤ 435px
+   (Covers iPhone 14 Pro Max 430px, iPhone XR 414px,
+    iPhone 12/13/14 390px, etc.)
    ═══════════════════════════════════════════════════ */
 
-@media (max-width: 430px) {
+@media (max-width: 435px) {
   h1 { font-size: 1.35rem; }
 
   .main-content {
