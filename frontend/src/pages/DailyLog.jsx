@@ -833,19 +833,22 @@ export default function DailyLog() {
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.morning[item.id] ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.morning[item.id] ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                  opacity: isFuture ? 0.6 : 1
+                  opacity: isFuture ? 0.6 : 1,
+                  gap: '0.5rem'
                 }}>
-                  <div className="flex flex-col">
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.morning[item.id] ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{item.label}</span>
+                  <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.morning[item.id] ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
-                  {item.id === 'meditate' ? (
-                    <MeditateTimer onComplete={() => updateSection('morning', 'meditate', true)} done={!!log.morning.meditate} disabled={isFuture} />
-                  ) : item.type === 'time' ? (
-                    <input type="time" value={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.value)} disabled={isFuture} />
-                  ) : (
-                    <input type="checkbox" className="habit-checkbox" checked={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.checked)} disabled={isFuture} />
-                  )}
+                  <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                    {item.id === 'meditate' ? (
+                      <MeditateTimer onComplete={() => updateSection('morning', 'meditate', true)} done={!!log.morning.meditate} disabled={isFuture} />
+                    ) : item.type === 'time' ? (
+                      <input type="time" style={{ width: '110px', flexShrink: 0, fontSize: '0.85rem' }} value={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.value)} disabled={isFuture} />
+                    ) : (
+                      <input type="checkbox" className="habit-checkbox" checked={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.checked)} disabled={isFuture} />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -908,13 +911,13 @@ export default function DailyLog() {
                   border: `1px solid ${log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
                 }}>
-                  <div className="flex flex-col">
+                  <div className="bad-habit-label">
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.bad?.[item.id]?.checked ? '#10b981' : 'var(--text-primary)' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
                   <div className="bad-habit-controls">
                     {item.extra && (
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         {item.id === 'smoking' && (
                           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                             <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>
@@ -1019,7 +1022,7 @@ export default function DailyLog() {
                         )}
                       </div>
                     )}
-                    <input type="checkbox" className="habit-checkbox" checked={log.bad?.[item.id]?.checked || false} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
+                    <input type="checkbox" className="habit-checkbox" style={{ flexShrink: 0 }} checked={log.bad?.[item.id]?.checked || false} onChange={e => updateBad(item.id, 'checked', e.target.checked)} disabled={isFuture} />
                   </div>
                 </div>
               ))}
@@ -1051,13 +1054,14 @@ export default function DailyLog() {
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                   background: log.night[item.id] ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.night[item.id] ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                  opacity: isFuture ? 0.6 : 1
+                  opacity: isFuture ? 0.6 : 1,
+                  gap: '0.5rem'
                 }}>
-                  <div className="flex flex-col">
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.night[item.id] ? '#818cf8' : 'var(--text-primary)' }}>{item.label}</span>
+                  <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.night[item.id] ? '#818cf8' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
-                  <input type="checkbox" className="habit-checkbox" checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} disabled={isFuture} />
+                  <input type="checkbox" className="habit-checkbox" style={{ flexShrink: 0 }} checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} disabled={isFuture} />
                 </div>
               ))}
             </div>
@@ -1072,11 +1076,15 @@ export default function DailyLog() {
                   <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                     background: log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                     border: `1px solid ${log.weekend?.saturday?.preLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                    gap: '0.5rem'
                   }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.saturday?.preLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>🧺 1. Pre-laundry arrangement</span>
+                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.saturday?.preLaundry ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>🧺 1. Pre-laundry arrangement</span>
+                    </div>
                     <input
                       type="checkbox"
                       className="habit-checkbox"
+                      style={{ flexShrink: 0 }}
                       checked={log.weekend?.saturday?.preLaundry || false}
                       onChange={e => updateSection('weekend', 'saturday', { ...log.weekend?.saturday, preLaundry: e.target.checked })}
                       disabled={isFuture}
@@ -1091,11 +1099,15 @@ export default function DailyLog() {
                     <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                       background: log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${log.weekend?.sunday?.cleanRoom ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                      gap: '0.5rem'
                     }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)' }}>🧹 1. Cleaning Room</span>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.cleanRoom ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>🧹 1. Cleaning Room</span>
+                      </div>
                       <input
                         type="checkbox"
                         className="habit-checkbox"
+                        style={{ flexShrink: 0 }}
                         checked={log.weekend?.sunday?.cleanRoom || false}
                         onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, cleanRoom: e.target.checked })}
                         disabled={isFuture}
@@ -1104,11 +1116,15 @@ export default function DailyLog() {
                     <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                       background: log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${log.weekend?.sunday?.regularLaundry ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                      gap: '0.5rem'
                     }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)' }}>🧺 2. Regular laundry</span>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.regularLaundry ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>🧺 2. Regular laundry</span>
+                      </div>
                       <input
                         type="checkbox"
                         className="habit-checkbox"
+                        style={{ flexShrink: 0 }}
                         checked={log.weekend?.sunday?.regularLaundry || false}
                         onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, regularLaundry: e.target.checked })}
                         disabled={isFuture}
@@ -1117,11 +1133,15 @@ export default function DailyLog() {
                     <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                       background: log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${log.weekend?.sunday?.shareBought ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                      gap: '0.5rem'
                     }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)' }}>📈 3. 1 share bought</span>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.weekend?.sunday?.shareBought ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>📈 3. 1 share bought</span>
+                      </div>
                       <input
                         type="checkbox"
                         className="habit-checkbox"
+                        style={{ flexShrink: 0 }}
                         checked={log.weekend?.sunday?.shareBought || false}
                         onChange={e => updateSection('weekend', 'sunday', { ...log.weekend?.sunday, shareBought: e.target.checked })}
                         disabled={isFuture}
@@ -1526,14 +1546,16 @@ export default function DailyLog() {
               <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                 background: log.system?.todo ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                 border: `1px solid ${log.system?.todo ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                gap: '0.5rem'
               }}>
-                <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)' }}>📅 1. Evolvio TIMELINE Updated</span>
+                <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📅 1. Evolvio TIMELINE Updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
                   type="checkbox"
                   className="habit-checkbox"
+                  style={{ flexShrink: 0 }}
                   checked={log.system?.todo || false}
                   onChange={e => updateSection('system', 'todo', e.target.checked)}
                   disabled={isFuture}
@@ -1542,14 +1564,16 @@ export default function DailyLog() {
               <div className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
                 background: log.system?.money ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
                 border: `1px solid ${log.system?.money ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                gap: '0.5rem'
               }}>
-                <div className="flex flex-col">
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)' }}>💰 2. Evolvio Expense Tracker updated</span>
+                <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>💰 2. Evolvio Expense Tracker updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
                   type="checkbox"
                   className="habit-checkbox"
+                  style={{ flexShrink: 0 }}
                   checked={log.system?.money || false}
                   onChange={e => updateSection('system', 'money', e.target.checked)}
                   disabled={isFuture}

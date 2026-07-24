@@ -381,12 +381,14 @@ label {
   appearance: none;
   width: 24px;
   height: 24px;
-  border: 2px solid var(--border);
+  border: 2px solid rgba(255,255,255,0.35);
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.2);
   cursor: pointer;
   position: relative;
   transition: all 0.2s ease;
+  flex-shrink: 0 !important;
+  display: block;
 }
 
 .habit-checkbox:checked {
@@ -1325,12 +1327,6 @@ label {
   .section-bad,
   .section-night {
     padding: 0.75rem !important;
-  }
-
-  /* ── Bad-habit rows: allow wrap so fixed-width inputs don't overflow ── */
-  .flex.items-center.justify-between.p-3.rounded-xl {
-    flex-wrap: wrap !important;
-    gap: 0.5rem;
   }
 
   /* ── Prevent tables / wide content overflow ── */
@@ -8128,12 +8124,24 @@ div[contentEditable] img[style*="float"] {
 .bad-habit-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 0.75rem;
   transition: all 0.2s;
   min-height: 48px;
+}
+
+.bad-habit-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bad-habit-label span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .bad-habit-controls {
@@ -8188,10 +8196,21 @@ div[contentEditable] img[style*="float"] {
     flex-shrink: 0;
   }
 
+  /* ── Force all habit rows to be nowrap — label shrinks, checkbox never moves ── */
+  .section-morning .flex.items-center.justify-between,
+  .section-night .flex.items-center.justify-between,
+  .section-bad .flex.items-center.justify-between,
+  .section-weekend .flex.items-center.justify-between,
+  .glass-card .flex.items-center.justify-between {
+    flex-wrap: nowrap !important;
+    gap: 0.5rem;
+  }
+
   /* ── Bad Habits Mobile — Keep 1 Row ── */
   .bad-habit-item {
     flex-wrap: nowrap;
     padding: 0.55rem 0.65rem;
+    gap: 0.5rem;
   }
 
   .bad-habit-controls {
@@ -8200,13 +8219,39 @@ div[contentEditable] img[style*="float"] {
     flex-direction: row;
   }
 
+  /* ── Checkbox stays big ── */
+  .habit-checkbox {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
   /* ── Expense Rows Mobile ── */
   .expense-amount-row {
     flex: 0 0 110px;
   }
 
+  /* ── Lesson actions always visible ── */
   .lesson-actions {
     opacity: 1;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   BAD HABITS STACKING — max-width: 480px
+══════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .bad-habit-item {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .bad-habit-label {
+    flex: 1 1 100%;
+  }
+
+  .bad-habit-controls {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 
