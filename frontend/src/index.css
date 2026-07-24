@@ -8018,90 +8018,98 @@ div[contentEditable] img[style*="float"] {
 
 /* ── Expenses ── */
 
+
 /* ══════════════════════════════════════════════════
-   EXPENSE SECTION — mobile-first
+   EXPENSE SECTION — Clean Mobile Layout
 ══════════════════════════════════════════════════ */
 
 .expense-item {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.75rem;
-  border-radius: 0.85rem;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  transition: border-color 0.2s;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 0.6rem;
 }
 
-/* Row 1: index badge + description input + time badge */
+/* Row 1: Index badge + Description input + Time badge */
 .expense-row-1 {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   align-items: center;
-  min-width: 0;
+  width: 100%;
 }
 
 .expense-desc-input {
   flex: 1;
   min-width: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .expense-time-badge {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
-  background: rgba(255,255,255,0.04);
-  padding: 6px 10px;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 5px 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* Row 2: category select + amount + delete — always stacked on mobile */
+/* Row 2: Category select + Smoking Qty (if any) + Amount input + Delete btn */
 .expense-row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 0.5rem;
+  display: flex;
+  gap: 0.4rem;
   align-items: center;
+  width: 100%;
 }
 
 .expense-cat-select {
-  width: 100%;
+  flex: 1;
   min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  padding: 0.55rem 0.5rem;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
+  padding: 0.45rem 0.4rem;
+  font-size: 0.82rem;
 }
 
 .expense-smoking-qty {
-  width: 100%;
+  flex: 0 0 75px;
 }
 
 .expense-amount-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  flex: 0 0 120px;
   min-width: 0;
+}
+
+.expense-amount-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.4rem;
+  font-size: 0.85rem;
 }
 
 .expense-delete-btn {
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(239,68,68,0.1);
+  background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   border: none;
   border-radius: var(--radius-sm);
@@ -8110,32 +8118,32 @@ div[contentEditable] img[style*="float"] {
 }
 
 .expense-delete-btn:hover {
-  background: rgba(239,68,68,0.2);
+  background: rgba(239, 68, 68, 0.2);
 }
 
 /* ══════════════════════════════════════════════════
-   BAD HABITS SECTION — mobile-first
+   BAD HABITS SECTION — Clean Mobile Layout
 ══════════════════════════════════════════════════ */
 
 .bad-habit-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.85rem 0.9rem;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
   border-radius: 0.75rem;
   transition: all 0.2s;
-  min-height: 56px;
+  min-height: 48px;
 }
 
 .bad-habit-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-shrink: 0;
 }
 
-/* Lesson edit/delete buttons */
+/* Lesson actions (always visible on mobile) */
 .lesson-actions {
   display: flex;
   gap: 4px;
@@ -8148,129 +8156,76 @@ div[contentEditable] img[style*="float"] {
 }
 
 /* ══════════════════════════════════════════════════
-   MOBILE — max-width: 600px
+   MOBILE BREAKPOINT — max-width: 600px
 ══════════════════════════════════════════════════ */
 @media (max-width: 600px) {
 
   /* ── Daily Log Header ── */
   .dailylog-header {
     flex-direction: column;
+    align-items: stretch;
     gap: 0.5rem;
   }
 
   .dailylog-badges {
-    gap: 0.5rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
   }
 
   .dailylog-header-actions {
     width: 100%;
-    flex-direction: column;
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
   }
 
   .dailylog-header-actions input[type="date"] {
-    width: 100%;
-    flex: none;
+    flex: 1;
+    min-width: 0;
   }
 
   .dailylog-header-actions > div {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
+    flex-shrink: 0;
   }
 
-  /* ── Expense rows ── */
-  .expense-item {
-    gap: 0.5rem;
-    padding: 0.6rem;
-  }
-
-  .expense-row-1 {
-    flex-wrap: wrap;
-  }
-
-  .expense-desc-input {
-    flex: 1 1 calc(100% - 80px);
-    font-size: 0.875rem;
-  }
-
-  /* Row 2: stack category full-width, then amount + delete side by side */
-  .expense-row-2 {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 0.45rem;
-  }
-
-  .expense-cat-select {
-    grid-column: 1 / -1;
-    font-size: 0.85rem;
-    padding: 0.6rem 0.5rem;
-  }
-
-  .expense-smoking-qty {
-    grid-column: 1 / -1;
-  }
-
-  .expense-amount-row {
-    grid-column: 1 / 2;
-  }
-
-  .expense-delete-btn {
-    grid-column: 2 / 3;
-    align-self: center;
-  }
-
-  /* ── Bad Habits ── */
+  /* ── Bad Habits Mobile — Keep 1 Row ── */
   .bad-habit-item {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.75rem;
+    flex-wrap: nowrap;
+    padding: 0.55rem 0.65rem;
   }
 
   .bad-habit-controls {
-    width: 100%;
-    justify-content: space-between;
-    flex-direction: row-reverse;
+    width: auto;
+    justify-content: flex-end;
+    flex-direction: row;
   }
 
-  /* Lesson actions: always visible on mobile */
+  /* ── Expense Rows Mobile ── */
+  .expense-amount-row {
+    flex: 0 0 110px;
+  }
+
   .lesson-actions {
     opacity: 1;
-  }
-
-  /* Habit item spacing */
-  .section-morning .flex-col > div,
-  .section-night .flex-col > div,
-  .section-bad .flex-col > div {
-    padding: 0.6rem 0.75rem;
   }
 }
 
 /* ══════════════════════════════════════════════════
-   EXTRA SMALL — max-width: 400px
+   EXTRA SMALL MOBILE — max-width: 380px
 ══════════════════════════════════════════════════ */
-@media (max-width: 400px) {
-
-  .expense-row-1 {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .expense-desc-input {
-    flex: 1 1 100%;
-  }
-
-  .expense-time-badge {
-    align-self: flex-start;
+@media (max-width: 380px) {
+  .expense-row-2 {
+    flex-wrap: wrap;
   }
 
   .expense-cat-select {
-    font-size: 0.8rem;
+    flex: 1 1 100%;
   }
 
-  .bad-habit-item {
-    padding: 0.65rem 0.6rem;
+  .expense-amount-row {
+    flex: 1;
   }
 }
+
+
 
