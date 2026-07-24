@@ -7958,6 +7958,19 @@ div[contentEditable] img[style*="float"] {
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* ── Responsive input classes replacing hard-coded inline widths ── */
+.morning-time-input {
+  width: 110px;
+}
+
+.smoking-total-input {
+  width: 72px;
+}
+
+.hm-input {
+  width: 38px;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    UNIFIED MOBILE RESPONSIVE DESIGN (max-width: 600px)
    Covers Samsung Galaxy A15, iPhone, Pixel, & all 320-430px mobile screens
@@ -7972,7 +7985,7 @@ div[contentEditable] img[style*="float"] {
   }
 
   .main-content {
-    padding: 0.5rem !important;
+    padding: 0.5rem 0.75rem 0.5rem 0.5rem !important;
     padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
     max-width: 100vw !important;
     width: 100% !important;
@@ -7991,7 +8004,7 @@ div[contentEditable] img[style*="float"] {
 
   .glass-card,
   .glass-card.p-6 {
-    padding: 0.5rem 0.65rem !important;
+    padding: 0.5rem 0.75rem 0.5rem 0.65rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -8114,6 +8127,28 @@ div[contentEditable] img[style*="float"] {
     height: 32px !important;
     font-size: 0.78rem !important;
     padding: 0.15rem 0.2rem !important;
+  }
+
+  /* ── Mobile responsive input class overrides ── */
+  .morning-time-input {
+    width: 90px !important;
+    font-size: 0.78rem !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 0.15rem 0.2rem !important;
+  }
+
+  .smoking-total-input {
+    width: 56px !important;
+    font-size: 0.8rem !important;
+    padding-left: 22px !important;
+  }
+
+  .hm-input {
+    width: 30px !important;
+    font-size: 0.76rem !important;
+    padding: 0.15rem 0.1rem !important;
+    text-align: center !important;
   }
 
   /* ── 5. Bad Habits Controls ── */

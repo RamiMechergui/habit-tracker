@@ -845,7 +845,7 @@ export default function DailyLog() {
                     {item.id === 'meditate' ? (
                       <MeditateTimer onComplete={() => updateSection('morning', 'meditate', true)} done={!!log.morning.meditate} disabled={isFuture} />
                     ) : item.type === 'time' ? (
-                      <input type="time" style={{ width: '110px', flexShrink: 0, fontSize: '0.85rem' }} value={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.value)} disabled={isFuture} />
+                      <input type="time" className="morning-time-input" style={{ flexShrink: 0, fontSize: '0.85rem' }} value={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.value)} disabled={isFuture} />
                     ) : (
                       <input type="checkbox" className="habit-checkbox" checked={log.morning[item.id]} onChange={e => updateSection('morning', item.id, e.target.checked)} disabled={isFuture} />
                     )}
@@ -927,8 +927,8 @@ export default function DailyLog() {
                               min="0"
                               max="999"
                               placeholder="Total"
+                              className="smoking-total-input"
                               style={{
-                                width: '72px',
                                 padding: '0.4rem 0.4rem 0.4rem 24px',
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -957,8 +957,8 @@ export default function DailyLog() {
                                   type="number"
                                   min="0"
                                   placeholder="H"
+                                  className="hm-input"
                                   style={{
-                                    width: '38px',
                                     padding: '0.3rem',
                                     background: 'rgba(0,0,0,0.2)',
                                     border: '1px solid var(--border)',
@@ -980,8 +980,8 @@ export default function DailyLog() {
                                   min="0"
                                   max="59"
                                   placeholder="M"
+                                  className="hm-input"
                                   style={{
-                                    width: '38px',
                                     padding: '0.3rem',
                                     background: 'rgba(0,0,0,0.2)',
                                     border: '1px solid var(--border)',
