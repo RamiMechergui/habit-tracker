@@ -7,7 +7,7 @@
 #   ./setup-https.sh yourdomain.com
 #
 # PREREQUISITES:
-#   1. You own a domain name (e.g. evolvia.app)
+#   1. You own a domain name (e.g. EVOLVIO.app)
 #   2. You've added an A record pointing yourdomain.com → 3.84.201.197
 #   3. Port 80 and 443 are open in your EC2 Security Group
 
@@ -47,7 +47,7 @@ sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsaf
 # Step 3: Update nginx server_name with the actual domain
 echo ""
 echo "⚙️   Updating nginx config..."
-NGINX_CONF="/etc/nginx/sites-available/evolvia"
+NGINX_CONF="/etc/nginx/sites-available/EVOLVIO"
 
 if [ -f "$NGINX_CONF" ]; then
     sudo sed -i "s/server_name _;/server_name $DOMAIN;/" "$NGINX_CONF"

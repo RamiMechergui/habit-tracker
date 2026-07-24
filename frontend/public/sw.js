@@ -1,5 +1,5 @@
 /**
- * Service Worker for Evolvia — sw.js
+ * Service Worker for Evolvio — sw.js
  *
  * Strategies:
  *   • App shell + static assets → Cache-first
@@ -8,7 +8,7 @@
  *   • Background sync → replay offline mutations
  */
 
-const CACHE_NAME = 'evolvia-v3';
+const CACHE_NAME = 'evolvio-v3';
 
 // App-shell assets to pre-cache on install
 const PRECACHE_URLS = [
@@ -134,7 +134,7 @@ async function networkFirst(request) {
 
 // ─── Background Sync ────────────────────────────────────────────
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'evolvia-sync') {
+  if (event.tag === 'evolvio-sync') {
     console.log('[SW] Background sync triggered');
     event.waitUntil(notifyClientsToSync());
   }

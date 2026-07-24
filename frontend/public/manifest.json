@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Evolvia",
-  "short_name": "Evolvia",
+  "name": "Evolvio",
+  "short_name": "Evolvio",
   "description": "Track your habits. Transform your life.",
   "start_url": "/dashboard",
   "scope": "/",

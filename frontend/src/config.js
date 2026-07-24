@@ -23,7 +23,7 @@ export const API_URL = (() => {
   }
   
   // If running inside the Android app WebView (configured hostname in capacitor.config.json)
-  if (window.location.hostname === 'app.evolvia.app') {
+  if (window.location.hostname === 'app.evolvio.app') {
     return NATIVE_BACKEND_URL;
   }
   

@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "Evolvia",
+    "productName": "Evolvio",
     "version": "1.0.0"
   },
   "tauri": {
@@ -34,7 +34,7 @@
     "bundle": {
       "active": true,
       "category": "Productivity",
-      "copyright": "© 2026 Evolvia",
+      "copyright": "© 2026 EVOLVIO",
       "deb": {
         "depends": []
       },
@@ -46,8 +46,8 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.evolvia.app",
-      "longDescription": "Evolvia — Track your habits. Transform your life. A comprehensive daily habit tracker with expense management, book tracking, and discipline scoring.",
+      "identifier": "com.evolvio.app",
+      "longDescription": "Evolvio — Track your habits. Transform your life. A comprehensive daily habit tracker with expense management, book tracking, and discipline scoring.",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
@@ -56,7 +56,7 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "Evolvia Habit Tracker",
+      "shortDescription": "Evolvio Habit Tracker",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,
@@ -72,7 +72,7 @@
     },
     "windows": [
       {
-        "title": "Evolvia — Habit Tracker",
+        "title": "Evolvio — Habit Tracker",
         "width": 1280,
         "height": 800,
         "minWidth": 800,

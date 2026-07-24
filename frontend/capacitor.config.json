@@ -1,9 +1,9 @@
 {
-  "appId": "com.evolvia.habittracker",
-  "appName": "Evolvia",
+  "appId": "com.evolvio.habittracker",
+  "appName": "Evolvio",
   "webDir": "dist",
   "server": {
-    "hostname": "app.evolvia.app",
+    "hostname": "app.evolvio.app",
     "androidScheme": "http"
   },
   "android": {

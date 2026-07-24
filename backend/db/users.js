@@ -24,9 +24,27 @@ const { docClient } = require('./dynamodb');
 const TABLE = 'HabitUsers';
 
 const DEFAULT_EXPENSE_CATEGORIES = [
-  'Transportation', 'Food & Dining', 'Clothes',
-  'Tech & Electronics', 'Groceries', 'Entertainment', 'Health', 'Other',
+  { name: 'Transportation',    icon: '🚗' },
+  { name: 'Food & Dining',     icon: '🍽️' },
+  { name: 'Clothes',           icon: '👕' },
+  { name: 'Tech & Electronics',icon: '💻' },
+  { name: 'Groceries',         icon: '🛒' },
+  { name: 'Entertainment',     icon: '🎬' },
+  { name: 'Health',            icon: '🩺' },
+  { name: 'Other',             icon: '📦' },
 ];
+
+/**
+ * Migrate a stored category list: each item may be a plain string (legacy)
+ * or already an object { name, icon }. Always returns objects.
+ */
+function normalizeCats(cats) {
+  if (!Array.isArray(cats)) return DEFAULT_EXPENSE_CATEGORIES;
+  return cats.map(c => {
+    if (c && typeof c === 'object' && c.name) return c;
+    return { name: String(c), icon: '📦' };
+  });
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -49,7 +67,7 @@ function toUserShape(item) {
     lastName:          item.lastName   || '',
     profilePicture:    item.profilePicture || '',
     avatarVersion:     item.avatarVersion || 0,
-    expenseCategories: item.expenseCategories || DEFAULT_EXPENSE_CATEGORIES,
+    expenseCategories: normalizeCats(item.expenseCategories),
     currentBook:       item.currentBook ? { ...item.currentBook, photoUrl: item.currentBook.photoUrl || '', author: item.currentBook.author || '' } : { bookName: '', targetPages: 0, startDate: '', isActive: false, photoUrl: '', author: '' },
     archivedBooks:     item.archivedBooks || [],
     plannedBooks:      item.plannedBooks || [],

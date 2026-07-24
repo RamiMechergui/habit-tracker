@@ -1,11 +1,11 @@
 /**
- * offlineDb.js — IndexedDB-based persistence layer for Evolvia
+ * offlineDb.js — IndexedDB-based persistence layer for Evolvio
  *
  * Stores user data locally so the app works fully offline.
  * All reads/writes are async and return promises.
  */
 
-const DB_NAME = 'evolvia_offline';
+const DB_NAME = 'evolvio_offline';
 const DB_VERSION = 5;
 
 // Object store names

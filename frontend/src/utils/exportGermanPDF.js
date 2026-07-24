@@ -13,6 +13,22 @@ const GENDER_COLORS = { male: C.blue, female: C.pink, other: C.purple };
 
 const articleColor = { der: C.blue, die: C.red, das: C.green };
 
+function safeAddImage(doc, url, format, x, y, w, h) {
+  try {
+    if (!url) return false;
+    if (url.startsWith('data:')) {
+      const base64 = url.split(',')[1];
+      if (!base64) return false;
+      doc.addImage(`data:image/jpeg;base64,${base64}`, 'JPEG', x, y, w, h);
+      return true;
+    }
+    doc.addImage(url, format || 'JPEG', x, y, w, h);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function addHeader(doc, title, subtitle) {
   const W = doc.internal.pageSize.getWidth();
   doc.setFillColor(...C.dark);
@@ -27,7 +43,7 @@ function addHeader(doc, title, subtitle) {
   doc.setTextColor(...C.muted);
   doc.setFont('helvetica', 'normal');
   doc.text(subtitle, 14, 27);
-  doc.text('EVOLVIA', W - 14, 20, { align: 'right' });
+  doc.text('EVOLVIO', W - 14, 20, { align: 'right' });
   return W;
 }
 
@@ -55,7 +71,7 @@ function addFooter(doc, W) {
     doc.setFontSize(7);
     doc.setTextColor(...C.muted);
     doc.text(`Page ${i} of ${totalPages}`, W / 2, H - 3.5, { align: 'center' });
-    doc.text('EVOLVIA German Learning', 14, H - 3.5);
+    doc.text('Evolvio German Learning', 14, H - 3.5);
     doc.text(format(new Date(), 'yyyy-MM-dd'), W - 14, H - 3.5, { align: 'right' });
   }
 }
@@ -100,11 +116,7 @@ function renderVocabCard(doc, v, i, y, W) {
   y += 11;
   // Photo column
   if (v.photoUrl) {
-    try {
-      doc.addImage(v.photoUrl, 'JPEG', 14, y, 40, 40);
-    } catch (_) {
-      // Image may not be available in browser context
-    }
+    safeAddImage(doc, v.photoUrl, 'JPEG', 14, y, 40, 40);
   }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
@@ -191,7 +203,8 @@ function renderGrammarCard(doc, g, i, y, W) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...C.dark);
-    const el = doc.splitTextToSize(g.explanation, W - 36);
+    const plainText = g.explanation.replace(/<[^>]+>/g, '').trim();
+    const el = doc.splitTextToSize(plainText, W - 36);
     doc.text(el, 18, y);
     y += el.length * 4 + 4;
   }
@@ -268,10 +281,7 @@ function renderDialogueCard(doc, d, i, y, W) {
     const avatarX = 16;
     const avatarY = ny;
     if (p.photoUrl) {
-      try {
-        doc.addImage(p.photoUrl, 'JPEG', avatarX, avatarY, avatarSize, avatarSize);
-      } catch (_) {
-        // Fallback: render initial on colored circle if image fails
+      if (!safeAddImage(doc, p.photoUrl, 'JPEG', avatarX, avatarY, avatarSize, avatarSize)) {
         doc.setDrawColor(...pColor);
         doc.setFillColor(pColor[0], pColor[1], pColor[2], 0.2);
         doc.circle(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 'FD');

@@ -1,4 +1,4 @@
-// ecosystem.config.js — PM2 process config for the Evolvia monolith on EC2
+// ecosystem.config.js — PM2 process config for the EVOLVIO monolith on EC2
 //
 // Usage:
 //   pm2 start ecosystem.config.js --env production   # first start

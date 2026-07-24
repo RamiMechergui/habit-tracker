@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  deploy-ec2.sh — Monolithic deploy script for Evolvia (Habit Tracker)
+#  deploy-ec2.sh — Monolithic deploy script for EVOLVIO (Habit Tracker)
 #
 #  Called automatically by GitHub Actions on every push to main/master.
 #  Can also be run manually:  bash ~/habit-tracker/deploy-ec2.sh
@@ -62,7 +62,7 @@ mkdir -p "$LOG_DIR"
 
 echo ""
 info "======================================================="
-info "  Evolvia — EC2 Monolith Deploy"
+info "  Evolvio — EC2 Monolith Deploy"
 info "  $(date '+%Y-%m-%d %H:%M:%S %Z')"
 info "======================================================="
 echo ""

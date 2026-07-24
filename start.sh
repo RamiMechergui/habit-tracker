@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "🚀 --- EVOLVIA NATIVE STARTUP ---"
+echo "🚀 --- Evolvio NATIVE STARTUP ---"
 echo "🔍 --- DATABASE ENVIRONMENT DIAGNOSTICS ---"
 echo "MONGOHOST: $MONGOHOST"
 echo "MONGOPORT: $MONGOPORT"
@@ -92,6 +92,6 @@ chmod -R 755 /var/www/html
 nginx
 
 # 7. Start PM2 services and tail logs in the foreground
-echo "🚀 Evolvia is live on port $PORT!"
+echo "🚀 Evolvio is live on port $PORT!"
 pm2 start pm2.config.js
 exec pm2 logs

@@ -1,4 +1,4 @@
-package com.evolvia.habittracker;
+package com.evolvio.habittracker;
 
 import android.os.Bundle;
 import android.view.View;
@@ -7,6 +7,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(UsageStatsPlugin.class);
         super.onCreate(savedInstanceState);
         hideSystemUI();
     }

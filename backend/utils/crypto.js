@@ -4,7 +4,7 @@ const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16; // AES block size in bytes
 
 function getKey() {
-  const secret = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'evolvia_default_encryption_secret_key_12345';
+  const secret = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'evolvio_default_encryption_secret_key_12345';
   // Derive a solid 32-byte key from the secret via SHA-256
   return crypto.createHash('sha256').update(String(secret)).digest();
 }

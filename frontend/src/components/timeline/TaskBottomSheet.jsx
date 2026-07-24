@@ -358,7 +358,7 @@ export default function TaskBottomSheet({
         )}
 
         {/* Body */}
-        <div className="evolvia-scrollbar" style={{ overflowY:'auto', flex:1, padding:'20px 24px' }}>
+        <div className="evolvio-scrollbar" style={{ overflowY:'auto', flex:1, padding:'20px 24px' }}>
           <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
 
             {/* Templates */}

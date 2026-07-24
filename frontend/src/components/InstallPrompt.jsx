@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, X, Share, Plus } from 'lucide-react';
 
 /**
- * PWA Install Prompt — Evolvia
+ * PWA Install Prompt — Evolvio
  *
  * • Android/Desktop Chrome: catches `beforeinstallprompt`, shows banner
  * • iOS Safari: detects standalone-capable but not yet installed, shows manual steps
@@ -10,7 +10,7 @@ import { Download, X, Share, Plus } from 'lucide-react';
  * • Already-installed: never shown (detected via display-mode: standalone)
  */
 
-const DISMISS_KEY = 'evolvia-pwa-dismissed-until';
+const DISMISS_KEY = 'evolvio-pwa-dismissed-until';
 const DISMISS_DAYS = 30;
 
 function isIOS() {
@@ -97,9 +97,9 @@ export default function InstallPrompt() {
     return (
       <div className="install-prompt">
         <div className="install-prompt-content">
-          <img src="/icons/icon-192x192.png" alt="Evolvia" className="install-prompt-icon" />
+          <img src="/icons/icon-192x192.png" alt="Evolvio" className="install-prompt-icon" />
           <div className="install-prompt-text">
-            <strong>Install Evolvia</strong>
+            <strong>Install Evolvio</strong>
             <span>Works offline · No app store needed</span>
           </div>
         </div>
@@ -138,9 +138,9 @@ export default function InstallPrompt() {
           <X size={16} />
         </button>
         <div className="install-prompt-content">
-          <img src="/icons/icon-192x192.png" alt="Evolvia" className="install-prompt-icon" />
+          <img src="/icons/icon-192x192.png" alt="Evolvio" className="install-prompt-icon" />
           <div className="install-prompt-text">
-            <strong>Install Evolvia on iOS</strong>
+            <strong>Install Evolvio on iOS</strong>
           </div>
         </div>
         <div className="install-prompt-ios-steps">

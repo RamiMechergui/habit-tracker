@@ -1,5 +1,5 @@
 /**
- * syncManager.js — Background sync for Evolvia
+ * syncManager.js — Background sync for Evolvio
  *
  * When the app goes offline, mutations are queued in IndexedDB.
  * When connectivity is restored, this module replays them in order.
@@ -124,7 +124,7 @@ export async function requestBackgroundSync() {
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
     try {
       const reg = await navigator.serviceWorker.ready;
-      await reg.sync.register('evolvia-sync');
+      await reg.sync.register('evolvio-sync');
       console.log('[Sync] Background sync registered with service worker');
     } catch (err) {
       console.warn('[Sync] Background sync registration failed, using fallback:', err);

@@ -136,7 +136,7 @@ function LoginScreen({ onLogin }) {
       {/* grid */}
       <div style={{ position:'absolute', inset:0, pointerEvents:'none', opacity:0.025, backgroundImage:'linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)', backgroundSize:'56px 56px' }} />
 
-      <div style={{ position:'relative', zIndex:10, width:'100%', maxWidth:420, margin:'0 16px', animation:'evolvia-up 0.45s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ position:'relative', zIndex:10, width:'100%', maxWidth:420, margin:'0 16px', animation:'evolvio-up 0.45s cubic-bezier(0.16,1,0.3,1)' }}>
         {/* gradient top bar */}
         <div style={{ height:3, borderRadius:'12px 12px 0 0', background:'#3b82f6' }} />
         <div style={{ background:'#0f141b', backdropFilter:'blur(20px)', border:'1px solid rgba(148,163,184,0.16)', borderTop:'none', borderRadius:'0 0 12px 12px', boxShadow:'0 28px 72px rgba(0,0,0,0.45)', padding:'38px 34px 34px' }}>
@@ -148,7 +148,7 @@ function LoginScreen({ onLogin }) {
             <p style={{ color:'#8b98a9', fontSize:14, margin:0 }}>Secure access to system operations</p>
           </div>
 
-          <form onSubmit={submit} style={{ display:'flex', flexDirection:'column', gap:14, animation: shake ? 'evolvia-shake 0.5s ease' : 'none' }}>
+          <form onSubmit={submit} style={{ display:'flex', flexDirection:'column', gap:14, animation: shake ? 'evolvio-shake 0.5s ease' : 'none' }}>
             <div style={{ position:'relative' }}>
               <Lock size={15} color="#475569" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)' }} />
               <input type="password" placeholder="Enter admin password" value={pwd}
@@ -162,7 +162,7 @@ function LoginScreen({ onLogin }) {
               </div>
             )}
             <button type="submit" disabled={submitting} className="adm-submit" style={{ padding:'13px 20px', borderRadius:10, border:'none', cursor:submitting ? 'wait' : 'pointer', opacity:submitting ? 0.75 : 1, background:'#2563eb', color:'#fff', fontSize:15, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow:'0 10px 24px rgba(37,99,235,0.22)' }}>
-              {submitting ? <><Loader2 size={18} style={{ animation:'evolvia-spin 1s linear infinite' }} /> Authenticating</> : <>Authenticate <ChevronRight size={18} /></>}
+              {submitting ? <><Loader2 size={18} style={{ animation:'evolvio-spin 1s linear infinite' }} /> Authenticating</> : <>Authenticate <ChevronRight size={18} /></>}
             </button>
           </form>
         </div>
@@ -302,10 +302,10 @@ function UsersModal({ onClose }) {
         </div>
 
         {/* Content */}
-        <div className="evolvia-scrollbar" style={{ flex:1, overflowY:'auto', padding:'18px 26px 24px' }}>
+        <div className="evolvio-scrollbar" style={{ flex:1, overflowY:'auto', padding:'18px 26px 24px' }}>
           {loading ? (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'60px 0', gap:16 }}>
-              <Loader2 size={32} color="#10b981" style={{ animation:'evolvia-spin 1s linear infinite' }} />
+              <Loader2 size={32} color="#10b981" style={{ animation:'evolvio-spin 1s linear infinite' }} />
               <div style={{ color:'#64748b', fontSize:14 }}>Retrieving secure user records...</div>
             </div>
           ) : error ? (
@@ -315,7 +315,7 @@ function UsersModal({ onClose }) {
           ) : users.length === 0 ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#64748b' }}>No users found in the database.</div>
           ) : (
-            <div className="evolvia-scrollbar" style={{ overflowX: 'auto' }}>
+            <div className="evolvio-scrollbar" style={{ overflowX: 'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth: '600px' }}>
                 <thead>
                   <tr>
@@ -377,7 +377,7 @@ function UsersModal({ onClose }) {
         </div>
         
         {successMsg && (
-          <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', padding:'10px 20px', borderRadius:100, color:'#10b981', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, animation:'evolvia-up 0.3s ease', backdropFilter:'blur(8px)', zIndex:10 }}>
+          <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', padding:'10px 20px', borderRadius:100, color:'#10b981', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, animation:'evolvio-up 0.3s ease', backdropFilter:'blur(8px)', zIndex:10 }}>
             <ShieldCheck size={16} /> {successMsg}
           </div>
         )}
@@ -478,7 +478,7 @@ function UserDetailModal({ user, onClose }) {
     return (
       <div style={{ position:'fixed', inset:0, zIndex:110, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)' }} onClick={onClose}>
         <div style={{ background:'#0f141b', border:'1px solid rgba(148,163,184,0.16)', borderRadius:12, padding:'40px', display:'flex', flexDirection:'column', alignItems:'center', gap:16 }} onClick={e => e.stopPropagation()}>
-          <Loader2 size={28} color="#60a5fa" style={{ animation:'evolvia-spin 1s linear infinite' }} />
+          <Loader2 size={28} color="#60a5fa" style={{ animation:'evolvio-spin 1s linear infinite' }} />
           <div style={{ color:'#64748b', fontSize:14 }}>Loading user details...</div>
         </div>
       </div>
@@ -504,7 +504,7 @@ function UserDetailModal({ user, onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:110, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'adm-fade-in 0.15s ease' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(8px)' }} onClick={onClose} />
-      <div className="evolvia-scrollbar" style={{ position:'relative', width:'100%', maxWidth:800, maxHeight:'90vh', background:'#0f141b', border:'1px solid rgba(148,163,184,0.16)', borderRadius:12, boxShadow:'0 28px 80px rgba(0,0,0,0.5)', overflow:'hidden', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
+      <div className="evolvio-scrollbar" style={{ position:'relative', width:'100%', maxWidth:800, maxHeight:'90vh', background:'#0f141b', border:'1px solid rgba(148,163,184,0.16)', borderRadius:12, boxShadow:'0 28px 80px rgba(0,0,0,0.5)', overflow:'hidden', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding:'20px 24px', borderBottom:'1px solid rgba(148,163,184,0.1)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -523,7 +523,7 @@ function UserDetailModal({ user, onClose }) {
           </button>
         </div>
 
-        <div className="evolvia-scrollbar" style={{ flex:1, overflowY:'auto', padding:'20px 24px 24px' }}>
+        <div className="evolvio-scrollbar" style={{ flex:1, overflowY:'auto', padding:'20px 24px 24px' }}>
           {/* Stats row */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12, marginBottom:24 }}>
             {[
@@ -550,7 +550,7 @@ function UserDetailModal({ user, onClose }) {
             <p style={{ margin:'0 0 14px', color:'#64748b', fontSize:13 }}>Generate a new temporary password for this user. The new password is shown once.</p>
             <button onClick={handleResetPassword} disabled={resetting}
               style={{ padding:'10px 18px', borderRadius:8, border:'none', background: resetting ? '#1e293b' : '#2563eb', color:'#fff', fontWeight:700, fontSize:13, cursor: resetting ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:8, opacity: resetting ? 0.7 : 1 }}>
-              {resetting ? <Loader2 size={16} style={{ animation:'evolvia-spin 1s linear infinite' }} /> : <KeyRound size={16} />}
+              {resetting ? <Loader2 size={16} style={{ animation:'evolvio-spin 1s linear infinite' }} /> : <KeyRound size={16} />}
               {resetting ? 'Resetting...' : 'Reset Password'}
             </button>
             {resetError && (
@@ -559,7 +559,7 @@ function UserDetailModal({ user, onClose }) {
               </div>
             )}
             {tempPassword && (
-              <div style={{ marginTop:14, padding:'14px 16px', borderRadius:10, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', animation:'evolvia-up 0.3s ease' }}>
+              <div style={{ marginTop:14, padding:'14px 16px', borderRadius:10, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', animation:'evolvio-up 0.3s ease' }}>
                 <div style={{ color:'#10b981', fontWeight:700, fontSize:13, marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
                   <CheckCircle size={15} /> New Temporary Password
                 </div>
@@ -588,7 +588,7 @@ function UserDetailModal({ user, onClose }) {
                 This user has no saved credentials.
               </div>
             ) : (
-              <div className="evolvia-scrollbar" style={{ overflowX:'auto' }}>
+              <div className="evolvio-scrollbar" style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth:500 }}>
                   <thead>
                     <tr>
@@ -632,7 +632,7 @@ function UserDetailModal({ user, onClose }) {
 function Overview({ userCount, loading, onFetch, onOpenUsers }) {
   return (
     <div style={{ flex:1, overflowY:'auto' }}>
-      <div className="adm-main-content" style={{ maxWidth:1120, margin:'0 auto', padding:'38px 40px', animation:'evolvia-up 0.35s ease' }}>
+      <div className="adm-main-content" style={{ maxWidth:1120, margin:'0 auto', padding:'38px 40px', animation:'evolvio-up 0.35s ease' }}>
         {/* hero */}
         <div style={{ marginBottom:28, display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:24, flexWrap:'wrap' }}>
           <div>
@@ -662,10 +662,10 @@ function Overview({ userCount, loading, onFetch, onOpenUsers }) {
             <div style={{ color:'#94a3b8', fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Registered Users</div>
             {loading ? (
               <div style={{ display:'flex', alignItems:'center', gap:8, color:'#475569', fontSize:14 }}>
-                <Loader2 size={16} style={{ animation:'evolvia-spin 1s linear infinite' }} /> Fetching…
+                <Loader2 size={16} style={{ animation:'evolvio-spin 1s linear infinite' }} /> Fetching…
               </div>
             ) : userCount !== null ? (
-              <div style={{ display:'flex', alignItems:'baseline', gap:8, animation:'evolvia-up 0.3s ease' }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:8, animation:'evolvio-up 0.3s ease' }}>
                 <span style={{ fontSize:42, fontWeight:850, color:'#e5e7eb', lineHeight:1 }}>{userCount}</span>
                 <span style={{ color:'#64748b', fontSize:13 }}>total — <span style={{ color:'#10b981', textDecoration:'underline' }}>View Directory</span></span>
               </div>
@@ -684,14 +684,14 @@ function Overview({ userCount, loading, onFetch, onOpenUsers }) {
 /* ── App Development Section ────────────────────────────────── */
 function DevelopmentView() {
   const [ideas, setIdeas] = useState(() => {
-    const saved = localStorage.getItem('evolvia_dev_ideas');
+    const saved = localStorage.getItem('evolvio_dev_ideas');
     return saved ? JSON.parse(saved) : [
       { id: 1, title: 'Multi-user Admin Support', desc: 'Allow multiple admins with different permissions.', status: 'Idea', date: new Date().toISOString() },
       { id: 2, title: 'Dark Mode persistence', desc: 'Ensure theme is saved across sessions without flash.', status: 'Implemented', date: new Date().toISOString() }
     ];
   });
   const [archivedIdeas, setArchivedIdeas] = useState(() => {
-    const saved = localStorage.getItem('evolvia_dev_archive');
+    const saved = localStorage.getItem('evolvio_dev_archive');
     return saved ? JSON.parse(saved) : [];
   });
   const [showModal, setShowModal] = useState(false);
@@ -704,11 +704,11 @@ function DevelopmentView() {
   const [ideaToDelete, setIdeaToDelete] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem('evolvia_dev_ideas', JSON.stringify(ideas));
+    localStorage.setItem('evolvio_dev_ideas', JSON.stringify(ideas));
   }, [ideas]);
 
   useEffect(() => {
-    localStorage.setItem('evolvia_dev_archive', JSON.stringify(archivedIdeas));
+    localStorage.setItem('evolvio_dev_archive', JSON.stringify(archivedIdeas));
   }, [archivedIdeas]);
 
   const isReadyForArchive = (idea) => idea.status === 'Implemented';
@@ -810,7 +810,7 @@ function DevelopmentView() {
   };
 
   return (
-    <div style={{ flex:1, overflowY:'auto', padding:'32px 40px', animation:'evolvia-up 0.35s ease' }} className="evolvia-scrollbar">
+    <div style={{ flex:1, overflowY:'auto', padding:'32px 40px', animation:'evolvio-up 0.35s ease' }} className="evolvio-scrollbar">
       <div style={{ maxWidth:1120, margin:'0 auto' }}>
         <div className="adm-grid" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:28, gap:20, flexWrap:'wrap' }}>
           <div>
@@ -1053,7 +1053,7 @@ export default function Admin() {
   if (checkingSession) {
     return (
       <div className="adm-root" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, background:'#080a0e' }}>
-        <Loader2 size={22} color="#3b82f6" style={{ animation:'evolvia-spin 1s linear infinite' }} />
+        <Loader2 size={22} color="#3b82f6" style={{ animation:'evolvio-spin 1s linear infinite' }} />
         <span style={{ color:'#64748b', fontSize:14, fontWeight:600 }}>Checking admin session...</span>
       </div>
     );

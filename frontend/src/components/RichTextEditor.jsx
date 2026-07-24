@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Underline } from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extension-placeholder';
@@ -353,6 +354,16 @@ const HEADINGS = [
   { label: 'Heading 2', value: 2 },
   { label: 'Heading 3', value: 3 },
 ];
+const FONTS = [
+  { label: 'Default', value: '' },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Courier New', value: '"Courier New", monospace' },
+  { label: 'Verdana', value: 'Verdana, sans-serif' },
+  { label: 'Times New Roman', value: '"Times New Roman", serif' },
+  { label: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
+  { label: 'Palatino', value: '"Palatino Linotype", serif' },
+];
 const TB = {
   width: 30, height: 28, borderRadius: 5, cursor: 'pointer',
   border: 'none', background: 'transparent', color: 'var(--text-primary)',
@@ -372,17 +383,19 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   const [headingOpen,    setHeadingOpen]    = useState(false);
   const [colorOpen,      setColorOpen]      = useState(false);
   const [highlightOpen,  setHighlightOpen]  = useState(false);
+  const [fontOpen,       setFontOpen]       = useState(false);
   const containerRef   = useRef(null);
   const fileRef        = useRef(null);
   const headingRef     = useRef(null);
   const colorRef       = useRef(null);
   const highlightRef   = useRef(null);
+  const fontRef        = useRef(null);
   const isInternalChange = useRef(false); // ← prevents reset loop
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, history: { depth: 50 } }),
-      Underline, TextStyle, Color,
+      Underline, TextStyle, FontFamily, Color,
       Highlight.configure({ multicolor: true }),
       ResizableImage,
       Placeholder.configure({ placeholder: placeholder || 'Type here…' }),
@@ -436,15 +449,16 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
 
   /* ── Close dropdowns on outside click ───────────────────────────────── */
   useEffect(() => {
-    if (!headingOpen && !colorOpen && !highlightOpen) return;
+    if (!headingOpen && !colorOpen && !highlightOpen && !fontOpen) return;
     const cb = (e) => {
       if (headingOpen   && headingRef.current   && !headingRef.current.contains(e.target))   setHeadingOpen(false);
       if (colorOpen     && colorRef.current     && !colorRef.current.contains(e.target))     setColorOpen(false);
       if (highlightOpen && highlightRef.current && !highlightRef.current.contains(e.target)) setHighlightOpen(false);
+      if (fontOpen      && fontRef.current      && !fontRef.current.contains(e.target))      setFontOpen(false);
     };
     document.addEventListener('mousedown', cb);
     return () => document.removeEventListener('mousedown', cb);
-  }, [headingOpen, colorOpen, highlightOpen]);
+  }, [headingOpen, colorOpen, highlightOpen, fontOpen]);
 
   const isAct = (name, attrs) => editor?.isActive(name, attrs) || false;
 
@@ -537,6 +551,26 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
                   className={isAct('heading', { level: h.value }) || (h.value===0 && !isAct('heading')) ? 'on' : ''}
                   onClick={() => { h.value===0 ? editor.chain().focus().setParagraph().run() : editor.chain().focus().toggleHeading({ level:h.value }).run(); setHeadingOpen(false); }}>
                   {h.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rte-sep" />
+
+        {/* Font Family */}
+        <div className="rte-dd" ref={fontRef}>
+          <button type="button" onClick={() => setFontOpen(p => !p)}
+            style={{ ...TB, minWidth:60, fontSize:'0.72rem' }}>{editor.getAttributes('textStyle').fontFamily?.split(',')[0]?.replace(/"/g, '') || 'Font'} ▾</button>
+          {fontOpen && (
+            <div className="rte-menu">
+              {FONTS.map(f => (
+                <button key={f.value || 'default'} type="button"
+                  className={editor.getAttributes('textStyle').fontFamily === f.value ? 'on' : ''}
+                  style={{ fontFamily: f.value || 'inherit' }}
+                  onClick={() => { editor.chain().focus().setFontFamily(f.value).run(); setFontOpen(false); }}>
+                  {f.label}
                 </button>
               ))}
             </div>

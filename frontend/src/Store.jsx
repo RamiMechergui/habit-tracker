@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { Preferences } from '@capacitor/preferences';
 
 // Safe fallback for startOfWeek in case the build/runtime environment
@@ -62,11 +62,100 @@ const loadTimelinePrefs = () => {
 };
 
 export const HabitProvider = ({ children }) => {
+  // ── Category helpers (normalize string/object format) ────────
+  const normalizeCategory = (cat) => {
+    if (typeof cat === 'string') return { name: cat, icon: '📦' };
+    if (cat && typeof cat === 'object' && cat.name) return cat;
+    return { name: String(cat), icon: '📦' };
+  };
+
+  const getCategoryName = (cat) => normalizeCategory(cat).name;
+  const getCategoryIcon = (cat) => normalizeCategory(cat).icon;
+
   const [logs, setLogs] = useState({});
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [expenseCategories, setExpenseCategories] = useState(['Food', 'Transportation', 'Entertainment', 'Smoking']);
+  const [expenseCategories, setExpenseCategories] = useState([
+    // Housing & Utilities
+    { name: 'Rent / Mortgage', icon: '🏠' },
+    { name: 'Renters Insurance', icon: '🛡️' },
+    { name: 'Electricity', icon: '💡' },
+    { name: 'Water', icon: '💧' },
+    { name: 'Gas', icon: '🔥' },
+    { name: 'Garbage', icon: '🗑️' },
+    { name: 'Recycling', icon: '♻️' },
+    // Internet & Cable
+    { name: 'Home Broadband', icon: '🌐' },
+    // Home Maintenance
+    { name: 'Plumbing', icon: '🔧' },
+    { name: 'Roof Repairs', icon: '🏗️' },
+    { name: 'Appliances', icon: '🍳' },
+    // Transportation
+    { name: 'Fuel', icon: '⛽' },
+    { name: 'Gasoline', icon: '⛽' },
+    { name: 'Diesel', icon: '⛽' },
+    { name: 'EV Charging', icon: '🔌' },
+    { name: 'Metro', icon: '🚇' },
+    { name: 'Bus Pass', icon: '🚌' },
+    { name: 'Train Tickets', icon: '🚆' },
+    // Food & Dining
+    { name: 'Supermarket', icon: '🛒' },
+    { name: 'Household Food', icon: '🏡' },
+    { name: 'Sit-down Meals', icon: '🍽️' },
+    { name: 'Fast Food', icon: '🍔' },
+    { name: 'Cafes', icon: '☕' },
+    // Healthcare
+    { name: 'Doctor Visits', icon: '🩺' },
+    { name: 'Dental Work', icon: '🦷' },
+    { name: 'Vision Exams', icon: '👁️' },
+    { name: 'Pharmacy', icon: '💊' },
+    { name: 'Prescriptions', icon: '📋' },
+    { name: 'OTC Medications', icon: '💉' },
+    // Fitness & Wellness
+    { name: 'Gym Membership', icon: '🏋️' },
+    { name: 'Sports Equipment', icon: '⚽' },
+    { name: 'Fitness Classes', icon: '🧘' },
+    // Personal Care
+    { name: 'Haircuts', icon: '✂️' },
+    { name: 'Toiletries', icon: '🧴' },
+    { name: 'Cosmetics', icon: '💄' },
+    { name: 'Spa Services', icon: '🧖' },
+    // Clothing & Accessories
+    { name: 'Apparel', icon: '👕' },
+    { name: 'Shoes', icon: '👟' },
+    { name: 'Jewelry', icon: '💍' },
+    // Household Supplies
+    { name: 'Cleaning Supplies', icon: '🧹' },
+    { name: 'Cookware', icon: '🍲' },
+    { name: 'Home Decor', icon: '🖼️' },
+    // Subscriptions
+    { name: 'Cloud Storage', icon: '☁️' },
+    { name: 'SaaS', icon: '💻' },
+    { name: 'Streaming Services', icon: '📺' },
+    // Hobbies & Entertainment
+    { name: 'Books', icon: '📚' },
+    { name: 'Movies', icon: '🎬' },
+    { name: 'Games', icon: '🎮' },
+    { name: 'Music', icon: '🎵' },
+    // Travel & Vacation
+    { name: 'Flights', icon: '✈️' },
+    { name: 'Lodging', icon: '🏨' },
+    { name: 'Rental Cars', icon: '🚗' },
+    { name: 'Vacation Activities', icon: '🎢' },
+    // Smoking
+    { name: 'Smoking', icon: '🚬' },
+    // Income Categories
+    { name: 'Salary / Wages', icon: '💰' },
+    { name: 'Freelance Income', icon: '💼' },
+    { name: 'Investments & Dividends', icon: '📈' },
+    { name: 'Rental Income', icon: '🏘️' },
+    // Adjustment Categories
+    { name: 'Cash Discrepancy', icon: '💵' },
+    { name: 'Internal Transfers', icon: '🔄' },
+    { name: 'Opening Balance', icon: '📊' },
+    { name: 'Closing Balance', icon: '📊' },
+  ]);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
   const [plannedBooks, setPlannedBooks] = useState([]);
@@ -606,7 +695,10 @@ export const HabitProvider = ({ children }) => {
         });
       }
       if (offLogs && Object.keys(offLogs).length > 0) setLogs(offLogs);
-      if (offCats && offCats.length > 0) setExpenseCategories(offCats);
+      if (offCats && offCats.length > 0) {
+        const normalizedOffCats = offCats.map(c => (c && typeof c === 'object' && c.name) ? c : { name: String(c), icon: '📦' });
+        setExpenseCategories(normalizedOffCats);
+      }
       if (offBook) {
         // Unwrap legacy shape from old finishCurrentBook bug (data.currentBook wrapper)
         const clean = offBook.currentBook || offBook;
@@ -748,9 +840,16 @@ export const HabitProvider = ({ children }) => {
     await saveSession(userData);
     db.saveUser(userData);
 
-    const categories = data.expenseCategories && data.expenseCategories.length > 0
+    const rawCats = data.expenseCategories && data.expenseCategories.length > 0
       ? data.expenseCategories
-      : ['Food', 'Transportation', 'Entertainment', 'Smoking'];
+      : [
+          { name: 'Food',           icon: '🍽️' },
+          { name: 'Transportation', icon: '🚗' },
+          { name: 'Entertainment',  icon: '🎬' },
+          { name: 'Smoking',        icon: '🚬' },
+        ];
+    // Migrate any legacy plain-string entries from the server
+    const categories = rawCats.map(c => (c && typeof c === 'object' && c.name) ? c : { name: String(c), icon: '📦' });
     setExpenseCategories(categories);
     db.saveCategories(categories);
 
@@ -825,7 +924,7 @@ export const HabitProvider = ({ children }) => {
 
   const logout = async () => {
     // 1. Dispatch event to save any pending/dirty user changes before session terminates
-    window.dispatchEvent(new CustomEvent('evolvia-save-pending'));
+    window.dispatchEvent(new CustomEvent('evolvio-save-pending'));
 
     // Wait briefly (200ms) for unmount cleanups and saves to write/enqueue
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -1240,11 +1339,12 @@ export const HabitProvider = ({ children }) => {
     } finally { saveLock.current = false; }
   }, [user, API_URL]);
 
-  const addExpenseCategory = async (category) => {
-    if (!category.trim() || expenseCategories.includes(category)) return;
+  const addExpenseCategory = async (category, icon = '📦') => {
+    const catObj = typeof category === 'string' ? { name: category.trim(), icon } : { ...category, icon: category.icon || icon };
+    if (!catObj.name || expenseCategories.some(c => getCategoryName(c) === catObj.name)) return;
     
     // Optimistic update
-    const newCats = [...expenseCategories, category.trim()];
+    const newCats = [...expenseCategories, catObj];
     setExpenseCategories(newCats);
     db.saveCategories(newCats);
 
@@ -1254,7 +1354,7 @@ export const HabitProvider = ({ children }) => {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category })
+          body: JSON.stringify({ category: catObj })
         });
         if (!res.ok) {
           throw new Error(`Server returned status ${res.status}`);
@@ -1268,7 +1368,7 @@ export const HabitProvider = ({ children }) => {
           type: 'ADD_CATEGORY',
           url: '/api/categories',
           method: 'POST',
-          body: { category }
+          body: { category: catObj }
         });
         requestBackgroundSync();
       }
@@ -1277,21 +1377,22 @@ export const HabitProvider = ({ children }) => {
         type: 'ADD_CATEGORY',
         url: '/api/categories',
         method: 'POST',
-        body: { category }
+        body: { category: catObj }
       });
     }
-    logHistory('expense_category_add', `Added expense category "${category}"`);
+    logHistory('expense_category_add', `Added expense category "${catObj.name}"`);
   };
 
   const deleteExpenseCategory = async (category) => {
+    const catName = getCategoryName(category);
     // Optimistic update
-    const newCats = expenseCategories.filter(c => c !== category);
+    const newCats = expenseCategories.filter(c => getCategoryName(c) !== catName);
     setExpenseCategories(newCats);
     db.saveCategories(newCats);
 
     if (navigator.onLine) {
       try {
-        const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(category)}`, {
+        const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(catName)}`, {
           method: 'DELETE',
           credentials: 'include'
         });
@@ -1305,7 +1406,7 @@ export const HabitProvider = ({ children }) => {
         console.warn('[Store] Queuing deleteCategory for sync');
         db.enqueueSync({
           type: 'DELETE_CATEGORY',
-          url: `/api/categories/${encodeURIComponent(category)}`,
+          url: `/api/categories/${encodeURIComponent(catName)}`,
           method: 'DELETE',
           body: null
         });
@@ -1314,30 +1415,34 @@ export const HabitProvider = ({ children }) => {
     } else {
       db.enqueueSync({
         type: 'DELETE_CATEGORY',
-        url: `/api/categories/${encodeURIComponent(category)}`,
+        url: `/api/categories/${encodeURIComponent(catName)}`,
         method: 'DELETE',
         body: null
       });
     }
-    logHistory('expense_category_delete', `Deleted expense category "${category}"`);
+    logHistory('expense_category_delete', `Deleted expense category "${catName}"`);
   };
 
-  const editExpenseCategory = async (oldCategory, newCategory) => {
-    const trimmedNew = newCategory.trim();
-    if (!trimmedNew || expenseCategories.includes(trimmedNew)) return;
+  const editExpenseCategory = async (oldCategory, newName, newIcon) => {
+    const oldName = getCategoryName(oldCategory);
+    const trimmedName = (newName || oldName).trim();
+    const icon = newIcon || getCategoryIcon(oldCategory);
+    if (!trimmedName) return;
+    if (trimmedName !== oldName && expenseCategories.some(c => getCategoryName(c) === trimmedName)) return;
 
+    const updatedCat = { name: trimmedName, icon };
     // Optimistic update
-    const newCats = expenseCategories.map(c => c === oldCategory ? trimmedNew : c);
+    const newCats = expenseCategories.map(c => getCategoryName(c) === oldName ? updatedCat : c);
     setExpenseCategories(newCats);
     db.saveCategories(newCats);
 
     if (navigator.onLine) {
       try {
-        const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(oldCategory)}`, {
+        const res = await fetch(`${API_URL}/api/categories/${encodeURIComponent(oldName)}`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ newCategory: trimmedNew })
+          body: JSON.stringify({ newCategory: trimmedName, icon })
         });
         if (!res.ok) {
           throw new Error(`Server returned status ${res.status}`);
@@ -1349,18 +1454,18 @@ export const HabitProvider = ({ children }) => {
         console.warn('[Store] Queuing editCategory for sync');
         db.enqueueSync({
           type: 'EDIT_CATEGORY',
-          url: `/api/categories/${encodeURIComponent(oldCategory)}`,
+          url: `/api/categories/${encodeURIComponent(oldName)}`,
           method: 'PUT',
-          body: { newCategory: trimmedNew }
+          body: { newCategory: trimmedName, icon }
         });
         requestBackgroundSync();
       }
     } else {
       db.enqueueSync({
         type: 'EDIT_CATEGORY',
-        url: `/api/categories/${encodeURIComponent(oldCategory)}`,
+        url: `/api/categories/${encodeURIComponent(oldName)}`,
         method: 'PUT',
-        body: { newCategory: trimmedNew }
+        body: { newCategory: trimmedName, icon }
       });
     }
     logHistory('expense_category_edit', `Renamed category "${oldCategory}" to "${trimmedNew}"`);
@@ -1759,6 +1864,70 @@ export const HabitProvider = ({ children }) => {
         log: getLog(dStr) 
       };
     });
+  };
+
+  const getYearlyData = (date) => {
+    const year = date.getFullYear();
+    const months = [];
+    for (let m = 0; m < 12; m++) {
+      const monthStart = new Date(year, m, 1);
+      const monthEnd = new Date(year, m + 1, 0);
+      const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+      const monthLogs = days.map(d => {
+        const dStr = format(d, 'yyyy-MM-dd');
+        return { date: dStr, log: getLog(dStr) };
+      });
+      const submittedDays = monthLogs.filter(d => d.log.isSubmitted || d.log.totalScore > 0);
+      const avgScore = submittedDays.length
+        ? Math.round(submittedDays.reduce((s, d) => s + d.log.totalScore, 0) / submittedDays.length)
+        : 0;
+      const totalExpenses = monthLogs.reduce(
+        (t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0),
+        0
+      );
+      const wakeDays = monthLogs.filter(d => d.log.morning?.wakeTime);
+      const avgWakeMinutes = wakeDays.length
+        ? wakeDays.reduce((s, d) => {
+            const [h, m] = d.log.morning.wakeTime.split(':').map(Number);
+            return s + h * 60 + m;
+          }, 0) / wakeDays.length
+        : null;
+      const daysWithPhone = monthLogs.filter(d => d.log.bad?.phone?.min > 0);
+      const avgPhoneMin = daysWithPhone.length
+        ? Math.round(daysWithPhone.reduce((s, d) => s + (d.log.bad.phone.min || 0), 0) / daysWithPhone.length)
+        : 0;
+      const daysWithSocial = monthLogs.filter(d => d.log.bad?.social?.min > 0);
+      const avgSocialMin = daysWithSocial.length
+        ? Math.round(daysWithSocial.reduce((s, d) => s + (d.log.bad.social.min || 0), 0) / daysWithSocial.length)
+        : 0;
+      const daysWithCigs = monthLogs.filter(d => {
+        if (!Array.isArray(d.log.expenses)) return false;
+        return d.log.expenses.some(e => (e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking') && parseInt(e.cigarettesCount) > 0);
+      });
+      const avgCigs = daysWithCigs.length
+        ? Math.round(daysWithCigs.reduce((s, d) => {
+            if (!Array.isArray(d.log.expenses)) return s;
+            return s + d.log.expenses
+              .filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking')
+              .reduce((acc, cur) => acc + (parseInt(cur.cigarettesCount) || 0), 0);
+          }, 0) / daysWithCigs.length)
+        : 0;
+      months.push({
+        monthIndex: m,
+        monthName: format(monthStart, 'MMM'),
+        monthFullName: format(monthStart, 'MMMM'),
+        days: monthLogs,
+        submittedDays: submittedDays.length,
+        totalDays: days.length,
+        avgScore,
+        totalExpenses: parseFloat(totalExpenses.toFixed(3)),
+        avgWakeMinutes,
+        avgPhoneMin,
+        avgSocialMin,
+        avgCigs,
+      });
+    }
+    return months;
   };
 
   // ── Daily Notes API Calls ────────────────────────────────────────
@@ -2640,10 +2809,11 @@ export const HabitProvider = ({ children }) => {
 
   return (
     <HabitContext.Provider value={{
-      logs, getLog, saveLog, getWeeklyData, getMonthlyData,
+      logs, getLog, saveLog, getWeeklyData, getMonthlyData, getYearlyData,
       user, login, register, logout, updateProfilePicture, updateProfile, changePassword, loading,
       avatarHistory, fetchAvatarHistory, uploadAvatar, revertAvatar, deleteAvatarVersion,
       expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, saveIncome, deleteIncomeEntry,
+      getCategoryName, getCategoryIcon, normalizeCategory,
       currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks,
       isOnline,
       // Essentials

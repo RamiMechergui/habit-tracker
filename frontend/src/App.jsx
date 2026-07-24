@@ -1,6 +1,6 @@
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, CheckSquare, CalendarDays, CalendarRange,
+  LayoutDashboard, CheckSquare, CalendarDays, CalendarRange, Calendar,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
   WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X,
   StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank, Brain
@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import DailyLog from './pages/DailyLog';
 import WeeklyReview from './pages/WeeklyReview';
 import MonthlyReview from './pages/MonthlyReview';
+import YearlyReview from './pages/YearlyReview';
 import BookArchive from './pages/BookArchive';
 import Settings from './pages/Settings';
 import Security from './pages/Security';
@@ -33,6 +34,9 @@ import LastDay from './pages/LastDay';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
+import { registerPlugin } from '@capacitor/core';
+
+const UsageStats = registerPlugin('UsageStats');
 
 import { useHabits } from './Store';
 
@@ -46,6 +50,7 @@ const NAV_LINKS = [
   { to: '/vault',         icon: KeyRound,        label: 'Password Vault' },
   { to: '/weekly',        icon: CalendarDays,    label: 'Weekly' },
   { to: '/monthly',       icon: CalendarRange,   label: 'Monthly' },
+  { to: '/yearly',        icon: Calendar,        label: 'Yearly' },
 
   { to: '/archive',       icon: BookOpen,        label: 'Archive' },
   { to: '/expenses',      icon: Wallet,          label: 'Expenses' },
@@ -95,6 +100,24 @@ function App() {
   }, [user]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
+  // ── Check Usage Access permission on native ──
+  const [usagePermNeeded, setUsagePermNeeded] = useState(false);
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const isNative = window?.Capacitor?.isNativePlatform?.();
+        if (!isNative) return;
+        const result = await UsageStats.isPermissionGranted();
+        if (!result.granted) setUsagePermNeeded(true);
+      } catch (_) {}
+    };
+    check();
+  }, []);
+
+  const openUsageSettings = async () => {
+    try { await UsageStats.openSettings(); } catch (_) {}
+  };
 
   if (location.pathname.startsWith('/admin')) {
     return <Admin />;
@@ -167,7 +190,7 @@ function App() {
 
         <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
 
-        <nav className="flex-col gap-1 evolvia-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+        <nav className="flex-col gap-1 evolvio-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
           {NAV_LINKS.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <Icon size={18} /> 
@@ -216,7 +239,7 @@ function App() {
 
           <div className="sidebar-footer-logo" style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
             <img src="/logo_circle.png" alt="Logo" style={{ width: '20px', height: '20px' }} />
-            <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>EVOLVIA</span>
+            <span style={{ marginLeft: '8px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>Evolvio</span>
           </div>
         </div>
       </aside>
@@ -234,7 +257,7 @@ function App() {
             </button>
             <img src="/logo_circle.png" alt="Logo" style={{ width: '22px', height: '22px', borderRadius: '4px' }} />
             <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
-              EVOLVIA
+              EVOLVIO
             </span>
             <span title={isOnline ? 'Online' : 'Offline'} style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444', display: 'inline-block' }} />
           </div>
@@ -262,6 +285,7 @@ function App() {
             <Route path="/vault"     element={<PasswordVault />} />
             <Route path="/weekly"    element={<WeeklyReview />} />
             <Route path="/monthly"   element={<MonthlyReview />} />
+            <Route path="/yearly"    element={<YearlyReview />} />
 
             <Route path="/archive"   element={<BookArchive />} />
             <Route path="/expenses"  element={<ExpenseTracker />} />
@@ -309,6 +333,38 @@ function App() {
       {/* ── PWA Components ── */}
       <InstallPrompt />
       <UpdateToast />
+
+      {/* ── Usage Access Permission Banner ── */}
+      {usagePermNeeded && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
+          background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+          borderTop: '2px solid #f59e0b', padding: '12px 20px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.4)',
+        }}>
+          <span style={{ fontSize: '1.4rem' }}>📱</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b' }}>Usage Access Required</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Enable Usage Access to auto-fill Social Media &amp; Phone Usage times
+            </div>
+          </div>
+          <button onClick={openUsageSettings} style={{
+            padding: '8px 16px', borderRadius: '8px', border: 'none',
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff',
+            fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>
+            Open Settings
+          </button>
+          <button onClick={() => setUsagePermNeeded(false)} style={{
+            background: 'none', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', padding: 4, fontSize: '1.1rem',
+          }}>
+            ✕
+          </button>
+        </div>
+      )}
 
 
 

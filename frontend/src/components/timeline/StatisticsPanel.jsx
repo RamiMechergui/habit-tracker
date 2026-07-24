@@ -188,7 +188,7 @@ export default function StatisticsPanel({ open, onClose, logs, viewDate }) {
         </div>
 
         {/* Body */}
-        <div className="stats-panel-body evolvia-scrollbar">
+        <div className="stats-panel-body evolvio-scrollbar">
 
           {activeTab === 'overview' && (
             <div className="stats-overview-grid">

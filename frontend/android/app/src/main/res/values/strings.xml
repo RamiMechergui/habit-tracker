@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Evolvio</string>
     <string name="title_activity_main">Evolvio</string>
-    <string name="package_name">com.evolvia.habittracker</string>
-    <string name="custom_url_scheme">com.evolvia.habittracker</string>
+    <string name="package_name">com.evolvio.habittracker</string>
+    <string name="custom_url_scheme">com.evolvio.habittracker</string>
 </resources>

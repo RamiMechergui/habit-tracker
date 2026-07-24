@@ -184,10 +184,10 @@ export default function TasksPage() {
         });
       }
     };
-    window.addEventListener('evolvia-save-pending', handleSavePending);
+    window.addEventListener('evolvio-save-pending', handleSavePending);
 
     return () => {
-      window.removeEventListener('evolvia-save-pending', handleSavePending);
+      window.removeEventListener('evolvio-save-pending', handleSavePending);
       if (localDirtyRef.current) {
         saveLog(dateRef.current, logRef.current).catch(err => {
           console.error('[TasksPage] Unmount save failed:', err);
@@ -1024,19 +1024,7 @@ export default function TasksPage() {
             </button>
           )}
 
-          {/* PDF export button */}
-          {timelineView === 'daily' && (
-            <button
-              className="hub-pdf-btn"
-              onClick={() => { setPdfError(''); handleDownloadPDF(); }}
-              aria-label="Download Daily PDF Report"
-              title="Download PDF Report"
-            >
-              <FileDown size={13} aria-hidden="true" />
-              <span>Export PDF</span>
-            </button>
-          )}
-          {pdfError && <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, marginLeft: '0.5rem' }}>{pdfError}</span>}
+
 
           {/* Save status */}
           <div

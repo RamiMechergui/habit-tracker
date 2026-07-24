@@ -801,7 +801,7 @@ export default function PasswordVault() {
               </div>
 
               {/* Sliding Category Badges */}
-              <div className="filter-badge-row evolvia-scrollbar">
+              <div className="filter-badge-row evolvio-scrollbar">
                 {['All', 'Pinned', ...CATEGORIES].map(cat => (
                   <button
                     key={cat}
@@ -815,7 +815,7 @@ export default function PasswordVault() {
               </div>
 
               {/* Credentials List */}
-              <div className="credential-list-scroll evolvia-scrollbar">
+              <div className="credential-list-scroll evolvio-scrollbar">
                 {loading ? (
                   <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <div className="spinner" style={{ width: '28px', height: '28px', border: '2px solid var(--border)', borderTopColor: 'var(--accent-blue)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />

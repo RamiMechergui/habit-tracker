@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO, addMonths, subMonths, addDays, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, X, BarChart2, Search } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO } from 'date-fns';
+import { Plus, X, BarChart2, Search } from 'lucide-react';
 import './MonthlyCalendar.css';
 import HeatmapTooltip from './HeatmapTooltip';
 import StatisticsPanel from './StatisticsPanel';
@@ -75,7 +75,7 @@ function DayExpandPanel({ dateStr, tasks, onClose, onAddClick, onSelectDate }) {
       </div>
 
       {/* Task list */}
-      <div className="day-expand-tasks evolvia-scrollbar">
+      <div className="day-expand-tasks evolvio-scrollbar">
         {tasks.length === 0
           ? <p className="day-expand-empty">No tasks. Click Add to plan something!</p>
           : tasks.map((t, i) => (
@@ -193,18 +193,14 @@ export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAdd
         )}
       </div>
 
-      {/* Month nav */}
-      <div className="month-nav-header">
-        <button className="month-nav-btn" onClick={() => setViewDate(d => subMonths(d, 1))} aria-label="Previous month"><ChevronLeft size={16} /></button>
-        <button className="month-nav-btn" onClick={() => setViewDate(d => addDays(d, -7))} aria-label="Previous week"><ChevronLeft size={12} /></button>
+      {/* Month title */}
+      <div className="month-nav-header" style={{ justifyContent: 'center', cursor: 'default' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <h3 style={{ margin:0, fontSize:'1.05rem', fontWeight:700 }}>📅 {format(viewDate, 'MMMM yyyy')}</h3>
           <button className="stats-open-btn" onClick={() => setShowStats(true)} aria-label="Open monthly statistics" title="Monthly statistics">
             <BarChart2 size={15} />
           </button>
         </div>
-        <button className="month-nav-btn" onClick={() => setViewDate(d => addDays(d, 7))} aria-label="Next week"><ChevronRight size={12} /></button>
-        <button className="month-nav-btn" onClick={() => setViewDate(d => addMonths(d, 1))} aria-label="Next month"><ChevronRight size={16} /></button>
       </div>
 
       {/* Filters */}

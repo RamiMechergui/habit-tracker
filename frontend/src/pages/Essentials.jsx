@@ -267,7 +267,7 @@ export default function Essentials() {
       {/* ── Item Grid ────────────────────────────────────────── */}
       {essentialsLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <Loader size={32} style={{ animation: 'evolvia-spin 1s linear infinite', color: 'var(--text-muted)' }} />
+          <Loader size={32} style={{ animation: 'evolvio-spin 1s linear infinite', color: 'var(--text-muted)' }} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="essentials-empty">

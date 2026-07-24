@@ -286,6 +286,19 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
     };
     if (editDialogue) {
       await onUpdate(editDialogue.recordId, payload);
+      const pending = Object.entries(pendingPhotoFiles);
+      if (pending.length > 0 && onUploadParticipantPhoto) {
+        const updatedParticipants = [...finalParticipants];
+        for (const [idx, file] of pending) {
+          try {
+            const { photoUrl } = await onUploadParticipantPhoto(editDialogue.recordId, parseInt(idx), file);
+            updatedParticipants[parseInt(idx)] = { ...updatedParticipants[parseInt(idx)], photoUrl };
+          } catch (err) {
+            console.error(`Failed to upload photo for participant ${idx}:`, err);
+          }
+        }
+        await onUpdate(editDialogue.recordId, { participants: updatedParticipants });
+      }
     } else {
       const created = await onSave(payload);
       const recordId = created.recordId;

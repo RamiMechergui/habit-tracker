@@ -40,8 +40,8 @@ fi
 
 echo "Configuring Nginx..."
 sudo mkdir -p /var/www/html
-sudo cp ~/habit-tracker/nginx.ec2.conf /etc/nginx/sites-available/evolvia
-sudo ln -sf /etc/nginx/sites-available/evolvia /etc/nginx/sites-enabled/evolvia
+sudo cp ~/habit-tracker/nginx.ec2.conf /etc/nginx/sites-available/EVOLVIO
+sudo ln -sf /etc/nginx/sites-available/EVOLVIO /etc/nginx/sites-enabled/EVOLVIO
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo systemctl enable nginx
 sudo systemctl restart nginx

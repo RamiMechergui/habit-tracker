@@ -133,21 +133,28 @@ async function updateGrammar(userId, recordId, updates) {
 }
 
 // ── Daily Notes ───────────────────────────────────────────────────────────────
-// recordId is NOTE#YYYY-MM-DD so there can only be one note per day
-async function saveNote(userId, date, { content, studyMinutes = 0, wordsLearned = 0 }) {
-  const recordId = `NOTE#${date}`;
+// Supports multiple notes per day. recordId: NOTE#YYYY-MM-DD#<uuid>
+async function saveNote(userId, date, { noteId, content }) {
+  const recordId = noteId || `NOTE#${date}#${uuidv4()}`;
   const item = {
     userId,
     recordId,
     type: 'note',
     date,
     content,
-    studyMinutes,
-    wordsLearned,
     updatedAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return item;
+}
+
+async function getNotesByDate(userId, date) {
+  const res = await docClient.send(new QueryCommand({
+    TableName: TABLE,
+    KeyConditionExpression: 'userId = :uid AND begins_with(recordId, :prefix)',
+    ExpressionAttributeValues: { ':uid': userId, ':prefix': `NOTE#${date}` },
+  }));
+  return (res.Items || []).sort((a, b) => (a.updatedAt || '').localeCompare(b.updatedAt || ''));
 }
 
 async function getNoteByDate(userId, date) {
@@ -354,6 +361,7 @@ module.exports = {
   updateVerb,
   saveNote,
   getNoteByDate,
+  getNotesByDate,
   deleteGermanRecord,
   addDialogue,
   updateDialogue,

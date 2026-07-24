@@ -9,6 +9,24 @@ const {
 } = require('../db/expenses');
 const { getUserById, updateUser } = require('../db/users');
 
+// ── Category helpers ─────────────────────────────────────────────────────────
+// Categories are stored as objects: { name: string, icon: string }
+// Legacy data may be plain strings — normalise on every read.
+
+function normalizeCategory(cat) {
+  if (cat && typeof cat === 'object' && cat.name) return cat;
+  return { name: String(cat), icon: '📦' };
+}
+
+function normalizeCategoryList(cats) {
+  if (!Array.isArray(cats)) return [];
+  return cats.map(normalizeCategory);
+}
+
+function getCatName(cat) {
+  return normalizeCategory(cat).name;
+}
+
 // GET /api/expenses
 router.get('/', protect, async (req, res) => {
   try {
@@ -23,44 +41,65 @@ router.get('/', protect, async (req, res) => {
 router.get('/categories/list', protect, async (req, res) => {
   try {
     const user = await getUserById(req.user.userId);
-    res.json({ expenseCategories: user.expenseCategories || [] });
+    res.json({ expenseCategories: normalizeCategoryList(user.expenseCategories) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
 // POST /api/expenses/categories
+// Body: { category: { name: string, icon: string } }
 router.post('/categories', protect, async (req, res) => {
   try {
-    const { category } = req.body;
-    if (!category?.trim()) return res.status(400).json({ message: 'Category name required' });
+    const raw = req.body.category;
+    if (!raw) return res.status(400).json({ message: 'Category required' });
+
+    const newCat = normalizeCategory(raw);
+    if (!newCat.name?.trim()) return res.status(400).json({ message: 'Category name required' });
+    newCat.name = newCat.name.trim();
+
     const user = await getUserById(req.user.userId);
-    if (!user.expenseCategories.includes(category.trim())) {
-      const updated = await updateUser(req.user.userId, {
-        expenseCategories: [...user.expenseCategories, category.trim()],
-      });
-      return res.json({ expenseCategories: updated.expenseCategories });
+    const existing = normalizeCategoryList(user.expenseCategories);
+
+    // Prevent duplicates (by name)
+    if (existing.some(c => c.name === newCat.name)) {
+      return res.json({ expenseCategories: existing });
     }
-    res.json({ expenseCategories: user.expenseCategories });
+
+    const updated = await updateUser(req.user.userId, {
+      expenseCategories: [...existing, newCat],
+    });
+    return res.json({ expenseCategories: normalizeCategoryList(updated.expenseCategories) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
 // PUT /api/expenses/categories/:category
+// Body: { newCategory: string, icon: string }
 router.put('/categories/:category', protect, async (req, res) => {
   try {
-    const { newCategory } = req.body;
+    const { newCategory, icon } = req.body;
     if (!newCategory?.trim()) return res.status(400).json({ message: 'New category name required' });
+
     const user   = await getUserById(req.user.userId);
-    const oldCat = decodeURIComponent(req.params.category);
-    if (user.expenseCategories.includes(newCategory.trim()) && newCategory.trim() !== oldCat) {
+    const oldName = decodeURIComponent(req.params.category);
+    const existing = normalizeCategoryList(user.expenseCategories);
+
+    const newName = newCategory.trim();
+    const updatedIcon = icon || '📦';
+
+    // Prevent renaming to an existing name (unless it's the same category)
+    if (existing.some(c => c.name === newName) && newName !== oldName) {
       return res.status(400).json({ message: 'Category already exists' });
     }
-    const updated = await updateUser(req.user.userId, {
-      expenseCategories: user.expenseCategories.map(c => c === oldCat ? newCategory.trim() : c),
-    });
-    res.json({ expenseCategories: updated.expenseCategories });
+
+    const updatedList = existing.map(c =>
+      c.name === oldName ? { name: newName, icon: updatedIcon } : c
+    );
+
+    const updated = await updateUser(req.user.userId, { expenseCategories: updatedList });
+    res.json({ expenseCategories: normalizeCategoryList(updated.expenseCategories) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -69,12 +108,14 @@ router.put('/categories/:category', protect, async (req, res) => {
 // DELETE /api/expenses/categories/:category
 router.delete('/categories/:category', protect, async (req, res) => {
   try {
-    const user    = await getUserById(req.user.userId);
-    const cat     = decodeURIComponent(req.params.category);
+    const user  = await getUserById(req.user.userId);
+    const name  = decodeURIComponent(req.params.category);
+    const existing = normalizeCategoryList(user.expenseCategories);
+
     const updated = await updateUser(req.user.userId, {
-      expenseCategories: user.expenseCategories.filter(c => c !== cat),
+      expenseCategories: existing.filter(c => c.name !== name),
     });
-    res.json({ expenseCategories: updated.expenseCategories });
+    res.json({ expenseCategories: normalizeCategoryList(updated.expenseCategories) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

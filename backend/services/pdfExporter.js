@@ -1,7 +1,7 @@
 /**
  * services/pdfExporter.js
  * ─────────────────────────────────────────────────────────────────────────────
- * Evolvia Academic PDF Generator
+ * Evolvio Academic PDF Generator
  *
  * Converts a TipTap JSON document to a professional academic-styled PDF
  * using Puppeteer (headless Chrome) and CSS Paged Media.
@@ -81,7 +81,7 @@ function escapeHtml(str) {
 }
 
 /**
- * Builds the full print HTML document with Evolvia branding.
+ * Builds the full print HTML document with EVOLVIO branding.
  */
 function buildPrintHtml({ title, author, content, docType, createdAt, version = '1.0' }) {
   const bodyHtml = nodeToHtml(content);
@@ -106,7 +106,7 @@ function buildPrintHtml({ title, author, content, docType, createdAt, version = 
       size: A4;
       margin: 2.5cm 2.8cm 3cm 2.8cm;
       @top-left   { content: "${escapeHtml(title)}"; font-family: 'Inter', sans-serif; font-size: 8pt; color: #888; }
-      @bottom-left { content: "Evolvia German Learning System · ${typeLabel}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: #aaa; }
+      @bottom-left { content: "Evolvio German Learning System · ${typeLabel}"; font-family: 'Inter', sans-serif; font-size: 7.5pt; color: #aaa; }
       @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: 'Inter', sans-serif; font-size: 8pt; color: #888; }
     }
     @page :first { margin-top: 0; @top-left { content: ''; } @bottom-left { content: ''; } @bottom-right { content: ''; } }
@@ -188,7 +188,7 @@ function buildPrintHtml({ title, author, content, docType, createdAt, version = 
 
   <!-- ── Cover Page ── -->
   <div class="cover">
-    <div class="cover-brand">Evolvia</div>
+    <div class="cover-brand">Evolvio</div>
     <div class="cover-logo">Evol<span>via</span></div>
     <div class="cover-subtitle">German Learning System</div>
     <div class="cover-divider"></div>
@@ -196,7 +196,7 @@ function buildPrintHtml({ title, author, content, docType, createdAt, version = 
     <div class="cover-type">${escapeHtml(typeLabel)}</div>
     <div class="cover-divider"></div>
     <div class="cover-meta">
-      <div><strong>Author:</strong> ${escapeHtml(author || 'Evolvia User')}</div>
+      <div><strong>Author:</strong> ${escapeHtml(author || 'Evolvio User')}</div>
       <div><strong>Date:</strong> ${date}</div>
       <div><strong>Version:</strong> ${version}</div>
     </div>

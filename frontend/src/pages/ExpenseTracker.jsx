@@ -8,7 +8,7 @@ import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 
 export default function ExpenseTracker() {
-  const { logs, expenseCategories, saveLog, saveIncome, deleteIncomeEntry } = useHabits();
+  const { logs, expenseCategories, getCategoryName, getCategoryIcon, saveLog, saveIncome, deleteIncomeEntry } = useHabits();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [viewMode, setViewMode] = useState('monthly');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -100,7 +100,7 @@ export default function ExpenseTracker() {
     
     // Initialize categories with 0
     expenseCategories.forEach(cat => {
-      categoryTotals[cat] = 0;
+      categoryTotals[getCategoryName(cat)] = 0;
     });
     categoryTotals['Other'] = 0;
 
@@ -149,6 +149,18 @@ export default function ExpenseTracker() {
 
     return { totalSpent, totalIncome, remaining: totalIncome - totalSpent, activeCategories };
   }, [logs, viewMode, currentDate, expenseCategories]);
+
+  // Build a fast name → icon lookup map from the user's category list.
+  // We cannot use getCategoryIcon(exp.category) directly because exp.category
+  // is stored as a plain string in logs, and getCategoryIcon always returns '📦'
+  // for strings — it does not search the expenseCategories list.
+  const categoryIconMap = useMemo(() => {
+    const map = new Map();
+    expenseCategories.forEach(cat => {
+      map.set(getCategoryName(cat), getCategoryIcon(cat));
+    });
+    return map;
+  }, [expenseCategories, getCategoryName, getCategoryIcon]);
 
   // Filter logs for transaction history based on current viewMode and date
   const filteredHistoryLogs = useMemo(() => {
@@ -307,10 +319,11 @@ export default function ExpenseTracker() {
     filteredHistoryLogs.forEach(([dateStr, log]) => {
       const formattedDate = format(new Date(dateStr + 'T00:00:00'), 'MMM dd, yyyy');
       log.expenses.filter(exp => parseFloat(exp.amount) > 0).forEach(exp => {
+        const catIcon = categoryIconMap.get(exp.category) || '';
         tableRows.push([
           formattedDate,
           exp.time || '--:--',
-          exp.category,
+          catIcon ? `${catIcon} ${exp.category}` : exp.category,
           exp.desc || 'No description',
           parseFloat(exp.amount).toFixed(3)
         ]);
@@ -694,7 +707,7 @@ export default function ExpenseTracker() {
           {/* Transaction History Card */}
           <div className="glass-card p-6 mt-8">
               <h3 className="mb-4 flex items-center gap-2">📑 Transaction History</h3>
-              <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }} className="evolvia-scrollbar">
+              <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }} className="evolvio-scrollbar">
                 {filteredHistoryLogs.length > 0 ? (
                   filteredHistoryLogs.map(([dateStr, log]) => (
                     <div key={dateStr} className="mb-6">
@@ -718,7 +731,7 @@ export default function ExpenseTracker() {
                                 <div style={{ height: '24px', width: '1px', background: 'var(--border)' }} />
                                 <div>
                                   <p style={{ margin: 0, fontWeight: 500, fontSize: '0.95rem' }}>{exp.desc || 'No description'}</p>
-                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{exp.category}</p>
+                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{categoryIconMap.get(exp.category) || '📦'} {exp.category}</p>
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right' }}>

@@ -64,14 +64,14 @@ export default function Auth() {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img
             src="/logo.png"
-            alt="Evolvia Logo"
+            alt="Evolvio Logo"
             style={{ width: '80px', height: '80px', borderRadius: '50%', marginBottom: '1rem',
                      objectFit: 'cover', border: '2px solid var(--border)' }}
           />
           <h1 style={{ fontSize: '2rem', fontWeight: 'bold',
                        background: 'linear-gradient(45deg, #3b82f6, #10b981)',
                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-            Evolvia
+            Evolvio
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', fontStyle: 'italic' }}>
             Track your habits. Transform your life.

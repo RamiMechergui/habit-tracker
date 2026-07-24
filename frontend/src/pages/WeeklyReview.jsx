@@ -223,13 +223,13 @@ export default function WeeklyReview() {
   // ── Average cigarettes per day (among days with >0 cigs) ─
   const daysWithCigs = weeklyData.filter(d => {
     if (!Array.isArray(d.log.expenses)) return false;
-    return d.log.expenses.some(e => (e.category === 'smoking' || e.category === 'smocking') && parseInt(e.cigarettesCount) > 0);
+    return d.log.expenses.some(e => (e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking') && parseInt(e.cigarettesCount) > 0);
   });
   const avgCigs = daysWithCigs.length
     ? Math.round(daysWithCigs.reduce((s, d) => {
         if (!Array.isArray(d.log.expenses)) return s;
         return s + d.log.expenses
-          .filter(e => e.category === 'smoking' || e.category === 'smocking')
+          .filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking')
           .reduce((acc, cur) => acc + (parseInt(cur.cigarettesCount) || 0), 0);
       }, 0) / daysWithCigs.length)
     : 0;
@@ -309,7 +309,7 @@ export default function WeeklyReview() {
     scales: {
       y: {
         reverse: true,
-        min: 3, max: 12,
+        min: 0, max: 24,
         ticks: {
           stepSize: 1,
           callback: (value) => {

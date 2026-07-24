@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal } from 'lucide-react';
+import EmojiPickerPopover from '../components/EmojiPickerPopover';
 export default function Dashboard() {
-  const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, getCategoryName, getCategoryIcon, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
   const displayName = user?.firstName || user?.lastName
@@ -13,8 +14,13 @@ export default function Dashboard() {
     : (user?.email?.split('@')[0] || 'User');
   const navigate = useNavigate();
   const [newCategory, setNewCategory] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState('📦');
   const [editingCategory, setEditingCategory] = useState(null);
   const [editCategoryValue, setEditCategoryValue] = useState('');
+  const [editCategoryIcon, setEditCategoryIcon] = useState('📦');
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(null);
+  const addEmojiBtnRef = useRef(null);
+  const editEmojiBtnRef = useRef(null);
   const [bookName, setBookName] = useState('');
   const [targetPages, setTargetPages] = useState('');
   const [bookError, setBookError] = useState('');
@@ -281,7 +287,7 @@ export default function Dashboard() {
       showMessage('Please enter a category name.', 'error');
       return;
     }
-    setConfirmModal({ isOpen: true, action: 'add', category: cat });
+    setConfirmModal({ isOpen: true, action: 'add', category: cat, icon: newCategoryIcon });
   };
 
   const handleDeleteCategoryClick = (cat) => {
@@ -289,14 +295,15 @@ export default function Dashboard() {
   };
 
   const confirmAction = () => {
-    const { action, category } = confirmModal;
+    const { action, category, icon } = confirmModal;
     if (action === 'add') {
-      addExpenseCategory(category);
+      addExpenseCategory(category, icon || '📦');
       setNewCategory('');
+      setNewCategoryIcon('📦');
       showMessage(`Category '${category}' added successfully!`);
     } else if (action === 'delete') {
       deleteExpenseCategory(category);
-      showMessage(`Category '${category}' deleted successfully!`);
+      showMessage(`Category '${getCategoryName(category)}' deleted successfully!`);
     }
     setConfirmModal({ isOpen: false, action: '', category: '' });
   };
@@ -307,17 +314,19 @@ export default function Dashboard() {
 
   const handleEditCategoryClick = (cat) => {
     setEditingCategory(cat);
-    setEditCategoryValue(cat);
+    setEditCategoryValue(getCategoryName(cat));
+    setEditCategoryIcon(getCategoryIcon(cat));
   };
 
   const handleSaveCategory = (oldCat) => {
-    const newCat = editCategoryValue.trim();
-    if (newCat && newCat !== oldCat) {
-      if (expenseCategories.includes(newCat)) {
+    const newName = editCategoryValue.trim();
+    if (newName) {
+      const oldName = getCategoryName(oldCat);
+      if (newName !== oldName && expenseCategories.some(c => getCategoryName(c) === newName)) {
         showMessage('Category already exists.', 'error');
       } else {
-        editExpenseCategory(oldCat, newCat);
-        showMessage(`Category updated to '${newCat}' successfully!`);
+        editExpenseCategory(oldCat, newName, editCategoryIcon);
+        showMessage(`Category updated successfully!`);
       }
     }
     setEditingCategory(null);
@@ -348,7 +357,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="dashboard-welcome mb-8" style={{ animation: 'evolvia-up 0.5s ease-out' }}>
+      <div className="dashboard-welcome mb-8" style={{ animation: 'evolvio-up 0.5s ease-out' }}>
         <h1 style={{ 
           fontSize: isMobile ? '1.5rem' : '2.5rem', 
           fontWeight: 900, 
@@ -723,7 +732,7 @@ export default function Dashboard() {
             padding: 1.25rem;
             margin-top: 0.75rem;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
-            animation: evolvia-down 0.2s ease-out;
+            animation: evolvio-down 0.2s ease-out;
           }
           .edit-form-grid {
             display: grid;
@@ -867,7 +876,7 @@ export default function Dashboard() {
           </div>
 
           {/* Tasks List */}
-          <div className="tasks-items-list evolvia-scrollbar">
+          <div className="tasks-items-list evolvio-scrollbar">
             {filteredTasks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem 1rem', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border)', borderRadius: '12px' }}>
                 <p className="text-muted" style={{ margin: 0, fontSize: '0.95rem' }}>No tasks found matching your filter selections.</p>
@@ -948,7 +957,7 @@ export default function Dashboard() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        animation: 'evolvia-down 0.2s ease-out'
+                        animation: 'evolvio-down 0.2s ease-out'
                       }}>
                         <span style={{ fontSize: '0.9rem', color: '#f87171', fontWeight: 500 }}>
                           Are you sure you want to delete this task?
@@ -1223,49 +1232,75 @@ export default function Dashboard() {
         </h3>
         <p className="text-muted text-sm mb-4">Define custom categories for your daily expenses.</p>
         
-        <div className="flex flex-wrap gap-2 mb-4 evolvia-scrollbar" style={{ maxHeight: '180px', overflowY: 'auto', padding: '2px', alignContent: 'flex-start' }}>
-          {expenseCategories.map(cat => (
-            <div key={cat} className="flex items-center gap-2" style={{ background: 'var(--bg-card-hover)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
-              {editingCategory === cat ? (
-                <>
-                  <input 
-                    type="text" 
-                    value={editCategoryValue} 
-                    onChange={(e) => setEditCategoryValue(e.target.value)} 
-                    onKeyDown={(e) => { if(e.key === 'Enter') handleSaveCategory(cat); else if(e.key === 'Escape') cancelEditCategory(); }}
-                    style={{ padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--accent-blue)', background: 'transparent', color: 'var(--text-primary)', outline: 'none', width: '90px', maxWidth: '100%' }}
-                    autoFocus
-                  />
-                  <button type="button" onClick={() => handleSaveCategory(cat)} title="Save" style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex' }}>
-                    <Check size={14} />
-                  </button>
-                  <button type="button" onClick={cancelEditCategory} title="Cancel" style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
-                    <X size={14} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span>{cat}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => handleEditCategoryClick(cat)} 
-                    title="Edit Category"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
-                    <Edit2 size={12} />
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => handleDeleteCategoryClick(cat)} 
-                    title="Delete Category"
-                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
+        <div className="flex flex-wrap gap-2 mb-4 evolvio-scrollbar" style={{ maxHeight: '180px', overflowY: 'auto', padding: '2px', alignContent: 'flex-start' }}>
+          {expenseCategories.map(cat => {
+            const catName = getCategoryName(cat);
+            const catIcon = getCategoryIcon(cat);
+            return (
+              <div key={catName} className="flex items-center gap-2" style={{ background: 'var(--bg-card-hover)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                {editingCategory === cat ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                      <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <button
+                          ref={editEmojiBtnRef}
+                          type="button"
+                          onClick={() => setEmojiPickerOpen(emojiPickerOpen === `edit-${catName}` ? null : `edit-${catName}`)}
+                          style={{
+                            fontSize: '1.2rem', padding: '4px 8px', cursor: 'pointer', borderRadius: '8px',
+                            background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)',
+                            transition: 'all 0.15s ease', lineHeight: 1,
+                          }}
+                          title="Change icon"
+                        >{editCategoryIcon}</button>
+                        <EmojiPickerPopover
+                          isOpen={emojiPickerOpen === `edit-${catName}`}
+                          onSelect={(icon) => setEditCategoryIcon(icon)}
+                          onClose={() => setEmojiPickerOpen(null)}
+                          triggerRef={editEmojiBtnRef}
+                        />
+                      </div>
+                      <input 
+                        type="text" 
+                        value={editCategoryValue} 
+                        onChange={(e) => setEditCategoryValue(e.target.value)} 
+                        onKeyDown={(e) => { if(e.key === 'Enter') handleSaveCategory(cat); else if(e.key === 'Escape') cancelEditCategory(); }}
+                        style={{ padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--accent-blue)', background: 'transparent', color: 'var(--text-primary)', outline: 'none', width: '90px', maxWidth: '100%' }}
+                        autoFocus
+                      />
+                    </div>
+                    <button type="button" onClick={() => handleSaveCategory(cat)} title="Save" style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex' }}>
+                      <Check size={14} />
+                    </button>
+                    <button type="button" onClick={cancelEditCategory} title="Cancel" style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '1.1rem' }}>{catIcon}</span>
+                    <span>{catName}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleEditCategoryClick(cat)} 
+                      title="Edit Category"
+                      style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleDeleteCategoryClick(cat)} 
+                      title="Delete Category"
+                      style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
         
         {categoryMessage.text && (
@@ -1281,6 +1316,28 @@ export default function Dashboard() {
           </div>
         )}
         
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+          <div style={{ position: 'relative', display: 'inline-flex' }}>
+            <button
+              ref={addEmojiBtnRef}
+              type="button"
+              onClick={() => setEmojiPickerOpen(emojiPickerOpen === 'add' ? null : 'add')}
+              style={{
+                fontSize: '1.3rem', padding: '6px 10px', cursor: 'pointer', borderRadius: '10px',
+                background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
+                transition: 'all 0.15s ease', lineHeight: 1,
+              }}
+              title="Choose icon"
+            >{newCategoryIcon}</button>
+            <EmojiPickerPopover
+              isOpen={emojiPickerOpen === 'add'}
+              onSelect={(icon) => setNewCategoryIcon(icon)}
+              onClose={() => setEmojiPickerOpen(null)}
+              triggerRef={addEmojiBtnRef}
+            />
+          </div>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Select icon</span>
+        </div>
         <div className="flex flex-wrap gap-2">
           <input 
             type="text" 

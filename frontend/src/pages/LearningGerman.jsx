@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { API_URL, nativeFetch } from '../config';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
-import AIWritingCorrector from '../components/AIWritingCorrector';
-import DocumentEditor from '../components/DocumentEditor';
+
 import { format } from 'date-fns';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
-  Filter, Volume2, Upload, Flame, Target, Repeat, PenTool,
+  Filter, Volume2, Upload, Flame, Repeat, PenTool,
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save,
 } from 'lucide-react';
 
@@ -98,7 +96,7 @@ function ErrorToast({ message, onClose }) {
       padding: '12px 20px', borderRadius: '12px',
       background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.35)',
       color: '#ef4444', fontSize: '0.88rem', fontWeight: 600,
-      backdropFilter: 'blur(12px)', animation: 'evolvia-up 0.3s ease',
+      backdropFilter: 'blur(12px)', animation: 'evolvio-up 0.3s ease',
     }}>
       <AlertTriangle size={16} /> {message}
       <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', marginLeft: 8, opacity: 0.7 }}><X size={14} /></button>
@@ -451,7 +449,18 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
             </div>
           ))}
           {[
-            { k: 'explanation', label: 'Explanation *', ph: 'Explain the rule in detail...', rows: 3 },
+            { k: 'explanation', label: 'Explanation *', ph: 'Explain the rule in detail...' },
+          ].map(({ k, label, ph }) => (
+            <div key={k} style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{label}</label>
+              <div style={{ marginTop: 4 }}>
+                <RichTextEditor value={form[k]} onChange={v => set(k, v)}
+                  placeholder={ph}
+                  minHeight={120} />
+              </div>
+            </div>
+          ))}
+          {[
             { k: 'examples', label: 'Examples (one per line)', ph: 'Ich sehe den Hund.\nEr trinkt den Kaffee.', rows: 3 },
           ].map(({ k, label, ph, rows }) => (
             <div key={k} style={{ gridColumn: '1 / -1' }}>
@@ -532,7 +541,7 @@ function QuizModal({ vocab, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 32, boxShadow: `0 20px 60px rgba(0,0,0,0.4)`, animation: 'evolvia-up 0.3s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 32, boxShadow: `0 20px 60px rgba(0,0,0,0.4)`, animation: 'evolvio-up 0.3s ease' }}>
         {done ? (
           <div style={{ textAlign: 'center' }}>
             <Star size={40} style={{ color: C.gold, marginBottom: 12 }} />
@@ -559,7 +568,7 @@ function QuizModal({ vocab, onClose }) {
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={{ fontSize: isMobile ? '1.5rem' : '2.2rem', fontWeight: 900, color: C.gold, marginBottom: 12 }}>{current.word}</div>
               {revealed ? (
-                <div style={{ animation: 'evolvia-up 0.3s ease' }}>
+                <div style={{ animation: 'evolvio-up 0.3s ease' }}>
                   <div style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: 8, fontWeight: 600 }}>{current.translation}</div>
                   {current.example && <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 16 }}>"{current.example}"</div>}
                   <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
@@ -583,26 +592,6 @@ function QuizModal({ vocab, onClose }) {
             </div>
           </div>
         ) : null}
-      </div>
-    </div>
-  );
-}
-
-function GoalSettings({ dailyWordGoal, setDailyWordGoal, dailyTimeGoal, setDailyTimeGoal }) {
-  return (
-    <div className="glass-card" style={{ padding: '1.25rem' }}>
-      <h3 style={{ margin: '0 0 0.85rem 0', fontSize: '0.9rem', fontWeight: 700, color: C.green }}>
-        <Target size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Daily Goals
-      </h3>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 120 }}>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Words per Day</label>
-          <input type="number" min="1" max="100" value={dailyWordGoal} onChange={e => { const v = parseInt(e.target.value) || 1; setDailyWordGoal(v); localStorage.setItem('german_wordGoal', String(v)); }} style={inputBase} />
-        </div>
-        <div style={{ flex: 1, minWidth: 120 }}>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Study Minutes per Day</label>
-          <input type="number" min="1" max="480" value={dailyTimeGoal} onChange={e => { const v = parseInt(e.target.value) || 1; setDailyTimeGoal(v); localStorage.setItem('german_timeGoal', String(v)); }} style={inputBase} />
-        </div>
       </div>
     </div>
   );
@@ -693,7 +682,7 @@ function ImportExport({ germanData, onImport }) {
         try {
           if (item.type === 'vocab') await onImport.addVocab({ word: item.word || '', translation: item.translation || '', example: item.example || '', notes: item.notes || '', category: item.category || 'General' });
           else if (item.type === 'grammar') await onImport.addGrammar({ rule: item.rule || '', explanation: item.explanation || '', examples: item.examples || [], category: item.category || 'General', level: item.level || 'A1' });
-          else if (item.type === 'note') await onImport.saveNote({ date: item.date || format(new Date(), 'yyyy-MM-dd'), content: item.content || '', studyMinutes: item.studyMinutes || 0, wordsLearned: item.wordsLearned || 0 });
+          else if (item.type === 'note') await onImport.saveNote({ date: item.date || format(new Date(), 'yyyy-MM-dd'), content: item.content || '' });
           else { skipped++; continue; }
           added++;
         } catch { skipped++; }
@@ -891,7 +880,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
 }
 
 function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) {
-  const [form, setForm] = useState({ title: '', content: '' });
+  const [form, setForm] = useState({ title: '', germanContent: '', englishContent: '', memoFont: '' });
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -899,21 +888,32 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
 
   useEffect(() => {
     if (editRecord) {
-      setForm({ title: editRecord.title || '', content: editRecord.content || '' });
+      setForm({
+        title: editRecord.title || '',
+        germanContent: editRecord.germanContent || editRecord.content || '',
+        englishContent: editRecord.englishContent || '',
+        memoFont: editRecord.memoFont || '',
+      });
       setOpen(true);
     }
   }, [editRecord]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.content.trim()) return;
-    const payload = { title: form.title.trim(), content: form.content.trim() };
+    if (!form.title.trim() || !form.germanContent.trim()) return;
+    const payload = {
+      title: form.title.trim(),
+      germanContent: form.germanContent.trim(),
+      englishContent: form.englishContent.trim(),
+      content: form.germanContent.trim(),
+      memoFont: form.memoFont,
+    };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
     } else {
       await onAdd(payload);
     }
-    setForm({ title: '', content: '' });
+    setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
     setDirty(false);
     setOpen(false);
   };
@@ -924,7 +924,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ title: '', content: '' });
+    setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -948,16 +948,41 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
           marginTop: '0.85rem', background: 'var(--bg-card)',
           border: `1px solid ${C.green}40`, borderRadius: '14px', padding: '1.25rem',
         }}>
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Title *</label>
-            <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Important German Phrases" style={inputBase} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'end' }}>
+            <div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Title *</label>
+              <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Important German Phrases" style={inputBase} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Font</label>
+              <select value={form.memoFont} onChange={e => set('memoFont', e.target.value)} style={{ ...inputBase, minWidth: '120px', padding: '0.4rem 0.5rem', fontSize: '0.8rem' }}>
+                <option value="">Default</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value='"Courier New", monospace'>Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value='"Times New Roman", serif'>Times New Roman</option>
+              </select>
+            </div>
           </div>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Content *</label>
-            <div style={{ marginTop: 4 }}>
-              <RichTextEditor value={form.content} onChange={v => set('content', v)}
-                placeholder="Write your memorization content here..."
-                minHeight={140} onUploadImage={onUploadPhoto} />
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              German Content * <span style={{ background: `${C.blue}20`, color: C.blue, padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>DE</span>
+            </label>
+            <div style={{ marginTop: 4, fontFamily: form.memoFont || undefined }}>
+              <RichTextEditor value={form.germanContent} onChange={v => set('germanContent', v)}
+                placeholder="Write the German text to memorize..."
+                minHeight={120} onUploadImage={onUploadPhoto} />
+            </div>
+          </div>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              English Translation <span style={{ background: `${C.green}20`, color: C.green, padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>EN</span>
+            </label>
+            <div style={{ marginTop: 4, fontFamily: form.memoFont || undefined }}>
+              <RichTextEditor value={form.englishContent} onChange={v => set('englishContent', v)}
+                placeholder="Write the English translation..."
+                minHeight={100} onUploadImage={onUploadPhoto} />
             </div>
           </div>
           {showCancelConfirm && (
@@ -972,12 +997,12 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
               padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
               background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)',
             }}>Cancel</button>
-            <button type="submit" disabled={!form.title.trim() || !form.content.trim()} style={{
+            <button type="submit" disabled={!form.title.trim() || !form.germanContent.trim()} style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.2rem',
               borderRadius: '8px', cursor: 'pointer',
               background: `linear-gradient(135deg, ${C.green}, #059669)`,
               border: 'none', color: '#fff', fontWeight: 700,
-              opacity: (!form.title.trim() || !form.content.trim()) ? 0.6 : 1,
+              opacity: (!form.title.trim() || !form.germanContent.trim()) ? 0.6 : 1,
             }}>
               <Save size={15} /> {editRecord ? 'Update' : 'Save'}
             </button>
@@ -991,6 +1016,9 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
 function MemoPractice({ memo, onClose }) {
   const [hidden, setHidden] = useState(true);
   if (!memo) return null;
+  const germanText = memo.germanContent || memo.content || '';
+  const englishText = memo.englishContent || '';
+  const font = memo.memoFont || undefined;
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1015,13 +1043,34 @@ function MemoPractice({ memo, onClose }) {
             {hidden ? 'Reveal' : 'Hide'}
           </button>
         </div>
-        <div style={{
-          padding: '1.25rem', borderRadius: '12px', background: 'var(--bg)',
-          border: `1px solid ${C.green}20`, lineHeight: 1.8, fontSize: '0.95rem',
-          color: 'var(--text-primary)', minHeight: 100,
-          filter: hidden ? 'blur(8px)' : 'none', userSelect: hidden ? 'none' : 'auto',
-          transition: 'filter 0.3s ease',
-        }} dangerouslySetInnerHTML={{ __html: memo.content }} />
+        <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <span style={{ background: `${C.blue}20`, color: C.blue, padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>DE</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>German</span>
+          </div>
+          <div style={{
+            padding: '1.25rem', borderRadius: '12px', background: 'var(--bg)',
+            border: `1px solid ${C.blue}20`, lineHeight: 1.8, fontSize: '0.95rem',
+            color: 'var(--text-primary)', minHeight: 80,
+            filter: hidden ? 'blur(8px)' : 'none', userSelect: hidden ? 'none' : 'auto',
+            transition: 'filter 0.3s ease', fontFamily: font,
+          }} dangerouslySetInnerHTML={{ __html: germanText }} />
+        </div>
+        {englishText && (
+          <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ background: `${C.green}20`, color: C.green, padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>EN</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>English Translation</span>
+            </div>
+            <div style={{
+              padding: '1.25rem', borderRadius: '12px', background: 'var(--bg)',
+              border: `1px solid ${C.green}20`, lineHeight: 1.8, fontSize: '0.95rem',
+              color: 'var(--text-primary)', minHeight: 60,
+              filter: hidden ? 'blur(8px)' : 'none', userSelect: hidden ? 'none' : 'auto',
+              transition: 'filter 0.3s ease', fontFamily: font,
+            }} dangerouslySetInnerHTML={{ __html: englishText }} />
+          </div>
+        )}
         <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.75rem', marginBottom: 0 }}>
           {hidden ? 'Tap "Reveal" to show the text and test your recall' : 'Tap "Hide" to conceal the text and practice'}
         </p>
@@ -1094,7 +1143,7 @@ function ReviewPanel({ vocab, onReviewVocab, onClose }) {
         <div style={{ fontSize: '2rem', fontWeight: 900, color: C.gold, marginBottom: 8 }}>{current?.word}</div>
         {current?.plural && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>Plural: {current.plural}</div>}
         {revealed ? (
-          <div style={{ animation: 'evolvia-up 0.3s ease' }}>
+          <div style={{ animation: 'evolvio-up 0.3s ease' }}>
             <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>{current?.translation}</div>
             {current?.example && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>"{current.example}"</div>}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
@@ -1135,7 +1184,7 @@ function GrammarQuizModal({ grammar, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', border: `1px solid ${C.blue}30`, borderRadius: '16px', padding: 32, boxShadow: `0 20px 60px rgba(0,0,0,0.4)`, animation: 'evolvia-up 0.3s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', border: `1px solid ${C.blue}30`, borderRadius: '16px', padding: 32, boxShadow: `0 20px 60px rgba(0,0,0,0.4)`, animation: 'evolvio-up 0.3s ease' }}>
         {done ? (
           <div style={{ textAlign: 'center' }}>
             <GraduationCap size={40} style={{ color: C.blue, marginBottom: 12 }} />
@@ -1152,8 +1201,8 @@ function GrammarQuizModal({ grammar, onClose }) {
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ fontSize: '1.4rem', fontWeight: 800, color: C.blue, marginBottom: 12 }}>{current.rule}</div>
               {revealed ? (
-                <div style={{ animation: 'evolvia-up 0.3s ease' }}>
-                  <p style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 12 }}>{current.explanation}</p>
+                <div style={{ animation: 'evolvio-up 0.3s ease' }}>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 12 }} dangerouslySetInnerHTML={{ __html: current.explanation }} />
                   {Array.isArray(current.examples) && current.examples.length > 0 && (
                     <div style={{ borderLeft: `2px solid ${C.gold}50`, paddingLeft: '0.75rem', marginBottom: 16, textAlign: 'left' }}>
                       {current.examples.map((ex, j) => <div key={j} style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 2 }}>— {ex}</div>)}
@@ -1251,7 +1300,7 @@ function MultipleChoiceQuiz({ vocab, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 32, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvia-up 0.3s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 32, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvio-up 0.3s ease' }}>
         {done ? (
           <div style={{ textAlign: 'center' }}>
             <Star size={40} style={{ color: C.gold, marginBottom: 12 }} />
@@ -1334,7 +1383,7 @@ function WritingPractice({ vocab, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: `1px solid ${C.blue}30`, borderRadius: '16px', padding: 32, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvia-up 0.3s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: `1px solid ${C.blue}30`, borderRadius: '16px', padding: 32, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvio-up 0.3s ease' }}>
         {done ? (
           <div style={{ textAlign: 'center' }}>
             <PenTool size={36} style={{ color: C.blue, marginBottom: 12 }} />
@@ -1386,7 +1435,7 @@ function GlobalSearchModal({ germanData, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '5vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvia-up 0.3s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvio-up 0.3s ease' }}>
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all German data..." autoFocus style={{ ...inputBase, padding: '0.65rem 2.2rem', fontSize: '1rem' }} />
@@ -1428,7 +1477,6 @@ export default function LearningGerman() {
     uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto,
     uploadGermanNotePhoto,
     translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
-    addDocument, updateDocument,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -1440,8 +1488,8 @@ export default function LearningGerman() {
   const [sortGrammar, setSortGrammar] = useState('date');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [noteContent, setNoteContent] = useState('');
-  const [studyMinutes, setStudyMinutes] = useState('');
-  const [wordsLearned, setWordsLearned] = useState('');
+  const [selectedNoteId, setSelectedNoteId] = useState(null);
+  const [noteFont, setNoteFont] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1472,14 +1520,7 @@ export default function LearningGerman() {
   const [editMemo, setEditMemo] = useState(null);
   const [practiceMemo, setPracticeMemo] = useState(null);
   const [memoSaving, setMemoSaving] = useState(false);
-  const [activeDocId, setActiveDocId] = useState(null);
-  const [docSaving, setDocSaving] = useState(false);
-  const [docTitleEdit, setDocTitleEdit] = useState('');
-  const docSaveTimer = React.useRef(null);
   const PAGE_SIZE = 15;
-
-  const [dailyWordGoal, setDailyWordGoal] = useState(() => parseInt(localStorage.getItem('german_wordGoal') || '10'));
-  const [dailyTimeGoal, setDailyTimeGoal] = useState(() => parseInt(localStorage.getItem('german_timeGoal') || '30'));
 
   const debouncedSearch = useDebounce(search, 250);
 
@@ -1507,19 +1548,51 @@ export default function LearningGerman() {
     const filtered = germanData.filter(r => r.type === 'memo');
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [germanData]);
-  const documents = useMemo(() => germanData.filter(r => r.type === 'document'), [germanData]);
   const notes   = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'note');
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
   }, [germanData]);
 
   useEffect(() => {
-    const existing = germanData.find(r => r.recordId === `NOTE#${selectedDate}`);
-    setNoteContent(existing?.content || '');
-    setStudyMinutes(existing?.studyMinutes ? String(existing.studyMinutes) : '');
-    setWordsLearned(existing?.wordsLearned ? String(existing.wordsLearned) : '');
+    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate);
+    if (dateNotes.length > 0) {
+      const lastNote = dateNotes[dateNotes.length - 1];
+      setSelectedNoteId(lastNote.recordId);
+      setNoteContent(lastNote.content || '');
+    } else {
+      setSelectedNoteId(null);
+      setNoteContent('');
+    }
     setNoteSaved(false);
   }, [selectedDate, germanData]);
+
+  // ── Auto time tracking ──
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const saved = localStorage.getItem(`german_session_${today}`);
+    return saved ? parseInt(saved) : 0;
+  });
+  const sessionStartRef = useRef(performance.now());
+
+  useEffect(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((performance.now() - sessionStartRef.current) / 1000);
+      const total = elapsed;
+      setElapsedSeconds(total);
+      localStorage.setItem(`german_session_${today}`, String(total));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (secs) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
 
   const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
 
@@ -1602,7 +1675,10 @@ export default function LearningGerman() {
     if (isNoteEmpty(noteContent)) return;
     setNoteSaving(true);
     try {
-      await saveGermanNote({ date: selectedDate, content: noteContent.trim(), studyMinutes: parseInt(studyMinutes) || 0, wordsLearned: parseInt(wordsLearned) || 0 });
+      const payload = { date: selectedDate, content: noteContent.trim() };
+      if (selectedNoteId) payload.noteId = selectedNoteId;
+      const saved = await saveGermanNote(payload);
+      if (saved?.recordId) setSelectedNoteId(saved.recordId);
       setNoteSaved(true);
       setTimeout(() => setNoteSaved(false), 2500);
     } catch (e) { setError(e.message); } finally { setNoteSaving(false); }
@@ -1816,7 +1892,7 @@ export default function LearningGerman() {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: 16 }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${C.gold}30`, borderTopColor: C.gold, animation: 'evolvia-spin 0.8s linear infinite' }} />
+        <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${C.gold}30`, borderTopColor: C.gold, animation: 'evolvio-spin 0.8s linear infinite' }} />
         <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading your German learning data...</div>
       </div>
     );
@@ -1861,8 +1937,6 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
             <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
             <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
-            <TabBtn active={tab === 'documents'} onClick={() => setTab('documents')} icon={FileText} label="Textbooks" />
-            <TabBtn active={tab === 'tutor'} onClick={() => setTab('tutor')} icon={BrainCircuit} label="AI Tutor" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -1895,8 +1969,6 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
         <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
         <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
-        <TabBtn active={tab === 'documents'} onClick={() => setTab('documents')} icon={FileText} label="Textbooks" />
-        <TabBtn active={tab === 'tutor'} onClick={() => setTab('tutor')} icon={BrainCircuit} label="AI Tutor" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -1981,9 +2053,15 @@ export default function LearningGerman() {
       {tab === 'notes' && (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: '1.25rem' }}>
           <div className="glass-card" style={{ padding: '1.25rem', height: 'fit-content' }}>
-            <h3 style={{ margin: '0 0 0.85rem 0', fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
-              Study Sessions
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+              <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
+                Study Sessions
+              </h3>
+              <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); }} style={{
+                padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
+                background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
+              }}>+ New Note</button>
+            </div>
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Select Date</label>
               <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
@@ -1994,20 +2072,25 @@ export default function LearningGerman() {
                 }}
               />
             </div>
+            <div style={{ marginBottom: '0.85rem', padding: '0.5rem 0.75rem', background: `${C.green}10`, borderRadius: '10px', border: `1px solid ${C.green}20` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}>
+                <Clock size={14} /> Today: {formatTime(elapsedSeconds)}
+              </div>
+            </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {notes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No study sessions yet.</p>}
               {notes.map(n => (
-                <div key={n.recordId} onClick={() => setSelectedDate(n.date)} style={{
+                <div key={n.recordId} onClick={() => { setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || ''); }} style={{
                   padding: '0.65rem 0.85rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '0.4rem',
-                  background: selectedDate === n.date ? `${C.gold}15` : 'transparent',
-                  border: `1px solid ${selectedDate === n.date ? C.gold + '40' : 'transparent'}`,
+                  background: selectedNoteId === n.recordId ? `${C.gold}15` : 'transparent',
+                  border: `1px solid ${selectedNoteId === n.recordId ? C.gold + '40' : 'transparent'}`,
                   transition: 'all 0.2s ease',
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: selectedDate === n.date ? C.gold : 'var(--text-primary)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: selectedNoteId === n.recordId ? C.gold : 'var(--text-primary)' }}>
                     {format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                    {n.studyMinutes ? ` ${n.studyMinutes} min` : ''}{n.wordsLearned ? ` · ${n.wordsLearned} words` : ''} · {n.content?.replace(/<[^>]+>/g, '').slice(0, 40)}...
+                    {n.content?.replace(/<[^>]+>/g, '').slice(0, 50)}...
                   </div>
                 </div>
               ))}
@@ -2020,24 +2103,32 @@ export default function LearningGerman() {
               </h3>
               {noteSaved && <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}><Check size={14} /> Saved!</span>}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Study Duration (min)</label>
-                <input type="number" min="0" max="480" value={studyMinutes} onChange={e => setStudyMinutes(e.target.value)} placeholder="e.g. 30" style={inputBase} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Words Learned</label>
-                <input type="number" min="0" value={wordsLearned} onChange={e => setWordsLearned(e.target.value)} placeholder="e.g. 15" style={inputBase} />
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Font:</label>
+              <select value={noteFont} onChange={e => setNoteFont(e.target.value)} style={{
+                ...inputBase, flex: '0 0 auto', minWidth: '140px',
+                padding: '0.35rem 0.5rem', fontSize: '0.8rem',
+              }}>
+                <option value="">Default</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value='"Courier New", monospace'>Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value='"Times New Roman", serif'>Times New Roman</option>
+                <option value='"Trebuchet MS", sans-serif'>Trebuchet MS</option>
+                <option value='"Palatino Linotype", serif'>Palatino</option>
+              </select>
             </div>
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
                 Study Notes &amp; Reflections
                 <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.7 }}>— paste or drag images directly into the editor, click any image to resize &amp; position it</span>
               </label>
-              <RichTextEditor value={noteContent} onChange={setNoteContent}
-                placeholder={`What did you study today?\n\nNew words learned\nGrammar topics covered\nDifficulties encountered\nGoals for tomorrow`}
-                minHeight={320} onUploadImage={handleUploadNotePhoto} />
+              <div style={noteFont ? { fontFamily: noteFont } : undefined}>
+                <RichTextEditor value={noteContent} onChange={setNoteContent}
+                  placeholder={`What did you study today?\n\nNew words learned\nGrammar topics covered\nDifficulties encountered\nGoals for tomorrow`}
+                  minHeight={320} onUploadImage={handleUploadNotePhoto} />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '0.65rem' }}>
               <button onClick={handleSaveNote} disabled={noteSaving || isNoteEmpty(noteContent)} style={{
@@ -2050,48 +2141,7 @@ export default function LearningGerman() {
                 opacity: (isNoteEmpty(noteContent) || noteSaving) ? 0.6 : 1,
                 transition: 'all 0.25s ease',
               }}>
-                {noteSaving ? 'Saving…' : '💾 Save Note'}
-              </button>
-              <button
-                onClick={async () => {
-                  if (isNoteEmpty(noteContent)) return;
-                  try {
-                    const res = await nativeFetch(`${API_URL}/api/german/notes/export-pdf`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        date: selectedDate,
-                        content: noteContent,
-                        studyMinutes: parseInt(studyMinutes) || 0,
-                        wordsLearned: parseInt(wordsLearned) || 0,
-                      }),
-                    });
-                    if (!res.ok) throw new Error('PDF export failed');
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `German-Study-Note-${selectedDate}.pdf`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  } catch (err) {
-                    setError('PDF export failed. Please try again.');
-                  }
-                }}
-                disabled={isNoteEmpty(noteContent)}
-                title="Export this note as a professional Evolvia LaTeX-styled PDF"
-                style={{
-                  padding: '0.75rem 1.1rem', borderRadius: '10px',
-                  background: isNoteEmpty(noteContent) ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
-                  border: isNoteEmpty(noteContent) ? '1px solid var(--border)' : 'none',
-                  color: isNoteEmpty(noteContent) ? 'var(--text-muted)' : '#fff',
-                  fontWeight: 700, fontSize: '0.88rem', cursor: isNoteEmpty(noteContent) ? 'not-allowed' : 'pointer',
-                  boxShadow: isNoteEmpty(noteContent) ? 'none' : `0 4px 14px ${C.blue}40`,
-                  opacity: isNoteEmpty(noteContent) ? 0.5 : 1,
-                  display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
-                  transition: 'all 0.25s ease',
-                }}>
-                📄 Export PDF
+                {noteSaving ? 'Saving…' : 'Save Note'}
               </button>
             </div>
           </div>
@@ -2272,7 +2322,7 @@ export default function LearningGerman() {
                     )}
                   </div>
                 </div>
-                <p style={{ margin: '0 0 0.6rem 0', fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>{g.explanation}</p>
+                <div style={{ margin: '0 0 0.6rem 0', fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: g.explanation }} />
                 {Array.isArray(g.examples) && g.examples.length > 0 && (
                   <div style={{ borderLeft: `2px solid ${C.gold}50`, paddingLeft: '0.75rem' }}>
                     {g.examples.map((ex, j) => <div key={j} style={{ fontSize: '0.83rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 2 }}>{ex}</div>)}
@@ -2550,12 +2600,16 @@ export default function LearningGerman() {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {memos.map(m => (
+            {memos.map(m => {
+              const germanText = m.germanContent || m.content || '';
+              const englishText = m.englishContent || '';
+              return (
               <div key={m.recordId} className="glass-card" style={{ padding: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                     <BrainCircuit size={18} color={C.green} style={{ flexShrink: 0 }} />
                     <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{m.title}</span>
+                    {m.memoFont && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px' }}>Font set</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
                     <button onClick={() => setPracticeMemo(m)} style={{
@@ -2570,140 +2624,46 @@ export default function LearningGerman() {
                     <button onClick={() => handleDeleteMemo(m.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={15} /></button>
                   </div>
                 </div>
-                <div style={{
-                  padding: '0.85rem 1rem', borderRadius: '10px', background: 'var(--bg)',
-                  border: '1px solid var(--border)', fontSize: '0.88rem', color: 'var(--text-primary)',
-                  lineHeight: 1.7, maxHeight: isMobile ? 200 : 120, overflowY: 'auto',
-                  position: 'relative',
-                }} dangerouslySetInnerHTML={{ __html: m.content }} />
-                {m.content.length > 300 && (
-                  <div style={{
-                    position: 'relative', height: 0, marginTop: -40,
-                    background: 'linear-gradient(transparent, var(--bg))',
-                    pointerEvents: 'none',
-                  }} />
-                )}
+                <div style={{ display: 'grid', gridTemplateColumns: englishText ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                      <span style={{ background: `${C.blue}20`, color: C.blue, padding: '1px 5px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 700 }}>DE</span>
+                    </div>
+                    <div style={{
+                      padding: '0.85rem 1rem', borderRadius: '10px', background: 'var(--bg)',
+                      border: `1px solid ${C.blue}15`, fontSize: '0.88rem', color: 'var(--text-primary)',
+                      lineHeight: 1.7, maxHeight: isMobile ? 200 : 120, overflowY: 'auto',
+                      position: 'relative', fontFamily: m.memoFont || undefined,
+                    }} dangerouslySetInnerHTML={{ __html: germanText }} />
+                  </div>
+                  {englishText && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <span style={{ background: `${C.green}20`, color: C.green, padding: '1px 5px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 700 }}>EN</span>
+                      </div>
+                      <div style={{
+                        padding: '0.85rem 1rem', borderRadius: '10px', background: 'var(--bg)',
+                        border: `1px solid ${C.green}15`, fontSize: '0.88rem', color: 'var(--text-primary)',
+                        lineHeight: 1.7, maxHeight: isMobile ? 200 : 120, overflowY: 'auto',
+                        position: 'relative', fontFamily: m.memoFont || undefined,
+                      }} dangerouslySetInnerHTML={{ __html: englishText }} />
+                    </div>
+                  )}
+                </div>
                 {m.createdAt && (
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                     Added {format(new Date(m.createdAt), 'MMM d, yyyy')}
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}
 
       {practiceMemo && (
         <MemoPractice memo={practiceMemo} onClose={() => setPracticeMemo(null)} />
-      )}
-
-      {tab === 'documents' && (() => {
-        const activeDoc = documents.find(d => d.recordId === activeDocId) || documents[0] || null;
-
-        const handleDocContentChange = (newContent) => {
-          if (!activeDoc) return;
-          clearTimeout(docSaveTimer.current);
-          docSaveTimer.current = setTimeout(async () => {
-            setDocSaving(true);
-            await updateDocument(activeDoc.recordId, { content: newContent });
-            setDocSaving(false);
-          }, 1200);
-        };
-
-        const handleNewDoc = async () => {
-          const created = await addDocument({ title: 'New Textbook', docType: 'textbook', content: {} });
-          if (created) setActiveDocId(created.recordId);
-        };
-
-        const handleExportDocPdf = async () => {
-          if (!activeDoc) return;
-          try {
-            const res = await fetch(`/api/german/documents/${encodeURIComponent(activeDoc.recordId)}/export-pdf`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-              body: JSON.stringify({ title: activeDoc.title }),
-            });
-            if (!res.ok) throw new Error('PDF export failed');
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `${activeDoc.title || 'evolvia-document'}.pdf`;
-            a.click(); URL.revokeObjectURL(url);
-          } catch (err) {
-            alert('PDF export failed. Please try again.');
-          }
-        };
-
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr', gap: '1rem', minHeight: '75vh' }}>
-            {/* ── Document Sidebar ── */}
-            <div className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '80vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>📚 Your Books</span>
-                <button onClick={handleNewDoc} style={{ background: `${C.blue}20`, border: 'none', color: C.blue, padding: '3px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>+ New</button>
-              </div>
-              {documents.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', padding: '1rem 0' }}>No textbooks yet. Click "+ New"!</div>
-              )}
-              {documents.map(d => {
-                const isActive = (activeDocId ? d.recordId === activeDocId : d === documents[0]);
-                return (
-                  <div key={d.recordId}
-                    onClick={() => { setActiveDocId(d.recordId); setDocTitleEdit(d.title || ''); }}
-                    style={{
-                      padding: '0.65rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
-                      background: isActive ? `${C.blue}18` : 'var(--bg)',
-                      border: `1px solid ${isActive ? C.blue : 'var(--border)'}`,
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem', color: isActive ? C.blue : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title || 'Untitled'}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{d.docType} · {new Date(d.updatedAt).toLocaleDateString()}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ── Editor Area ── */}
-            {activeDoc ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {/* Title input */}
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <input
-                    value={docTitleEdit !== '' ? docTitleEdit : (activeDoc.title || '')}
-                    onChange={(e) => setDocTitleEdit(e.target.value)}
-                    onBlur={() => docTitleEdit && updateDocument(activeDoc.recordId, { title: docTitleEdit })}
-                    style={{
-                      flex: 1, fontSize: '1.35rem', fontWeight: 700, border: 'none', borderBottom: `2px solid ${C.blue}`,
-                      background: 'transparent', color: 'var(--text-primary)', outline: 'none', padding: '4px 2px',
-                    }}
-                    placeholder="Document title..."
-                  />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-                    {docSaving ? '🔄 Saving...' : '✅ Saved'}
-                  </span>
-                </div>
-                <DocumentEditor
-                  document={activeDoc}
-                  onChange={handleDocContentChange}
-                  onExportPdf={handleExportDocPdf}
-                  isSaving={docSaving}
-                />
-              </div>
-            ) : (
-              <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '4rem', color: 'var(--text-muted)' }}>
-                <div style={{ fontSize: '3rem' }}>📖</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Select or create a textbook to begin</div>
-                <button onClick={handleNewDoc} style={{ padding: '0.6rem 1.5rem', borderRadius: '10px', background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 12px ${C.blue}40` }}>+ Create New Textbook</button>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {tab === 'tutor' && (
-        <AIWritingCorrector />
       )}
 
       {tab === 'progress' && (
@@ -2715,9 +2675,8 @@ export default function LearningGerman() {
             <StatCard value={notes.length}   label="Study Sessions"   color={C.green}  icon={FileText} />
             <StatCard value={`${Math.floor(totalStudyMinutes / 60)}h ${totalStudyMinutes % 60}m`} label="Total Study Time" color={C.purple} icon={Clock} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
             <StreakCalendar notes={notes} />
-            <GoalSettings dailyWordGoal={dailyWordGoal} setDailyWordGoal={setDailyWordGoal} dailyTimeGoal={dailyTimeGoal} setDailyTimeGoal={setDailyTimeGoal} />
           </div>
           {grammar.length > 0 && (() => {
             const cefrCounts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
@@ -2778,8 +2737,7 @@ export default function LearningGerman() {
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 1 }}>{n.content?.slice(0, 60)}...</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {n.wordsLearned ? <span style={{ background: `${C.gold}20`, color: C.gold, padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700 }}>{n.wordsLearned} words</span> : null}
-                      {n.studyMinutes ? <span style={{ background: `${C.green}20`, color: C.green, padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700 }}>{n.studyMinutes}m</span> : null}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{n.content?.slice(0, 30)}...</span>
                     </div>
                   </div>
                 ))}

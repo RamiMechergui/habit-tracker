@@ -30,7 +30,7 @@ function addHeader(doc, title, subtitle) {
   doc.text(subtitle, 14, 27);
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.muted);
-  doc.text('EVOLVIA', W - 14, 20, { align: 'right' });
+  doc.text('EVOLVIO', W - 14, 20, { align: 'right' });
 }
 
 function addSectionTitle(doc, text, y, color = COLORS.orange) {
@@ -178,7 +178,7 @@ export function exportAwsPDF(awsData) {
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.muted);
     doc.text(`Page ${i} of ${totalPages}`, W / 2, H - 4, { align: 'center' });
-    doc.text('EVOLVIA — AWS Learning System', 14, H - 4);
+    doc.text('Evolvio — AWS Learning System', 14, H - 4);
     doc.text(format(new Date(), 'yyyy-MM-dd'), W - 14, H - 4, { align: 'right' });
   }
 

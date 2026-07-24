@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban } from 'lucide-react';
+import { format } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban, CheckSquare } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -37,7 +37,7 @@ const getChartDefaults = () => {
     },
     scales: {
       x: {
-        ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 16, padding: 8 },
+        ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 12, padding: 8 },
         grid: { color: gridColor, tickColor: axisColor, drawTicks: true },
         border: { display: true, color: axisColor, width: 1 }
       },
@@ -138,53 +138,36 @@ function ChartCard({ title, colorGradient, icon, borderColor, height = 320, chil
 }
 
 // ── Main Component ───────────────────────────────────────────────
-export default function MonthlyReview() {
-  const { getMonthlyData } = useHabits();
+export default function YearlyReview() {
+  const { getYearlyData } = useHabits();
   const [date, setDate] = useState(new Date());
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const goPrevMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
-  const goNextMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1));
+  const goPrevYear = () => setDate(new Date(date.getFullYear() - 1, date.getMonth(), 1));
+  const goNextYear = () => setDate(new Date(date.getFullYear() + 1, date.getMonth(), 1));
   const goToday = () => setDate(new Date());
 
-  const monthlyData = getMonthlyData(date);
-  const labels = monthlyData.map(d => d.dayNum);
+  const year = date.getFullYear();
+  const yearlyData = getYearlyData(date);
+  const labels = yearlyData.map(m => m.monthName);
 
-  const isCurrentMonth = useMemo(() => {
-    const now = new Date();
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  const isCurrentYear = useMemo(() => {
+    return date.getFullYear() === new Date().getFullYear();
   }, [date]);
 
   // ── Summary Stats ───────────────────────────────────────────
-  const submittedDays = monthlyData.filter(d => d.log.isSubmitted || d.log.totalScore > 0);
-  const avgScore = submittedDays.length
-    ? Math.round(submittedDays.reduce((s, d) => s + d.log.totalScore, 0) / submittedDays.length)
+  const allSubmittedMonths = yearlyData.filter(m => m.submittedDays > 0);
+  const avgScore = allSubmittedMonths.length
+    ? Math.round(allSubmittedMonths.reduce((s, m) => s + m.avgScore, 0) / allSubmittedMonths.length)
     : 0;
-  const bestScore = Math.max(...monthlyData.map(d => d.log.totalScore), 0);
-  const totalMonthlySpend = monthlyData.reduce(
-    (t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0),
-    0
-  ).toFixed(3);
-  const eliteDays = submittedDays.filter(d => d.log.totalScore >= 90).length;
+  const bestMonth = yearlyData.reduce((best, m) => m.avgScore > best.avgScore ? m : best, yearlyData[0]);
+  const totalYearExpenses = yearlyData.reduce((t, m) => t + m.totalExpenses, 0).toFixed(3);
+  const eliteMonths = allSubmittedMonths.filter(m => m.avgScore >= 90).length;
 
-  // ── Phone & Social Media average (in minutes) ──────────────
-  const daysWithPhone = monthlyData.filter(d => d.log.bad?.phone?.min > 0);
-  const avgPhoneMin = daysWithPhone.length
-    ? Math.round(daysWithPhone.reduce((s, d) => s + (d.log.bad.phone.min || 0), 0) / daysWithPhone.length)
-    : 0;
-  const daysWithSocial = monthlyData.filter(d => d.log.bad?.social?.min > 0);
-  const avgSocialMin = daysWithSocial.length
-    ? Math.round(daysWithSocial.reduce((s, d) => s + (d.log.bad.social.min || 0), 0) / daysWithSocial.length)
-    : 0;
-  const fmtMin = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
-
-  // ── Average wake time (among days with non-empty time) ───
-  const wakeDays = monthlyData.filter(d => d.log.morning?.wakeTime);
-  const avgWakeTime = wakeDays.length
-    ? wakeDays.reduce((s, d) => {
-        const [h, m] = d.log.morning.wakeTime.split(':').map(Number);
-        return s + h * 60 + m;
-      }, 0) / wakeDays.length
+  // ── Averages across months ──────────────────────────────────
+  const monthsWithWake = yearlyData.filter(m => m.avgWakeMinutes !== null);
+  const avgWakeTime = monthsWithWake.length
+    ? monthsWithWake.reduce((s, m) => s + m.avgWakeMinutes, 0) / monthsWithWake.length
     : null;
   const fmtWake = (totalMinutes) => {
     if (totalMinutes === null) return '\u2014';
@@ -193,33 +176,31 @@ export default function MonthlyReview() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
 
-  // ── Average cigarettes per day (among days with >0 cigs) ─
-  const daysWithCigs = monthlyData.filter(d => {
-    if (!Array.isArray(d.log.expenses)) return false;
-    return d.log.expenses.some(e => (e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking') && parseInt(e.cigarettesCount) > 0);
-  });
-  const avgCigs = daysWithCigs.length
-    ? Math.round(daysWithCigs.reduce((s, d) => {
-        if (!Array.isArray(d.log.expenses)) return s;
-        return s + d.log.expenses
-          .filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking')
-          .reduce((acc, cur) => acc + (parseInt(cur.cigarettesCount) || 0), 0);
-      }, 0) / daysWithCigs.length)
+  const avgPhoneMin = yearlyData.length
+    ? Math.round(yearlyData.reduce((s, m) => s + m.avgPhoneMin, 0) / yearlyData.length)
+    : 0;
+  const avgSocialMin = yearlyData.length
+    ? Math.round(yearlyData.reduce((s, m) => s + m.avgSocialMin, 0) / yearlyData.length)
+    : 0;
+  const fmtMin = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+  const avgCigs = yearlyData.length
+    ? Math.round(yearlyData.reduce((s, m) => s + m.avgCigs, 0) / yearlyData.length)
     : 0;
 
   // ── Chart Datasets ──────────────────────────────────────────
   const disciplineData = {
     labels,
     datasets: [{
-      label: 'Daily Score',
-      data: monthlyData.map(d => d.log.totalScore),
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59,130,246,0.08)',
+      label: 'Monthly Avg Score',
+      data: yearlyData.map(m => m.avgScore),
+      borderColor: '#10b981',
+      backgroundColor: 'rgba(16,185,129,0.08)',
       tension: 0.35,
       fill: true,
-      pointBackgroundColor: monthlyData.map(d => getScoreColor(d.log.totalScore)),
-      pointRadius: 3,
-      pointHoverRadius: 6,
+      pointBackgroundColor: yearlyData.map(m => getScoreColor(m.avgScore)),
+      pointRadius: 4,
+      pointHoverRadius: 7,
       spanGaps: false,
     }]
   };
@@ -251,11 +232,8 @@ export default function MonthlyReview() {
   const expensesData = {
     labels,
     datasets: [{
-      label: 'Daily Spend (TND)',
-      data: monthlyData.map(d =>
-        parseFloat((Array.isArray(d.log.expenses) ? d.log.expenses : [])
-          .reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3))
-      ),
+      label: 'Monthly Spend (TND)',
+      data: yearlyData.map(m => m.totalExpenses),
       backgroundColor: 'rgba(245,158,11,0.55)',
       borderColor: 'rgba(245,158,11,0.8)',
       borderWidth: 1, borderRadius: 4,
@@ -270,24 +248,18 @@ export default function MonthlyReview() {
     plugins: { legend: { display: false } }
   });
 
-  const parseWakeTime = (timeStr) => {
-    if (!timeStr) return null;
-    const [h, m] = timeStr.split(':');
-    return parseInt(h, 10) + parseInt(m, 10) / 60;
-  };
-
   const wakingData = {
     labels,
     datasets: [{
-      label: 'Wake-Up Time',
-      data: monthlyData.map(d => parseWakeTime(d.log.morning.wakeTime)),
+      label: 'Avg Wake-Up Time',
+      data: yearlyData.map(m => m.avgWakeMinutes),
       borderColor: '#8b5cf6',
       backgroundColor: 'rgba(139,92,246,0.1)',
       tension: 0.35,
       fill: true,
       pointBackgroundColor: '#8b5cf6',
-      pointRadius: 2.5,
-      pointHoverRadius: 5,
+      pointRadius: 3,
+      pointHoverRadius: 6,
       spanGaps: true,
     }]
   };
@@ -313,31 +285,25 @@ export default function MonthlyReview() {
     datasets: [
       {
         label: 'Social Media (Hours)',
-        data: monthlyData.map(d => {
-          const min = parseInt(d.log?.bad?.social?.min) || 0;
-          return parseFloat((min / 60).toFixed(2));
-        }),
+        data: yearlyData.map(m => parseFloat((m.avgSocialMin / 60).toFixed(2))),
         borderColor: '#a78bfa',
         backgroundColor: 'rgba(167,139,250,0.08)',
         tension: 0.35,
         fill: true,
         pointBackgroundColor: '#a78bfa',
-        pointRadius: 2.5,
-        pointHoverRadius: 5,
+        pointRadius: 3,
+        pointHoverRadius: 6,
       },
       {
         label: 'Phone Usage (Hours)',
-        data: monthlyData.map(d => {
-          const min = parseInt(d.log?.bad?.phone?.min) || 0;
-          return parseFloat((min / 60).toFixed(2));
-        }),
+        data: yearlyData.map(m => parseFloat((m.avgPhoneMin / 60).toFixed(2))),
         borderColor: '#ec4899',
         backgroundColor: 'rgba(236,72,153,0.08)',
         tension: 0.35,
         fill: true,
         pointBackgroundColor: '#ec4899',
-        pointRadius: 2.5,
-        pointHoverRadius: 5,
+        pointRadius: 3,
+        pointHoverRadius: 6,
       }
     ]
   };
@@ -346,9 +312,7 @@ export default function MonthlyReview() {
     scales: {
       y: {
         beginAtZero: true,
-        ticks: {
-          callback: (value) => `${value}h`
-        }
+        ticks: { callback: (value) => `${value}h` }
       }
     }
   });
@@ -356,44 +320,35 @@ export default function MonthlyReview() {
   const cigarettesData = {
     labels,
     datasets: [{
-      label: 'Cigarettes Smoked',
-      data: monthlyData.map(d => {
-        if (!d.log || !Array.isArray(d.log.expenses)) return 0;
-        return d.log.expenses
-          .filter(e => e.category?.toLowerCase() === 'smoking' || e.category?.toLowerCase() === 'smocking')
-          .reduce((acc, curr) => acc + (parseInt(curr.cigarettesCount) || 0), 0);
-      }),
+      label: 'Avg Cigarettes/Day',
+      data: yearlyData.map(m => m.avgCigs),
       borderColor: '#ef4444',
       backgroundColor: 'rgba(239,68,68,0.08)',
       tension: 0.35,
       fill: true,
       pointBackgroundColor: '#ef4444',
-      pointRadius: 2.5,
-      pointHoverRadius: 5,
+      pointRadius: 3,
+      pointHoverRadius: 6,
     }]
   };
 
   const cigarettesOptions = mergeChartOptions({
     scales: {
-      y: {
-        beginAtZero: true,
-        ticks: { stepSize: 1 }
-      }
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
     }
   });
 
   // ── Weekend Duties Aggregation ──────────────────────────────
   let preLaundryCount = 0, cleanRoomCount = 0, regularLaundryCount = 0, shareBoughtCount = 0;
-  monthlyData.forEach(d => {
-    const w = d.log.weekend;
-    if (w?.saturday?.preLaundry) preLaundryCount++;
-    if (w?.sunday?.cleanRoom) cleanRoomCount++;
-    if (w?.sunday?.regularLaundry) regularLaundryCount++;
-    if (w?.sunday?.shareBought) shareBoughtCount++;
+  yearlyData.forEach(m => {
+    m.days.forEach(d => {
+      const w = d.log.weekend;
+      if (w?.saturday?.preLaundry) preLaundryCount++;
+      if (w?.sunday?.cleanRoom) cleanRoomCount++;
+      if (w?.sunday?.regularLaundry) regularLaundryCount++;
+      if (w?.sunday?.shareBought) shareBoughtCount++;
+    });
   });
-
-  const totalSats = monthlyData.filter(d => new Date(d.date + 'T12:00:00').getDay() === 6).length;
-  const totalSuns = monthlyData.filter(d => new Date(d.date + 'T12:00:00').getDay() === 0).length;
 
   const weekendData = {
     labels: ['Pre-laundry (Sat)', 'Clean Room (Sun)', 'Laundry (Sun)', 'Share Bought (Sun)'],
@@ -415,9 +370,11 @@ export default function MonthlyReview() {
 
   // ── System Check Aggregation ────────────────────────────────
   let todoCount = 0, moneyCount = 0;
-  monthlyData.forEach(d => {
-    if (d.log.system?.todo) todoCount++;
-    if (d.log.system?.money) moneyCount++;
+  yearlyData.forEach(m => {
+    m.days.forEach(d => {
+      if (d.log.system?.todo) todoCount++;
+      if (d.log.system?.money) moneyCount++;
+    });
   });
 
   const systemData = {
@@ -438,12 +395,15 @@ export default function MonthlyReview() {
     plugins: { legend: { display: false } }
   });
 
+  // ── Flatten all days for CircularTracker ────────────────────
+  const allDays = yearlyData.flatMap(m => m.days);
+
   return (
-    <div className="review-page review-page--monthly" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
+    <div className="review-page review-page--yearly" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
       {/* ── Header Navigation ─────────────────────────────────── */}
-      <div className="review-header review-header--monthly" style={{
-        background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(139,92,246,0.05) 100%)',
+      <div className="review-header review-header--yearly" style={{
+        background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.03) 100%)',
         border: '1px solid rgba(0,0,0,0.08)',
         borderRadius: '20px', padding: '1.75rem', marginBottom: '1.75rem',
         backdropFilter: 'blur(12px)',
@@ -451,26 +411,26 @@ export default function MonthlyReview() {
         {/* Title */}
         <div className="review-title-row" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-            <Calendar size={20} style={{ color: '#8b5cf6' }} />
+            <Calendar size={20} style={{ color: '#10b981' }} />
             <h2 className="review-title" style={{
               margin: 0, fontSize: isMobile ? '1.2rem' : '1.75rem', fontWeight: '900', letterSpacing: '-0.03em',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
-              {format(date, 'MMMM yyyy')}
+              {year}
             </h2>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
             <span className="review-subtitle" style={{ fontSize: '0.8rem', color: 'rgba(0,0,0,0.6)', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              📊 Monthly Analytics
+              📊 Yearly Analytics
             </span>
-            {isCurrentMonth && (
+            {isCurrentYear && (
                <span className="review-badge" style={{
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(139,92,246,0.05) 100%)',
-                border: '1px solid rgba(139,92,246,0.3)',
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.05) 100%)',
+                border: '1px solid rgba(16,185,129,0.3)',
                 borderRadius: '20px', padding: '0.25rem 0.75rem',
-                color: '#8b5cf6', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
-              }}>🎯 CURRENT MONTH</span>
+                color: '#10b981', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em',
+              }}>🎯 CURRENT YEAR</span>
             )}
           </div>
         </div>
@@ -478,19 +438,19 @@ export default function MonthlyReview() {
         {/* Enhanced Date Navigation */}
         <div className="review-nav-row" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
           <button
-            id="monthly-prev-btn"
+            id="yearly-prev-btn"
             className="review-nav-btn"
-            onClick={goPrevMonth}
+            onClick={goPrevYear}
             style={{
-              background: 'rgba(59,130,246,0.12)', border: '1.5px solid rgba(59,130,246,0.22)',
-              borderRadius: '12px', padding: '0.7rem 1rem', color: '#2563eb',
+              background: 'rgba(16,185,129,0.12)', border: '1.5px solid rgba(16,185,129,0.22)',
+              borderRadius: '12px', padding: '0.7rem 1rem', color: '#059669',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
               transition: 'all 0.3s ease', fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap',
               minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.22)'; e.currentTarget.style.transform = 'translateX(-2px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-            aria-label="Previous month"
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.22)'; e.currentTarget.style.transform = 'translateX(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            aria-label="Previous year"
           >
             <ChevronLeft size={18} /> <span>Previous</span>
           </button>
@@ -498,65 +458,65 @@ export default function MonthlyReview() {
           {/* Date Display Card */}
           <div className="review-date-chip" style={{
             background: '#ffffff',
-            border: '1.5px solid rgba(139,92,246,0.2)',
+            border: '1.5px solid rgba(16,185,129,0.2)',
             borderRadius: '12px',
             padding: '0.7rem 1.5rem',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
             minHeight: '40px',
-            boxShadow: '0 2px 8px rgba(139,92,246,0.1)',
+            boxShadow: '0 2px 8px rgba(16,185,129,0.1)',
           }}>
-            <Calendar size={16} style={{ color: '#8b5cf6' }} />
+            <Calendar size={16} style={{ color: '#10b981' }} />
             <span style={{
               fontSize: '0.95rem', fontWeight: '700', color: '#0f172a',
               letterSpacing: '0.3px',
             }}>
-              {format(date, 'MMM')} {format(date, 'yyyy')}
+              Year {year}
             </span>
           </div>
 
           <button
-            id="monthly-today-btn"
-            className={`review-nav-btn review-nav-btn--center ${isCurrentMonth ? 'is-active' : ''}`}
+            id="yearly-today-btn"
+            className={`review-nav-btn review-nav-btn--center ${isCurrentYear ? 'is-active' : ''}`}
             onClick={goToday}
             style={{
-              background: isCurrentMonth
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.2) 0%, rgba(139,92,246,0.1) 100%)'
-                : 'rgba(139,92,246,0.08)',
-              border: isCurrentMonth ? '1.5px solid rgba(139,92,246,0.35)' : '1.5px solid rgba(139,92,246,0.15)',
-              borderRadius: '12px', padding: '0.7rem 1.2rem', color: '#8b5cf6',
+              background: isCurrentYear
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.1) 100%)'
+                : 'rgba(16,185,129,0.08)',
+              border: isCurrentYear ? '1.5px solid rgba(16,185,129,0.35)' : '1.5px solid rgba(16,185,129,0.15)',
+              borderRadius: '12px', padding: '0.7rem 1.2rem', color: '#10b981',
               cursor: 'pointer', transition: 'all 0.3s ease',
               fontSize: '0.9rem', fontWeight: '700', whiteSpace: 'nowrap',
               minHeight: '40px',
             }}
             onMouseEnter={e => { 
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.15) 100%)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0.15) 100%)';
               e.currentTarget.style.transform = 'scale(1.02)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = isCurrentMonth
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.2) 0%, rgba(139,92,246,0.1) 100%)'
-                : 'rgba(139,92,246,0.08)';
+              e.currentTarget.style.background = isCurrentYear
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.1) 100%)'
+                : 'rgba(16,185,129,0.08)';
               e.currentTarget.style.transform = 'scale(1)';
             }}
-            aria-label="Jump to current month"
+            aria-label="Jump to current year"
           >
             🎯 Today
           </button>
 
           <button
-            id="monthly-next-btn"
+            id="yearly-next-btn"
             className="review-nav-btn"
-            onClick={goNextMonth}
+            onClick={goNextYear}
             style={{
-              background: 'rgba(139,92,246,0.12)', border: '1.5px solid rgba(139,92,246,0.22)',
-              borderRadius: '12px', padding: '0.7rem 1rem', color: '#8b5cf6',
+              background: 'rgba(6,182,212,0.12)', border: '1.5px solid rgba(6,182,212,0.22)',
+              borderRadius: '12px', padding: '0.7rem 1rem', color: '#0891b2',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
               transition: 'all 0.3s ease', fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap',
               minHeight: '40px',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.22)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-            aria-label="Next month"
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(6,182,212,0.22)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(6,182,212,0.12)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+            aria-label="Next year"
           >
             <span>Next</span> <ChevronRight size={18} />
           </button>
@@ -570,37 +530,35 @@ export default function MonthlyReview() {
         gap: '0.85rem', 
         marginBottom: '1.75rem',
       }}>
-        <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} colorRgb="59,130,246" />
+        <StatBadge icon={TrendingUp} label="Avg Score" value={`${avgScore}`} colorRgb="16,185,129" />
         <StatBadge icon={Clock} label="Avg Wake" value={fmtWake(avgWakeTime)} colorRgb="20,184,166" />
-        <StatBadge icon={Star} label="Best Day" value={`${bestScore}`} colorRgb="16,185,129" />
-        <StatBadge icon={BarChart2} label="Elite Days (90+)" value={`${eliteDays}`} colorRgb="139,92,246" />
+        <StatBadge icon={Star} label="Best Month" value={`${bestMonth?.monthName || '—'}`} colorRgb="245,158,11" />
+        <StatBadge icon={BarChart2} label="Elite Months (90+)" value={`${eliteMonths}`} colorRgb="139,92,246" />
         <StatBadge icon={Smartphone} label="Avg Phone" value={fmtMin(avgPhoneMin)} colorRgb="99,102,241" />
         <StatBadge icon={MessageCircle} label="Avg Social" value={fmtMin(avgSocialMin)} colorRgb="236,72,153" />
         <StatBadge icon={Ban} label="Avg Cigs" value={`${avgCigs}`} colorRgb="239,68,68" />
-        <StatBadge icon={DollarSign} label="Total (TND)" value={totalMonthlySpend} colorRgb="245,158,11" />
+        <StatBadge icon={DollarSign} label="Total (TND)" value={totalYearExpenses} colorRgb="245,158,11" />
       </div>
 
-      {/* ── Mini Calendar Heatmap Strip ──────────────────────── */}
-      <div className="glass-card mb-6 monthly-heatmap-card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* ── Monthly Heatmap Strip ───────────────────────────── */}
+      <div className="glass-card mb-6 yearly-heatmap-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="heatmap-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>
-            🗓️ {format(date, 'MMMM')} Score Heatmap
+            🗓️ {year} Monthly Score Heatmap
           </h3>
         </div>
         <div className="heatmap-body" style={{ padding: '1.25rem 1rem', overflowX: 'auto' }}>
-          <div className="heatmap-strip" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', minWidth: 300 }}>
-            {monthlyData.map((d, i) => {
-              const score = d.log.totalScore;
-              const hasData = d.log.isSubmitted || score > 0;
-              const dayOfWeek = new Date(d.date + 'T12:00:00').getDay();
-              const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+          <div className="heatmap-strip" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', minWidth: 300 }}>
+            {yearlyData.map((m, i) => {
+              const score = m.avgScore;
+              const hasData = m.submittedDays > 0;
               return (
                 <div
                   key={i}
                   className={`heatmap-cell ${hasData ? getScoreTone(score) : 'is-empty'}`}
-                  title={`${format(new Date(d.date + 'T12:00:00'), 'EEE, MMM d')}: ${score} pts`}
+                  title={`${m.monthFullName}: Avg ${score} pts (${m.submittedDays}/${m.totalDays} days logged)`}
                   style={{
-                    width: 36, height: 44, borderRadius: '8px',
+                    width: 56, height: 60, borderRadius: '10px',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
                     background: hasData
                       ? score >= 90 ? 'rgba(16,185,129,0.2)'
@@ -620,9 +578,9 @@ export default function MonthlyReview() {
                     cursor: 'default',
                   }}
                 >
-                  <span className="cell-weekday" style={{ fontSize: '0.55rem', color: 'rgba(0,0,0,0.5)', fontWeight: '600' }}>{dayNames[dayOfWeek]}</span>
-                  <span className="cell-day" style={{ fontSize: '0.75rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(0,0,0,0.35)' }}>{d.dayNum}</span>
-                  {hasData && <span className="cell-score" style={{ fontSize: '0.5rem', color: 'rgba(0,0,0,0.5)' }}>{score}</span>}
+                  <span className="cell-month" style={{ fontSize: '0.65rem', color: 'rgba(0,0,0,0.5)', fontWeight: '600' }}>{m.monthName}</span>
+                  <span className="cell-score" style={{ fontSize: '0.85rem', fontWeight: '700', color: hasData ? getScoreColor(score) : 'rgba(0,0,0,0.35)' }}>{score}</span>
+                  {hasData && <span className="cell-days" style={{ fontSize: '0.5rem', color: 'rgba(0,0,0,0.4)' }}>{m.submittedDays}d</span>}
                 </div>
               );
             })}
@@ -647,19 +605,19 @@ export default function MonthlyReview() {
     {/* ── Circular Tracker ──────────────────────────────────── */}
     <div className="glass-card mb-6 review-rings-card" style={{ overflow: 'hidden', padding: 0 }}>
       <div className="rings-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.02)' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>🎯 Monthly Habit Completion</h3>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'rgba(0,0,0,0.9)' }}>🎯 Yearly Habit Completion</h3>
       </div>
       <div className="rings-body" style={{ padding: '1rem', background: 'var(--bg-card)' }}>
-        <CircularTracker data={monthlyData} />
+        <CircularTracker data={allDays} />
       </div>
     </div>
 
       {/* ── Charts ───────────────────────────────────────────── */}
-      <ChartCard title="Discipline Index Evolution (0–100 pts)" colorGradient="linear-gradient(135deg,#3b82f6,#06b6d4)" icon="📊" borderColor="#3b82f6" height={320}>
+      <ChartCard title="Discipline Index Evolution (0–100 pts)" colorGradient="linear-gradient(135deg,#10b981,#06b6d4)" icon="📊" borderColor="#10b981" height={320}>
         <Line data={disciplineData} options={disciplineOptions} />
       </ChartCard>
 
-      <ChartCard title="Financial Outflow – Daily Spend (TND)" colorGradient="linear-gradient(135deg,#f59e0b,#d97706)" icon="💰" borderColor="#f59e0b" height={300}>
+      <ChartCard title="Financial Outflow – Monthly Spend (TND)" colorGradient="linear-gradient(135deg,#f59e0b,#d97706)" icon="💰" borderColor="#f59e0b" height={300}>
         <Bar data={expensesData} options={expensesOptions} />
       </ChartCard>
 
@@ -669,8 +627,8 @@ export default function MonthlyReview() {
       borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem',
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     }}>
-      <span className="expense-label" style={{ color: 'rgba(0,0,0,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {format(date, 'MMMM')} Expenses</span>
-      <span className="expense-value" style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.25rem' }}>{totalMonthlySpend} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
+      <span className="expense-label" style={{ color: 'rgba(0,0,0,0.6)', fontWeight: '600', fontSize: '0.9rem' }}>Total {year} Expenses</span>
+      <span className="expense-value" style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.25rem' }}>{totalYearExpenses} <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>TND</span></span>
     </div>
 
     <ChartCard title="Waking Up Time (24h Format)" colorGradient="linear-gradient(135deg,#8b5cf6,#7c3aed)" icon="⏰" borderColor="#8b5cf6" height={290}>
@@ -688,31 +646,6 @@ export default function MonthlyReview() {
     <ChartCard title="Weekend Duties Completion" colorGradient="linear-gradient(135deg,#10b981,#059669)" icon="✅" borderColor="#10b981" height={250}>
       <Bar data={weekendData} options={weekendOptions} />
     </ChartCard>
-
-    {/* ── Weekend Completion Rate ───────────────────────────── */}
-    <div className="monthly-weekend-grid" style={{
-      display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr',
-      gap: '0.6rem', marginBottom: '1.5rem',
-    }}>
-      {[
-        { label: 'Pre-laundry', done: preLaundryCount, total: totalSats },
-        { label: 'Clean Room', done: cleanRoomCount, total: totalSuns },
-        { label: 'Laundry', done: regularLaundryCount, total: totalSuns },
-        { label: 'Share Bought', done: shareBoughtCount, total: totalSuns },
-      ].map(({ label, done, total }) => {
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-        return (
-          <div key={label} className="weekend-cell" style={{
-            background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
-            borderRadius: '12px', padding: '0.85rem', textAlign: 'center',
-          }}>
-            <div className="weekend-pct" style={{ fontSize: '1.15rem', fontWeight: '800', color: '#10b981' }}>{pct}%</div>
-            <div className="weekend-label" style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.2rem', fontWeight: '500' }}>{label}</div>
-            <div className="weekend-count" style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.1rem' }}>{done}/{total}</div>
-          </div>
-        );
-      })}
-    </div>
 
       <ChartCard title="System Check Completion" colorGradient="linear-gradient(135deg,#3b82f6,#2563eb)" icon="⚙️" borderColor="#3b82f6" height={220}>
         <Bar data={systemData} options={systemOptions} />

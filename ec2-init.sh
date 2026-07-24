@@ -28,7 +28,7 @@ NODE_VERSION="20"   # LTS
 
 echo ""
 info "=============================================================="
-info "  Evolvia — EC2 Initial Setup"
+info "  Evolvio — EC2 Initial Setup"
 info "  $(date '+%Y-%m-%d %H:%M:%S %Z')"
 info "=============================================================="
 echo ""
@@ -114,8 +114,8 @@ fi
 # ── 6. Configure Nginx ────────────────────────────────────────────────────────
 info "Step 6/7 — Configuring Nginx..."
 sudo mkdir -p /var/www/html
-sudo cp "$APP_DIR/nginx.ec2.conf" /etc/nginx/sites-available/evolvia
-sudo ln -sf /etc/nginx/sites-available/evolvia /etc/nginx/sites-enabled/evolvia
+sudo cp "$APP_DIR/nginx.ec2.conf" /etc/nginx/sites-available/EVOLVIO
+sudo ln -sf /etc/nginx/sites-available/EVOLVIO /etc/nginx/sites-enabled/EVOLVIO
 # Remove default Nginx placeholder if it exists
 sudo rm -f /etc/nginx/sites-enabled/default
 

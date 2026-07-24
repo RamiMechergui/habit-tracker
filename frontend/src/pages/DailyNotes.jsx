@@ -607,7 +607,7 @@ export default function DailyNotes() {
 
         {loading ? (
           <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <div className="spinner" style={{ width: '36px', height: '36px', border: '3px solid var(--border)', borderTopColor: 'var(--accent-amber)', borderRadius: '50%', animation: 'evolvia-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+            <div className="spinner" style={{ width: '36px', height: '36px', border: '3px solid var(--border)', borderTopColor: 'var(--accent-amber)', borderRadius: '50%', animation: 'evolvio-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
             Loading your notebooks…
           </div>
         ) : (

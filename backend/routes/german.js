@@ -25,6 +25,7 @@ const {
   updateVerb,
   saveNote,
   getNoteByDate,
+  getNotesByDate,
   deleteGermanRecord,
   addDialogue,
   updateDialogue,
@@ -72,8 +73,8 @@ router.get('/note', async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) return res.status(400).json({ message: 'date is required' });
-    const note = await getNoteByDate(req.user.userId, date);
-    res.json(note || null);
+    const notes = await getNotesByDate(req.user.userId, date);
+    res.json(notes);
   } catch (err) {
     console.error('[German] GET note error:', err);
     res.status(500).json({ message: 'Failed to fetch note' });
@@ -433,11 +434,11 @@ router.put('/verb/:recordId', async (req, res) => {
 // ── POST /api/german/note ─────────────────────────────────────────────────────
 router.post('/note', async (req, res) => {
   try {
-    const { date, content, studyMinutes, wordsLearned } = req.body;
+    const { date, content, noteId } = req.body;
     if (!date || !content?.trim()) {
       return res.status(400).json({ message: 'date and content are required' });
     }
-    const record = await saveNote(req.user.userId, date, { content: content.trim(), studyMinutes, wordsLearned });
+    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim() });
     res.json(record);
   } catch (err) {
     console.error('[German] POST note error:', err);
@@ -512,7 +513,7 @@ router.post('/documents/:recordId/export-pdf', async (req, res) => {
 
     const pdfBuffer = await exportToPdf({
       title: doc.title || 'Untitled',
-      author: req.user.name || req.user.email || 'Evolvia User',
+      author: req.user.name || req.user.email || 'Evolvio User',
       content: doc.content || {},
       docType: doc.docType || 'textbook',
       createdAt: doc.createdAt,
@@ -544,7 +545,7 @@ router.post('/notes/export-pdf', async (req, res) => {
       content: content || '',
       studyMinutes: parseInt(studyMinutes) || 0,
       wordsLearned: parseInt(wordsLearned) || 0,
-      author: req.user.name || req.user.email || 'Evolvia User',
+      author: req.user.name || req.user.email || 'Evolvio User',
     });
 
     res.set({
