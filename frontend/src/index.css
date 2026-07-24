@@ -8309,9 +8309,10 @@ div[contentEditable] img[style*="float"] {
 }
 
 /* ══════════════════════════════════════════════════
-   EXTRA SMALL MOBILE — max-width: 380px
-══════════════════════════════════════════════════ */
-@media (max-width: 380px) {
+   COMPACT MOBILE — max-width: 395px
+   (Covers iPhone 12/13 Pro 390px, iPhone SE 375px, etc.)
+   ════════════════════════════════════════════════════ */
+@media (max-width: 395px) {
   .expense-row-2 {
     flex-wrap: wrap;
   }
