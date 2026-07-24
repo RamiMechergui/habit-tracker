@@ -8237,25 +8237,6 @@ div[contentEditable] img[style*="float"] {
 }
 
 /* ══════════════════════════════════════════════════
-   BAD HABITS STACKING — max-width: 480px
-══════════════════════════════════════════════════ */
-@media (max-width: 480px) {
-  .bad-habit-item {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .bad-habit-label {
-    flex: 1 1 100%;
-  }
-
-  .bad-habit-controls {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
-
-/* ══════════════════════════════════════════════════
    EXTRA SMALL MOBILE — max-width: 380px
 ══════════════════════════════════════════════════ */
 @media (max-width: 380px) {

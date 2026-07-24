@@ -837,7 +837,7 @@ export default function DailyLog() {
                   gap: '0.5rem'
                 }}>
                   <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.morning[item.id] ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.morning[item.id] ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
                   <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
@@ -1058,7 +1058,7 @@ export default function DailyLog() {
                   gap: '0.5rem'
                 }}>
                   <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.night[item.id] ? '#818cf8' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.night[item.id] ? '#818cf8' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
                   <input type="checkbox" className="habit-checkbox" style={{ flexShrink: 0 }} checked={log.night[item.id]} onChange={e => updateSection('night', item.id, e.target.checked)} disabled={isFuture} />
@@ -1549,7 +1549,7 @@ export default function DailyLog() {
                 gap: '0.5rem'
               }}>
                 <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📅 1. Evolvio TIMELINE Updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.todo ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>📅 1. Evolvio TIMELINE Updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
@@ -1567,7 +1567,7 @@ export default function DailyLog() {
                 gap: '0.5rem'
               }}>
                 <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>💰 2. Evolvio Expense Tracker updated</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.system?.money ? 'var(--accent-amber)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>💰 2. Evolvio Expense Tracker updated</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1pt</span>
                 </div>
                 <input
