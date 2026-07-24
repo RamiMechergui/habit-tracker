@@ -8375,28 +8375,44 @@ div[contentEditable] img[style*="float"] {
     font-size: 0.95rem !important;
   }
 
+  /* ── Reduce grid gap between cards ── */
+  .grid-2 {
+    gap: 0.75rem !important;
+  }
+
+  /* ── Tighter internal gaps inside cards ── */
+  .flex-col.gap-3 {
+    gap: 0.5rem !important;
+  }
+
   /* ── Habit rows: compact ── */
   .section-morning .flex.items-center.justify-between.p-3,
   .section-night .flex.items-center.justify-between.p-3,
   .glass-card .flex.items-center.justify-between.p-3 {
-    padding: 0.4rem 0.5rem !important;
-    gap: 0.35rem !important;
-    border-radius: 0.6rem !important;
+    padding: 0.35rem 0.4rem !important;
+    gap: 0.3rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  /* Override inline label font */
+  .section-morning .flex.items-center.justify-between.p-3 .flex.flex-col > span:first-child,
+  .section-night .flex.items-center.justify-between.p-3 .flex.flex-col > span:first-child {
+    font-size: 0.82rem !important;
   }
 
   /* ── Bad habits: compact ── */
   .bad-habit-item {
-    padding: 0.35rem 0.45rem !important;
-    gap: 0.3rem !important;
-    min-height: 40px;
+    padding: 0.3rem 0.4rem !important;
+    gap: 0.25rem !important;
+    min-height: 36px;
   }
 
   .bad-habit-label span:first-child {
-    font-size: 0.82rem !important;
+    font-size: 0.8rem !important;
   }
 
   .bad-habit-label span:last-child {
-    font-size: 0.65rem !important;
+    font-size: 0.62rem !important;
   }
 
   /* ── Bad habits inputs: even tighter ── */
@@ -8418,17 +8434,42 @@ div[contentEditable] img[style*="float"] {
     font-size: 0.72rem !important;
   }
 
-  /* ── Side Hustle / Video: reduce mt-10 ── */
+  /* ── Side Hustle / Video: reduce mt-10 and inputs ── */
   .glass-card .mt-10 {
-    margin-top: 1.5rem !important;
+    margin-top: 1rem !important;
   }
   .glass-card .pt-5 {
-    padding-top: 0.75rem !important;
+    padding-top: 0.5rem !important;
+  }
+
+  /* Reduce icon padding in Side Hustle/Video inputs */
+  .glass-card input[style*="padding-left: 2.5rem"] {
+    padding-left: 2rem !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Reduce mt-4 before achieved checkbox */
+  .glass-card .mt-4 {
+    margin-top: 0.6rem !important;
+  }
+
+  /* ── Side Hustle/Video add lesson row ── */
+  .glass-card .gap-2 > input.flex-1 {
+    font-size: 0.82rem !important;
+  }
+
+  .glass-card .gap-2 > .btn {
+    width: 36px !important;
+    height: 36px !important;
   }
 
   /* ── Lesson list items ── */
   .lesson-item span {
-    font-size: 0.82rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .lesson-item .lesson-actions button {
+    padding: 3px !important;
   }
 
   /* ── Expense rows ── */
@@ -8455,16 +8496,50 @@ div[contentEditable] img[style*="float"] {
   }
 
   /* ── Header ── */
+  .dailylog-header h2 {
+    font-size: 1.2rem !important;
+  }
+
+  .dailylog-badges {
+    gap: 0.3rem !important;
+    margin-top: 0.15rem !important;
+  }
+
   .dailylog-badges .glass-card {
-    padding: 3px 8px !important;
+    padding: 2px 6px !important;
+  }
+
+  .dailylog-badges .glass-card svg {
+    width: 12px !important;
+    height: 12px !important;
   }
 
   .dailylog-badges .glass-card span {
+    font-size: 0.72rem !important;
+  }
+
+  .dailylog-header-actions {
+    gap: 0.4rem !important;
+  }
+
+  .dailylog-header-actions input[type="date"] {
+    font-size: 0.82rem !important;
+    min-height: 36px !important;
+  }
+
+  .dailylog-header-actions > div {
     font-size: 0.78rem !important;
+    min-width: 70px !important;
   }
 
   /* ── Grade pill ── */
   .grade-pill {
+    font-size: 0.65rem !important;
+    padding: 1px 6px !important;
+  }
+
+  /* ── Score display ── */
+  .grade-pill[style*="font-size: 0.8rem"] {
     font-size: 0.7rem !important;
   }
 }
