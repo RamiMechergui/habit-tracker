@@ -7985,7 +7985,7 @@ div[contentEditable] img[style*="float"] {
   }
 
   .main-content {
-    padding: 0.5rem 0.75rem 0.5rem 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
     padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
     max-width: 100vw !important;
     width: 100% !important;
@@ -7993,18 +7993,23 @@ div[contentEditable] img[style*="float"] {
     box-sizing: border-box !important;
   }
 
-  /* ── 2. Single Column Grid & Compact Cards ── */
+  /* ── 2. Single Column Grid & Distinct Cards Spacing ── */
   .grid-2 {
     grid-template-columns: 1fr !important;
-    gap: 0.65rem !important;
+    gap: 1rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
+  .grid-2 > .flex-col {
+    gap: 1rem !important;
+  }
+
   .glass-card,
   .glass-card.p-6 {
-    padding: 0.5rem 0.75rem 0.5rem 0.65rem !important;
+    padding: 0.75rem 0.85rem !important;
+    margin-bottom: 0.85rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -8018,7 +8023,7 @@ div[contentEditable] img[style*="float"] {
     align-items: stretch !important;
     gap: 0.45rem !important;
     width: 100% !important;
-    margin-bottom: 0.75rem !important;
+    margin-bottom: 0.85rem !important;
   }
 
   .dailylog-badges {
@@ -8036,6 +8041,7 @@ div[contentEditable] img[style*="float"] {
     justify-content: center !important;
     border-radius: 20px !important;
     white-space: nowrap !important;
+    margin-bottom: 0 !important;
   }
 
   .dailylog-badges .glass-card span {
@@ -8067,7 +8073,7 @@ div[contentEditable] img[style*="float"] {
     align-items: center !important;
     justify-content: space-between !important;
     gap: 0.35rem !important;
-    padding: 0.4rem 0.55rem !important;
+    padding: 0.45rem 0.75rem 0.45rem 0.65rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -8118,7 +8124,7 @@ div[contentEditable] img[style*="float"] {
     min-width: 24px !important;
     min-height: 24px !important;
     margin-left: auto !important;
-    margin-right: 2px !important;
+    margin-right: 4px !important;
   }
 
   /* Mobile responsive inputs */
@@ -8130,6 +8136,7 @@ div[contentEditable] img[style*="float"] {
     height: 32px !important;
     font-size: 0.78rem !important;
     padding: 0.15rem 0.2rem !important;
+    margin-right: 2px !important;
   }
 
   .smoking-total-input {
@@ -8156,7 +8163,7 @@ div[contentEditable] img[style*="float"] {
     align-items: center !important;
     justify-content: space-between !important;
     gap: 0.3rem !important;
-    padding: 0.4rem 0.55rem !important;
+    padding: 0.45rem 0.75rem 0.45rem 0.65rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
