@@ -10133,15 +10133,29 @@ div[contentEditable] img[style*="float"] {
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 0.5rem !important;
+    gap: 0.45rem !important;
     width: 100% !important;
-    margin-bottom: 0.8rem !important;
+    margin-bottom: 0.75rem !important;
   }
 
   .dailylog-badges {
     display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.35rem !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+  }
+
+  .dailylog-badges .glass-card {
+    padding: 3px 8px !important;
+    font-size: 0.76rem !important;
+    flex: 1 1 0 !important;
+    justify-content: center !important;
+    border-radius: 20px !important;
+  }
+
+  .dailylog-badges .glass-card span {
+    font-size: 0.75rem !important;
   }
 
   .dailylog-header-actions {
@@ -10224,10 +10238,10 @@ div[contentEditable] img[style*="float"] {
 
   .section-morning input[type="time"],
   .section-night input[type="time"] {
-    width: 78px !important;
+    width: 94px !important;
     min-height: 32px !important;
     height: 32px !important;
-    font-size: 0.75rem !important;
+    font-size: 0.78rem !important;
     padding: 0.15rem 0.2rem !important;
   }
 
@@ -10252,10 +10266,10 @@ div[contentEditable] img[style*="float"] {
 
   .section-bad .bad-habit-controls input[placeholder="H"],
   .section-bad .bad-habit-controls input[placeholder="M"] {
-    width: 25px !important;
+    width: 28px !important;
     min-height: 30px !important;
     height: 30px !important;
-    font-size: 0.7rem !important;
+    font-size: 0.74rem !important;
     padding: 0.1rem !important;
     text-align: center !important;
   }
@@ -10263,11 +10277,11 @@ div[contentEditable] img[style*="float"] {
   .section-bad input[placeholder="Total"],
   .section-bad input[placeholder="Manual Qty"],
   .section-bad input[placeholder="Min"] {
-    width: 44px !important;
+    width: 52px !important;
     min-height: 30px !important;
     height: 30px !important;
-    font-size: 0.72rem !important;
-    padding: 0.15rem 0.25rem !important;
+    font-size: 0.74rem !important;
+    padding: 0.15rem 0.3rem !important;
   }
 
   /* ── 6. Expenses Section ── */
@@ -10325,8 +10339,8 @@ div[contentEditable] img[style*="float"] {
   }
 
   .expense-smoking-qty {
-    flex: 0 0 50px !important;
-    width: 50px !important;
+    flex: 0 0 52px !important;
+    width: 52px !important;
   }
 
   .expense-smoking-qty input {
@@ -10365,10 +10379,11 @@ div[contentEditable] img[style*="float"] {
     align-items: center !important;
     justify-content: space-between !important;
     width: 100% !important;
+    padding: 0 0.15rem !important;
   }
 
   .glass-card .mt-4.pt-4.flex.justify-between strong {
-    font-size: 0.82rem !important;
+    font-size: 0.78rem !important;
     white-space: nowrap !important;
   }
 }
