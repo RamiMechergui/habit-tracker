@@ -464,6 +464,7 @@ label {
 .mb-4 { margin-bottom: 1rem; }
 .mb-6 { margin-bottom: 1.5rem; }
 .mb-8 { margin-bottom: 2rem; }
+.p-3 { padding: 0.75rem; }
 .p-4 { padding: 1rem; }
 .p-6 { padding: 1.5rem; }
 .w-full { width: 100%; }
@@ -8225,9 +8226,55 @@ div[contentEditable] img[style*="float"] {
     height: 28px !important;
   }
 
+  /* ── Bad Habits inputs: more compact on mobile ── */
+  .section-bad .bad-habit-controls input[type="number"] {
+    padding: 0.25rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Social/Phone hrs/mins inputs */
+  .section-bad .bad-habit-controls input[placeholder="H"],
+  .section-bad .bad-habit-controls input[placeholder="M"] {
+    width: 32px !important;
+  }
+
+  /* Smoking count input */
+  .section-bad input[placeholder="Total"] {
+    width: 56px !important;
+    padding-left: 20px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Other bad habit number inputs */
+  .section-bad input[placeholder="Manual Qty"],
+  .section-bad input[placeholder="Min"] {
+    width: 50px !important;
+  }
+
+  /* ── Morning/Night time input ── */
+  .section-morning input[type="time"],
+  .section-night input[type="time"] {
+    width: 95px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* ── Usage stats banner: allow wrap ── */
+  .section-bad .flex.items-center.gap-3.mb-4.p-3 {
+    flex-wrap: wrap;
+  }
+
   /* ── Expense Rows Mobile ── */
+  .expense-smoking-qty {
+    flex: 0 0 65px !important;
+  }
+
   .expense-amount-row {
-    flex: 0 0 110px;
+    flex: 0 0 105px;
+  }
+
+  .expense-amount-row input {
+    font-size: 0.82rem !important;
+    padding: 0.35rem 0.3rem !important;
   }
 
   /* ── Lesson actions always visible ── */
@@ -8248,10 +8295,176 @@ div[contentEditable] img[style*="float"] {
     flex: 1 1 100%;
   }
 
+  .expense-smoking-qty {
+    flex: 0 0 55px !important;
+  }
+
+  .expense-smoking-qty input {
+    padding-left: 18px !important;
+    font-size: 0.75rem !important;
+  }
+
   .expense-amount-row {
-    flex: 1;
+    flex: 0 0 95px;
+  }
+
+  /* Bad habits: even more compact on tiny screens */
+  .section-bad .bad-habit-controls input[placeholder="H"],
+  .section-bad .bad-habit-controls input[placeholder="M"] {
+    width: 28px !important;
+    padding: 0.2rem !important;
+  }
+
+  .section-bad input[placeholder="Total"] {
+    width: 46px !important;
+    padding-left: 16px !important;
+  }
+
+  .section-bad input[placeholder="Manual Qty"],
+  .section-bad input[placeholder="Min"] {
+    width: 42px !important;
+  }
+
+  .section-morning input[type="time"],
+  .section-night input[type="time"] {
+    width: 80px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Reduce gaps in bad habit items */
+  .bad-habit-item {
+    gap: 0.35rem;
+    padding: 0.45rem 0.5rem;
+  }
+
+  .bad-habit-controls {
+    gap: 0.25rem;
   }
 }
 
+/* ══════════════════════════════════════════════════
+   VERY SMALL MOBILE — max-width: 360px
+   (Target: 360×740 phones like iPhone SE)
+   ══════════════════════════════════════════════════ */
+@media (max-width: 360px) {
 
+  /* ── Reduce vertical spacing between cards ── */
+  .grid-2 > .flex-col,
+  .grid-2 > div {
+    gap: 0.75rem !important;
+  }
 
+  /* ── Card padding tighter ── */
+  .glass-card.p-6 {
+    padding: 0.6rem;
+  }
+
+  /* ── Section title margins ── */
+  .section-morning .mb-5,
+  .section-bad .mb-5,
+  .section-night .mb-5,
+  .glass-card .mb-4,
+  .glass-card .mb-5 {
+    margin-bottom: 0.6rem !important;
+  }
+
+  .section-morning h3,
+  .section-bad h3,
+  .section-night h3,
+  .glass-card h3 {
+    font-size: 0.95rem !important;
+  }
+
+  /* ── Habit rows: compact ── */
+  .section-morning .flex.items-center.justify-between.p-3,
+  .section-night .flex.items-center.justify-between.p-3,
+  .glass-card .flex.items-center.justify-between.p-3 {
+    padding: 0.4rem 0.5rem !important;
+    gap: 0.35rem !important;
+    border-radius: 0.6rem !important;
+  }
+
+  /* ── Bad habits: compact ── */
+  .bad-habit-item {
+    padding: 0.35rem 0.45rem !important;
+    gap: 0.3rem !important;
+    min-height: 40px;
+  }
+
+  .bad-habit-label span:first-child {
+    font-size: 0.82rem !important;
+  }
+
+  .bad-habit-label span:last-child {
+    font-size: 0.65rem !important;
+  }
+
+  /* ── Bad habits inputs: even tighter ── */
+  .section-bad .bad-habit-controls input[placeholder="H"],
+  .section-bad .bad-habit-controls input[placeholder="M"] {
+    width: 26px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .section-bad input[placeholder="Total"] {
+    width: 42px !important;
+    padding-left: 14px !important;
+  }
+
+  /* ── Morning/Night time input ── */
+  .section-morning input[type="time"],
+  .section-night input[type="time"] {
+    width: 75px !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* ── Side Hustle / Video: reduce mt-10 ── */
+  .glass-card .mt-10 {
+    margin-top: 1.5rem !important;
+  }
+  .glass-card .pt-5 {
+    padding-top: 0.75rem !important;
+  }
+
+  /* ── Lesson list items ── */
+  .lesson-item span {
+    font-size: 0.82rem !important;
+  }
+
+  /* ── Expense rows ── */
+  .expense-item {
+    padding: 0.45rem 0.5rem !important;
+  }
+
+  .expense-desc-input {
+    font-size: 0.8rem !important;
+  }
+
+  .expense-amount-row {
+    flex: 0 0 90px;
+  }
+
+  /* ── Book section inputs ── */
+  .glass-card input[placeholder="Book Name"] {
+    font-size: 0.82rem !important;
+  }
+
+  .glass-card input[placeholder="Page"] {
+    width: 75px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* ── Header ── */
+  .dailylog-badges .glass-card {
+    padding: 3px 8px !important;
+  }
+
+  .dailylog-badges .glass-card span {
+    font-size: 0.78rem !important;
+  }
+
+  /* ── Grade pill ── */
+  .grade-pill {
+    font-size: 0.7rem !important;
+  }
+}
