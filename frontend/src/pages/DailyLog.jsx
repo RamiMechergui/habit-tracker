@@ -904,15 +904,21 @@ export default function DailyLog() {
                 { id: 'noSugar', label: '🍬 7. No sugar', pts: '2pts' },
               ].map(item => (
                 <div key={item.id} className="bad-habit-item" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '0.75rem',
                   background: log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
                 }}>
-                  <div className="flex flex-col">
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.bad?.[item.id]?.checked ? '#10b981' : 'var(--text-primary)' }}>{item.label}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: log.bad?.[item.id]?.checked ? '#10b981' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
-                  <div className="bad-habit-controls">
+                  <div className="bad-habit-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                     {item.extra && (
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         {item.id === 'smoking' && (
@@ -924,17 +930,15 @@ export default function DailyLog() {
                               max="999"
                               placeholder="Total"
                               style={{
-                                width: '72px',
-                                padding: '0.4rem 0.4rem 0.4rem 24px',
+                                width: '68px',
+                                padding: '0.35rem 0.35rem 0.35rem 24px',
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.4)',
                                 borderRadius: '8px',
-                                fontSize: '0.85rem',
+                                fontSize: '0.82rem',
                                 fontWeight: 'bold',
                                 color: '#ef4444',
-                                boxShadow: '0 2px 10px rgba(239, 68, 68, 0.15)',
-                                outline: 'none',
-                                transition: 'all 0.2s ease'
+                                outline: 'none'
                               }}
                               value={totalCigarettes || ''}
                               disabled={isFuture}
@@ -948,14 +952,14 @@ export default function DailyLog() {
                             const hrs = Math.floor(totalMin / 60);
                             const mins = totalMin % 60;
                             return (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                 <input
                                   type="number"
                                   min="0"
                                   placeholder="H"
                                   style={{
-                                    width: '38px',
-                                    padding: '0.3rem',
+                                    width: '36px',
+                                    padding: '0.25rem',
                                     background: 'rgba(0,0,0,0.2)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '6px',
@@ -970,15 +974,15 @@ export default function DailyLog() {
                                   }}
                                   disabled={isFuture}
                                 />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>h</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>h</span>
                                 <input
                                   type="number"
                                   min="0"
                                   max="59"
                                   placeholder="M"
                                   style={{
-                                    width: '38px',
-                                    padding: '0.3rem',
+                                    width: '36px',
+                                    padding: '0.25rem',
                                     background: 'rgba(0,0,0,0.2)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '6px',
@@ -993,7 +997,7 @@ export default function DailyLog() {
                                   }}
                                   disabled={isFuture}
                                 />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>m</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>m</span>
                               </div>
                             );
                           })()
@@ -1005,7 +1009,7 @@ export default function DailyLog() {
                             max="999"
                             placeholder={item.placeholder}
                             style={{ 
-                              width: '65px', padding: '0.3rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
+                              width: '60px', padding: '0.25rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', color: '#fff' 
                             }}
                             value={log.bad?.[item.id]?.[item.extra] || ''} 
                             onChange={e => {
