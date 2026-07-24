@@ -26,6 +26,11 @@ import {
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 
+const stripEmoji = (str) => {
+  if (!str) return str;
+  return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+};
+
 import DailyTimeline     from '../components/timeline/DailyTimeline';
 import TaskBottomSheet   from '../components/timeline/TaskBottomSheet';
 import MissedTasksBar    from '../components/timeline/MissedTasksBar';
@@ -731,7 +736,7 @@ export default function TasksPage() {
       // Category breakdown
       const catMap = {};
       expenses.forEach(e => {
-        const cat = e.category || 'Other';
+        const cat = stripEmoji(e.category) || 'Other';
         catMap[cat] = (catMap[cat] || 0) + (parseFloat(e.amount) || 0);
       });
       const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
@@ -791,7 +796,7 @@ export default function TasksPage() {
         // Expense detail table
         const expenseRows = expenses.map(e => [
           e.time || '--:--',
-          e.category || 'Other',
+          stripEmoji(e.category) || 'Other',
           e.desc || 'No description',
           `${parseFloat(e.amount).toFixed(3)} TND`,
         ]);

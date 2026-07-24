@@ -464,8 +464,9 @@ export const HabitProvider = ({ children }) => {
       if (parsed.categories) {
         const cats = parsed.categories.expenseCategories || parsed.categories;
         if (Array.isArray(cats) && cats.length > 0) {
-          setExpenseCategories(cats);
-          db.saveCategories(cats);
+          const normalized = cats.map(c => normalizeCategory(c));
+          setExpenseCategories(normalized);
+          db.saveCategories(normalized);
         }
       }
       if (parsed.currentbook && parsed.currentbook.bookName) {
@@ -1360,8 +1361,8 @@ export const HabitProvider = ({ children }) => {
           throw new Error(`Server returned status ${res.status}`);
         }
         const data = await res.json();
-        setExpenseCategories(data.expenseCategories);
-        db.saveCategories(data.expenseCategories);
+        setExpenseCategories(data.expenseCategories.map(c => normalizeCategory(c)));
+        db.saveCategories(data.expenseCategories.map(c => normalizeCategory(c)));
       } catch (e) {
         console.warn('[Store] Queuing addCategory for sync');
         db.enqueueSync({
@@ -1400,8 +1401,8 @@ export const HabitProvider = ({ children }) => {
           throw new Error(`Server returned status ${res.status}`);
         }
         const data = await res.json();
-        setExpenseCategories(data.expenseCategories);
-        db.saveCategories(data.expenseCategories);
+        setExpenseCategories(data.expenseCategories.map(c => normalizeCategory(c)));
+        db.saveCategories(data.expenseCategories.map(c => normalizeCategory(c)));
       } catch (e) {
         console.warn('[Store] Queuing deleteCategory for sync');
         db.enqueueSync({
@@ -1448,8 +1449,8 @@ export const HabitProvider = ({ children }) => {
           throw new Error(`Server returned status ${res.status}`);
         }
         const data = await res.json();
-        setExpenseCategories(data.expenseCategories);
-        db.saveCategories(data.expenseCategories);
+        setExpenseCategories(data.expenseCategories.map(c => normalizeCategory(c)));
+        db.saveCategories(data.expenseCategories.map(c => normalizeCategory(c)));
       } catch (e) {
         console.warn('[Store] Queuing editCategory for sync');
         db.enqueueSync({

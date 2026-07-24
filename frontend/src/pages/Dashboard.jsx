@@ -1419,7 +1419,7 @@ export default function Dashboard() {
           <div className="glass-card p-6" style={{ width: '90%', maxWidth: '380px', animation: 'pageSlideIn 0.2s ease-out' }}>
             <h3 className="mb-3" style={{ fontSize: '1.2rem' }}>Confirm Action</h3>
             <p className="mb-6 text-muted" style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>
-              Are you sure you want to <strong style={{ color: confirmModal.action === 'delete' ? '#ef4444' : '#10b981' }}>{confirmModal.action}</strong> the category <strong style={{ color: 'var(--text-primary)' }}>'{confirmModal.category}'</strong>?
+              Are you sure you want to <strong style={{ color: confirmModal.action === 'delete' ? '#ef4444' : '#10b981' }}>{confirmModal.action}</strong> the category <strong style={{ color: 'var(--text-primary)' }}>'{getCategoryName(confirmModal.category)}'</strong>?
             </p>
             <div className="flex gap-3">
               <button 
