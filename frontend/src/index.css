@@ -8343,10 +8343,10 @@ div[contentEditable] img[style*="float"] {
 }
 
 /* ══════════════════════════════════════════════════
-   VERY SMALL MOBILE — max-width: 360px
-   (Target: 360×740 phones like iPhone SE)
+   VERY SMALL MOBILE — max-width: 375px
+   (Target: 375×667 and 360×740 phones)
    ══════════════════════════════════════════════════ */
-@media (max-width: 360px) {
+@media (max-width: 375px) {
 
   /* ── Reduce vertical spacing between cards ── */
   .grid-2 > .flex-col,
