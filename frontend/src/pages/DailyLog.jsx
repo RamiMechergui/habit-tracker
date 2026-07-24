@@ -926,7 +926,7 @@ export default function DailyLog() {
                               type="number"
                               min="0"
                               max="999"
-                              placeholder="Total"
+                              placeholder="Qty"
                               className="smoking-total-input"
                               style={{
                                 padding: '0.4rem 0.4rem 0.4rem 24px',
@@ -952,7 +952,7 @@ export default function DailyLog() {
                             const hrs = Math.floor(totalMin / 60);
                             const mins = totalMin % 60;
                             return (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '4px' }}>
                                 <input
                                   type="number"
                                   min="0"
@@ -1697,9 +1697,9 @@ export default function DailyLog() {
             <button className="btn btn-secondary w-full mt-2" style={{ padding: '0.5rem' }} onClick={handleAddExpense} disabled={isFuture}>
               + Add Expense
             </button>
-            <div className="mt-4 pt-4 flex justify-between" style={{ borderTop: '1px solid var(--border)' }}>
-              <strong>Total Spent:</strong>
-              <strong className="text-amber">{(Array.isArray(log.expenses) ? log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3)} TND</strong>
+            <div className="mt-4 pt-4 flex justify-between items-center" style={{ borderTop: '1px solid var(--border)', paddingLeft: '4px', paddingRight: '6px' }}>
+              <strong style={{ fontSize: '0.9rem' }}>Total Spent:</strong>
+              <strong className="text-amber" style={{ fontSize: '0.9rem', marginRight: '4px' }}>{(Array.isArray(log.expenses) ? log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount) || 0), 0).toFixed(3)} TND</strong>
             </div>
           </div>
 
