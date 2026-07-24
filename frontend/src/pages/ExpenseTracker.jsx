@@ -7,6 +7,11 @@ import { ChevronLeft, ChevronRight, Wallet, Download, Trash2, Edit3 } from 'luci
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 
+const stripEmoji = (str) => {
+  if (!str) return str;
+  return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+};
+
 export default function ExpenseTracker() {
   const { logs, expenseCategories, getCategoryName, getCategoryIcon, saveLog, saveIncome, deleteIncomeEntry } = useHabits();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -280,7 +285,7 @@ export default function ExpenseTracker() {
     doc.setFontSize(11);
     aggregatedData.activeCategories.forEach(([category, amount]) => {
       const percentage = ((amount / aggregatedData.totalSpent) * 100).toFixed(1);
-      doc.text(`${category}: ${amount.toFixed(3)} TND (${percentage}%)`, 14, yPos);
+      doc.text(`${stripEmoji(category)}: ${amount.toFixed(3)} TND (${percentage}%)`, 14, yPos);
       yPos += 6;
     });
 
@@ -319,11 +324,10 @@ export default function ExpenseTracker() {
     filteredHistoryLogs.forEach(([dateStr, log]) => {
       const formattedDate = format(new Date(dateStr + 'T00:00:00'), 'MMM dd, yyyy');
       log.expenses.filter(exp => parseFloat(exp.amount) > 0).forEach(exp => {
-        const catIcon = categoryIconMap.get(exp.category) || '';
         tableRows.push([
           formattedDate,
           exp.time || '--:--',
-          catIcon ? `${catIcon} ${exp.category}` : exp.category,
+          stripEmoji(exp.category) || 'Other',
           exp.desc || 'No description',
           parseFloat(exp.amount).toFixed(3)
         ]);
@@ -731,7 +735,7 @@ export default function ExpenseTracker() {
                                 <div style={{ height: '24px', width: '1px', background: 'var(--border)' }} />
                                 <div>
                                   <p style={{ margin: 0, fontWeight: 500, fontSize: '0.95rem' }}>{exp.desc || 'No description'}</p>
-                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{categoryIconMap.get(exp.category) || '📦'} {exp.category}</p>
+                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{categoryIconMap.get(getCategoryName(exp.category)) || '📦'} {getCategoryName(exp.category)}</p>
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right' }}>

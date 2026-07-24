@@ -10,6 +10,11 @@ const UsageStats = registerPlugin('UsageStats');
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 
+const stripEmoji = (str) => {
+  if (!str) return str;
+  return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+};
+
 /* ─── Meditation Timer ─────────────────────────────────────────── */
 function MeditateTimer({ onComplete, disabled, done }) {
   const [state, setState] = useState(done ? 'completed' : 'idle');
@@ -393,7 +398,7 @@ export default function DailyLog() {
     setExpenseErrorIdx(null);
     setLog(prev => ({
       ...prev,
-      expenses: [...expenses, { desc: '', category: expenseCategories[0] || 'Other', amount: '', time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }]
+      expenses: [...expenses, { desc: '', category: getCategoryName(expenseCategories[0]) || 'Other', amount: '', time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }]
     }));
     setLocalDirty(true);
   };
@@ -404,7 +409,7 @@ export default function DailyLog() {
       const newEx = expenses.filter((_, i) => i !== idx);
       return {
         ...prev,
-        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: expenseCategories[0] || 'Other', time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }]
+        expenses: newEx.length > 0 ? newEx : [{ desc: '', amount: 0, category: getCategoryName(expenseCategories[0]) || 'Other', time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }]
       };
     });
     setLocalDirty(true);
@@ -718,7 +723,7 @@ export default function DailyLog() {
         const expenseRows = expenses.map(e => [
           e.time || '--:--',
           e.desc || 'No description',
-          e.category || 'Other',
+          stripEmoji(e.category) || 'Other',
           `${parseFloat(e.amount).toFixed(3)} TND`
         ]);
         
@@ -780,10 +785,10 @@ export default function DailyLog() {
       )}
 
       {/* ── Header row: wraps on mobile ── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.5rem' }}>
+      <div className="dailylog-header">
         <div className="flex-col">
           <h2 className="m-0 text-2xl font-bold">Daily Journal</h2>
-          <div className="flex items-center gap-3 mt-1">
+          <div className="dailylog-badges">
             <div className="glass-card" style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Sparkles size={14} className="text-amber" />
               <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Score: <span className="text-amber">{dynamicTotalScore}</span>/100</span>
@@ -794,10 +799,10 @@ export default function DailyLog() {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: '140px' }} />
+        <div className="dailylog-header-actions">
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ flex: '1 1 140px', minWidth: 0 }} />
 
-          <div style={{ minWidth: '90px', textAlign: 'right', fontSize: '0.9rem', color: saveStatus === 'Error' ? '#ef4444' : saveStatus === 'Saved' ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+          <div style={{ minWidth: '90px', textAlign: 'right', fontSize: '0.9rem', color: saveStatus === 'Error' ? '#ef4444' : saveStatus === 'Saved' ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, flexShrink: 0 }}>
             {saveStatus === 'Saved' && <CheckCircle2 size={16} />}
             {saveStatus === 'Saving...' && <div style={{ width: 14, height: 14, border: '2px solid #94a3b8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'adm-spin 1s linear infinite' }} />}
             {saveStatus}
@@ -898,7 +903,7 @@ export default function DailyLog() {
                 { id: 'eating', label: '🍔 6. Eating out', pts: '2pts' },
                 { id: 'noSugar', label: '🍬 7. No sugar', pts: '2pts' },
               ].map(item => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                <div key={item.id} className="bad-habit-item" style={{
                   background: log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
                   border: `1px solid ${log.bad?.[item.id]?.checked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
                   opacity: isFuture ? 0.6 : 1
@@ -907,7 +912,7 @@ export default function DailyLog() {
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: log.bad?.[item.id]?.checked ? '#10b981' : 'var(--text-primary)' }}>{item.label}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.pts}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="bad-habit-controls">
                     {item.extra && (
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         {item.id === 'smoking' && (
@@ -1214,12 +1219,12 @@ export default function DailyLog() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-start justify-between gap-3 group">
+                      <div className="flex items-start justify-between gap-3 group lesson-item">
                         <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
                           <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>
                           {lesson}
                         </span>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="lesson-actions">
                           <button onClick={() => { setEditingLessonIdx(idx); setEditingLessonText(lesson); }} disabled={isFuture} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', padding: 5, borderRadius: 6, cursor: 'pointer' }}>
                             <Edit2 size={13} />
                           </button>
@@ -1357,12 +1362,12 @@ export default function DailyLog() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-start justify-between gap-3 group">
+                      <div className="flex items-start justify-between gap-3 group lesson-item">
                         <span style={{ flex: 1, fontSize: '0.88rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
                           <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>
                           {lesson}
                         </span>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="lesson-actions">
                           <button onClick={() => { setEditingVideoLessonIdx(idx); setEditingVideoLessonText(lesson); }} disabled={isFuture} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', padding: 5, borderRadius: 6, cursor: 'pointer' }}>
                             <Edit2 size={13} />
                           </button>
@@ -1558,43 +1563,30 @@ export default function DailyLog() {
               <h3 className="m-0 flex items-center gap-2">💰 Expenses <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>({Array.isArray(log.expenses) ? log.expenses.length : 0} Expenses)</span></h3>
             </div>
             {Array.isArray(log.expenses) && log.expenses.map((exp, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < (Array.isArray(log.expenses) ? log.expenses.length : 0) - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div className="flex gap-2 items-center">
+              <div key={i} className="expense-item" style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: i < (Array.isArray(log.expenses) ? log.expenses.length : 0) - 1 ? '1px solid var(--border)' : 'none' }}>
+                <div className="expense-row-1">
                     <span style={{
                       fontSize: '0.8rem', fontWeight: '700', color: '#ef4444',
                       background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
                       borderRadius: '6px', padding: '4px 8px', flexShrink: 0,
                     }}>{i + 1}.</span>
                     <input
-                      className="flex-1"
+                      className="expense-desc-input"
                       style={expenseErrorIdx === i && !exp.desc.trim() ? { border: '1px solid #ef4444', boxShadow: '0 0 5px rgba(239, 68, 68, 0.4)' } : {}}
                       placeholder={`Expense ${i + 1} description`}
                       value={exp.desc}
                       onChange={e => updateExpense(i, 'desc', e.target.value)}
                       disabled={isFuture}
                     />
-                    <div style={{
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      color: 'var(--text-muted)',
-                    background: 'rgba(255,255,255,0.03)',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    minWidth: '65px',
-                    justifyContent: 'center'
-                  }}>
+                    <div className="expense-time-badge">
                     <Clock size={12} className="text-blue" />
                     {exp.time || '--:--'}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="expense-row-2">
                   <select
-                    style={{ flex: '1 1 90px', minWidth: '90px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', padding: '0.5rem', transition: 'all 0.2s ease' }}
-                    value={exp.category || 'Other'}
+                    className="expense-cat-select"
+                    value={getCategoryName(exp.category)}
                     onChange={e => updateExpense(i, 'category', e.target.value)}
                     disabled={isFuture}
                   >
@@ -1606,12 +1598,11 @@ export default function DailyLog() {
                   </select>
 
                   {(exp.category?.toLowerCase() === 'smoking' || exp.category?.toLowerCase() === 'smocking') && (
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', animation: 'pageSlideIn 0.2s ease' }}>
+                    <div className="expense-smoking-qty" style={{ position: 'relative', display: 'flex', alignItems: 'center', animation: 'pageSlideIn 0.2s ease' }}>
                       <span style={{ position: 'absolute', left: '8px', fontSize: '0.85rem' }}>🚬</span>
                       <input
                         style={{
-                          flex: '0 1 85px',
-                          minWidth: '85px',
+                          width: '100%',
                           padding: '0.4rem 0.4rem 0.4rem 28px',
                           background: 'rgba(239, 68, 68, 0.1)',
                           border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -1633,9 +1624,9 @@ export default function DailyLog() {
                     </div>
                   )}
 
-                    <div style={{ display: 'flex', gap: '0.5rem', flex: '2 1 90px', minWidth: '90px', alignItems: 'center' }}>
+                    <div className="expense-amount-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <input
-                        style={expenseErrorIdx === i && (!exp.amount || parseFloat(exp.amount) <= 0) ? { flex: 1, minWidth: '60px', border: '1px solid #ef4444', boxShadow: '0 0 5px rgba(239, 68, 68, 0.4)' } : { flex: 1, minWidth: '60px' }}
+                        style={expenseErrorIdx === i && (!exp.amount || parseFloat(exp.amount) <= 0) ? { flex: 1, minWidth: 0, border: '1px solid #ef4444', boxShadow: '0 0 5px rgba(239, 68, 68, 0.4)' } : { flex: 1, minWidth: 0 }}
                         type="number"
                         placeholder="TND"
                         value={exp.amount || ''}
