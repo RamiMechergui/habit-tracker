@@ -499,6 +499,10 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         .rte-toolbar { display:flex; gap:1px; flex-wrap:wrap; padding:5px 8px; border-bottom:1px solid var(--border); background:var(--bg-card); align-items:center; }
         .rte-toolbar button:hover { background:rgba(128,128,128,0.1); }
         .rte-sep { width:1px; height:20px; background:var(--border); margin:0 4px; flex-shrink:0; }
+        .rte-german-bar { display:flex; flex-wrap:wrap; gap:2px; padding:4px 8px; border-bottom:1px solid var(--border); background:var(--bg-card); align-items:center; }
+        .rte-german-bar button { min-width:28px; height:26px; border-radius:5px; border:1px solid var(--border); background:var(--bg); color:var(--text-primary); cursor:pointer; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; justify-content:center; transition:all 0.12s; padding:0 4px; }
+        .rte-german-bar button:hover { background:rgba(16,185,129,0.12); border-color:#10b981; color:#10b981; transform:scale(1.1); }
+        .rte-german-bar span.label { font-size:0.65rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-right:4px; flex-shrink:0; }
         .rte-dd { position:relative; }
         .rte-menu { position:absolute; top:calc(100% + 4px); left:0; z-index:600; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,0.2); min-width:130px; overflow:hidden; }
         .rte-menu button { display:block; width:100%; text-align:left; padding:7px 14px; font-size:0.82rem; background:none; border:none; color:var(--text-primary); cursor:pointer; }
@@ -644,6 +648,24 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         <span style={{ marginLeft:'auto', fontSize:'0.67rem', color:'var(--text-muted)', flexShrink:0, paddingRight:4 }}>
           🖼 Click image to resize &amp; position
         </span>
+      </div>
+
+      {/* ── German Characters Bar ── */}
+      <div className="rte-german-bar">
+        <span className="label">DE</span>
+        {['ä','ö','ü','Ä','Ö','Ü','ß'].map(ch => (
+          <button key={ch} type="button" title={`Insert ${ch}`}
+            onMouseDown={e => { e.preventDefault(); editor.chain().focus().insertContent(ch).run(); }}>
+            {ch}
+          </button>
+        ))}
+        <div className="rte-sep" style={{ height:18, margin:'0 3px' }} />
+        {['€','°','§','±','×','÷','≈','≠','≤','≥','→','←','↑','↓','–','—','…','‚','„','"'].map(ch => (
+          <button key={ch} type="button" title={`Insert ${ch}`}
+            onMouseDown={e => { e.preventDefault(); editor.chain().focus().insertContent(ch).run(); }}>
+            {ch}
+          </button>
+        ))}
       </div>
 
       {/* ── Editor body ── */}
