@@ -1755,13 +1755,13 @@ export default function LearningGerman() {
     setNoteSaved(false);
   }, [selectedDate, germanData]);
 
-  // ── Auto time tracking ──
+  // ── Auto time tracking (milliseconds) ──
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+  const [elapsedMs, setElapsedMs] = useState(() => {
     const saved = localStorage.getItem(`german_session_${todayStr}`);
     return saved ? parseInt(saved) : 0;
   });
-  const [todayStudySeconds, setTodayStudySeconds] = useState(() => {
+  const [todayStudyMs, setTodayStudyMs] = useState(() => {
     const saved = localStorage.getItem(`german_today_${todayStr}`);
     return saved ? parseInt(saved) : 0;
   });
@@ -1769,37 +1769,37 @@ export default function LearningGerman() {
   const prevTodayRef = useRef(todayStr);
 
   useEffect(() => {
-    localStorage.setItem(`german_session_${todayStr}`, String(elapsedSeconds));
-  }, [elapsedSeconds, todayStr]);
+    localStorage.setItem(`german_session_${todayStr}`, String(elapsedMs));
+  }, [elapsedMs, todayStr]);
 
   useEffect(() => {
-    localStorage.setItem(`german_today_${todayStr}`, String(todayStudySeconds));
-  }, [todayStudySeconds, todayStr]);
+    localStorage.setItem(`german_today_${todayStr}`, String(todayStudyMs));
+  }, [todayStudyMs, todayStr]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
       const currentDay = format(now, 'yyyy-MM-dd');
-      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      const elapsed = Date.now() - sessionStartRef.current;
 
       if (currentDay !== prevTodayRef.current) {
         prevTodayRef.current = currentDay;
         sessionStartRef.current = Date.now();
-        setElapsedSeconds(0);
-        setTodayStudySeconds(elapsed);
+        setElapsedMs(0);
+        setTodayStudyMs(elapsed);
       } else {
-        setElapsedSeconds(elapsed);
+        setElapsedMs(elapsed);
         const savedToday = localStorage.getItem(`german_today_${currentDay}`);
         const base = savedToday ? parseInt(savedToday) : 0;
-        setTodayStudySeconds(base + elapsed);
+        setTodayStudyMs(base + elapsed);
       }
-    }, 1000);
+    }, 500);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     return () => {
-      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      const elapsed = Date.now() - sessionStartRef.current;
       const day = format(new Date(), 'yyyy-MM-dd');
       const prev = localStorage.getItem(`german_today_${day}`);
       const base = prev ? parseInt(prev) : 0;
@@ -1807,17 +1807,17 @@ export default function LearningGerman() {
     };
   }, []);
 
-  const formatTime = (secs) => {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = secs % 60;
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
+  const formatMs = (ms) => {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${Math.floor(ms / 1000)}s`;
   };
 
   const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
-  const totalStudySecondsAllTime = (totalStudyMinutes * 60) + todayStudySeconds;
+  const totalStudyMsAllTime = (totalStudyMinutes * 60 * 1000) + todayStudyMs;
 
   const sortedVocab = useMemo(() => {
     let list = [...vocab];
@@ -2232,7 +2232,7 @@ export default function LearningGerman() {
           <StatCard value={vocab.length}   label="Words Learned"  color={C.gold}   icon={BookOpen} />
           <StatCard value={grammar.length} label="Grammar Rules"  color={C.blue}   icon={GraduationCap} />
           <StatCard value={notes.length}   label="Study Days"     color={C.green}  icon={NotebookPen} />
-          <StatCard value={`${Math.floor(totalStudyMinutes / 60)}h ${totalStudyMinutes % 60}m`} label="Total Study Time" color={C.purple} icon={Clock} />
+            <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
         </div>
       </div>
 
@@ -2429,12 +2429,12 @@ export default function LearningGerman() {
             <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ padding: '0.5rem 0.75rem', background: `${C.green}10`, borderRadius: '10px', border: `1px solid ${C.green}20` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}>
-                  <Clock size={14} /> Today: {formatTime(todayStudySeconds)}
+                  <Clock size={14} /> Today: {formatMs(todayStudyMs)}
                 </div>
               </div>
               <div style={{ padding: '0.5rem 0.75rem', background: `${C.blue}10`, borderRadius: '10px', border: `1px solid ${C.blue}20` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.blue, fontSize: '0.8rem', fontWeight: 700 }}>
-                  <Clock size={14} /> Total: {formatTime(totalStudySecondsAllTime)}
+                  <Clock size={14} /> Total: {formatMs(totalStudyMsAllTime)}
                 </div>
               </div>
             </div>
@@ -3186,7 +3186,7 @@ export default function LearningGerman() {
             <StatCard value={grammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
             <StatCard value={verbs.length}   label="Verbs"            color={C.purple} icon={PenTool} />
             <StatCard value={notes.length}   label="Study Sessions"   color={C.green}  icon={FileText} />
-            <StatCard value={`${Math.floor(totalStudyMinutes / 60)}h ${totalStudyMinutes % 60}m`} label="Total Study Time" color={C.purple} icon={Clock} />
+          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
             <StreakCalendar notes={notes} />
