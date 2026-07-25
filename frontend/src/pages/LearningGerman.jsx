@@ -1588,22 +1588,55 @@ export default function LearningGerman() {
   }, [selectedDate, germanData]);
 
   // ── Auto time tracking ──
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const [elapsedSeconds, setElapsedSeconds] = useState(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const saved = localStorage.getItem(`german_session_${today}`);
+    const saved = localStorage.getItem(`german_session_${todayStr}`);
     return saved ? parseInt(saved) : 0;
   });
-  const sessionStartRef = useRef(performance.now());
+  const [todayStudySeconds, setTodayStudySeconds] = useState(() => {
+    const saved = localStorage.getItem(`german_today_${todayStr}`);
+    return saved ? parseInt(saved) : 0;
+  });
+  const sessionStartRef = useRef(Date.now());
+  const prevTodayRef = useRef(todayStr);
 
   useEffect(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    localStorage.setItem(`german_session_${todayStr}`, String(elapsedSeconds));
+  }, [elapsedSeconds, todayStr]);
+
+  useEffect(() => {
+    localStorage.setItem(`german_today_${todayStr}`, String(todayStudySeconds));
+  }, [todayStudySeconds, todayStr]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      const elapsed = Math.floor((performance.now() - sessionStartRef.current) / 1000);
-      const total = elapsed;
-      setElapsedSeconds(total);
-      localStorage.setItem(`german_session_${today}`, String(total));
-    }, 30000);
+      const now = new Date();
+      const currentDay = format(now, 'yyyy-MM-dd');
+      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+
+      if (currentDay !== prevTodayRef.current) {
+        prevTodayRef.current = currentDay;
+        sessionStartRef.current = Date.now();
+        setElapsedSeconds(0);
+        setTodayStudySeconds(elapsed);
+      } else {
+        setElapsedSeconds(elapsed);
+        const savedToday = localStorage.getItem(`german_today_${currentDay}`);
+        const base = savedToday ? parseInt(savedToday) : 0;
+        setTodayStudySeconds(base + elapsed);
+      }
+    }, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      const day = format(new Date(), 'yyyy-MM-dd');
+      const prev = localStorage.getItem(`german_today_${day}`);
+      const base = prev ? parseInt(prev) : 0;
+      localStorage.setItem(`german_today_${day}`, String(base + elapsed));
+    };
   }, []);
 
   const formatTime = (secs) => {
@@ -1616,6 +1649,7 @@ export default function LearningGerman() {
   };
 
   const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
+  const totalStudySecondsAllTime = (totalStudyMinutes * 60) + todayStudySeconds;
 
   const sortedVocab = useMemo(() => {
     let list = [...vocab];
@@ -2222,9 +2256,16 @@ export default function LearningGerman() {
                 }}
               />
             </div>
-            <div style={{ marginBottom: '0.85rem', padding: '0.5rem 0.75rem', background: `${C.green}10`, borderRadius: '10px', border: `1px solid ${C.green}20` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}>
-                <Clock size={14} /> Today: {formatTime(elapsedSeconds)}
+            <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', background: `${C.green}10`, borderRadius: '10px', border: `1px solid ${C.green}20` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}>
+                  <Clock size={14} /> Today: {formatTime(todayStudySeconds)}
+                </div>
+              </div>
+              <div style={{ padding: '0.5rem 0.75rem', background: `${C.blue}10`, borderRadius: '10px', border: `1px solid ${C.blue}20` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.blue, fontSize: '0.8rem', fontWeight: 700 }}>
+                  <Clock size={14} /> Total: {formatTime(totalStudySecondsAllTime)}
+                </div>
               </div>
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
