@@ -1491,6 +1491,10 @@ export default function LearningGerman() {
   const [selectedNoteId, setSelectedNoteId] = useState(null);
   const [noteFont, setNoteFont] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [noteInfoBox, setNoteInfoBox] = useState('');
+  const [noteWarningBox, setNoteWarningBox] = useState('');
+  const [noteQuoteBox, setNoteQuoteBox] = useState('');
+  const [noteQuoteAuthor, setNoteQuoteAuthor] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
@@ -1559,9 +1563,17 @@ export default function LearningGerman() {
       const lastNote = dateNotes[dateNotes.length - 1];
       setSelectedNoteId(lastNote.recordId);
       setNoteContent(lastNote.content || '');
+      setNoteInfoBox(lastNote.infoBox || '');
+      setNoteWarningBox(lastNote.warningBox || '');
+      setNoteQuoteBox(lastNote.quoteBox || '');
+      setNoteQuoteAuthor(lastNote.quoteAuthor || '');
     } else {
       setSelectedNoteId(null);
       setNoteContent('');
+      setNoteInfoBox('');
+      setNoteWarningBox('');
+      setNoteQuoteBox('');
+      setNoteQuoteAuthor('');
     }
     setNoteSaved(false);
   }, [selectedDate, germanData]);
@@ -1675,7 +1687,14 @@ export default function LearningGerman() {
     if (isNoteEmpty(noteContent)) return;
     setNoteSaving(true);
     try {
-      const payload = { date: selectedDate, content: noteContent.trim() };
+      const payload = {
+        date: selectedDate,
+        content: noteContent.trim(),
+        infoBox: noteInfoBox.trim() || null,
+        warningBox: noteWarningBox.trim() || null,
+        quoteBox: noteQuoteBox.trim() || null,
+        quoteAuthor: noteQuoteAuthor.trim() || null,
+      };
       if (selectedNoteId) payload.noteId = selectedNoteId;
       const saved = await saveGermanNote(payload);
       if (saved?.recordId) setSelectedNoteId(saved.recordId);
@@ -2057,7 +2076,7 @@ export default function LearningGerman() {
               <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
                 Study Sessions
               </h3>
-              <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); }} style={{
+              <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteInfoBox(''); setNoteWarningBox(''); setNoteQuoteBox(''); setNoteQuoteAuthor(''); }} style={{
                 padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
                 background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
               }}>+ New Note</button>
@@ -2080,7 +2099,7 @@ export default function LearningGerman() {
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {notes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No study sessions yet.</p>}
               {notes.map(n => (
-                <div key={n.recordId} onClick={() => { setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || ''); }} style={{
+                <div key={n.recordId} onClick={() => { setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || ''); setNoteInfoBox(n.infoBox || ''); setNoteWarningBox(n.warningBox || ''); setNoteQuoteBox(n.quoteBox || ''); setNoteQuoteAuthor(n.quoteAuthor || ''); }} style={{
                   padding: '0.65rem 0.85rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '0.4rem',
                   background: selectedNoteId === n.recordId ? `${C.gold}15` : 'transparent',
                   border: `1px solid ${selectedNoteId === n.recordId ? C.gold + '40' : 'transparent'}`,
@@ -2128,6 +2147,65 @@ export default function LearningGerman() {
                 <RichTextEditor value={noteContent} onChange={setNoteContent}
                   placeholder={`What did you study today?\n\nNew words learned\nGrammar topics covered\nDifficulties encountered\nGoals for tomorrow`}
                   minHeight={320} onUploadImage={handleUploadNotePhoto} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.85rem' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <HelpCircle size={14} /> Info Box
+                </label>
+                <textarea value={noteInfoBox} onChange={e => setNoteInfoBox(e.target.value)}
+                  placeholder="Add key takeaways, definitions, or helpful tips..."
+                  rows={3}
+                  style={{
+                    ...inputBase, resize: 'vertical', minHeight: 60,
+                    background: 'rgba(16, 185, 129, 0.06)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    borderRadius: '10px',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <AlertTriangle size={14} /> Warning Box
+                </label>
+                <textarea value={noteWarningBox} onChange={e => setNoteWarningBox(e.target.value)}
+                  placeholder="Common mistakes, things to watch out for, or tricky grammar..."
+                  rows={3}
+                  style={{
+                    ...inputBase, resize: 'vertical', minHeight: 60,
+                    background: 'rgba(220, 38, 38, 0.06)',
+                    border: '1px solid rgba(220, 38, 38, 0.25)',
+                    borderRadius: '10px',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <FileText size={14} /> Quote Box
+                </label>
+                <textarea value={noteQuoteBox} onChange={e => setNoteQuoteBox(e.target.value)}
+                  placeholder="A memorable quote, phrase, or sentence from your study session..."
+                  rows={3}
+                  style={{
+                    ...inputBase, resize: 'vertical', minHeight: 60,
+                    background: 'rgba(139, 92, 246, 0.06)',
+                    border: '1px solid rgba(139, 92, 246, 0.25)',
+                    borderRadius: '10px',
+                  }}
+                />
+                {noteQuoteBox.trim() && (
+                  <input value={noteQuoteAuthor} onChange={e => setNoteQuoteAuthor(e.target.value)}
+                    placeholder="Author name (required for quotes)"
+                    style={{
+                      ...inputBase, marginTop: 6,
+                      background: 'rgba(139, 92, 246, 0.06)',
+                      border: '1px solid rgba(139, 92, 246, 0.25)',
+                      borderRadius: '10px',
+                      fontSize: '0.82rem',
+                    }}
+                  />
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.65rem' }}>

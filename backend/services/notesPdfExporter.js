@@ -13,7 +13,7 @@
 
 const puppeteer = require('puppeteer');
 
-function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author }) {
+function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, infoBox, warningBox, quoteBox, quoteAuthor }) {
   const dateFormatted = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -152,6 +152,34 @@ function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author }) {
       display: flex; justify-content: space-between; align-items: flex-end;
       font-family: 'Inter', sans-serif; font-size: 8pt; color: #94a3b8;
     }
+
+    /* ── Info / Warning / Quote boxes ─────────────────────────── */
+    .note-box {
+      margin: 0.8rem 0; padding: 0.6rem 0.9rem;
+      border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 9.5pt;
+      line-height: 1.6;
+    }
+    .note-box.info {
+      background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;
+    }
+    .note-box.warning {
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+    }
+    .note-box.quote {
+      background: #faf5ff; border: 1px solid #e9d5ff; color: #6b21a8;
+      font-style: italic;
+    }
+    .note-box .box-label {
+      font-weight: 700; font-size: 8pt; text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 0.3rem; display: block;
+    }
+    .note-box.info .box-label { color: #16a34a; }
+    .note-box.warning .box-label { color: #dc2626; }
+    .note-box.quote .box-label { color: #8b5cf6; }
+    .note-box.quote .quote-author {
+      display: block; margin-top: 0.4rem; font-style: normal;
+      font-weight: 600; font-size: 8.5pt; color: #7c3aed; text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -180,6 +208,11 @@ function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author }) {
   <div class="note-content">
     ${content || '<p><em>No content for this date.</em></p>'}
   </div>
+
+  <!-- ── Info / Warning / Quote Boxes ── -->
+  ${infoBox ? `<div class="note-box info"><span class="box-label">Info</span>${infoBox}</div>` : ''}
+  ${warningBox ? `<div class="note-box warning"><span class="box-label">Warning</span>${warningBox}</div>` : ''}
+  ${quoteBox ? `<div class="note-box quote"><span class="box-label">Quote</span>${quoteBox}${quoteAuthor ? `<span class="quote-author">— ${quoteAuthor}</span>` : ''}</div>` : ''}
 
   <!-- ── Footer ── -->
   <div class="note-footer">
