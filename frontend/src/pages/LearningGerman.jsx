@@ -1467,6 +1467,169 @@ function GlobalSearchModal({ germanData, onClose }) {
   );
 }
 
+function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
+  const [phrase, setPhrase] = useState('');
+  const [translation, setTranslation] = useState('');
+  const [category, setCategory] = useState('general');
+  const [editingId, setEditingId] = useState(null);
+  const [editPhrase, setEditPhrase] = useState('');
+  const [editTranslation, setEditTranslation] = useState('');
+  const [editCategory, setEditCategory] = useState('general');
+  const [showAdd, setShowAdd] = useState(false);
+
+  const categories = [
+    { value: 'general', label: 'General', color: C.blue },
+    { value: 'greeting', label: 'Greetings', color: C.green },
+    { value: 'polite', label: 'Polite', color: C.gold },
+    { value: 'idiom', label: 'Idioms', color: C.purple },
+    { value: 'travel', label: 'Travel', color: C.orange },
+    { value: 'food', label: 'Food & Drink', color: C.red },
+    { value: 'time', label: 'Time & Date', color: C.teal },
+    { value: 'emotion', label: 'Emotions', color: C.pink },
+  ];
+
+  const handleAdd = async () => {
+    if (!phrase.trim() || !translation.trim()) return;
+    await onAdd({
+      type: 'expression',
+      phrase: phrase.trim(),
+      translation: translation.trim(),
+      category,
+      favorite: false,
+      sortOrder: expressions.length,
+    });
+    setPhrase('');
+    setTranslation('');
+    setCategory('general');
+    setShowAdd(false);
+  };
+
+  const startEdit = (e) => {
+    setEditingId(e.recordId);
+    setEditPhrase(e.phrase);
+    setEditTranslation(e.translation);
+    setEditCategory(e.category || 'general');
+  };
+
+  const saveEdit = async (recordId) => {
+    if (!editPhrase.trim() || !editTranslation.trim()) return;
+    await onUpdate(recordId, {
+      phrase: editPhrase.trim(),
+      translation: editTranslation.trim(),
+      category: editCategory,
+    });
+    setEditingId(null);
+  };
+
+  const toggleFavorite = async (e) => {
+    await onUpdate(e.recordId, { favorite: !e.favorite });
+  };
+
+  const grouped = useMemo(() => {
+    const map = {};
+    expressions.forEach(e => {
+      const cat = e.category || 'general';
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(e);
+    });
+    return map;
+  }, [expressions]);
+
+  const inputStyle = {
+    padding: '0.6rem 0.75rem',
+    borderRadius: '8px',
+    border: `1px solid ${C.border}`,
+    background: 'var(--bg)',
+    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    flex: 1,
+    minWidth: 0,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+          <Languages size={20} style={{ color: C.green }} /> Useful Expressions ({expressions.length})
+        </h3>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.green}, #059669)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+          {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Expression'}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div style={{ padding: '1rem', borderRadius: '12px', border: `1px solid ${C.green}40`, background: `${C.green}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <input value={phrase} onChange={e => setPhrase(e.target.value)} placeholder="German phrase..." style={{ ...inputStyle, flex: 2 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+            <input value={translation} onChange={e => setTranslation(e.target.value)} placeholder="English translation..." style={{ ...inputStyle, flex: 2 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+            <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
+              {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <button onClick={handleAdd} disabled={!phrase.trim() || !translation.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!phrase.trim() || !translation.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, color: (!phrase.trim() || !translation.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!phrase.trim() || !translation.trim()) ? 'not-allowed' : 'pointer', opacity: (!phrase.trim() || !translation.trim()) ? 0.5 : 1 }}>
+            Save Expression
+          </button>
+        </div>
+      )}
+
+      {Object.keys(grouped).length === 0 && !showAdd && (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          <Languages size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+          <p style={{ fontSize: '0.9rem', margin: 0 }}>No expressions yet. Add your first useful German expression!</p>
+        </div>
+      )}
+
+      {categories.filter(c => grouped[c.value]?.length > 0).map(cat => (
+        <div key={cat.value}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color }} />
+            {cat.label} ({grouped[cat.value].length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {grouped[cat.value].map(expr => (
+              <div key={expr.recordId} style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: 'var(--card)', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {editingId === expr.recordId ? (
+                  <>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <input value={editPhrase} onChange={e => setEditPhrase(e.target.value)} style={{ ...inputStyle, flex: 2 }} placeholder="German phrase" />
+                      <input value={editTranslation} onChange={e => setEditTranslation(e.target.value)} style={{ ...inputStyle, flex: 2 }} placeholder="English translation" />
+                      <select value={editCategory} onChange={e => setEditCategory(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
+                        {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                      <button onClick={() => setEditingId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                      <button onClick={() => saveEdit(expr.recordId)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: 'none', background: C.green, color: '#fff', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 2, minWidth: 120 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{expr.phrase}</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{expr.translation}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto' }}>
+                      <button onClick={() => toggleFavorite(expr)} title="Favorite" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: expr.favorite ? C.gold : 'var(--text-muted)' }}>
+                        <Star size={15} fill={expr.favorite ? C.gold : 'none'} />
+                      </button>
+                      <button onClick={() => startEdit(expr)} title="Edit" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }}>
+                        <Edit3 size={15} />
+                      </button>
+                      <button onClick={async () => { if (confirm('Delete this expression?')) await onDelete(expr.recordId); }} title="Delete" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
@@ -1477,6 +1640,7 @@ export default function LearningGerman() {
     uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto,
     uploadGermanNotePhoto,
     translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
+    addGermanExpression, updateGermanExpression,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -1559,6 +1723,10 @@ export default function LearningGerman() {
   const notes   = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'note');
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
+  }, [germanData]);
+  const expressions = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'expression');
+    return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [germanData]);
 
   useEffect(() => {
@@ -2081,6 +2249,7 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
             <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
             <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
+            <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -2133,6 +2302,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
         <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
         <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
+        <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -3001,6 +3171,12 @@ export default function LearningGerman() {
 
       {practiceMemo && (
         <MemoPractice memo={practiceMemo} onClose={() => setPracticeMemo(null)} />
+      )}
+
+      {tab === 'expressions' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <ExpressionForm onAdd={addGermanExpression} onUpdate={updateGermanExpression} onDelete={deleteGermanRecord} isMobile={isMobile} expressions={expressions} />
+        </div>
       )}
 
       {tab === 'progress' && (

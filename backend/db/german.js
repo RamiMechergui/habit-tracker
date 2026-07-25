@@ -352,6 +352,45 @@ async function deleteGermanRecord(userId, recordId) {
   return true;
 }
 
+// ── Useful Expressions ────────────────────────────────────────────────────────
+async function addExpression(userId, { phrase, translation, category = 'General', favorite = false, sortOrder = Date.now() }) {
+  const recordId = `EXPRESSION#${uuidv4()}`;
+  const item = {
+    userId, recordId, type: 'expression',
+    phrase, translation, category, favorite, sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateExpression(userId, recordId, updates) {
+  const allowed = ['phrase', 'translation', 'category', 'favorite', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 module.exports = {
   getAllGermanRecords,
   addVocab,
@@ -370,4 +409,6 @@ module.exports = {
   updateMemo,
   addDocument,
   updateDocument,
+  addExpression,
+  updateExpression,
 };

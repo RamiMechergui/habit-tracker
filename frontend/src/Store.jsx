@@ -2462,6 +2462,34 @@ export const HabitProvider = ({ children }) => {
     logHistory('german_record_delete', 'Deleted a German learning record');
   }, [API_URL, fetchGermanData]);
 
+  const addGermanExpression = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/expression`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add expression');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_expression_add', `Added German expression: ${payload?.phrase || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanExpression = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/expression/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update expression');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_expression_update', `Updated German expression`);
+    return data;
+  }, [API_URL]);
+
   // ── AWS Learning API methods ──────────────────────────────────
   const fetchAwsData = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -2829,7 +2857,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist

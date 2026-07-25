@@ -33,6 +33,8 @@ const {
   updateMemo,
   addDocument,
   updateDocument,
+  addExpression,
+  updateExpression,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { exportToPdf } = require('../services/pdfExporter');
@@ -401,6 +403,33 @@ router.put('/memo/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT memo error:', err);
     res.status(500).json({ message: 'Failed to update memorization paragraph' });
+  }
+});
+
+// ── POST /api/german/expression ──────────────────────────────────────────────
+router.post('/expression', async (req, res) => {
+  try {
+    const { phrase, translation, category, favorite } = req.body;
+    if (!phrase?.trim() || !translation?.trim()) {
+      return res.status(400).json({ message: 'phrase and translation are required' });
+    }
+    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST expression error:', err);
+    res.status(500).json({ message: 'Failed to add expression' });
+  }
+});
+
+// ── PUT /api/german/expression/:recordId ─────────────────────────────────────
+router.put('/expression/:recordId', async (req, res) => {
+  try {
+    const updated = await updateExpression(req.user.userId, req.params.recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Record not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT expression error:', err);
+    res.status(500).json({ message: 'Failed to update expression' });
   }
 });
 
