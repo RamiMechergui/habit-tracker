@@ -14,7 +14,7 @@ import {
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar,
 } from 'lucide-react';
 
-const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899' };
+const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
 const PERSON_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 const PRESET_CATEGORIES = ['General', 'Animals', 'Food', 'Travel', 'Work', 'Daily Life', 'Grammar', 'Vocabulary', 'Phrases'];
 
@@ -1757,43 +1757,26 @@ export default function LearningGerman() {
 
   // ── Auto time tracking (milliseconds) ──
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const [elapsedMs, setElapsedMs] = useState(() => {
-    const saved = localStorage.getItem(`german_session_${todayStr}`);
-    return saved ? parseInt(saved) : 0;
-  });
-  const [todayStudyMs, setTodayStudyMs] = useState(() => {
-    const saved = localStorage.getItem(`german_today_${todayStr}`);
-    return saved ? parseInt(saved) : 0;
-  });
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const todayBaseRef = useRef(parseInt(localStorage.getItem(`german_today_${todayStr}`)) || 0);
   const sessionStartRef = useRef(Date.now());
   const prevTodayRef = useRef(todayStr);
-
-  useEffect(() => {
-    localStorage.setItem(`german_session_${todayStr}`, String(elapsedMs));
-  }, [elapsedMs, todayStr]);
-
-  useEffect(() => {
-    localStorage.setItem(`german_today_${todayStr}`, String(todayStudyMs));
-  }, [todayStudyMs, todayStr]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
       const currentDay = format(now, 'yyyy-MM-dd');
-      const elapsed = Date.now() - sessionStartRef.current;
 
       if (currentDay !== prevTodayRef.current) {
         prevTodayRef.current = currentDay;
+        todayBaseRef.current = 0;
+        localStorage.removeItem(`german_today_${currentDay}`);
         sessionStartRef.current = Date.now();
         setElapsedMs(0);
-        setTodayStudyMs(elapsed);
       } else {
-        setElapsedMs(elapsed);
-        const savedToday = localStorage.getItem(`german_today_${currentDay}`);
-        const base = savedToday ? parseInt(savedToday) : 0;
-        setTodayStudyMs(base + elapsed);
+        setElapsedMs(Date.now() - sessionStartRef.current);
       }
-    }, 500);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -1813,9 +1796,10 @@ export default function LearningGerman() {
     const m = Math.floor((totalSec % 3600) / 60);
     if (h > 0) return `${h}h ${m}m`;
     if (m > 0) return `${m}m`;
-    return `${Math.floor(ms / 1000)}s`;
+    return `${Math.floor(totalSec)}s`;
   };
 
+  const todayStudyMs = todayBaseRef.current + elapsedMs;
   const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
   const totalStudyMsAllTime = (totalStudyMinutes * 60 * 1000) + todayStudyMs;
 
@@ -2228,11 +2212,12 @@ export default function LearningGerman() {
             <p style={{ margin: 0, fontSize: isMobile ? '0.72rem' : '0.8rem', color: 'var(--text-muted)' }}>Track vocabulary, grammar &amp; daily progress</p>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
-          <StatCard value={vocab.length}   label="Words Learned"  color={C.gold}   icon={BookOpen} />
-          <StatCard value={grammar.length} label="Grammar Rules"  color={C.blue}   icon={GraduationCap} />
-          <StatCard value={notes.length}   label="Study Days"     color={C.green}  icon={NotebookPen} />
-            <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
+          <StatCard value={vocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} />
+          <StatCard value={grammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
+          <StatCard value={notes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} />
+          <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} />
+          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
         </div>
       </div>
 
@@ -2425,18 +2410,6 @@ export default function LearningGerman() {
                   accentColor: C.gold,
                 }}
               />
-            </div>
-            <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ padding: '0.5rem 0.75rem', background: `${C.green}10`, borderRadius: '10px', border: `1px solid ${C.green}20` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}>
-                  <Clock size={14} /> Today: {formatMs(todayStudyMs)}
-                </div>
-              </div>
-              <div style={{ padding: '0.5rem 0.75rem', background: `${C.blue}10`, borderRadius: '10px', border: `1px solid ${C.blue}20` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.blue, fontSize: '0.8rem', fontWeight: 700 }}>
-                  <Clock size={14} /> Total: {formatMs(totalStudyMsAllTime)}
-                </div>
-              </div>
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {notes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No study sessions yet.</p>}
