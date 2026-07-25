@@ -3042,14 +3042,6 @@ export default function LearningGerman() {
           )}
           <WordsChart notes={notes} />
           <StudyTimeChart notes={notes} />
-          <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', background: `linear-gradient(135deg, ${C.green}10, ${C.blue}08)`, border: `1px solid ${C.green}30` }}>
-            <Star size={28} style={{ color: C.gold, marginBottom: '0.5rem' }} />
-            <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', fontWeight: 700 }}>Export Your Progress</h3>
-            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Generate a detailed PDF report of all your vocabulary, grammar rules, and study notes.</p>
-            <button onClick={handleExport} disabled={germanData.length === 0} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.5rem', borderRadius: '10px', cursor: 'pointer', background: `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.95rem', boxShadow: `0 4px 14px ${C.green}40` }}>
-              <Download size={17} /> Download PDF Report
-            </button>
-          </div>
         </div>
       )}
 
