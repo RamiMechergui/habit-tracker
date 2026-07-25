@@ -1495,6 +1495,7 @@ export default function LearningGerman() {
   const [showAddBoxMenu, setShowAddBoxMenu] = useState(false);
   const [selectedBoxId, setSelectedBoxId] = useState(null);
   const [draggedBoxId, setDraggedBoxId] = useState(null);
+  const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
@@ -2290,7 +2291,7 @@ export default function LearningGerman() {
                     onDragStart={e => onBoxDragStart(e, box.id)}
                     onDragOver={e => onBoxDragOver(e, box.id)}
                     onDragEnd={onBoxDragEnd}
-                    onClick={() => setSelectedBoxId(isSelected ? null : box.id)}
+                    onClick={() => { setSelectedBoxId(isSelected ? null : box.id); setConfirmDeleteBoxId(null); }}
                     style={{
                       marginBottom: '0.65rem', borderRadius: '10px',
                       background: boxStyles.bg,
@@ -2308,14 +2309,31 @@ export default function LearningGerman() {
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: boxStyles.color }}>{boxStyles.label}</span>
                       </div>
                       {isSelected && (
-                        <button onClick={(e) => { e.stopPropagation(); deleteNoteBox(box.id); }} style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          padding: '3px 8px', borderRadius: '6px', border: 'none',
-                          background: `${C.red}20`, color: C.red, cursor: 'pointer',
-                          fontSize: '0.72rem', fontWeight: 600,
-                        }}>
-                          <Trash2 size={12} /> Delete
-                        </button>
+                        confirmDeleteBoxId === box.id ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: '0.72rem', color: C.red, fontWeight: 600 }}>Delete?</span>
+                            <button onClick={(e) => { e.stopPropagation(); deleteNoteBox(box.id); setConfirmDeleteBoxId(null); }} style={{
+                              padding: '2px 7px', borderRadius: '5px', border: 'none',
+                              background: C.red, color: '#fff', cursor: 'pointer',
+                              fontSize: '0.7rem', fontWeight: 600,
+                            }}>Yes</button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteBoxId(null); }} style={{
+                              padding: '2px 7px', borderRadius: '5px',
+                              border: '1px solid var(--border)', background: 'transparent',
+                              color: 'var(--text-muted)', cursor: 'pointer',
+                              fontSize: '0.7rem', fontWeight: 600,
+                            }}>No</button>
+                          </span>
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteBoxId(box.id); }} style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '3px 8px', borderRadius: '6px', border: 'none',
+                            background: `${C.red}20`, color: C.red, cursor: 'pointer',
+                            fontSize: '0.72rem', fontWeight: 600,
+                          }}>
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        )
                       )}
                     </div>
                     <textarea value={box.content} onChange={e => updateNoteBox(box.id, { content: e.target.value })}
