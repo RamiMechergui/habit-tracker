@@ -11,7 +11,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899' };
@@ -1491,10 +1491,10 @@ export default function LearningGerman() {
   const [selectedNoteId, setSelectedNoteId] = useState(null);
   const [noteFont, setNoteFont] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
-  const [noteInfoBox, setNoteInfoBox] = useState('');
-  const [noteWarningBox, setNoteWarningBox] = useState('');
-  const [noteQuoteBox, setNoteQuoteBox] = useState('');
-  const [noteQuoteAuthor, setNoteQuoteAuthor] = useState('');
+  const [noteBoxes, setNoteBoxes] = useState([]);
+  const [showAddBoxMenu, setShowAddBoxMenu] = useState(false);
+  const [selectedBoxId, setSelectedBoxId] = useState(null);
+  const [draggedBoxId, setDraggedBoxId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
@@ -1563,18 +1563,23 @@ export default function LearningGerman() {
       const lastNote = dateNotes[dateNotes.length - 1];
       setSelectedNoteId(lastNote.recordId);
       setNoteContent(lastNote.content || '');
-      setNoteInfoBox(lastNote.infoBox || '');
-      setNoteWarningBox(lastNote.warningBox || '');
-      setNoteQuoteBox(lastNote.quoteBox || '');
-      setNoteQuoteAuthor(lastNote.quoteAuthor || '');
+      const savedBoxes = lastNote.boxes || [];
+      if (savedBoxes.length > 0) {
+        setNoteBoxes(savedBoxes.map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
+      } else {
+        const legacy = [];
+        if (lastNote.infoBox) legacy.push({ id: `box-${Date.now()}-0`, type: 'info', content: lastNote.infoBox });
+        if (lastNote.warningBox) legacy.push({ id: `box-${Date.now()}-1`, type: 'warning', content: lastNote.warningBox });
+        if (lastNote.quoteBox) legacy.push({ id: `box-${Date.now()}-2`, type: 'quote', content: lastNote.quoteBox, author: lastNote.quoteAuthor || '' });
+        setNoteBoxes(legacy);
+      }
     } else {
       setSelectedNoteId(null);
       setNoteContent('');
-      setNoteInfoBox('');
-      setNoteWarningBox('');
-      setNoteQuoteBox('');
-      setNoteQuoteAuthor('');
+      setNoteBoxes([]);
     }
+    setSelectedBoxId(null);
+    setShowAddBoxMenu(false);
     setNoteSaved(false);
   }, [selectedDate, germanData]);
 
@@ -1683,17 +1688,14 @@ export default function LearningGerman() {
     return html.replace(/<[^>]+>/g, '').trim().length === 0;
   }
 
-  const handleSaveNote = async () => {
-    if (isNoteEmpty(noteContent)) return;
+  const performSave = async (contentToSave, boxesToSave) => {
+    if (isNoteEmpty(contentToSave) && boxesToSave.length === 0) return;
     setNoteSaving(true);
     try {
       const payload = {
         date: selectedDate,
-        content: noteContent.trim(),
-        infoBox: noteInfoBox.trim() || null,
-        warningBox: noteWarningBox.trim() || null,
-        quoteBox: noteQuoteBox.trim() || null,
-        quoteAuthor: noteQuoteAuthor.trim() || null,
+        content: contentToSave.trim(),
+        boxes: boxesToSave.map(({ id, ...rest }) => rest),
       };
       if (selectedNoteId) payload.noteId = selectedNoteId;
       const saved = await saveGermanNote(payload);
@@ -1701,6 +1703,70 @@ export default function LearningGerman() {
       setNoteSaved(true);
       setTimeout(() => setNoteSaved(false), 2500);
     } catch (e) { setError(e.message); } finally { setNoteSaving(false); }
+  };
+
+  const autoSaveTimerRef = useRef(null);
+  const autoSave = (content, boxes) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (!isNoteEmpty(content) || boxes.length > 0) {
+        performSave(content, boxes);
+      }
+    }, 2000);
+  };
+
+  const handleSaveNote = () => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    performSave(noteContent, noteBoxes);
+  };
+
+  const addNoteBox = (type) => {
+    const newBox = { id: `box-${Date.now()}`, type, content: '', author: '' };
+    const updated = [...noteBoxes, newBox];
+    setNoteBoxes(updated);
+    setShowAddBoxMenu(false);
+    setSelectedBoxId(newBox.id);
+    autoSave(noteContent, updated);
+  };
+
+  const updateNoteBox = (id, updates) => {
+    const updated = noteBoxes.map(b => b.id === id ? { ...b, ...updates } : b);
+    setNoteBoxes(updated);
+    autoSave(noteContent, updated);
+  };
+
+  const deleteNoteBox = (id) => {
+    const updated = noteBoxes.filter(b => b.id !== id);
+    setNoteBoxes(updated);
+    setSelectedBoxId(null);
+    autoSave(noteContent, updated);
+  };
+
+  const handleNoteContentChange = (val) => {
+    setNoteContent(val);
+    autoSave(val, noteBoxes);
+  };
+
+  const onBoxDragStart = (e, id) => {
+    setDraggedBoxId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const onBoxDragOver = (e, id) => {
+    e.preventDefault();
+    if (!draggedBoxId || draggedBoxId === id) return;
+    const fromIdx = noteBoxes.findIndex(b => b.id === draggedBoxId);
+    const toIdx = noteBoxes.findIndex(b => b.id === id);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const reordered = [...noteBoxes];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    setNoteBoxes(reordered);
+  };
+
+  const onBoxDragEnd = () => {
+    setDraggedBoxId(null);
+    autoSave(noteContent, noteBoxes);
   };
 
   const handleUploadNotePhoto = async (file) => {
@@ -2076,7 +2142,7 @@ export default function LearningGerman() {
               <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
                 Study Sessions
               </h3>
-              <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteInfoBox(''); setNoteWarningBox(''); setNoteQuoteBox(''); setNoteQuoteAuthor(''); }} style={{
+              <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); setSelectedBoxId(null); setShowAddBoxMenu(false); }} style={{
                 padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
                 background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
               }}>+ New Note</button>
@@ -2099,7 +2165,20 @@ export default function LearningGerman() {
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {notes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No study sessions yet.</p>}
               {notes.map(n => (
-                <div key={n.recordId} onClick={() => { setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || ''); setNoteInfoBox(n.infoBox || ''); setNoteWarningBox(n.warningBox || ''); setNoteQuoteBox(n.quoteBox || ''); setNoteQuoteAuthor(n.quoteAuthor || ''); }} style={{
+                <div key={n.recordId} onClick={() => {
+                  setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || '');
+                  const savedBoxes = n.boxes || [];
+                  if (savedBoxes.length > 0) {
+                    setNoteBoxes(savedBoxes.map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
+                  } else {
+                    const legacy = [];
+                    if (n.infoBox) legacy.push({ id: `box-${Date.now()}-0`, type: 'info', content: n.infoBox });
+                    if (n.warningBox) legacy.push({ id: `box-${Date.now()}-1`, type: 'warning', content: n.warningBox });
+                    if (n.quoteBox) legacy.push({ id: `box-${Date.now()}-2`, type: 'quote', content: n.quoteBox, author: n.quoteAuthor || '' });
+                    setNoteBoxes(legacy);
+                  }
+                  setSelectedBoxId(null);
+                }} style={{
                   padding: '0.65rem 0.85rem', borderRadius: '10px', cursor: 'pointer', marginBottom: '0.4rem',
                   background: selectedNoteId === n.recordId ? `${C.gold}15` : 'transparent',
                   border: `1px solid ${selectedNoteId === n.recordId ? C.gold + '40' : 'transparent'}`,
@@ -2144,79 +2223,136 @@ export default function LearningGerman() {
                 <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.7 }}>— paste or drag images directly into the editor, click any image to resize &amp; position it</span>
               </label>
               <div style={noteFont ? { fontFamily: noteFont } : undefined}>
-                <RichTextEditor value={noteContent} onChange={setNoteContent}
+                <RichTextEditor value={noteContent} onChange={handleNoteContentChange}
                   placeholder={`What did you study today?\n\nNew words learned\nGrammar topics covered\nDifficulties encountered\nGoals for tomorrow`}
                   minHeight={320} onUploadImage={handleUploadNotePhoto} />
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.85rem' }}>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <HelpCircle size={14} /> Info Box
-                </label>
-                <textarea value={noteInfoBox} onChange={e => setNoteInfoBox(e.target.value)}
-                  placeholder="Add key takeaways, definitions, or helpful tips..."
-                  rows={3}
-                  style={{
-                    ...inputBase, resize: 'vertical', minHeight: 60,
-                    background: 'rgba(16, 185, 129, 0.06)',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                    borderRadius: '10px',
-                  }}
-                />
+            <div style={{ marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: noteBoxes.length > 0 ? '0.65rem' : 0 }}>
+                <div style={{ position: 'relative' }}>
+                  <button onClick={() => setShowAddBoxMenu(p => !p)} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '0.45rem 0.85rem', borderRadius: '8px',
+                    background: showAddBoxMenu ? `${C.gold}20` : 'var(--bg-card)',
+                    border: `1px solid ${showAddBoxMenu ? C.gold + '60' : 'var(--border)'}`,
+                    color: showAddBoxMenu ? C.gold : 'var(--text-primary)',
+                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                    transition: 'all 0.2s ease',
+                  }}>
+                    <Plus size={14} /> Add Box
+                    <ChevronDown size={13} style={{ transform: showAddBoxMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                  </button>
+                  {showAddBoxMenu && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20,
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      borderRadius: '10px', padding: '0.35rem', minWidth: 180,
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
+                    }}>
+                      {[
+                        { type: 'info', icon: HelpCircle, label: 'Info Box', color: C.green, desc: 'Key takeaways & tips' },
+                        { type: 'warning', icon: AlertTriangle, label: 'Warning Box', color: C.red, desc: 'Mistakes & watch-outs' },
+                        { type: 'quote', icon: FileText, label: 'Quote Box', color: C.purple, desc: 'Memorable quotes' },
+                      ].map(opt => (
+                        <button key={opt.type} onClick={() => addNoteBox(opt.type)} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                          padding: '0.55rem 0.75rem', borderRadius: '8px', border: 'none',
+                          background: 'transparent', cursor: 'pointer', textAlign: 'left',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = `${opt.color}12`}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ width: 30, height: 30, borderRadius: '8px', background: `${opt.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <opt.icon size={15} style={{ color: opt.color }} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>{opt.label}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{opt.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <AlertTriangle size={14} /> Warning Box
-                </label>
-                <textarea value={noteWarningBox} onChange={e => setNoteWarningBox(e.target.value)}
-                  placeholder="Common mistakes, things to watch out for, or tricky grammar..."
-                  rows={3}
-                  style={{
-                    ...inputBase, resize: 'vertical', minHeight: 60,
-                    background: 'rgba(220, 38, 38, 0.06)',
-                    border: '1px solid rgba(220, 38, 38, 0.25)',
-                    borderRadius: '10px',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <FileText size={14} /> Quote Box
-                </label>
-                <textarea value={noteQuoteBox} onChange={e => setNoteQuoteBox(e.target.value)}
-                  placeholder="A memorable quote, phrase, or sentence from your study session..."
-                  rows={3}
-                  style={{
-                    ...inputBase, resize: 'vertical', minHeight: 60,
-                    background: 'rgba(139, 92, 246, 0.06)',
-                    border: '1px solid rgba(139, 92, 246, 0.25)',
-                    borderRadius: '10px',
-                  }}
-                />
-                {noteQuoteBox.trim() && (
-                  <input value={noteQuoteAuthor} onChange={e => setNoteQuoteAuthor(e.target.value)}
-                    placeholder="Author name (required for quotes)"
+              {noteBoxes.map((box) => {
+                const boxStyles = {
+                  info: { bg: 'rgba(16, 185, 129, 0.06)', border: 'rgba(16, 185, 129, 0.25)', color: C.green, icon: HelpCircle, label: 'Info Box', placeholder: 'Add key takeaways, definitions, or helpful tips...' },
+                  warning: { bg: 'rgba(220, 38, 38, 0.06)', border: 'rgba(220, 38, 38, 0.25)', color: C.red, icon: AlertTriangle, label: 'Warning Box', placeholder: 'Common mistakes, things to watch out for, or tricky grammar...' },
+                  quote: { bg: 'rgba(139, 92, 246, 0.06)', border: 'rgba(139, 92, 246, 0.25)', color: C.purple, icon: FileText, label: 'Quote Box', placeholder: 'A memorable quote, phrase, or sentence...' },
+                }[box.type];
+                const isSelected = selectedBoxId === box.id;
+                return (
+                  <div key={box.id}
+                    draggable
+                    onDragStart={e => onBoxDragStart(e, box.id)}
+                    onDragOver={e => onBoxDragOver(e, box.id)}
+                    onDragEnd={onBoxDragEnd}
+                    onClick={() => setSelectedBoxId(isSelected ? null : box.id)}
                     style={{
-                      ...inputBase, marginTop: 6,
-                      background: 'rgba(139, 92, 246, 0.06)',
-                      border: '1px solid rgba(139, 92, 246, 0.25)',
-                      borderRadius: '10px',
-                      fontSize: '0.82rem',
+                      marginBottom: '0.65rem', borderRadius: '10px',
+                      background: boxStyles.bg,
+                      border: `1px solid ${isSelected ? boxStyles.color : boxStyles.border}`,
+                      padding: '0.65rem 0.85rem',
+                      cursor: 'pointer', transition: 'all 0.2s ease',
+                      opacity: draggedBoxId === box.id ? 0.5 : 1,
+                      position: 'relative',
                     }}
-                  />
-                )}
-              </div>
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <GripVertical size={14} style={{ color: 'var(--text-muted)', cursor: 'grab', opacity: 0.5 }} />
+                        <boxStyles.icon size={14} style={{ color: boxStyles.color }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: boxStyles.color }}>{boxStyles.label}</span>
+                      </div>
+                      {isSelected && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteNoteBox(box.id); }} style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '3px 8px', borderRadius: '6px', border: 'none',
+                          background: `${C.red}20`, color: C.red, cursor: 'pointer',
+                          fontSize: '0.72rem', fontWeight: 600,
+                        }}>
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      )}
+                    </div>
+                    <textarea value={box.content} onChange={e => updateNoteBox(box.id, { content: e.target.value })}
+                      placeholder={boxStyles.placeholder}
+                      rows={3} onClick={e => e.stopPropagation()}
+                      style={{
+                        width: '100%', resize: 'vertical', minHeight: 60,
+                        background: 'transparent', border: 'none', outline: 'none',
+                        color: 'var(--text-primary)', fontSize: '0.88rem',
+                        fontFamily: 'inherit', lineHeight: 1.5,
+                      }}
+                    />
+                    {box.type === 'quote' && (
+                      <input value={box.author || ''} onChange={e => updateNoteBox(box.id, { author: e.target.value })}
+                        placeholder="Author name (required for quotes)"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          width: '100%', marginTop: 6, padding: '0.35rem 0.6rem',
+                          background: 'transparent', border: `1px solid ${boxStyles.border}`,
+                          borderRadius: '8px', color: 'var(--text-primary)',
+                          fontSize: '0.82rem', outline: 'none',
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div style={{ display: 'flex', gap: '0.65rem' }}>
-              <button onClick={handleSaveNote} disabled={noteSaving || isNoteEmpty(noteContent)} style={{
+              <button onClick={handleSaveNote} disabled={noteSaving || (isNoteEmpty(noteContent) && noteBoxes.length === 0)} style={{
                 flex: 1, padding: '0.75rem',
-                background: isNoteEmpty(noteContent) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
-                border: isNoteEmpty(noteContent) ? '1px solid var(--border)' : 'none',
-                borderRadius: '10px', cursor: isNoteEmpty(noteContent) ? 'not-allowed' : 'pointer',
-                color: isNoteEmpty(noteContent) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.95rem',
-                boxShadow: isNoteEmpty(noteContent) ? 'none' : `0 4px 14px ${C.green}40`,
-                opacity: (isNoteEmpty(noteContent) || noteSaving) ? 0.6 : 1,
+                background: (isNoteEmpty(noteContent) && noteBoxes.length === 0) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
+                border: (isNoteEmpty(noteContent) && noteBoxes.length === 0) ? '1px solid var(--border)' : 'none',
+                borderRadius: '10px', cursor: (isNoteEmpty(noteContent) && noteBoxes.length === 0) ? 'not-allowed' : 'pointer',
+                color: (isNoteEmpty(noteContent) && noteBoxes.length === 0) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.95rem',
+                boxShadow: (isNoteEmpty(noteContent) && noteBoxes.length === 0) ? 'none' : `0 4px 14px ${C.green}40`,
+                opacity: (noteSaving) ? 0.6 : 1,
                 transition: 'all 0.25s ease',
               }}>
                 {noteSaving ? 'Saving…' : 'Save Note'}

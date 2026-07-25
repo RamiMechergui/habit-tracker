@@ -134,7 +134,7 @@ async function updateGrammar(userId, recordId, updates) {
 
 // ── Daily Notes ───────────────────────────────────────────────────────────────
 // Supports multiple notes per day. recordId: NOTE#YYYY-MM-DD#<uuid>
-async function saveNote(userId, date, { noteId, content, infoBox, warningBox, quoteBox, quoteAuthor }) {
+async function saveNote(userId, date, { noteId, content, boxes }) {
   const recordId = noteId || `NOTE#${date}#${uuidv4()}`;
   const item = {
     userId,
@@ -142,10 +142,7 @@ async function saveNote(userId, date, { noteId, content, infoBox, warningBox, qu
     type: 'note',
     date,
     content,
-    infoBox: infoBox || null,
-    warningBox: warningBox || null,
-    quoteBox: quoteBox || null,
-    quoteAuthor: quoteAuthor || null,
+    boxes: boxes || [],
     updatedAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));

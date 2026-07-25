@@ -434,11 +434,11 @@ router.put('/verb/:recordId', async (req, res) => {
 // ── POST /api/german/note ─────────────────────────────────────────────────────
 router.post('/note', async (req, res) => {
   try {
-    const { date, content, noteId, infoBox, warningBox, quoteBox, quoteAuthor } = req.body;
+    const { date, content, noteId, boxes } = req.body;
     if (!date || !content?.trim()) {
       return res.status(400).json({ message: 'date and content are required' });
     }
-    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), infoBox, warningBox, quoteBox, quoteAuthor });
+    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes });
     res.json(record);
   } catch (err) {
     console.error('[German] POST note error:', err);

@@ -13,7 +13,7 @@
 
 const puppeteer = require('puppeteer');
 
-function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, infoBox, warningBox, quoteBox, quoteAuthor }) {
+function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, boxes }) {
   const dateFormatted = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -210,9 +210,12 @@ function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, info
   </div>
 
   <!-- ── Info / Warning / Quote Boxes ── -->
-  ${infoBox ? `<div class="note-box info"><span class="box-label">Info</span>${infoBox}</div>` : ''}
-  ${warningBox ? `<div class="note-box warning"><span class="box-label">Warning</span>${warningBox}</div>` : ''}
-  ${quoteBox ? `<div class="note-box quote"><span class="box-label">Quote</span>${quoteBox}${quoteAuthor ? `<span class="quote-author">— ${quoteAuthor}</span>` : ''}</div>` : ''}
+  ${(boxes && boxes.length > 0) ? boxes.map(box => {
+    if (box.type === 'info' && box.content) return `<div class="note-box info"><span class="box-label">Info</span>${box.content}</div>`;
+    if (box.type === 'warning' && box.content) return `<div class="note-box warning"><span class="box-label">Warning</span>${box.content}</div>`;
+    if (box.type === 'quote' && box.content) return `<div class="note-box quote"><span class="box-label">Quote</span>${box.content}${box.author ? `<span class="quote-author">— ${box.author}</span>` : ''}</div>`;
+    return '';
+  }).join('\n') : ''}
 
   <!-- ── Footer ── -->
   <div class="note-footer">
