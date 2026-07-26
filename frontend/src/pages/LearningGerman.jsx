@@ -1815,6 +1815,214 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
   );
 }
 
+function MistakeForm({ onAdd, onUpdate, onDelete, isMobile, mistakes }) {
+  const [incorrect, setIncorrect] = useState('');
+  const [correct, setCorrect] = useState('');
+  const [why, setWhy] = useState('');
+  const [category, setCategory] = useState('grammar');
+  const [editingId, setEditingId] = useState(null);
+  const [editIncorrect, setEditIncorrect] = useState('');
+  const [editCorrect, setEditCorrect] = useState('');
+  const [editWhy, setEditWhy] = useState('');
+  const [editCategory, setEditCategory] = useState('grammar');
+  const [showAdd, setShowAdd] = useState(false);
+
+  const categories = [
+    { value: 'grammar', label: 'Grammar', color: C.red },
+    { value: 'vocab', label: 'Vocabulary', color: C.blue },
+    { value: 'sentence', label: 'Sentence Structure', color: C.purple },
+    { value: 'verb', label: 'Verb Conjugation', color: C.orange },
+    { value: 'article', label: 'Articles & Gender', color: C.gold },
+    { value: 'preposition', label: 'Prepositions', color: C.teal },
+    { value: 'idiom', label: 'Idiomatic Errors', color: C.green },
+    { value: 'pronunciation', label: 'Pronunciation', color: C.pink },
+  ];
+
+  const handleAdd = async () => {
+    if (!incorrect.trim() || !correct.trim()) return;
+    await onAdd({
+      type: 'mistake',
+      incorrect: incorrect.trim(),
+      correct: correct.trim(),
+      why: why.trim(),
+      category,
+      favorite: false,
+      sortOrder: mistakes.length,
+    });
+    setIncorrect('');
+    setCorrect('');
+    setWhy('');
+    setCategory('grammar');
+    setShowAdd(false);
+  };
+
+  const startEdit = (m) => {
+    setEditingId(m.recordId);
+    setEditIncorrect(m.incorrect);
+    setEditCorrect(m.correct);
+    setEditWhy(m.why || '');
+    setEditCategory(m.category || 'grammar');
+  };
+
+  const saveEdit = async (recordId) => {
+    if (!editIncorrect.trim() || !editCorrect.trim()) return;
+    await onUpdate(recordId, {
+      incorrect: editIncorrect.trim(),
+      correct: editCorrect.trim(),
+      why: editWhy.trim(),
+      category: editCategory,
+    });
+    setEditingId(null);
+  };
+
+  const toggleFavorite = async (m) => {
+    await onUpdate(m.recordId, { favorite: !m.favorite });
+  };
+
+  const grouped = useMemo(() => {
+    const map = {};
+    mistakes.forEach(m => {
+      const cat = m.category || 'grammar';
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(m);
+    });
+    return map;
+  }, [mistakes]);
+
+  const inputStyle = {
+    padding: '0.6rem 0.75rem',
+    borderRadius: '8px',
+    border: `1px solid ${C.border}`,
+    background: 'var(--bg)',
+    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    flex: 1,
+    minWidth: 0,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+          <AlertTriangle size={20} style={{ color: C.red }} /> Mistakes to Avoid ({mistakes.length})
+        </h3>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.red}, #b91c1c)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+          {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Mistake'}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div style={{ padding: '1rem', borderRadius: '12px', border: `1px solid ${C.red}40`, background: `${C.red}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label style={{ fontSize: '0.72rem', color: C.red, fontWeight: 700, marginBottom: 2, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Incorrect</label>
+              <input value={incorrect} onChange={e => setIncorrect(e.target.value)} placeholder="e.g. Ich sein m&uuml;de." style={inputStyle} />
+            </div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700, marginBottom: 2, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Correct</label>
+              <input value={correct} onChange={e => setCorrect(e.target.value)} placeholder="e.g. Ich bin m&uuml;de." style={inputStyle} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 2, minWidth: 200 }}>
+              <label style={{ fontSize: '0.72rem', color: C.gold, fontWeight: 700, marginBottom: 2, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Why (Explanation)</label>
+              <input value={why} onChange={e => setWhy(e.target.value)} placeholder="e.g. The verb sein must agree with the first-person singular subject ich." style={inputStyle} />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 2, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <button onClick={handleAdd} disabled={!incorrect.trim() || !correct.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!incorrect.trim() || !correct.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.red}, #b91c1c)`, color: (!incorrect.trim() || !correct.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!incorrect.trim() || !correct.trim()) ? 'not-allowed' : 'pointer', opacity: (!incorrect.trim() || !correct.trim()) ? 0.5 : 1 }}>
+            Save Mistake
+          </button>
+        </div>
+      )}
+
+      {Object.keys(grouped).length === 0 && !showAdd && (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          <AlertTriangle size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+          <p style={{ fontSize: '0.9rem', margin: 0 }}>No mistakes recorded yet. Add your first mistake to avoid!</p>
+        </div>
+      )}
+
+      {categories.filter(c => grouped[c.value]?.length > 0).map(cat => (
+        <div key={cat.value}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color }} />
+            {cat.label} ({grouped[cat.value].length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {grouped[cat.value].map(m => (
+              <div key={m.recordId} style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: 'var(--card)', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {editingId === m.recordId ? (
+                  <>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <label style={{ fontSize: '0.68rem', color: C.red, fontWeight: 700 }}>Incorrect</label>
+                        <input value={editIncorrect} onChange={e => setEditIncorrect(e.target.value)} style={{ ...inputStyle, marginTop: 2 }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <label style={{ fontSize: '0.68rem', color: C.green, fontWeight: 700 }}>Correct</label>
+                        <input value={editCorrect} onChange={e => setEditCorrect(e.target.value)} style={{ ...inputStyle, marginTop: 2 }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <input value={editWhy} onChange={e => setEditWhy(e.target.value)} placeholder="Why..." style={{ ...inputStyle, flex: 2 }} />
+                      <select value={editCategory} onChange={e => setEditCategory(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
+                        {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                      <button onClick={() => setEditingId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                      <button onClick={() => saveEdit(m.recordId)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: 'none', background: C.red, color: '#fff', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.04em', background: `${C.red}15`, padding: '1px 6px', borderRadius: '4px' }}>Incorrect</span>
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>{m.incorrect}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.04em', background: `${C.green}15`, padding: '1px 6px', borderRadius: '4px' }}>Correct</span>
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>{m.correct}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto' }}>
+                        <button onClick={() => toggleFavorite(m)} title="Favorite" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: m.favorite ? C.gold : 'var(--text-muted)' }}>
+                          <Star size={15} fill={m.favorite ? C.gold : 'none'} />
+                        </button>
+                        <button onClick={() => startEdit(m)} title="Edit" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }}>
+                          <Edit3 size={15} />
+                        </button>
+                        <button onClick={async () => { if (confirm('Delete this mistake?')) await onDelete(m.recordId); }} title="Delete" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                    {m.why && (
+                      <div style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: `${C.gold}08`, border: `1px solid ${C.gold}20`, fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                        <strong style={{ color: C.gold }}>Why:</strong> {m.why}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
@@ -1827,6 +2035,7 @@ export default function LearningGerman() {
     translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
     addGermanExpression, updateGermanExpression,
     addGermanIdiom, updateGermanIdiom,
+    addGermanMistake, updateGermanMistake,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -1920,6 +2129,10 @@ export default function LearningGerman() {
   }, [germanData]);
   const idioms = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'idiom');
+    return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }, [germanData]);
+  const mistakes = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'mistake');
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [germanData]);
 
@@ -2431,6 +2644,7 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
+        <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -3374,6 +3588,12 @@ export default function LearningGerman() {
       {tab === 'idioms' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <IdiomForm onAdd={addGermanIdiom} onUpdate={updateGermanIdiom} onDelete={deleteGermanRecord} isMobile={isMobile} idioms={idioms} />
+        </div>
+      )}
+
+      {tab === 'mistakes' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <MistakeForm onAdd={addGermanMistake} onUpdate={updateGermanMistake} onDelete={deleteGermanRecord} isMobile={isMobile} mistakes={mistakes} />
         </div>
       )}
 

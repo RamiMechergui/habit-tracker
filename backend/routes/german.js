@@ -37,6 +37,8 @@ const {
   updateExpression,
   addIdiom,
   updateIdiom,
+  addMistake,
+  updateMistake,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { exportToPdf } = require('../services/pdfExporter');
@@ -459,6 +461,33 @@ router.put('/idiom/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT idiom error:', err);
     res.status(500).json({ message: 'Failed to update idiom' });
+  }
+});
+
+// ── POST /api/german/mistake ─────────────────────────────────────────────────
+router.post('/mistake', async (req, res) => {
+  try {
+    const { incorrect, correct, why, category, favorite } = req.body;
+    if (!incorrect?.trim() || !correct?.trim()) {
+      return res.status(400).json({ message: 'incorrect and correct are required' });
+    }
+    const record = await addMistake(req.user.userId, { incorrect: incorrect.trim(), correct: correct.trim(), why, category, favorite });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST mistake error:', err);
+    res.status(500).json({ message: 'Failed to add mistake' });
+  }
+});
+
+// ── PUT /api/german/mistake/:recordId ────────────────────────────────────────
+router.put('/mistake/:recordId', async (req, res) => {
+  try {
+    const updated = await updateMistake(req.user.userId, req.params.recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Record not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT mistake error:', err);
+    res.status(500).json({ message: 'Failed to update mistake' });
   }
 });
 

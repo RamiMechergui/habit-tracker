@@ -430,6 +430,45 @@ async function updateIdiom(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Mistakes to Avoid ────────────────────────────────────────────────────────
+async function addMistake(userId, { incorrect, correct, why = '', category = 'General', favorite = false, sortOrder = Date.now() }) {
+  const recordId = `MISTAKE#${uuidv4()}`;
+  const item = {
+    userId, recordId, type: 'mistake',
+    incorrect, correct, why, category, favorite, sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateMistake(userId, recordId, updates) {
+  const allowed = ['incorrect', 'correct', 'why', 'category', 'favorite', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 module.exports = {
   getAllGermanRecords,
   addVocab,
@@ -452,4 +491,6 @@ module.exports = {
   updateExpression,
   addIdiom,
   updateIdiom,
+  addMistake,
+  updateMistake,
 };
