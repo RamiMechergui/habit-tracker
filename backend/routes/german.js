@@ -35,6 +35,8 @@ const {
   updateDocument,
   addExpression,
   updateExpression,
+  addIdiom,
+  updateIdiom,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { exportToPdf } = require('../services/pdfExporter');
@@ -430,6 +432,33 @@ router.put('/expression/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT expression error:', err);
     res.status(500).json({ message: 'Failed to update expression' });
+  }
+});
+
+// ── POST /api/german/idiom ───────────────────────────────────────────────────
+router.post('/idiom', async (req, res) => {
+  try {
+    const { phrase, translation, meaning, usage, category, favorite } = req.body;
+    if (!phrase?.trim() || !translation?.trim()) {
+      return res.status(400).json({ message: 'phrase and translation are required' });
+    }
+    const record = await addIdiom(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), meaning, usage, category, favorite });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST idiom error:', err);
+    res.status(500).json({ message: 'Failed to add idiom' });
+  }
+});
+
+// ── PUT /api/german/idiom/:recordId ──────────────────────────────────────────
+router.put('/idiom/:recordId', async (req, res) => {
+  try {
+    const updated = await updateIdiom(req.user.userId, req.params.recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Record not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT idiom error:', err);
+    res.status(500).json({ message: 'Failed to update idiom' });
   }
 });
 
