@@ -2546,6 +2546,59 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const addGermanAlphabet = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/alphabet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add alphabet');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_alphabet_add', `Added German alphabet: ${payload?.letter || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanAlphabet = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/alphabet/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update alphabet');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_alphabet_update', `Updated German alphabet`);
+    return data;
+  }, [API_URL]);
+
+  const uploadGermanAlphabetPhoto = useCallback(async (recordId, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await fetch(`${API_URL}/api/german/alphabet/${encodeURIComponent(recordId)}/photo`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to upload photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, photoUrl: data.photoUrl } : r));
+    return data;
+  }, [API_URL]);
+
+  const deleteGermanAlphabetPhoto = useCallback(async (recordId) => {
+    const res = await fetch(`${API_URL}/api/german/alphabet/${encodeURIComponent(recordId)}/photo`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, photoUrl: '' } : r));
+    return data;
+  }, [API_URL]);
+
   // ── AWS Learning API methods ──────────────────────────────────
   const fetchAwsData = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -2913,7 +2966,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist

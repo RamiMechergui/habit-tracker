@@ -39,6 +39,8 @@ const {
   updateIdiom,
   addMistake,
   updateMistake,
+  addAlphabet,
+  updateAlphabet,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { exportToPdf } = require('../services/pdfExporter');
@@ -488,6 +490,73 @@ router.put('/mistake/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT mistake error:', err);
     res.status(500).json({ message: 'Failed to update mistake' });
+  }
+});
+
+// ── POST /api/german/alphabet ────────────────────────────────────────────────
+router.post('/alphabet', async (req, res) => {
+  try {
+    const { letter, example, pronunciation, photoUrl } = req.body;
+    if (!letter?.trim() || !example?.trim()) {
+      return res.status(400).json({ message: 'letter and example are required' });
+    }
+    const record = await addAlphabet(req.user.userId, { letter: letter.trim(), example: example.trim(), pronunciation, photoUrl });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST alphabet error:', err);
+    res.status(500).json({ message: 'Failed to add alphabet' });
+  }
+});
+
+// ── PUT /api/german/alphabet/:recordId ───────────────────────────────────────
+router.put('/alphabet/:recordId', async (req, res) => {
+  try {
+    const updated = await updateAlphabet(req.user.userId, req.params.recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Record not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT alphabet error:', err);
+    res.status(500).json({ message: 'Failed to update alphabet' });
+  }
+});
+
+// ── POST /api/german/alphabet/:recordId/photo ────────────────────────────────
+router.post('/alphabet/:recordId/photo', (req, res, next) => {
+  upload.single('photo')(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message || 'Upload failed' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const userId = req.user.userId;
+    const { recordId } = req.params;
+    const { buffer, mimetype } = req.file;
+    const objectKey = `german/alphabet/${userId}/${recordId}_${Date.now()}`;
+    const result = await storage.uploadImage(objectKey, buffer, mimetype);
+    const updated = await updateAlphabet(userId, recordId, { photoUrl: result.url });
+    res.json({ photoUrl: result.url, record: updated });
+  } catch (err) {
+    console.error('[German] POST alphabet photo error:', err);
+    res.status(500).json({ message: 'Failed to upload photo' });
+  }
+});
+
+// ── DELETE /api/german/alphabet/:recordId/photo ──────────────────────────────
+router.delete('/alphabet/:recordId/photo', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { recordId } = req.params;
+    const keyPrefix = '/api/german/images/';
+    const record = await updateAlphabet(userId, recordId, { photoUrl: '' });
+    if (record?.photoUrl?.startsWith(keyPrefix)) {
+      const objectKey = decodeURIComponent(record.photoUrl.slice(keyPrefix.length));
+      await storage.deleteImage(objectKey);
+    }
+    res.json({ record });
+  } catch (err) {
+    console.error('[German] DELETE alphabet photo error:', err);
+    res.status(500).json({ message: 'Failed to remove photo' });
   }
 });
 

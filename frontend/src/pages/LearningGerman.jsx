@@ -11,7 +11,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones, BookA, Camera,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -2023,6 +2023,200 @@ function MistakeForm({ onAdd, onUpdate, onDelete, isMobile, mistakes }) {
   );
 }
 
+function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, isMobile, alphabets }) {
+  const [letter, setLetter] = useState('');
+  const [example, setExample] = useState('');
+  const [pronunciation, setPronunciation] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editLetter, setEditLetter] = useState('');
+  const [editExample, setEditExample] = useState('');
+  const [editPronunciation, setEditPronunciation] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [uploadingId, setUploadingId] = useState(null);
+  const fileRef = useRef(null);
+  const [pendingUploadId, setPendingUploadId] = useState(null);
+
+  const handleAdd = async () => {
+    if (!letter.trim() || !example.trim()) return;
+    await onAdd({
+      type: 'alphabet',
+      letter: letter.trim(),
+      example: example.trim(),
+      pronunciation: pronunciation.trim(),
+      photoUrl: '',
+      sortOrder: alphabets.length,
+    });
+    setLetter('');
+    setExample('');
+    setPronunciation('');
+    setShowAdd(false);
+  };
+
+  const startEdit = (a) => {
+    setEditingId(a.recordId);
+    setEditLetter(a.letter);
+    setEditExample(a.example);
+    setEditPronunciation(a.pronunciation || '');
+  };
+
+  const saveEdit = async (recordId) => {
+    if (!editLetter.trim() || !editExample.trim()) return;
+    await onUpdate(recordId, {
+      letter: editLetter.trim(),
+      example: editExample.trim(),
+      pronunciation: editPronunciation.trim(),
+    });
+    setEditingId(null);
+  };
+
+  const handlePhotoUpload = async (recordId, file) => {
+    if (!file) return;
+    setUploadingId(recordId);
+    try { await onUploadPhoto(recordId, file); } catch (e) { console.error(e); }
+    finally { setUploadingId(null); }
+  };
+
+  const sorted = useMemo(() => {
+    return [...alphabets].sort((a, b) => {
+      const la = (a.letter || '').toLowerCase();
+      const lb = (b.letter || '').toLowerCase();
+      return la.localeCompare(lb);
+    });
+  }, [alphabets]);
+
+  const inputStyle = {
+    padding: '0.6rem 0.75rem',
+    borderRadius: '8px',
+    border: `1px solid ${C.border}`,
+    background: 'var(--bg)',
+    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    flex: 1,
+    minWidth: 0,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+          <BookA size={20} style={{ color: C.blue }} /> German Alphabets ({alphabets.length})
+        </h3>
+        <button onClick={() => setShowAdd(!showAdd)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.blue}, #2563eb)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+          {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Alphabet'}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div style={{ padding: '1rem', borderRadius: '12px', border: `1px solid ${C.blue}40`, background: `${C.blue}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 0, minWidth: 80 }}>
+              <label style={{ fontSize: '0.72rem', color: C.blue, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Letter</label>
+              <input value={letter} onChange={e => setLetter(e.target.value)} placeholder="A" maxLength={4} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem' }} />
+            </div>
+            <div style={{ flex: 2, minWidth: 150 }}>
+              <label style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Example Word</label>
+              <input value={example} onChange={e => setExample(e.target.value)} placeholder="Apfel (Apple)" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+            </div>
+            <div style={{ flex: 2, minWidth: 150 }}>
+              <label style={{ fontSize: '0.72rem', color: C.gold, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Pronunciation</label>
+              <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+            </div>
+          </div>
+          <button onClick={handleAdd} disabled={!letter.trim() || !example.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!letter.trim() || !example.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, #2563eb)`, color: (!letter.trim() || !example.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!letter.trim() || !example.trim()) ? 'not-allowed' : 'pointer', opacity: (!letter.trim() || !example.trim()) ? 0.5 : 1 }}>
+            Save Alphabet
+          </button>
+        </div>
+      )}
+
+      {sorted.length === 0 && !showAdd && (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          <BookA size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+          <p style={{ fontSize: '0.9rem', margin: 0 }}>No alphabets added yet. Add your first German alphabet!</p>
+        </div>
+      )}
+
+      {sorted.length > 0 && (
+        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Photo', 'Letter', 'Example Word', 'Pronunciation', ''].map(h => (
+                    <th key={h} style={{ padding: '0.7rem 1rem', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', background: 'var(--bg)', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(a => (
+                  <tr key={a.recordId} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      <div style={{ position: 'relative', width: 56, height: 56, borderRadius: '10px', overflow: 'hidden', border: `2px dashed ${C.blue}40`, background: `${C.blue}08`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        onClick={() => { setPendingUploadId(a.recordId); fileRef.current?.click(); }}
+                        title="Click to upload photo">
+                        {a.photoUrl ? (
+                          <img src={a.photoUrl} alt={a.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Camera size={20} style={{ color: `${C.blue}60` }} />
+                        )}
+                        {uploadingId === a.recordId && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #fff', borderTopColor: 'transparent', animation: 'evolvio-spin 0.8s linear infinite' }} />
+                          </div>
+                        )}
+                      </div>
+                      <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file && pendingUploadId) await handlePhotoUpload(pendingUploadId, file);
+                        e.target.value = '';
+                        setPendingUploadId(null);
+                      }} />
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      {editingId === a.recordId ? (
+                        <input value={editLetter} onChange={e => setEditLetter(e.target.value)} maxLength={4} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} />
+                      ) : (
+                        <span style={{ fontSize: '1.4rem', fontWeight: 800, color: C.blue }}>{a.letter}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      {editingId === a.recordId ? (
+                        <input value={editExample} onChange={e => setEditExample(e.target.value)} style={{ ...inputStyle }} />
+                      ) : (
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{a.example}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      {editingId === a.recordId ? (
+                        <input value={editPronunciation} onChange={e => setEditPronunciation(e.target.value)} style={{ ...inputStyle }} />
+                      ) : (
+                        <span style={{ fontSize: '0.85rem', color: C.gold, fontStyle: 'italic' }}>{a.pronunciation || '—'}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                      {editingId === a.recordId ? (
+                        <div style={{ display: 'flex', gap: '0.3rem' }}>
+                          <button onClick={() => setEditingId(null)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                          <button onClick={() => saveEdit(a.recordId)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', background: C.blue, color: '#fff', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.3rem' }}>
+                          {a.photoUrl && <button onClick={async () => { if (confirm('Remove photo?')) await onDeletePhoto(a.recordId); }} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} title="Remove photo"><Camera size={14} /></button>}
+                          <button onClick={() => startEdit(a)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} title="Edit"><Edit3 size={14} /></button>
+                          <button onClick={async () => { if (confirm('Delete this alphabet?')) await onDelete(a.recordId); }} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }} title="Delete"><Trash2 size={14} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
@@ -2036,6 +2230,7 @@ export default function LearningGerman() {
     addGermanExpression, updateGermanExpression,
     addGermanIdiom, updateGermanIdiom,
     addGermanMistake, updateGermanMistake,
+    addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -2133,6 +2328,10 @@ export default function LearningGerman() {
   }, [germanData]);
   const mistakes = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'mistake');
+    return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }, [germanData]);
+  const alphabets = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'alphabet');
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [germanData]);
 
@@ -2645,6 +2844,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
         <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
+        <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -3594,6 +3794,12 @@ export default function LearningGerman() {
       {tab === 'mistakes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <MistakeForm onAdd={addGermanMistake} onUpdate={updateGermanMistake} onDelete={deleteGermanRecord} isMobile={isMobile} mistakes={mistakes} />
+        </div>
+      )}
+
+      {tab === 'alphabets' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <AlphabetForm onAdd={addGermanAlphabet} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} />
         </div>
       )}
 
