@@ -11,7 +11,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -1830,6 +1830,7 @@ export default function LearningGerman() {
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
+  const [noteCategory, setNoteCategory] = useState('daily');
   const [noteSaving, setNoteSaving] = useState(false);
   const [vocabSaving, setVocabSaving] = useState(false);
   const [grammarSaving, setGrammarSaving] = useState(false);
@@ -1910,6 +1911,9 @@ export default function LearningGerman() {
     const filtered = germanData.filter(r => r.type === 'note');
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
   }, [germanData]);
+  const filteredNotes = useMemo(() => {
+    return notes.filter(n => (n.noteCategory || 'daily') === noteCategory);
+  }, [notes, noteCategory]);
   const expressions = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'expression');
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -1920,7 +1924,7 @@ export default function LearningGerman() {
   }, [germanData]);
 
   useEffect(() => {
-    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate);
+    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate && (r.noteCategory || 'daily') === noteCategory);
     if (dateNotes.length > 0) {
       const lastNote = dateNotes[dateNotes.length - 1];
       setSelectedNoteId(lastNote.recordId);
@@ -1943,7 +1947,7 @@ export default function LearningGerman() {
     setSelectedBoxId(null);
     setShowAddBoxMenu(false);
     setNoteSaved(false);
-  }, [selectedDate, germanData]);
+  }, [selectedDate, germanData, noteCategory]);
 
   // ── Auto time tracking (milliseconds) ──
   const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -2074,6 +2078,7 @@ export default function LearningGerman() {
     try {
       const payload = {
         date: selectedDate,
+        noteCategory,
         content: contentToSave.trim(),
         boxes: boxesToSave.map(({ id, ...rest }) => rest),
       };
@@ -2426,7 +2431,6 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
-            <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -2584,14 +2588,37 @@ export default function LearningGerman() {
       {tab === 'notes' && (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: '1.25rem' }}>
           <div className="glass-card" style={{ padding: '1.25rem', height: 'fit-content' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
-                Study Sessions
-              </h3>
-              <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); setSelectedBoxId(null); setShowAddBoxMenu(false); }} style={{
-                padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
-                background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
-              }}>+ New Note</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
+                  Study Sessions
+                </h3>
+                <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); setSelectedBoxId(null); setShowAddBoxMenu(false); }} style={{
+                  padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
+                  background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
+                }}>+ New Note</button>
+              </div>
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {[
+                  { value: 'daily', label: 'Daily', color: C.gold, icon: NotebookPen },
+                  { value: 'writing', label: 'Writing', color: C.blue, icon: PenTool },
+                  { value: 'reading', label: 'Reading', color: C.green, icon: BookOpen },
+                  { value: 'speaking', label: 'Speaking', color: C.purple, icon: Volume2 },
+                  { value: 'listening', label: 'Listening', color: C.teal, icon: Headphones },
+                ].map(cat => (
+                  <button key={cat.value} onClick={() => { setNoteCategory(cat.value); setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                      fontSize: '0.7rem', fontWeight: 600, transition: 'all 0.15s',
+                      background: noteCategory === cat.value ? `${cat.color}20` : 'transparent',
+                      color: noteCategory === cat.value ? cat.color : 'var(--text-muted)',
+                      border: noteCategory === cat.value ? `1px solid ${cat.color}40` : '1px solid transparent',
+                    }}>
+                    <cat.icon size={12} /> {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Select Date</label>
@@ -2604,8 +2631,8 @@ export default function LearningGerman() {
               />
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-              {notes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No study sessions yet.</p>}
-              {notes.map(n => (
+              {filteredNotes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No {noteCategory} notes yet.</p>}
+              {filteredNotes.map(n => (
                 <div key={n.recordId} onClick={() => {
                   setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || '');
                   const savedBoxes = n.boxes || [];
