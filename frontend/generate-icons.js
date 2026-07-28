@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const SOURCE = join(__dirname, 'public', 'logo.png');
+const SOURCE = join(__dirname, 'public', 'logo_circle.png');
 const OUT_DIR = join(__dirname, 'public', 'icons');
 
 if (!existsSync(OUT_DIR)) {

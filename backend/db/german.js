@@ -31,7 +31,7 @@ async function getAllGermanRecords(userId) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '' }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', boxes = [] }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -49,6 +49,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     favorite,
     sortOrder,
     photoUrl,
+    boxes,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -56,7 +57,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'easeFactor', 'interval', 'nextReviewDate', 'lapses'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'boxes', 'easeFactor', 'interval', 'nextReviewDate', 'lapses'];
   const sets = [];
   const names = {};
   const values = {};
@@ -84,7 +85,7 @@ async function updateVocab(userId, recordId, updates) {
 }
 
 // ── Grammar ───────────────────────────────────────────────────────────────────
-async function addGrammar(userId, { rule, explanation, examples = [], category = 'General', level = 'A1', mastery = 0, favorite = false, sortOrder = Date.now() }) {
+async function addGrammar(userId, { rule, explanation, examples = [], category = 'General', level = 'A1', mastery = 0, favorite = false, sortOrder = Date.now(), boxes = [] }) {
   const recordId = `GRAMMAR#${uuidv4()}`;
   const item = {
     userId,
@@ -98,6 +99,7 @@ async function addGrammar(userId, { rule, explanation, examples = [], category =
     mastery,
     favorite,
     sortOrder,
+    boxes,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -105,7 +107,7 @@ async function addGrammar(userId, { rule, explanation, examples = [], category =
 }
 
 async function updateGrammar(userId, recordId, updates) {
-  const allowed = ['rule', 'explanation', 'examples', 'category', 'level', 'mastery', 'favorite', 'sortOrder'];
+  const allowed = ['rule', 'explanation', 'examples', 'category', 'level', 'mastery', 'favorite', 'sortOrder', 'boxes'];
   const sets = [];
   const names = {};
   const values = {};
@@ -167,7 +169,7 @@ async function getNoteByDate(userId, date) {
 }
 
 // ── Verbs ──────────────────────────────────────────────────────────────────────
-async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs = '', wir = '', ihr = '', Sie = '', category = 'General', favorite = false, sortOrder = Date.now() }) {
+async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs = '', wir = '', ihr = '', Sie = '', category = 'General', favorite = false, sortOrder = Date.now(), boxes = [] }) {
   const recordId = `VERB#${uuidv4()}`;
   const item = {
     userId, recordId, type: 'verb',
@@ -176,6 +178,7 @@ async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs
     category,
     favorite,
     sortOrder,
+    boxes,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -183,7 +186,7 @@ async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs
 }
 
 async function updateVerb(userId, recordId, updates) {
-  const allowed = ['infinitive', 'meaning', 'ich', 'du', 'erSieEs', 'wir', 'ihr', 'Sie', 'category', 'favorite', 'sortOrder'];
+  const allowed = ['infinitive', 'meaning', 'ich', 'du', 'erSieEs', 'wir', 'ihr', 'Sie', 'category', 'favorite', 'sortOrder', 'boxes'];
   const sets = [];
   const names = {};
   const values = {};
@@ -211,7 +214,7 @@ async function updateVerb(userId, recordId, updates) {
 }
 
 // ── Dialogues ──────────────────────────────────────────────────────────────────
-async function addDialogue(userId, { title, level, participants, exchanges, sortOrder = Date.now() }) {
+async function addDialogue(userId, { title, level, participants, exchanges, sortOrder = Date.now(), boxes = [] }) {
   const recordId = `DIALOGUE#${uuidv4()}`;
   const item = {
     userId,
@@ -222,6 +225,7 @@ async function addDialogue(userId, { title, level, participants, exchanges, sort
     participants,
     exchanges,
     sortOrder,
+    boxes,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -229,7 +233,7 @@ async function addDialogue(userId, { title, level, participants, exchanges, sort
 }
 
 async function updateDialogue(userId, recordId, updates) {
-  const allowed = ['title', 'level', 'participants', 'exchanges', 'sortOrder'];
+  const allowed = ['title', 'level', 'participants', 'exchanges', 'sortOrder', 'boxes'];
   const sets = [];
   const names = {};
   const values = {};
@@ -257,13 +261,14 @@ async function updateDialogue(userId, recordId, updates) {
 }
 
 // ── Memorization Paragraphs ────────────────────────────────────────────────────
-async function addMemo(userId, { title, content, sortOrder = Date.now() }) {
+async function addMemo(userId, { title, content, sortOrder = Date.now(), boxes = [] }) {
   const recordId = `MEMO#${uuidv4()}`;
   const item = {
     userId, recordId, type: 'memo',
     title,
     content,
     sortOrder,
+    boxes,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -271,7 +276,7 @@ async function addMemo(userId, { title, content, sortOrder = Date.now() }) {
 }
 
 async function updateMemo(userId, recordId, updates) {
-  const allowed = ['title', 'content', 'sortOrder'];
+  const allowed = ['title', 'content', 'sortOrder', 'boxes'];
   const sets = [];
   const names = {};
   const values = {};
@@ -353,11 +358,12 @@ async function deleteGermanRecord(userId, recordId) {
 }
 
 // ── Useful Expressions ────────────────────────────────────────────────────────
-async function addExpression(userId, { phrase, translation, category = 'General', favorite = false, sortOrder = Date.now() }) {
+async function addExpression(userId, { phrase, translation, category = 'General', favorite = false, sortOrder = Date.now(), boxes = [] }) {
   const recordId = `EXPRESSION#${uuidv4()}`;
   const item = {
     userId, recordId, type: 'expression',
     phrase, translation, category, favorite, sortOrder,
+    boxes,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -365,7 +371,7 @@ async function addExpression(userId, { phrase, translation, category = 'General'
 }
 
 async function updateExpression(userId, recordId, updates) {
-  const allowed = ['phrase', 'translation', 'category', 'favorite', 'sortOrder'];
+  const allowed = ['phrase', 'translation', 'category', 'favorite', 'sortOrder', 'boxes'];
   const sets = [];
   const names = {};
   const values = {};

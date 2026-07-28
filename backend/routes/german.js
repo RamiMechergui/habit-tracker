@@ -13,6 +13,7 @@ const express = require('express');
 const router  = express.Router();
 const multer  = require('multer');
 const path    = require('path');
+const fs      = require('fs');
 const { protect } = require('../middleware/auth');
 const storage = require('../services/storage');
 const {
@@ -92,11 +93,11 @@ router.get('/note', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite } = req.body;
+    const { word, translation, example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite, boxes } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite, boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST vocab error:', err);
@@ -322,11 +323,11 @@ router.post('/note/photo', (req, res, next) => {
 // ── POST /api/german/grammar ──────────────────────────────────────────────────
 router.post('/grammar', async (req, res) => {
   try {
-    const { rule, explanation, examples, category, level, mastery, favorite } = req.body;
+    const { rule, explanation, examples, category, level, mastery, favorite, boxes } = req.body;
     if (!rule?.trim() || !explanation?.trim()) {
       return res.status(400).json({ message: 'rule and explanation are required' });
     }
-    const record = await addGrammar(req.user.userId, { rule: rule.trim(), explanation: explanation.trim(), examples, category, level, mastery, favorite });
+    const record = await addGrammar(req.user.userId, { rule: rule.trim(), explanation: explanation.trim(), examples, category, level, mastery, favorite, boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST grammar error:', err);
@@ -362,10 +363,10 @@ router.post('/translate', async (req, res) => {
 // ── POST /api/german/dialogue ─────────────────────────────────────────────
 router.post('/dialogue', async (req, res) => {
   try {
-    const { title, level, participants, exchanges } = req.body;
+    const { title, level, participants, exchanges, boxes } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
     if (!participants?.length || participants.length < 2) return res.status(400).json({ message: 'At least 2 participants required' });
-    const record = await addDialogue(req.user.userId, { title: title.trim(), level: level || 'A2', participants, exchanges: exchanges || [] });
+    const record = await addDialogue(req.user.userId, { title: title.trim(), level: level || 'A2', participants, exchanges: exchanges || [], boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST dialogue error:', err);
@@ -388,11 +389,11 @@ router.put('/dialogue/:recordId', async (req, res) => {
 // ── POST /api/german/memo ──────────────────────────────────────────────────────
 router.post('/memo', async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, boxes } = req.body;
     if (!title?.trim() || !content?.trim()) {
       return res.status(400).json({ message: 'title and content are required' });
     }
-    const record = await addMemo(req.user.userId, { title: title.trim(), content: content.trim() });
+    const record = await addMemo(req.user.userId, { title: title.trim(), content: content.trim(), boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST memo error:', err);
@@ -415,11 +416,11 @@ router.put('/memo/:recordId', async (req, res) => {
 // ── POST /api/german/expression ──────────────────────────────────────────────
 router.post('/expression', async (req, res) => {
   try {
-    const { phrase, translation, category, favorite } = req.body;
+    const { phrase, translation, category, favorite, boxes } = req.body;
     if (!phrase?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'phrase and translation are required' });
     }
-    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite });
+    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite, boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST expression error:', err);
@@ -563,11 +564,11 @@ router.delete('/alphabet/:recordId/photo', async (req, res) => {
 // ── POST /api/german/verb ──────────────────────────────────────────────────────
 router.post('/verb', async (req, res) => {
   try {
-    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite } = req.body;
+    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes } = req.body;
     if (!infinitive?.trim() || !meaning?.trim()) {
       return res.status(400).json({ message: 'infinitive and meaning are required' });
     }
-    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite });
+    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST verb error:', err);
@@ -713,6 +714,73 @@ router.post('/notes/export-pdf', async (req, res) => {
   } catch (err) {
     console.error('Note PDF export error:', err);
     res.status(500).json({ message: 'Failed to generate note PDF' });
+  }
+});
+
+// ── LaTeX Full Report PDF Export ──────────────────────────────────────────
+// Compiles LaTeX to PDF directly using pdflatex + makeindex.
+
+router.post('/export-latex-pdf', async (req, res) => {
+  try {
+    const { texContent } = req.body;
+    if (!texContent) return res.status(400).json({ message: 'texContent is required' });
+
+    // Try Docker service name first, then host fallbacks
+    const candidateUrls = [
+      process.env.LATEX_COMPILER_URL,
+      'http://latex-compiler:4000',
+      'http://host.docker.internal:4000',
+      'http://172.17.0.1:4000',
+    ].filter(Boolean);
+
+    let lastErr;
+    let pdfBuffer;
+
+    for (const baseUrl of candidateUrls) {
+      try {
+        const resp = await fetch(`${baseUrl}/compile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texContent }),
+          signal: AbortSignal.timeout(180000),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ error: 'Compilation failed' }));
+          lastErr = new Error(err.error || 'LaTeX compilation failed');
+          lastErr.log = err.log;
+          continue;
+        }
+
+        pdfBuffer = Buffer.from(await resp.arrayBuffer());
+        break;
+      } catch (fetchErr) {
+        lastErr = fetchErr;
+        continue;
+      }
+    }
+
+    if (!pdfBuffer) {
+      console.error('LaTeX PDF export error:', lastErr?.message);
+      if (lastErr?.log) console.error('LaTeX log (last 2000 chars):', lastErr.log.slice(-2000));
+      return res.status(500).json({
+        message: lastErr?.message || 'LaTeX compilation failed',
+        log: lastErr?.log || '',
+      });
+    }
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="German_Learning_Full_Report.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.end(pdfBuffer);
+  } catch (err) {
+    console.error('LaTeX PDF export error:', err);
+    res.status(500).json({
+      message: 'Failed to reach LaTeX compiler service',
+      hint: 'Ensure the latex-compiler container is running: docker compose up -d latex-compiler',
+    });
   }
 });
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Plus, Trash2, Languages, Save, X, ChevronDown, ChevronUp, MessageSquare, Volume2, AlertTriangle, Camera, Image } from 'lucide-react';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
+import BoxEditor from './BoxEditor';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', orange: '#f97316' };
 
@@ -117,6 +118,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
   const [exchanges, setExchanges] = useState(editDialogue ? editDialogue.exchanges : []);
   const [title, setTitle] = useState(editDialogue?.title || '');
   const [level, setLevel] = useState(editDialogue?.level || 'A2');
+  const [dialogueBoxes, setDialogueBoxes] = useState((editDialogue?.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [translatingIdx, setTranslatingIdx] = useState(null);
@@ -283,6 +285,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
       level,
       participants: finalParticipants,
       exchanges,
+      boxes: dialogueBoxes.map(({ id, ...rest }) => rest),
     };
     if (editDialogue) {
       await onUpdate(editDialogue.recordId, payload);
@@ -324,6 +327,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
     setLevel('A2');
     setParticipants([{ name: '', gender: 'male', photoUrl: '' }, { name: '', gender: 'female', photoUrl: '' }]);
     setExchanges([]);
+    setDialogueBoxes([]);
     setPendingPhotoFiles({});
     setDirty(false);
     setOpen(false);
@@ -591,6 +595,11 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
               </div>
             </div>
           )}
+
+          {/* Boxes */}
+          <div style={{ marginTop: '0.75rem' }}>
+            <BoxEditor boxes={dialogueBoxes} onChange={setDialogueBoxes} />
+          </div>
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>

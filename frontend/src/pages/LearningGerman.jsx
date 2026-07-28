@@ -4,6 +4,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
+import BoxEditor from '../components/BoxEditor';
 
 import { format } from 'date-fns';
 import {
@@ -134,6 +135,7 @@ function GenderBadge({ article }) {
 
 function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading }) {
   const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
+  const [vocabBoxes, setVocabBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
@@ -157,6 +159,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         mastery: editRecord.mastery || 0,
         article: detected ? detected.article : (editRecord.article || ''),
       });
+      setVocabBoxes((editRecord.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
       setOpen(true);
     }
   }, [editRecord]);
@@ -167,7 +170,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     const cat = customCat.trim() || form.category;
     const wordStr = form.article ? `${form.article} ${form.word.trim()}` : form.word.trim();
     const { article, ...rest } = form;
-    const payload = { ...rest, word: wordStr, category: cat };
+    const payload = { ...rest, word: wordStr, category: cat, boxes: vocabBoxes.map(({ id, ...rest }) => rest) };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
       if (newPhotoFile) {
@@ -184,6 +187,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
     setCustomCat('');
     setNewPhotoFile(null);
+    setVocabBoxes([]);
     setDirty(false);
     setOpen(false);
   };
@@ -207,6 +211,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     setShowCancelConfirm(false);
     setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
     setCustomCat('');
+    setVocabBoxes([]);
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -318,6 +323,9 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
               </button>
             </div>
           </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <BoxEditor boxes={vocabBoxes} onChange={setVocabBoxes} />
+          </div>
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{
               padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
@@ -357,6 +365,7 @@ function masteryStars(m, onChange) {
 
 function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
   const [form, setForm] = useState({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
+  const [grammarBoxes, setGrammarBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
@@ -370,6 +379,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
         examples: Array.isArray(editRecord.examples) ? editRecord.examples.join('\n') : (editRecord.examples || ''),
         category: editRecord.category || 'General', level: editRecord.level || 'A1', mastery: editRecord.mastery || 0,
       });
+      setGrammarBoxes((editRecord.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
       setOpen(true);
     }
   }, [editRecord]);
@@ -378,7 +388,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
     e.preventDefault();
     if (!form.rule.trim() || !form.explanation.trim()) return;
     const cat = customCat.trim() || form.category;
-    const payload = { ...form, category: cat, examples: form.examples.split('\n').map(s => s.trim()).filter(Boolean) };
+    const payload = { ...form, category: cat, examples: form.examples.split('\n').map(s => s.trim()).filter(Boolean), boxes: grammarBoxes.map(({ id, ...rest }) => rest) };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
     } else {
@@ -386,6 +396,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
     }
     setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
     setCustomCat('');
+    setGrammarBoxes([]);
     setDirty(false);
     setOpen(false);
   };
@@ -398,6 +409,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
     setShowCancelConfirm(false);
     setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
     setCustomCat('');
+    setGrammarBoxes([]);
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -479,6 +491,9 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
               <button type="button" onClick={() => setShowCancelConfirm(false)} style={{ background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Keep editing</button>
             </div>
           )}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <BoxEditor boxes={grammarBoxes} onChange={setGrammarBoxes} />
+          </div>
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{
               padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
@@ -770,6 +785,7 @@ function WordsChart({ notes }) {
 
 function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
   const [form, setForm] = useState({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
+  const [verbBoxes, setVerbBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
@@ -784,6 +800,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
         wir: editRecord.wir || '', ihr: editRecord.ihr || '', Sie: editRecord.Sie || '',
         category: editRecord.category || 'General',
       });
+      setVerbBoxes((editRecord.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
       setOpen(true);
     }
   }, [editRecord]);
@@ -792,10 +809,11 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
     e.preventDefault();
     if (!form.infinitive.trim() || !form.meaning.trim()) return;
     const cat = customCat.trim() || form.category;
-    if (editRecord) { await onUpdate(editRecord.recordId, { ...form, category: cat }); }
-    else { await onAdd({ ...form, category: cat }); }
+    const payload = { ...form, category: cat, boxes: verbBoxes.map(({ id, ...rest }) => rest) };
+    if (editRecord) { await onUpdate(editRecord.recordId, payload); }
+    else { await onAdd(payload); }
     setForm({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
-    setCustomCat(''); setDirty(false); setOpen(false);
+    setCustomCat(''); setVerbBoxes([]); setDirty(false); setOpen(false);
   };
 
   const handleCancel = () => {
@@ -805,7 +823,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
     }
     setShowCancelConfirm(false);
     setForm({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
-    setCustomCat(''); setDirty(false); setOpen(false);
+    setCustomCat(''); setVerbBoxes([]); setDirty(false); setOpen(false);
     if (onCancelEdit) onCancelEdit();
   };
 
@@ -869,6 +887,9 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
               <button type="button" onClick={() => setShowCancelConfirm(false)} style={{ background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '6px', padding: '3px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>Keep editing</button>
             </div>
           )}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <BoxEditor boxes={verbBoxes} onChange={setVerbBoxes} />
+          </div>
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Cancel</button>
             <button type="submit" disabled={saving} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', cursor: 'pointer', background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, border: 'none', color: '#fff', fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : editRecord ? 'Update Verb' : 'Save Verb'}</button>
@@ -881,6 +902,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
 
 function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) {
   const [form, setForm] = useState({ title: '', germanContent: '', englishContent: '', memoFont: '' });
+  const [memoBoxes, setMemoBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -894,6 +916,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
         englishContent: editRecord.englishContent || '',
         memoFont: editRecord.memoFont || '',
       });
+      setMemoBoxes((editRecord.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
       setOpen(true);
     }
   }, [editRecord]);
@@ -907,6 +930,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
       englishContent: form.englishContent.trim(),
       content: form.germanContent.trim(),
       memoFont: form.memoFont,
+      boxes: memoBoxes.map(({ id, ...rest }) => rest),
     };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
@@ -914,6 +938,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
       await onAdd(payload);
     }
     setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
+    setMemoBoxes([]);
     setDirty(false);
     setOpen(false);
   };
@@ -925,6 +950,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
     }
     setShowCancelConfirm(false);
     setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
+    setMemoBoxes([]);
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -984,6 +1010,9 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
                 placeholder="Write the English translation..."
                 minHeight={100} onUploadImage={onUploadPhoto} />
             </div>
+          </div>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <BoxEditor boxes={memoBoxes} onChange={setMemoBoxes} />
           </div>
           {showCancelConfirm && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
@@ -1471,10 +1500,12 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
   const [phrase, setPhrase] = useState('');
   const [translation, setTranslation] = useState('');
   const [category, setCategory] = useState('general');
+  const [exprBoxes, setExprBoxes] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editPhrase, setEditPhrase] = useState('');
   const [editTranslation, setEditTranslation] = useState('');
   const [editCategory, setEditCategory] = useState('general');
+  const [editBoxes, setEditBoxes] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
 
   const categories = [
@@ -1497,10 +1528,12 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
       category,
       favorite: false,
       sortOrder: expressions.length,
+      boxes: exprBoxes.map(({ id, ...rest }) => rest),
     });
     setPhrase('');
     setTranslation('');
     setCategory('general');
+    setExprBoxes([]);
     setShowAdd(false);
   };
 
@@ -1509,6 +1542,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
     setEditPhrase(e.phrase);
     setEditTranslation(e.translation);
     setEditCategory(e.category || 'general');
+    setEditBoxes((e.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
   };
 
   const saveEdit = async (recordId) => {
@@ -1517,6 +1551,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
       phrase: editPhrase.trim(),
       translation: editTranslation.trim(),
       category: editCategory,
+      boxes: editBoxes.map(({ id, ...rest }) => rest),
     });
     setEditingId(null);
   };
@@ -1566,6 +1601,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
               {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
+          <BoxEditor boxes={exprBoxes} onChange={setExprBoxes} />
           <button onClick={handleAdd} disabled={!phrase.trim() || !translation.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!phrase.trim() || !translation.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, color: (!phrase.trim() || !translation.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!phrase.trim() || !translation.trim()) ? 'not-allowed' : 'pointer', opacity: (!phrase.trim() || !translation.trim()) ? 0.5 : 1 }}>
             Save Expression
           </button>
@@ -1597,6 +1633,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
                         {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
                     </div>
+                    <BoxEditor boxes={editBoxes} onChange={setEditBoxes} />
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                       <button onClick={() => setEditingId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
                       <button onClick={() => saveEdit(expr.recordId)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: 'none', background: C.green, color: '#fff', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
@@ -1636,12 +1673,14 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
   const [meaning, setMeaning] = useState('');
   const [usage, setUsage] = useState('');
   const [category, setCategory] = useState('general');
+  const [idiomBoxes, setIdiomBoxes] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editPhrase, setEditPhrase] = useState('');
   const [editTranslation, setEditTranslation] = useState('');
   const [editMeaning, setEditMeaning] = useState('');
   const [editUsage, setEditUsage] = useState('');
   const [editCategory, setEditCategory] = useState('general');
+  const [editBoxes, setEditBoxes] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
 
   const categories = [
@@ -1666,12 +1705,14 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
       category,
       favorite: false,
       sortOrder: idioms.length,
+      boxes: idiomBoxes.map(({ id, ...rest }) => rest),
     });
     setPhrase('');
     setTranslation('');
     setMeaning('');
     setUsage('');
     setCategory('general');
+    setIdiomBoxes([]);
     setShowAdd(false);
   };
 
@@ -1682,6 +1723,7 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
     setEditMeaning(e.meaning || '');
     setEditUsage(e.usage || '');
     setEditCategory(e.category || 'general');
+    setEditBoxes((e.boxes || []).map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
   };
 
   const saveEdit = async (recordId) => {
@@ -1692,6 +1734,7 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
       meaning: editMeaning.trim(),
       usage: editUsage.trim(),
       category: editCategory,
+      boxes: editBoxes.map(({ id, ...rest }) => rest),
     });
     setEditingId(null);
   };
@@ -1745,6 +1788,7 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
             <input value={meaning} onChange={e => setMeaning(e.target.value)} placeholder="Meaning in English" style={{ ...inputStyle, flex: 1 }} />
             <input value={usage} onChange={e => setUsage(e.target.value)} placeholder="Example usage" style={{ ...inputStyle, flex: 1 }} />
           </div>
+          <BoxEditor boxes={idiomBoxes} onChange={setIdiomBoxes} />
           <button onClick={handleAdd} disabled={!phrase.trim() || !translation.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!phrase.trim() || !translation.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.orange}, #ea580c)`, color: (!phrase.trim() || !translation.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!phrase.trim() || !translation.trim()) ? 'not-allowed' : 'pointer', opacity: (!phrase.trim() || !translation.trim()) ? 0.5 : 1 }}>
             Save Idiom
           </button>
@@ -1780,6 +1824,7 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
                       <input value={editMeaning} onChange={e => setEditMeaning(e.target.value)} style={{ ...inputStyle, flex: 1 }} placeholder="Meaning" />
                       <input value={editUsage} onChange={e => setEditUsage(e.target.value)} style={{ ...inputStyle, flex: 1 }} placeholder="Example usage" />
                     </div>
+                    <BoxEditor boxes={editBoxes} onChange={setEditBoxes} />
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                       <button onClick={() => setEditingId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
                       <button onClick={() => saveEdit(idiom.recordId)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: 'none', background: C.orange, color: '#fff', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
@@ -2697,23 +2742,35 @@ export default function LearningGerman() {
 
   const handleExport = async () => {
     try {
-      const { exportGermanPDF } = await import('../utils/exportGermanPDF');
-      await exportGermanPDF(germanData);
-    } catch (e) { setError(`PDF error: ${e.message}`); console.error(e); }
+      const { exportGermanLaTeX } = await import('../utils/exportGermanLaTeX');
+      const result = await exportGermanLaTeX(germanData);
+      if (result?.message) setError(null); // clear any prior error
+    } catch (e) { setError(`LaTeX error: ${e.message}`); console.error(e); }
     setShowExportMenu(false);
   };
 
   const handleExportDailyNote = async () => {
     try {
-      const { exportGermanPDF } = await import('../utils/exportGermanPDF');
-      const dayNotes = germanData.filter(r => r.type === 'note' && r.date === dailyExportDate);
-      if (dayNotes.length === 0) {
-        setError('No notes found for this date.');
+      const { exportGermanLaTeX } = await import('../utils/exportGermanLaTeX');
+      // Collect ALL record types created on the selected date
+      const dayRecords = germanData.filter(r => {
+        if (r.type === 'note') return r.date === dailyExportDate;
+        // For other types, compare createdAt date (YYYY-MM-DD) to the selected date
+        if (r.createdAt) {
+          const created = typeof r.createdAt === 'number'
+            ? new Date(r.createdAt).toISOString().slice(0, 10)
+            : String(r.createdAt).slice(0, 10);
+          return created === dailyExportDate;
+        }
+        return false;
+      });
+      if (dayRecords.length === 0) {
+        setError('No records found for this date.');
         setShowDailyExportCalendar(false);
         return;
       }
-      await exportGermanPDF(dayNotes);
-    } catch (e) { setError(`PDF error: ${e.message}`); console.error(e); }
+      await exportGermanLaTeX(dayRecords, { singleDay: true, dayDate: dailyExportDate });
+    } catch (e) { setError(`LaTeX error: ${e.message}`); console.error(e); }
     setShowDailyExportCalendar(false);
     setShowExportMenu(false);
   };
@@ -3919,24 +3976,78 @@ export default function LearningGerman() {
               />
             </div>
             {(() => {
-              const count = germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length;
+              const count = germanData.filter(r => {
+                if (r.type === 'note') return r.date === dailyExportDate;
+                if (r.createdAt) {
+                  const created = typeof r.createdAt === 'number'
+                    ? new Date(r.createdAt).toISOString().slice(0, 10)
+                    : String(r.createdAt).slice(0, 10);
+                  return created === dailyExportDate;
+                }
+                return false;
+              }).length;
               return (
                 <div style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: count > 0 ? `${C.green}10` : `${C.red}10`, border: `1px solid ${count > 0 ? C.green : C.red}20`, marginBottom: '1rem' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 600, color: count > 0 ? C.green : C.red }}>
-                    {count > 0 ? `${count} note${count > 1 ? 's' : ''} found` : 'No notes for this date'}
+                    {count > 0 ? `${count} record${count > 1 ? 's' : ''} found` : 'No records for this date'}
                   </span>
                 </div>
               );
             })()}
-            <button onClick={handleExportDailyNote} disabled={germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length === 0} style={{
+            <button onClick={handleExportDailyNote} disabled={germanData.filter(r => {
+              if (r.type === 'note') return r.date === dailyExportDate;
+              if (r.createdAt) {
+                const created = typeof r.createdAt === 'number'
+                  ? new Date(r.createdAt).toISOString().slice(0, 10)
+                  : String(r.createdAt).slice(0, 10);
+                return created === dailyExportDate;
+              }
+              return false;
+            }).length === 0} style={{
               width: '100%', padding: '0.7rem',
-              background: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0
+              background: germanData.filter(r => {
+                if (r.type === 'note') return r.date === dailyExportDate;
+                if (r.createdAt) {
+                  const created = typeof r.createdAt === 'number'
+                    ? new Date(r.createdAt).toISOString().slice(0, 10)
+                    : String(r.createdAt).slice(0, 10);
+                  return created === dailyExportDate;
+                }
+                return false;
+              }).length > 0
                 ? `linear-gradient(135deg, ${C.blue}, ${C.purple})` : 'var(--bg)',
               border: 'none', borderRadius: '10px',
-              cursor: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0 ? 'pointer' : 'not-allowed',
-              color: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0 ? '#fff' : 'var(--text-muted)',
+              cursor: germanData.filter(r => {
+                if (r.type === 'note') return r.date === dailyExportDate;
+                if (r.createdAt) {
+                  const created = typeof r.createdAt === 'number'
+                    ? new Date(r.createdAt).toISOString().slice(0, 10)
+                    : String(r.createdAt).slice(0, 10);
+                  return created === dailyExportDate;
+                }
+                return false;
+              }).length > 0 ? 'pointer' : 'not-allowed',
+              color: germanData.filter(r => {
+                if (r.type === 'note') return r.date === dailyExportDate;
+                if (r.createdAt) {
+                  const created = typeof r.createdAt === 'number'
+                    ? new Date(r.createdAt).toISOString().slice(0, 10)
+                    : String(r.createdAt).slice(0, 10);
+                  return created === dailyExportDate;
+                }
+                return false;
+              }).length > 0 ? '#fff' : 'var(--text-muted)',
               fontWeight: 700, fontSize: '0.9rem',
-              opacity: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0 ? 1 : 0.5,
+              opacity: germanData.filter(r => {
+                if (r.type === 'note') return r.date === dailyExportDate;
+                if (r.createdAt) {
+                  const created = typeof r.createdAt === 'number'
+                    ? new Date(r.createdAt).toISOString().slice(0, 10)
+                    : String(r.createdAt).slice(0, 10);
+                  return created === dailyExportDate;
+                }
+                return false;
+              }).length > 0 ? 1 : 0.5,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               <Download size={16} /> Download Report
