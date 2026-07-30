@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Plus, Trash2, Languages, Save, X, ChevronDown, ChevronUp, MessageSquare, Volume2, AlertTriangle, Camera, Image } from 'lucide-react';
+import { Plus, Trash2, Languages, Save, X, ChevronDown, ChevronUp, MessageSquare, Volume2, AlertTriangle, Camera, Image, HelpCircle, FileText } from 'lucide-react';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', orange: '#f97316' };
@@ -117,6 +117,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
   const [exchanges, setExchanges] = useState(editDialogue ? editDialogue.exchanges : []);
   const [title, setTitle] = useState(editDialogue?.title || '');
   const [level, setLevel] = useState(editDialogue?.level || 'A2');
+  const [boxes, setBoxes] = useState(editDialogue?.boxes || []);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [translatingIdx, setTranslatingIdx] = useState(null);
@@ -283,6 +284,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
       level,
       participants: finalParticipants,
       exchanges,
+      boxes,
     };
     if (editDialogue) {
       await onUpdate(editDialogue.recordId, payload);
@@ -324,6 +326,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
     setLevel('A2');
     setParticipants([{ name: '', gender: 'male', photoUrl: '' }, { name: '', gender: 'female', photoUrl: '' }]);
     setExchanges([]);
+    setBoxes([]);
     setPendingPhotoFiles({});
     setDirty(false);
     setOpen(false);
@@ -591,6 +594,55 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
               </div>
             </div>
           )}
+
+          {/* Boxes */}
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Info / Warning / Quote Boxes</label>
+            <div style={{ marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: boxes.length > 0 ? '0.45rem' : 0 }}>
+                {[
+                  { type: 'info', color: C.green, icon: HelpCircle, label: 'Info Box' },
+                  { type: 'warning', color: C.red, icon: AlertTriangle, label: 'Warning Box' },
+                  { type: 'quote', color: C.purple, icon: FileText, label: 'Quote Box' },
+                ].map(({ type, color, icon: Icon, label }) => (
+                  <button key={type} type="button" onClick={() => {
+                    const newBox = { id: `box-${Date.now()}`, type, content: '' };
+                    setBoxes(prev => [...prev, newBox]);
+                    setDirty(true);
+                  }} style={{
+                    display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.65rem',
+                    borderRadius: '6px', border: `1px solid ${color}40`,
+                    background: 'var(--bg-card)', color, cursor: 'pointer',
+                    fontSize: '0.72rem', fontWeight: 600, transition: 'all 0.15s',
+                  }}>
+                    <Icon size={12} /> add {label}
+                  </button>
+                ))}
+              </div>
+              {boxes.map(box => {
+                const cfg = { info: { color: C.green, icon: HelpCircle }, warning: { color: C.red, icon: AlertTriangle }, quote: { color: C.purple, icon: FileText } }[box.type];
+                const Icon = cfg.icon;
+                return (
+                  <div key={box.id} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.3rem',
+                    padding: '0.3rem 0.5rem', borderRadius: '6px',
+                    background: `${cfg.color}08`, border: `1px solid ${cfg.color}20`,
+                  }}>
+                    <Icon size={13} style={{ color: cfg.color, flexShrink: 0 }} />
+                    <input value={box.content} onChange={e => {
+                      setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, content: e.target.value } : b));
+                      setDirty(true);
+                    }}
+                      placeholder={box.type === 'info' ? 'Key takeaways, definitions...' : box.type === 'warning' ? 'Common mistakes...' : 'A memorable quote...'}
+                      style={{ flex: 1, ...inputBase, padding: '0.3rem 0.45rem', fontSize: '0.75rem', border: 'none', background: 'transparent', color: 'var(--text-primary)' }} />
+                    <button type="button" onClick={() => { setBoxes(prev => prev.filter(b => b.id !== box.id)); setDirty(true); }} style={{
+                      background: 'none', border: 'none', cursor: 'pointer', color: cfg.color, padding: 2, opacity: 0.6, fontSize: 0,
+                    }}><X size={12} /></button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>

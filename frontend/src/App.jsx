@@ -3,7 +3,7 @@ import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange, Calendar,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
   WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X,
-  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank, Brain
+  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank, Brain, BookA
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -31,6 +31,7 @@ import LearningAws from './pages/LearningAws';
 import Wishlist from './pages/Wishlist';
 import DeepFocusPage from './pages/DeepFocusPage';
 import LastDay from './pages/LastDay';
+import Alphabets from './pages/Alphabets';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
@@ -61,13 +62,14 @@ const NAV_LINKS = [
   { to: '/savings',       icon: PiggyBank,       label: 'Savings' },
   { to: '/last-day',      icon: Flag,            label: 'Last Day' },
   { to: '/german',        icon: Languages,       label: 'Learning German' },
+  { to: '/alphabets',     icon: BookA,           label: 'Alphabets',    requiresA1: true },
   { to: '/aws',           icon: Cloud,           label: 'Learning AWS' },
   { to: '/settings',      icon: SettingsIcon,    label: 'Settings' },
   { to: '/security',      icon: ShieldCheck,     label: 'Security' },
 ];
 
 function App() {
-  const { loading, user, logout, isOnline, toasts, dismissToast } = useHabits();
+  const { loading, user, logout, isOnline, toasts, dismissToast, germanProgress, fetchGermanProgress } = useHabits();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
@@ -99,6 +101,10 @@ function App() {
     return () => clearInterval(interval);
   }, [user]);
 
+  useEffect(() => {
+    if (user) fetchGermanProgress();
+  }, [user, fetchGermanProgress]);
+
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   // ── Check Usage Access permission on native ──
@@ -118,6 +124,9 @@ function App() {
   const openUsageSettings = async () => {
     try { await UsageStats.openSettings(); } catch (_) {}
   };
+
+  const isA1_1 = !germanProgress || germanProgress.currentLevel === 'A1.1';
+  const visibleLinks = NAV_LINKS.filter(l => !l.requiresA1 || isA1_1);
 
   if (location.pathname.startsWith('/admin')) {
     return <Admin />;
@@ -191,7 +200,7 @@ function App() {
         <div style={{ height: '1px', background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
 
         <nav className="flex-col gap-1 evolvio-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-          {NAV_LINKS.map(({ to, icon: Icon, label }) => (
+          {visibleLinks.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <Icon size={18} /> 
               <span style={{ fontSize: '0.95rem' }}>{label}</span>
@@ -293,6 +302,7 @@ function App() {
             <Route path="/sidehustle" element={<SideHustle />} />
             <Route path="/video-editing" element={<VideoEditing />} />
             <Route path="/german"    element={<LearningGerman />} />
+            <Route path="/alphabets" element={<Alphabets />} />
             <Route path="/aws"       element={<LearningAws />} />
             <Route path="/wishlist"  element={<Wishlist />} />
             <Route path="/savings"   element={<SavingsVault />} />
@@ -305,7 +315,7 @@ function App() {
 
       {/* ── Mobile bottom tab bar (visible only on mobile via CSS) ── */}
       <nav className="mobile-nav">
-        {NAV_LINKS.map(({ to, icon: Icon, label }) => (
+        {visibleLinks.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}

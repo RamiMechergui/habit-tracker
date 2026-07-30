@@ -17,6 +17,25 @@ import {
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
 const PERSON_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 const PRESET_CATEGORIES = ['General', 'Animals', 'Food', 'Travel', 'Work', 'Daily Life', 'Grammar', 'Vocabulary', 'Phrases'];
+const ALL_LEVELS = ['A1.1','A1.2','A2.1','A2.2','B1.1','B1.2','B2.1','B2.2','B2.3','C1.1','C1.2','C2.1','C2.2'];
+const LEVEL_COLORS = { 'A1.1':'#3b82f6','A1.2':'#6366f1','A2.1':'#8b5cf6','A2.2':'#a855f7','B1.1':'#ec4899','B1.2':'#f43f5e','B2.1':'#f97316','B2.2':'#eab308','B2.3':'#10b981','C1.1':'#14b8a6','C1.2':'#06b6d4','C2.1':'#3b82f6','C2.2':'#8b5cf6' };
+
+function LevelBadge({ level, size = 'sm' }) {
+  const color = LEVEL_COLORS[level] || '#6b7280';
+  const fontS = size === 'sm' ? '0.7rem' : '0.82rem';
+  const pad = size === 'sm' ? '3px 10px' : '5px 14px';
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: pad, borderRadius: '20px', fontSize: fontS,
+      fontWeight: 700, letterSpacing: '0.5px',
+      background: `${color}18`, color, border: `1px solid ${color}35`,
+      textTransform: 'uppercase',
+    }}>
+      <GraduationCap size={size === 'sm' ? 11 : 14} /> {level}
+    </span>
+  );
+}
 
 const inputBase = {
   width: '100%', marginTop: 4, padding: '0.55rem 0.8rem',
@@ -133,7 +152,8 @@ function GenderBadge({ article }) {
 }
 
 function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading }) {
-  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
+  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: 'A1.1' });
+  const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
@@ -156,7 +176,9 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         plural: editRecord.plural || '',
         mastery: editRecord.mastery || 0,
         article: detected ? detected.article : (editRecord.article || ''),
+        level: editRecord.level || 'A1.1',
       });
+      setBoxes(editRecord.boxes || []);
       setOpen(true);
     }
   }, [editRecord]);
@@ -167,7 +189,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     const cat = customCat.trim() || form.category;
     const wordStr = form.article ? `${form.article} ${form.word.trim()}` : form.word.trim();
     const { article, ...rest } = form;
-    const payload = { ...rest, word: wordStr, category: cat };
+    const payload = { ...rest, word: wordStr, category: cat, boxes };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
       if (newPhotoFile) {
@@ -181,7 +203,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         setNewPhotoFile(null);
       }
     }
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: 'A1.1' });
     setCustomCat('');
     setNewPhotoFile(null);
     setDirty(false);
@@ -205,8 +227,10 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '' });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: 'A1.1' });
+    setBoxes([]);
     setCustomCat('');
+    setNewPhotoFile(null);
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -248,29 +272,36 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
               <input value={form.word} onChange={e => set('word', e.target.value)} placeholder="e.g. Hund" style={{ ...inputBase, flex: 1 }} />
             </div>
           </div>
-          {[
-            { k: 'translation', label: 'Translation *', ph: 'e.g. Dog' },
-            { k: 'plural', label: 'Plural Form', ph: 'e.g. Hunde' },
-            { k: 'example', label: 'Example Sentence', ph: 'e.g. Der Hund bellt.' },
-            { k: 'category', label: 'Category', ph: '', type: 'select' },
-          ].map(({ k, label, ph, type }) => (
-            <div key={k}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{label}</label>
-              {type === 'select' ? (
-                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                  <select value={form.category} onChange={e => set('category', e.target.value)} style={{ ...inputBase, width: 'auto', flex: 1, padding: '0.5rem 0.7rem' }}>
-                    {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <input value={customCat} onChange={e => setCustomCat(e.target.value)} placeholder="New cat" style={{ ...inputBase, width: 100, padding: '0.5rem 0.7rem', fontSize: '0.8rem' }} />
-                </div>
-              ) : (
-                <input value={form[k]} onChange={e => set(k, e.target.value)} placeholder={ph} style={inputBase} />
-              )}
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Translation *</label>
+            <input value={form.translation} onChange={e => set('translation', e.target.value)} placeholder="e.g. Dog" style={inputBase} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Example Sentence</label>
+            <input value={form.example} onChange={e => set('example', e.target.value)} placeholder="e.g. Der Hund bellt." style={inputBase} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>CEFR Level</label>
+            <select value={form.level} onChange={e => set('level', e.target.value)} style={inputBase}>
+              {ALL_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Category</label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <select value={form.category} onChange={e => set('category', e.target.value)} style={{ ...inputBase, width: 'auto', flex: 1, padding: '0.5rem 0.7rem' }}>
+                {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input value={customCat} onChange={e => setCustomCat(e.target.value)} placeholder="New cat" style={{ ...inputBase, width: 100, padding: '0.5rem 0.7rem', fontSize: '0.8rem' }} />
             </div>
-          ))}
+          </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Notes</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." rows={2} style={{ ...inputBase, resize: 'vertical' }} />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Info / Warning / Quote Boxes</label>
+            <BoxManager boxes={boxes} onBoxesChange={setBoxes} />
           </div>
           {showCancelConfirm && (
             <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem' }}>
@@ -335,7 +366,87 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
   );
 }
 
-const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'];
+function BoxManager({ boxes = [], onBoxesChange }) {
+  const addBox = (type) => {
+    const newBox = { id: `box-${Date.now()}`, type, content: '' };
+    onBoxesChange([...boxes, newBox]);
+  };
+  const updateBox = (id, content) => {
+    onBoxesChange(boxes.map(b => b.id === id ? { ...b, content } : b));
+  };
+  const deleteBox = (id) => {
+    onBoxesChange(boxes.filter(b => b.id !== id));
+  };
+  const config = {
+    info: { color: C.green, icon: HelpCircle, label: 'Info', placeholder: 'Key takeaways, definitions, or helpful tips...' },
+    warning: { color: C.red, icon: AlertTriangle, label: 'Warning', placeholder: 'Common mistakes, things to watch out for...' },
+    quote: { color: C.purple, icon: FileText, label: 'Quote', placeholder: 'A memorable quote, phrase, or sentence...' },
+  };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: boxes.length > 0 ? '0.45rem' : 0 }}>
+        {Object.entries(config).map(([type, cfg]) => (
+          <button key={type} type="button" onClick={() => addBox(type)} style={{
+            display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.65rem',
+            borderRadius: '6px', border: `1px solid ${cfg.color}40`,
+            background: 'var(--bg-card)', color: cfg.color, cursor: 'pointer',
+            fontSize: '0.72rem', fontWeight: 600, transition: 'all 0.15s',
+          }}>
+            <cfg.icon size={12} /> add {cfg.label} Box
+          </button>
+        ))}
+      </div>
+      {boxes.map(box => {
+        const cfg = config[box.type] || config.info;
+        return (
+          <div key={box.id} style={{
+            display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.3rem',
+            padding: '0.3rem 0.5rem', borderRadius: '6px',
+            background: `${cfg.color}08`, border: `1px solid ${cfg.color}20`,
+          }}>
+            <cfg.icon size={13} style={{ color: cfg.color, flexShrink: 0 }} />
+            <input value={box.content} onChange={e => updateBox(box.id, e.target.value)}
+              placeholder={cfg.placeholder}
+              style={{ flex: 1, ...inputBase, padding: '0.3rem 0.45rem', fontSize: '0.75rem', border: 'none', background: 'transparent', color: 'var(--text-primary)' }} />
+            <button type="button" onClick={() => deleteBox(box.id)} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: cfg.color, padding: 2, opacity: 0.6, fontSize: 0,
+            }}><X size={12} /></button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BoxDisplay({ boxes }) {
+  if (!boxes?.length) return null;
+  const config = {
+    info: { color: C.green, icon: HelpCircle, label: 'Info' },
+    warning: { color: C.red, icon: AlertTriangle, label: 'Warning' },
+    quote: { color: C.purple, icon: FileText, label: 'Quote' },
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.4rem' }}>
+      {boxes.map(box => {
+        const cfg = config[box.type] || config.info;
+        const Icon = cfg.icon;
+        return (
+          <div key={box.id} style={{
+            display: 'flex', alignItems: 'flex-start', gap: '0.35rem',
+            padding: '0.3rem 0.5rem', borderRadius: '6px',
+            background: `${cfg.color}08`, border: `1px solid ${cfg.color}20`,
+            fontSize: '0.78rem', color: 'var(--text-primary)', lineHeight: 1.4,
+          }}>
+            <Icon size={12} style={{ color: cfg.color, flexShrink: 0, marginTop: 2 }} />
+            <span>{box.content || <span style={{ fontStyle: 'italic', opacity: 0.5 }}>Empty {cfg.label}</span>}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const CEFR_LEVELS = ALL_LEVELS;
 const LEITNER_INTERVALS = [1, 3, 7, 14, 30];
 
 function calcNextReview(box) {
@@ -356,7 +467,8 @@ function masteryStars(m, onChange) {
 }
 
 function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
-  const [form, setForm] = useState({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
+  const [form, setForm] = useState({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1.1', mastery: 0 });
+  const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
@@ -368,8 +480,9 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
       setForm({
         rule: editRecord.rule || '', explanation: editRecord.explanation || '',
         examples: Array.isArray(editRecord.examples) ? editRecord.examples.join('\n') : (editRecord.examples || ''),
-        category: editRecord.category || 'General', level: editRecord.level || 'A1', mastery: editRecord.mastery || 0,
+        category: editRecord.category || 'General', level: editRecord.level || 'A1.1', mastery: editRecord.mastery || 0,
       });
+      setBoxes(editRecord.boxes || []);
       setOpen(true);
     }
   }, [editRecord]);
@@ -378,13 +491,14 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
     e.preventDefault();
     if (!form.rule.trim() || !form.explanation.trim()) return;
     const cat = customCat.trim() || form.category;
-    const payload = { ...form, category: cat, examples: form.examples.split('\n').map(s => s.trim()).filter(Boolean) };
+    const payload = { ...form, category: cat, examples: form.examples.split('\n').map(s => s.trim()).filter(Boolean), boxes };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
     } else {
       await onAdd(payload);
     }
-    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
+    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1.1', mastery: 0 });
+    setBoxes([]);
     setCustomCat('');
     setDirty(false);
     setOpen(false);
@@ -396,7 +510,8 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1', mastery: 0 });
+    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1.1', mastery: 0 });
+    setBoxes([]);
     setCustomCat('');
     setDirty(false);
     setOpen(false);
@@ -471,6 +586,10 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mastery</label>
             <div style={{ marginTop: 4 }}>{masteryStars(form.mastery, v => setForm(p => ({ ...p, mastery: v })))}</div>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Info / Warning / Quote Boxes</label>
+            <BoxManager boxes={boxes} onBoxesChange={setBoxes} />
           </div>
           {showCancelConfirm && (
             <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem' }}>
@@ -770,6 +889,7 @@ function WordsChart({ notes }) {
 
 function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
   const [form, setForm] = useState({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
+  const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
@@ -784,6 +904,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
         wir: editRecord.wir || '', ihr: editRecord.ihr || '', Sie: editRecord.Sie || '',
         category: editRecord.category || 'General',
       });
+      setBoxes(editRecord.boxes || []);
       setOpen(true);
     }
   }, [editRecord]);
@@ -792,10 +913,10 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
     e.preventDefault();
     if (!form.infinitive.trim() || !form.meaning.trim()) return;
     const cat = customCat.trim() || form.category;
-    if (editRecord) { await onUpdate(editRecord.recordId, { ...form, category: cat }); }
-    else { await onAdd({ ...form, category: cat }); }
+    if (editRecord) { await onUpdate(editRecord.recordId, { ...form, category: cat, boxes }); }
+    else { await onAdd({ ...form, category: cat, boxes }); }
     setForm({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
-    setCustomCat(''); setDirty(false); setOpen(false);
+    setBoxes([]); setCustomCat(''); setDirty(false); setOpen(false);
   };
 
   const handleCancel = () => {
@@ -805,7 +926,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
     }
     setShowCancelConfirm(false);
     setForm({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
-    setCustomCat(''); setDirty(false); setOpen(false);
+    setBoxes([]); setCustomCat(''); setDirty(false); setOpen(false);
     if (onCancelEdit) onCancelEdit();
   };
 
@@ -862,6 +983,10 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
               </div>
             ))}
           </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Info / Warning / Quote Boxes</label>
+            <BoxManager boxes={boxes} onBoxesChange={setBoxes} />
+          </div>
           {showCancelConfirm && (
             <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem' }}>
               <span style={{ color: '#f59e0b', fontWeight: 600 }}>Discard unsaved changes?</span>
@@ -881,6 +1006,7 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
 
 function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) {
   const [form, setForm] = useState({ title: '', germanContent: '', englishContent: '', memoFont: '' });
+  const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -894,6 +1020,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
         englishContent: editRecord.englishContent || '',
         memoFont: editRecord.memoFont || '',
       });
+      setBoxes(editRecord.boxes || []);
       setOpen(true);
     }
   }, [editRecord]);
@@ -907,6 +1034,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
       englishContent: form.englishContent.trim(),
       content: form.germanContent.trim(),
       memoFont: form.memoFont,
+      boxes,
     };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
@@ -914,6 +1042,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
       await onAdd(payload);
     }
     setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
+    setBoxes([]);
     setDirty(false);
     setOpen(false);
   };
@@ -925,6 +1054,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
     }
     setShowCancelConfirm(false);
     setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
+    setBoxes([]);
     setDirty(false);
     setOpen(false);
     if (onCancelEdit) onCancelEdit();
@@ -984,6 +1114,10 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
                 placeholder="Write the English translation..."
                 minHeight={100} onUploadImage={onUploadPhoto} />
             </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Info / Warning / Quote Boxes</label>
+            <BoxManager boxes={boxes} onBoxesChange={setBoxes} />
           </div>
           {showCancelConfirm && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
@@ -1471,10 +1605,12 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
   const [phrase, setPhrase] = useState('');
   const [translation, setTranslation] = useState('');
   const [category, setCategory] = useState('general');
+  const [boxes, setBoxes] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editPhrase, setEditPhrase] = useState('');
   const [editTranslation, setEditTranslation] = useState('');
   const [editCategory, setEditCategory] = useState('general');
+  const [editBoxes, setEditBoxes] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
 
   const categories = [
@@ -1497,10 +1633,12 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
       category,
       favorite: false,
       sortOrder: expressions.length,
+      boxes,
     });
     setPhrase('');
     setTranslation('');
     setCategory('general');
+    setBoxes([]);
     setShowAdd(false);
   };
 
@@ -1509,6 +1647,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
     setEditPhrase(e.phrase);
     setEditTranslation(e.translation);
     setEditCategory(e.category || 'general');
+    setEditBoxes(e.boxes || []);
   };
 
   const saveEdit = async (recordId) => {
@@ -1517,6 +1656,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
       phrase: editPhrase.trim(),
       translation: editTranslation.trim(),
       category: editCategory,
+      boxes: editBoxes,
     });
     setEditingId(null);
   };
@@ -1566,6 +1706,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
               {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
+          <BoxManager boxes={boxes} onBoxesChange={setBoxes} />
           <button onClick={handleAdd} disabled={!phrase.trim() || !translation.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!phrase.trim() || !translation.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, color: (!phrase.trim() || !translation.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!phrase.trim() || !translation.trim()) ? 'not-allowed' : 'pointer', opacity: (!phrase.trim() || !translation.trim()) ? 0.5 : 1 }}>
             Save Expression
           </button>
@@ -1597,28 +1738,32 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
                         {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
                     </div>
+                    <BoxManager boxes={editBoxes} onBoxesChange={setEditBoxes} />
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                       <button onClick={() => setEditingId(null)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
                       <button onClick={() => saveEdit(expr.recordId)} style={{ padding: '0.35rem 0.7rem', borderRadius: '6px', border: 'none', background: C.green, color: '#fff', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
                     </div>
                   </>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 2, minWidth: 120 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{expr.phrase}</div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{expr.translation}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 2, minWidth: 120 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{expr.phrase}</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{expr.translation}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto' }}>
+                        <button onClick={() => toggleFavorite(expr)} title="Favorite" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: expr.favorite ? C.gold : 'var(--text-muted)' }}>
+                          <Star size={15} fill={expr.favorite ? C.gold : 'none'} />
+                        </button>
+                        <button onClick={() => startEdit(expr)} title="Edit" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }}>
+                          <Edit3 size={15} />
+                        </button>
+                        <button onClick={async () => { if (confirm('Delete this expression?')) await onDelete(expr.recordId); }} title="Delete" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto' }}>
-                      <button onClick={() => toggleFavorite(expr)} title="Favorite" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: expr.favorite ? C.gold : 'var(--text-muted)' }}>
-                        <Star size={15} fill={expr.favorite ? C.gold : 'none'} />
-                      </button>
-                      <button onClick={() => startEdit(expr)} title="Edit" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }}>
-                        <Edit3 size={15} />
-                      </button>
-                      <button onClick={async () => { if (confirm('Delete this expression?')) await onDelete(expr.recordId); }} title="Delete" style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }}>
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                    {expr.boxes && <BoxDisplay boxes={expr.boxes} />}
                   </div>
                 )}
               </div>
@@ -2231,6 +2376,7 @@ export default function LearningGerman() {
     addGermanIdiom, updateGermanIdiom,
     addGermanMistake, updateGermanMistake,
     addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
+    germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -2247,7 +2393,6 @@ export default function LearningGerman() {
   const [noteFont, setNoteFont] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
   const [noteBoxes, setNoteBoxes] = useState([]);
-  const [showAddBoxMenu, setShowAddBoxMenu] = useState(false);
   const [selectedBoxId, setSelectedBoxId] = useState(null);
   const [draggedBoxId, setDraggedBoxId] = useState(null);
   const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
@@ -2283,6 +2428,7 @@ export default function LearningGerman() {
   const [editMemo, setEditMemo] = useState(null);
   const [practiceMemo, setPracticeMemo] = useState(null);
   const [memoSaving, setMemoSaving] = useState(false);
+  const [levelFilter, setLevelFilter] = useState('all');
   const PAGE_SIZE = 15;
 
   const debouncedSearch = useDebounce(search, 250);
@@ -2291,7 +2437,7 @@ export default function LearningGerman() {
     (async () => {
       setLoading(true);
       try {
-        await fetchGermanData();
+        await Promise.all([fetchGermanData(), fetchGermanProgress()]);
       } catch (e) {
         setError(e.message || 'Failed to load German data');
       } finally {
@@ -2300,8 +2446,19 @@ export default function LearningGerman() {
     })();
   }, [fetchGermanData]);
 
-  const vocab     = useMemo(() => germanData.filter(r => r.type === 'vocab'), [germanData]);
-  const grammar   = useMemo(() => germanData.filter(r => r.type === 'grammar'), [germanData]);
+  const currentLevel = germanProgress?.currentLevel || 'A1.1';
+  const levelsCompleted = germanProgress?.levelsCompleted || [];
+
+  const vocab     = useMemo(() => {
+    let filtered = germanData.filter(r => r.type === 'vocab');
+    if (levelFilter !== 'all') filtered = filtered.filter(r => r.level === levelFilter);
+    return filtered;
+  }, [germanData, levelFilter]);
+  const grammar   = useMemo(() => {
+    let filtered = germanData.filter(r => r.type === 'grammar');
+    if (levelFilter !== 'all') filtered = filtered.filter(r => r.level === levelFilter);
+    return filtered;
+  }, [germanData, levelFilter]);
   const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb'), [germanData]);
   const dialogues = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'dialogue');
@@ -2357,7 +2514,6 @@ export default function LearningGerman() {
       setNoteBoxes([]);
     }
     setSelectedBoxId(null);
-    setShowAddBoxMenu(false);
     setNoteSaved(false);
   }, [selectedDate, germanData, noteCategory]);
 
@@ -2521,7 +2677,6 @@ export default function LearningGerman() {
     const newBox = { id: `box-${Date.now()}`, type, content: '', author: '' };
     const updated = [...noteBoxes, newBox];
     setNoteBoxes(updated);
-    setShowAddBoxMenu(false);
     setSelectedBoxId(newBox.id);
     autoSave(noteContent, updated);
   };
@@ -2726,7 +2881,7 @@ export default function LearningGerman() {
   // ── Dialogue handlers ─────────────────────────────────────────────────────
   const handleAddDialogue = async (payload) => {
     setDialogueSaving(true);
-    try { await addGermanDialogue(payload); setNewDialogueOpen(false); } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
+    try { const created = await addGermanDialogue(payload); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
   };
 
   const handleUpdateDialogue = async (recordId, payload) => {
@@ -2816,7 +2971,12 @@ export default function LearningGerman() {
           </div>
           <div style={{ minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: isMobile ? '1.2rem' : '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', background: `linear-gradient(135deg, ${C.gold} 0%, ${C.red} 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Learning German</h2>
-            <p style={{ margin: 0, fontSize: isMobile ? '0.72rem' : '0.8rem', color: 'var(--text-muted)' }}>Track vocabulary, grammar &amp; daily progress</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              <LevelBadge level={currentLevel} />
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                {(levelsCompleted.length || 0)} / 13 levels done
+              </span>
+            </div>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
@@ -2826,6 +2986,23 @@ export default function LearningGerman() {
           <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} />
           <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
         </div>
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+        marginBottom: '0.5rem',
+      }}>
+        <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>Filter by Level:</label>
+        <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} style={{
+          padding: '0.4rem 0.7rem', borderRadius: '8px', border: '1px solid var(--border)',
+          background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.8rem',
+          cursor: 'pointer', outline: 'none',
+        }}>
+          <option value="all">All Levels</option>
+          {ALL_LEVELS.map(l => (
+            <option key={l} value={l}>{l}</option>
+          ))}
+        </select>
       </div>
 
       <div style={{
@@ -2844,7 +3021,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
         <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
-        <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />
+        {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -2898,6 +3075,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
         <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
+        {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -3007,7 +3185,7 @@ export default function LearningGerman() {
                 <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
                   Study Sessions
                 </h3>
-                <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); setSelectedBoxId(null); setShowAddBoxMenu(false); }} style={{
+                <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); setSelectedBoxId(null); }} style={{
                   padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
                   background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
                 }}>+ New Note</button>
@@ -3112,52 +3290,39 @@ export default function LearningGerman() {
             </div>
             <div style={{ marginBottom: '0.85rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: noteBoxes.length > 0 ? '0.65rem' : 0 }}>
-                <div style={{ position: 'relative' }}>
-                  <button onClick={() => setShowAddBoxMenu(p => !p)} style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '0.45rem 0.85rem', borderRadius: '8px',
-                    background: showAddBoxMenu ? `${C.gold}20` : 'var(--bg-card)',
-                    border: `1px solid ${showAddBoxMenu ? C.gold + '60' : 'var(--border)'}`,
-                    color: showAddBoxMenu ? C.gold : 'var(--text-primary)',
-                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
-                    transition: 'all 0.2s ease',
-                  }}>
-                    <Plus size={14} /> Add Box
-                    <ChevronDown size={13} style={{ transform: showAddBoxMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-                  </button>
-                  {showAddBoxMenu && (
-                    <div style={{
-                      position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20,
-                      background: 'var(--bg-card)', border: '1px solid var(--border)',
-                      borderRadius: '10px', padding: '0.35rem', minWidth: 180,
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-                    }}>
-                      {[
-                        { type: 'info', icon: HelpCircle, label: 'Info Box', color: C.green, desc: 'Key takeaways & tips' },
-                        { type: 'warning', icon: AlertTriangle, label: 'Warning Box', color: C.red, desc: 'Mistakes & watch-outs' },
-                        { type: 'quote', icon: FileText, label: 'Quote Box', color: C.purple, desc: 'Memorable quotes' },
-                      ].map(opt => (
-                        <button key={opt.type} onClick={() => addNoteBox(opt.type)} style={{
-                          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                          padding: '0.55rem 0.75rem', borderRadius: '8px', border: 'none',
-                          background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = `${opt.color}12`}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <div style={{ width: 30, height: 30, borderRadius: '8px', background: `${opt.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <opt.icon size={15} style={{ color: opt.color }} />
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>{opt.label}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{opt.desc}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <button onClick={() => addNoteBox('info')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0.45rem 0.85rem', borderRadius: '8px',
+                  background: 'var(--bg-card)',
+                  border: `1px solid ${C.green}40`,
+                  color: C.green,
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}>
+                  <HelpCircle size={14} /> add Info Box
+                </button>
+                <button onClick={() => addNoteBox('warning')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0.45rem 0.85rem', borderRadius: '8px',
+                  background: 'var(--bg-card)',
+                  border: `1px solid ${C.red}40`,
+                  color: C.red,
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}>
+                  <AlertTriangle size={14} /> add Warning Box
+                </button>
+                <button onClick={() => addNoteBox('quote')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0.45rem 0.85rem', borderRadius: '8px',
+                  background: 'var(--bg-card)',
+                  border: `1px solid ${C.purple}40`,
+                  color: C.purple,
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}>
+                  <FileText size={14} /> add Quote Box
+                </button>
               </div>
               {noteBoxes.map((box) => {
                 const boxStyles = {
@@ -3355,6 +3520,14 @@ export default function LearningGerman() {
                             <Trash2 size={14} />
                           </button>
                         )}
+                      {v.boxes?.length > 0 && (
+                        <span style={{ display: 'inline-flex', gap: 2, marginLeft: 4, verticalAlign: 'middle' }}>
+                          {v.boxes.map(b => {
+                            const dotColor = b.type === 'info' ? C.green : b.type === 'warning' ? C.red : C.purple;
+                            return <span key={b.id} style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} title={b.content} />;
+                          })}
+                        </span>
+                      )}
                       </td>
                     </tr>
                   ))}
@@ -3442,6 +3615,7 @@ export default function LearningGerman() {
                   </div>
                 )}
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.6rem' }}>Added {g.createdAt ? format(new Date(g.createdAt), 'MMM d, yyyy') : ''}</div>
+                {g.boxes && <BoxDisplay boxes={g.boxes} />}
               </div>
             ))}
             {grammarPage < grammarPageTotal && (
@@ -3513,6 +3687,14 @@ export default function LearningGerman() {
                         ) : (
                           <button onClick={() => handleVerbDeleteClick(v.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={14} /></button>
                         )}
+                      {v.boxes?.length > 0 && (
+                        <span style={{ display: 'inline-flex', gap: 2, marginLeft: 4, verticalAlign: 'middle' }}>
+                          {v.boxes.map(b => {
+                            const dotColor = b.type === 'info' ? C.green : b.type === 'warning' ? C.red : C.purple;
+                            return <span key={b.id} style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} title={b.content} />;
+                          })}
+                        </span>
+                      )}
                       </td>
                     </tr>
                   ))}
@@ -3682,6 +3864,7 @@ export default function LearningGerman() {
                       +{d.exchanges.length - 4} more exchanges
                     </div>
                   )}
+                  {d.boxes && <BoxDisplay boxes={d.boxes} />}
                 </div>
               );
             })}
@@ -3768,6 +3951,7 @@ export default function LearningGerman() {
                     Added {format(new Date(m.createdAt), 'MMM d, yyyy')}
                   </div>
                 )}
+                {m.boxes && <BoxDisplay boxes={m.boxes} />}
               </div>
             );
             })}
@@ -3797,7 +3981,7 @@ export default function LearningGerman() {
         </div>
       )}
 
-      {tab === 'alphabets' && (
+      {tab === 'alphabets' && currentLevel === 'A1.1' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <AlphabetForm onAdd={addGermanAlphabet} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} />
         </div>
@@ -3812,32 +3996,72 @@ export default function LearningGerman() {
             <StatCard value={notes.length}   label="Study Sessions"   color={C.green}  icon={FileText} />
           <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
           </div>
+
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '1.25rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Level Progression</h3>
+              <LevelBadge level={currentLevel} size="md" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
+              {ALL_LEVELS.map((level, idx) => {
+                const isCompleted = levelsCompleted.includes(level);
+                const isCurrent = level === currentLevel;
+                const isLocked = idx > ALL_LEVELS.indexOf(currentLevel) && !isCompleted;
+                const vocabCount = germanData.filter(r => r.type === 'vocab' && r.level === level).length;
+                const grammarCount = germanData.filter(r => r.type === 'grammar' && r.level === level).length;
+                const noteCount = germanData.filter(r => r.type === 'note' && r.level === level).length;
+                const total = vocabCount + grammarCount + noteCount;
+                const color = LEVEL_COLORS[level] || '#6b7280';
+                return (
+                  <div key={level} style={{
+                    padding: '0.75rem 0.85rem', borderRadius: '12px',
+                    background: isCurrent ? `${color}15` : isCompleted ? `${color}10` : 'var(--bg)',
+                    border: `1.5px solid ${isCurrent ? color + '50' : isCompleted ? color + '25' : 'var(--border)'}`,
+                    opacity: isLocked ? 0.4 : 1,
+                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.82rem', color: isCurrent ? color : 'var(--text-primary)' }}>{level}</span>
+                      {isCompleted && <Check size={14} style={{ color: C.green }} />}
+                      {isCurrent && <span style={{ fontSize: '0.6rem', fontWeight: 700, color, background: `${color}20`, padding: '1px 6px', borderRadius: 4 }}>ACTIVE</span>}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {total} items
+                    </div>
+                    {isCurrent && !isCompleted && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const newState = await advanceGermanLevel();
+                            setError(null);
+                          } catch (err) {
+                            setError(err.message);
+                          }
+                        }}
+                        style={{
+                          marginTop: 8, width: '100%', padding: '5px 0',
+                          borderRadius: '8px', border: 'none',
+                          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                          color: '#fff', fontWeight: 700, fontSize: '0.72rem',
+                          cursor: 'pointer', letterSpacing: '0.3px',
+                        }}>
+                        Finish Level
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
             <StreakCalendar notes={notes} />
           </div>
-          {grammar.length > 0 && (() => {
-            const cefrCounts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
-            grammar.forEach(g => { if (cefrCounts[g.level] !== undefined) cefrCounts[g.level]++; });
-            const maxCount = Math.max(...Object.values(cefrCounts), 1);
-            return (
-              <div className="glass-card" style={{ padding: '1.25rem' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: C.purple }}>CEFR Grammar Progress</h3>
-                <div style={{ display: 'flex', gap: '0.4rem', height: 28 }}>
-                  {Object.entries(cefrCounts).map(([level, count]) => {
-                    const pct = Math.max(8, (count / maxCount) * 100);
-                    return (
-                      <div key={level} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: '100%', height: '100%', background: 'var(--bg)', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
-                          <div style={{ width: '100%', height: `${pct}%`, borderRadius: '6px', background: level === 'A1' ? '#10b981' : level === 'A2' ? '#22c55e' : level === 'B1' ? '#eab308' : level === 'B2' ? '#f97316' : level === 'C1' ? '#ef4444' : '#8b5cf6', position: 'absolute', bottom: 0, transition: 'height 0.5s ease' }} />
-                        </div>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>{level}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
           {vocab.length > 0 && (() => {
             const cats = {};
             vocab.forEach(v => { const c = v.category || 'General'; cats[c] = (cats[c] || 0) + 1; });

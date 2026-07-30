@@ -65,7 +65,7 @@ export const HabitProvider = ({ children }) => {
   // ── Category helpers (normalize string/object format) ────────
   const normalizeCategory = (cat) => {
     if (typeof cat === 'string') return { name: cat, icon: '📦' };
-    if (cat && typeof cat === 'object' && cat.name) return cat;
+    if (cat && typeof cat === 'object' && cat.name) return { name: cat.name, icon: cat.icon || '📦' };
     return { name: String(cat), icon: '📦' };
   };
 
@@ -155,6 +155,7 @@ export const HabitProvider = ({ children }) => {
     { name: 'Internal Transfers', icon: '🔄' },
     { name: 'Opening Balance', icon: '📊' },
     { name: 'Closing Balance', icon: '📊' },
+    { name: 'Reconciliation', icon: '🔄' },
   ]);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);
@@ -339,14 +340,15 @@ export const HabitProvider = ({ children }) => {
   const [noteSections, setNoteSectionsState] = useState(() => {
     try {
       const raw = localStorage.getItem('noteSections');
-      return raw ? JSON.parse(raw) : ['General'];
+      return raw ? JSON.parse(raw) : ['General', 'App Development'];
     } catch {
-      return ['General'];
+      return ['General', 'App Development'];
     }
   });
 
   // ── German Learning state ─────────────────────────────────────
   const [germanData, setGermanData] = useState([]);
+  const [germanProgress, setGermanProgress] = useState(null);
 
   // ── AWS Learning state ────────────────────────────────────────
   const [awsData, setAwsData] = useState([]);
@@ -730,12 +732,12 @@ export const HabitProvider = ({ children }) => {
     }
   }, [API_URL]);
 
-  const addEssential = useCallback(async (name, icon) => {
+  const addEssential = useCallback(async (name, icon, purchaseDate, renewAfter) => {
     const res = await fetch(`${API_URL}/api/essentials`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, icon })
+      body: JSON.stringify({ name, icon, purchaseDate, renewAfter })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
@@ -1469,7 +1471,7 @@ export const HabitProvider = ({ children }) => {
         body: { newCategory: trimmedName, icon }
       });
     }
-    logHistory('expense_category_edit', `Renamed category "${oldCategory}" to "${trimmedNew}"`);
+    logHistory('expense_category_edit', `Renamed category "${oldName}" to "${trimmedName}"`);
   };
 
   // ── Income ──────────────────────────────────────────────────
@@ -1984,7 +1986,7 @@ export const HabitProvider = ({ children }) => {
     return allNotes;
   };
 
-  const addDailyNote = async (date, content, section = '') => {
+  const addDailyNote = async (date, content, section = '', image = '') => {
     const tempId = 'temp_' + Date.now();
     const nowStr = new Date().toISOString();
     logHistory('note_add', `Added note for ${date}`);
@@ -1995,6 +1997,7 @@ export const HabitProvider = ({ children }) => {
       date,
       content,
       section,
+      image,
       createdAt: nowStr,
       updatedAt: nowStr,
       pendingSync: true
@@ -2008,7 +2011,7 @@ export const HabitProvider = ({ children }) => {
       await db.enqueueSync({
         method: 'POST',
         url: '/api/notes',
-        body: { date, content, section, localId: tempId }
+        body: { date, content, section, image, localId: tempId }
       });
       requestBackgroundSync();
       return newNote;
@@ -2019,7 +2022,7 @@ export const HabitProvider = ({ children }) => {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, content, section, localId: tempId })
+        body: JSON.stringify({ date, content, section, image, localId: tempId })
       });
       
       if (!res.ok) throw new Error('API failed');
@@ -2042,32 +2045,32 @@ export const HabitProvider = ({ children }) => {
       await db.enqueueSync({
         method: 'POST',
         url: '/api/notes',
-        body: { date, content, section, localId: tempId }
+        body: { date, content, section, image, localId: tempId }
       });
       requestBackgroundSync();
       return newNote;
     }
   };
 
-  const updateDailyNote = async (id, date, content, section) => {
+  const updateDailyNote = async (id, date, content, section, image) => {
     const nowStr = new Date().toISOString();
     
     // Optimistic Update
     setDailyNotes(prev => ({
       ...prev,
-      [date]: (prev[date] || []).map(n => n._id === id ? { ...n, content, section: section !== undefined ? section : n.section, updatedAt: nowStr, pendingSync: true } : n)
+      [date]: (prev[date] || []).map(n => n._id === id ? { ...n, content, section: section !== undefined ? section : n.section, image: image !== undefined ? image : n.image, updatedAt: nowStr, pendingSync: true } : n)
     }));
-    setAllNotes(prev => prev.map(n => n._id === id ? { ...n, content, section: section !== undefined ? section : n.section, updatedAt: nowStr, pendingSync: true } : n));
+    setAllNotes(prev => prev.map(n => n._id === id ? { ...n, content, section: section !== undefined ? section : n.section, image: image !== undefined ? image : n.image, updatedAt: nowStr, pendingSync: true } : n));
     
     const existing = allNotes.find(n => n._id === id) || { _id: id, date, createdAt: nowStr };
-    const updatedNote = { ...existing, content, section: section !== undefined ? section : existing.section, updatedAt: nowStr, pendingSync: true };
+    const updatedNote = { ...existing, content, section: section !== undefined ? section : existing.section, image: image !== undefined ? image : existing.image, updatedAt: nowStr, pendingSync: true };
     await db.saveNote(updatedNote);
 
     if (!navigator.onLine || id.startsWith('temp_')) {
       await db.enqueueSync({
         method: 'PUT',
         url: `/api/notes/${id}`,
-        body: { content, section }
+        body: { content, section, image }
       });
       requestBackgroundSync();
       return updatedNote;
@@ -2078,7 +2081,7 @@ export const HabitProvider = ({ children }) => {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, section })
+        body: JSON.stringify({ content, section, image })
       });
 
       if (!res.ok) throw new Error('API failed');
@@ -2097,11 +2100,23 @@ export const HabitProvider = ({ children }) => {
       await db.enqueueSync({
         method: 'PUT',
         url: `/api/notes/${id}`,
-        body: { content, section }
+        body: { content, section, image }
       });
       requestBackgroundSync();
       return updatedNote;
     }
+  };
+
+  const uploadNotePhoto = async (file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await fetch(`${API_URL}/api/notes/photo`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Failed to upload photo');
+    return res.json();
   };
 
   const deleteDailyNote = async (id, date) => {
@@ -2599,6 +2614,42 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  // ── German Progress API methods ─────────────────────────────────
+  const fetchGermanProgress = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/german/progress`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setGermanProgress(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchGermanProgress error:', e.message);
+    }
+  }, [API_URL]);
+
+  const advanceGermanLevel = useCallback(async () => {
+    const res = await fetch(`${API_URL}/api/german/progress/advance`, {
+      method: 'POST', credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to advance');
+    setGermanProgress(data);
+    return data;
+  }, [API_URL]);
+
+  const setGermanLevel = useCallback(async (level) => {
+    const res = await fetch(`${API_URL}/api/german/progress/level`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to set level');
+    setGermanProgress(data);
+    return data;
+  }, [API_URL]);
+
   // ── AWS Learning API methods ──────────────────────────────────
   const fetchAwsData = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -2945,6 +2996,27 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const checkSessionCleanupStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/sessions/cleanup-status`, { credentials: 'include' });
+      if (!res.ok) return { needsCleanup: false, count: 0 };
+      return await res.json();
+    } catch {
+      return { needsCleanup: false, count: 0 };
+    }
+  }, [API_URL]);
+
+  const confirmSessionCleanup = useCallback(async () => {
+    const res = await fetch(`${API_URL}/api/sessions/cleanup-confirm`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to clean up sessions');
+    return data;
+  }, [API_URL]);
+
   return (
     <HabitContext.Provider value={{
       logs, getLog, saveLog, getWeeklyData, getMonthlyData, getYearlyData,
@@ -2961,12 +3033,14 @@ export const HabitProvider = ({ children }) => {
       // Daily Notes
       dailyNotes, fetchNotesForDate, addDailyNote, updateDailyNote, deleteDailyNote,
       allNotes, setAllNotes, fetchAllNotes,
-      noteSections, setNoteSections,
+      noteSections, setNoteSections, uploadNotePhoto,
       // Recurring tasks
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
+      // German Progress
+      germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist
@@ -2983,6 +3057,8 @@ export const HabitProvider = ({ children }) => {
       removeArchivedBook, stopReadingBook,
       // History
       history, fetchHistory, addHistoryEntry,
+      // Session cleanup
+      checkSessionCleanupStatus, confirmSessionCleanup,
     }}>
       {children}
     </HabitContext.Provider>
