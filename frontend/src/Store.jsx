@@ -118,6 +118,7 @@ export const HabitProvider = ({ children }) => {
     { name: 'Fitness Classes', icon: '🧘' },
     // Personal Care
     { name: 'Haircuts', icon: '✂️' },
+    { name: 'Barbering', icon: '💈' },
     { name: 'Toiletries', icon: '🧴' },
     { name: 'Cosmetics', icon: '💄' },
     { name: 'Spa Services', icon: '🧖' },
@@ -129,10 +130,13 @@ export const HabitProvider = ({ children }) => {
     { name: 'Cleaning Supplies', icon: '🧹' },
     { name: 'Cookware', icon: '🍲' },
     { name: 'Home Decor', icon: '🖼️' },
+    { name: 'Office Supplies', icon: '🖊️' },
     // Subscriptions
     { name: 'Cloud Storage', icon: '☁️' },
     { name: 'SaaS', icon: '💻' },
     { name: 'Streaming Services', icon: '📺' },
+    // Telecommunication
+    { name: 'Telecommunication', icon: '📱' },
     // Hobbies & Entertainment
     { name: 'Books', icon: '📚' },
     { name: 'Movies', icon: '🎬' },
@@ -156,6 +160,7 @@ export const HabitProvider = ({ children }) => {
     { name: 'Opening Balance', icon: '📊' },
     { name: 'Closing Balance', icon: '📊' },
     { name: 'Reconciliation', icon: '🔄' },
+    { name: 'Expense Reconciliation', icon: '🧾' },
   ]);
   const [currentBook, setCurrentBookState] = useState(null);
   const [archivedBooks, setArchivedBooks] = useState([]);

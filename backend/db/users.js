@@ -33,6 +33,10 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   { name: 'Health',            icon: '🩺' },
   { name: 'Other',             icon: '📦' },
   { name: 'Reconciliation',    icon: '🔄' },
+  { name: 'Office Supplies',   icon: '🖊️' },
+  { name: 'Telecommunication', icon: '📱' },
+  { name: 'Barbering',         icon: '💈' },
+  { name: 'Expense Reconciliation', icon: '🧾' },
 ];
 
 /**
