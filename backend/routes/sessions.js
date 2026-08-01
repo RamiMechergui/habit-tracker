@@ -83,7 +83,10 @@ router.post('/cleanup-confirm', protect, async (req, res) => {
   try {
     const now = new Date().toISOString();
 
-    await updateUser(req.user.userId, { sessionCleanupConfirmedAt: now });
+    // Best-effort: persist the confirmation timestamp. If the user item is
+    // oversized (DynamoDB 400 KB limit) this may fail, but the deletion below
+    // must still run so the cleanup is never silently swallowed.
+    await updateUser(req.user.userId, { sessionCleanupConfirmedAt: now }).catch(() => {});
 
     const oldSessions = await sessionsDb.getRevokedSessionsOlderThan(req.user.userId, TWENTY_FOUR_HOURS);
     const ids = oldSessions.map(s => s.sessionId);

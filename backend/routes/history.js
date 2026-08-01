@@ -3,6 +3,11 @@ const router  = express.Router();
 const { protect }               = require('../middleware/auth');
 const { getUserById, updateUser } = require('../db/users');
 
+// Keep at most this many history entries per user. History is stored inside the
+// user item in DynamoDB (400 KB limit) — an unbounded array can blow past it
+// and make every updateUser() call fail.
+const HISTORY_LIMIT = 100;
+
 function detectDevice(ua) {
   if (!ua) return 'Unknown';
   const s = ua.toLowerCase();
@@ -46,7 +51,7 @@ router.post('/', protect, async (req, res) => {
     };
 
     const user = await getUserById(req.user.userId);
-    const history = [...(user.history || []), entry];
+    const history = [...(user.history || []), entry].slice(-HISTORY_LIMIT);
     const updated = await updateUser(req.user.userId, { history });
     res.status(201).json(updated.history);
   } catch (err) {

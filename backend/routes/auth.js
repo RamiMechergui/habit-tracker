@@ -9,6 +9,9 @@ const sessionsDb           = require('../db/sessions');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_change_me_in_prod';
 
+// Keep history bounded inside the user's DynamoDB item (400 KB limit).
+const HISTORY_LIMIT = 100;
+
 const generateToken = (id, sessionId) => jwt.sign({ id, sid: sessionId }, JWT_SECRET, { expiresIn: '30d' });
 
 const cookieOpts = (req) => ({
@@ -39,7 +42,7 @@ async function logHistoryEntry(user, action, description, req) {
       userAgent: ua.slice(0, 300),
       timestamp: new Date().toISOString(),
     };
-    const history = [...(user.history || []), entry];
+    const history = [...(user.history || []), entry].slice(-HISTORY_LIMIT);
     await updateUser(user.userId, { history }).catch(() => {});
   } catch (_) {}
 }

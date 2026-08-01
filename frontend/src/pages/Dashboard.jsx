@@ -31,8 +31,8 @@ export default function Dashboard() {
   // ── Session Cleanup Banner ──────────────────────────────────────────────────
   const [cleanupNeeded, setCleanupNeeded] = useState(false);
   const [cleanupCount, setCleanupCount] = useState(0);
-  const [cleanupDismissed, setCleanupDismissed] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupError, setCleanupError] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -46,12 +46,14 @@ export default function Dashboard() {
 
   async function handleConfirmCleanup() {
     setCleanupLoading(true);
+    setCleanupError('');
     try {
       await confirmSessionCleanup();
       setCleanupNeeded(false);
       setCleanupCount(0);
     } catch (err) {
       console.error('Cleanup failed:', err);
+      setCleanupError(err.message || 'Cleanup failed. Please try again.');
     }
     setCleanupLoading(false);
   }
@@ -430,6 +432,11 @@ export default function Dashboard() {
               Confirm cleanup to remove them from your history.
               {cleanupCount > 0 && ' Unconfirmed sessions will be auto-deleted after 48 hours.'}
             </p>
+            {cleanupError && (
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem', color: '#ef4444', fontWeight: 600 }}>
+                ⚠ {cleanupError}
+              </p>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
             <button
