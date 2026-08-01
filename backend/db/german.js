@@ -31,7 +31,7 @@ async function getAllGermanRecords(userId) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', boxes = [] }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', boxes = [] }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -43,6 +43,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     notes,
     category,
     plural,
+    article,
     leitnerBox,
     lastReviewDate,
     mastery,
@@ -57,7 +58,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes'];
   const sets = [];
   const names = {};
   const values = {};
@@ -136,7 +137,7 @@ async function updateGrammar(userId, recordId, updates) {
 
 // ── Daily Notes ───────────────────────────────────────────────────────────────
 // Supports multiple notes per day. recordId: NOTE#YYYY-MM-DD#<uuid>
-async function saveNote(userId, date, { noteId, content, boxes }) {
+async function saveNote(userId, date, { noteId, content, boxes, noteCategory, studyMinutes }) {
   const recordId = noteId || `NOTE#${date}#${uuidv4()}`;
   const item = {
     userId,
@@ -145,6 +146,8 @@ async function saveNote(userId, date, { noteId, content, boxes }) {
     date,
     content,
     boxes: boxes || [],
+    noteCategory: noteCategory || 'daily',
+    studyMinutes: studyMinutes ? parseInt(studyMinutes) || 0 : 0,
     updatedAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -261,12 +264,15 @@ async function updateDialogue(userId, recordId, updates) {
 }
 
 // ── Memorization Paragraphs ────────────────────────────────────────────────────
-async function addMemo(userId, { title, content, sortOrder = Date.now(), boxes = [] }) {
+async function addMemo(userId, { title, content, germanContent = '', englishContent = '', memoFont = '', sortOrder = Date.now(), boxes = [] }) {
   const recordId = `MEMO#${uuidv4()}`;
   const item = {
     userId, recordId, type: 'memo',
     title,
     content,
+    germanContent,
+    englishContent,
+    memoFont,
     sortOrder,
     boxes,
     createdAt: new Date().toISOString(),
@@ -276,7 +282,7 @@ async function addMemo(userId, { title, content, sortOrder = Date.now(), boxes =
 }
 
 async function updateMemo(userId, recordId, updates) {
-  const allowed = ['title', 'content', 'sortOrder', 'boxes'];
+  const allowed = ['title', 'content', 'sortOrder', 'boxes', 'germanContent', 'englishContent', 'memoFont'];
   const sets = [];
   const names = {};
   const values = {};
@@ -500,6 +506,8 @@ module.exports = {
   updateMistake,
   addAlphabet,
   updateAlphabet,
+  addResource,
+  updateResource,
 };
 
 // ── Alphabets ────────────────────────────────────────────────────────────────
@@ -516,6 +524,45 @@ async function addAlphabet(userId, { letter, example, pronunciation = '', photoU
 
 async function updateAlphabet(userId, recordId, updates) {
   const allowed = ['letter', 'example', 'pronunciation', 'photoUrl', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
+// ── Resources (YouTube videos / channels) ─────────────────────────────────────
+async function addResource(userId, { url, kind = 'video', videoId = '', channelId = '', handle = '', title = '', author = '', thumbnail = '', notes = '', sortOrder = Date.now() }) {
+  const recordId = `RESOURCE#${uuidv4()}`;
+  const item = {
+    userId, recordId, type: 'resource',
+    url, kind, videoId, channelId, handle, title, author, thumbnail, notes, sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateResource(userId, recordId, updates) {
+  const allowed = ['url', 'kind', 'videoId', 'channelId', 'handle', 'title', 'author', 'thumbnail', 'notes', 'sortOrder'];
   const sets = [];
   const names = {};
   const values = {};

@@ -41,10 +41,13 @@ const {
   updateMistake,
   addAlphabet,
   updateAlphabet,
+  addResource,
+  updateResource,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { exportToPdf } = require('../services/pdfExporter');
 const { exportNoteToPdf } = require('../services/notesPdfExporter');
+const { exportReportToPdf } = require('../services/reportPdfExporter');
 
 router.use(protect);
 
@@ -64,6 +67,78 @@ const upload = multer({
     cb(null, true);
   },
 });
+
+// ── YouTube resource metadata helpers ─────────────────────────────────────────
+function parseYouTubeUrl(url) {
+  if (!url) return null;
+  let m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/))([\w-]{11})/i) || url.match(/youtu\.be\/([\w-]{11})/i);
+  if (m) return { kind: 'video', videoId: m[1] };
+  m = url.match(/youtube\.com\/channel\/(UC[\w-]+)/i);
+  if (m) return { kind: 'channel', channelId: m[1], handle: '' };
+  m = url.match(/youtube\.com\/@([\w.\-]+)/i) || url.match(/youtube\.com\/user\/([\w.\-]+)/i);
+  if (m) return { kind: 'channel', channelId: '', handle: m[1] };
+  return null;
+}
+
+function decodeHtmlEntities(str) {
+  return String(str)
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'");
+}
+
+async function fetchWithTimeout(url, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchYouTubeResourceInfo(rawUrl) {
+  const parsed = parseYouTubeUrl(rawUrl);
+  if (!parsed) return { kind: 'link', url: rawUrl, title: rawUrl, author: '', thumbnail: '' };
+
+  if (parsed.kind === 'video') {
+    const base = { ...parsed, url: rawUrl, title: '', author: '', thumbnail: `https://img.youtube.com/vi/${parsed.videoId}/hqdefault.jpg` };
+    try {
+      const res = await fetchWithTimeout(`https://www.youtube.com/oembed?url=${encodeURIComponent(rawUrl)}&format=json`);
+      if (res.ok) {
+        const j = await res.json();
+        base.title = decodeHtmlEntities(j.title || '');
+        base.author = decodeHtmlEntities(j.author_name || '');
+        base.thumbnail = j.thumbnail_url || base.thumbnail;
+      }
+    } catch (_) { /* fall back to defaults */ }
+    return base;
+  }
+
+  const base = { ...parsed, url: rawUrl, title: parsed.handle || parsed.channelId || '', author: '', thumbnail: '' };
+  try {
+    const pageUrl = parsed.channelId
+      ? `https://www.youtube.com/channel/${parsed.channelId}?hl=en`
+      : `https://www.youtube.com/@${parsed.handle}?hl=en`;
+    const res = await fetchWithTimeout(pageUrl);
+    if (res.ok) {
+      const html = await res.text();
+      const title = html.match(/<meta property="og:title" content="([^"]+)"/i);
+      const image = html.match(/<meta property="og:image" content="([^"]+)"/i);
+      if (title) base.title = decodeHtmlEntities(title[1]);
+      if (image) base.thumbnail = image[1];
+    }
+  } catch (_) { /* fall back to defaults */ }
+  return base;
+}
 
 // ── GET /api/german  → all records for user ───────────────────────────────────
 router.get('/', async (req, res) => {
@@ -92,11 +167,11 @@ router.get('/note', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite, boxes } = req.body;
+    const { word, translation, example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, leitnerBox, lastReviewDate, mastery, favorite, boxes });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST vocab error:', err);
@@ -180,8 +255,8 @@ router.post('/vocab/:recordId/photo', (req, res, next) => {
     // Fetch existing record to delete old photo if it exists
     const records = await getAllGermanRecords(userId);
     const record = records.find(r => r.recordId === recordId);
-    if (record?.photoUrl?.startsWith('/api/german/images/')) {
-      const oldKey = decodeURIComponent(record.photoUrl.slice('/api/german/images/'.length));
+    const oldKey = storage.getKeyFromUrl(record?.photoUrl);
+    if (oldKey !== null && oldKey !== '') {
       await storage.deleteImage(oldKey);
     }
 
@@ -205,10 +280,8 @@ router.delete('/vocab/:recordId/photo', async (req, res) => {
     const record = records.find(r => r.recordId === req.params.recordId);
     if (!record) return res.status(404).json({ message: 'Record not found' });
     if (record.photoUrl) {
-      // Extract object key from the stored URL: /api/german/images/{encodedKey}
-      const keyPrefix = '/api/german/images/';
-      if (record.photoUrl.startsWith(keyPrefix)) {
-        const objectKey = decodeURIComponent(record.photoUrl.slice(keyPrefix.length));
+      const objectKey = storage.getKeyFromUrl(record.photoUrl);
+      if (objectKey !== null && objectKey !== '') {
         await storage.deleteImage(objectKey);
       }
     }
@@ -246,10 +319,8 @@ router.post('/dialogue/:recordId/photo/:participantIndex', (req, res, next) => {
     if (!participants[pIdx]) return res.status(400).json({ message: 'Invalid participant index' });
 
     // Delete old MinIO object if it exists (skip data-URI presets)
-    const oldUrl = participants[pIdx].photoUrl || '';
-    const keyPrefix = '/api/german/images/';
-    if (oldUrl.startsWith(keyPrefix)) {
-      const oldKey = decodeURIComponent(oldUrl.slice(keyPrefix.length));
+    const oldKey = storage.getKeyFromUrl(participants[pIdx].photoUrl || '');
+    if (oldKey !== null && oldKey !== '') {
       await storage.deleteImage(oldKey);
     }
 
@@ -279,9 +350,8 @@ router.delete('/dialogue/:recordId/photo/:participantIndex', async (req, res) =>
     const participants = [...(record.participants || [])];
     if (!participants[pIdx]) return res.status(400).json({ message: 'Invalid participant index' });
     if (participants[pIdx].photoUrl) {
-      const keyPrefix = '/api/german/images/';
-      if (participants[pIdx].photoUrl.startsWith(keyPrefix)) {
-        const objectKey = decodeURIComponent(participants[pIdx].photoUrl.slice(keyPrefix.length));
+      const objectKey = storage.getKeyFromUrl(participants[pIdx].photoUrl);
+      if (objectKey !== null && objectKey !== '') {
         await storage.deleteImage(objectKey);
       }
     }
@@ -388,11 +458,19 @@ router.put('/dialogue/:recordId', async (req, res) => {
 // ── POST /api/german/memo ──────────────────────────────────────────────────────
 router.post('/memo', async (req, res) => {
   try {
-    const { title, content, boxes } = req.body;
-    if (!title?.trim() || !content?.trim()) {
+    const { title, content, germanContent, englishContent, memoFont, boxes } = req.body;
+    if (!title?.trim() || !(content?.trim() || germanContent?.trim())) {
       return res.status(400).json({ message: 'title and content are required' });
     }
-    const record = await addMemo(req.user.userId, { title: title.trim(), content: content.trim(), boxes });
+    const german = (germanContent ?? content ?? '').trim();
+    const record = await addMemo(req.user.userId, {
+      title: title.trim(),
+      content: german,
+      germanContent: german,
+      englishContent: (englishContent ?? '').trim(),
+      memoFont,
+      boxes,
+    });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST memo error:', err);
@@ -547,10 +625,9 @@ router.delete('/alphabet/:recordId/photo', async (req, res) => {
   try {
     const userId = req.user.userId;
     const { recordId } = req.params;
-    const keyPrefix = '/api/german/images/';
     const record = await updateAlphabet(userId, recordId, { photoUrl: '' });
-    if (record?.photoUrl?.startsWith(keyPrefix)) {
-      const objectKey = decodeURIComponent(record.photoUrl.slice(keyPrefix.length));
+    const objectKey = storage.getKeyFromUrl(record?.photoUrl);
+    if (objectKey !== null && objectKey !== '') {
       await storage.deleteImage(objectKey);
     }
     res.json({ record });
@@ -590,15 +667,67 @@ router.put('/verb/:recordId', async (req, res) => {
 // ── POST /api/german/note ─────────────────────────────────────────────────────
 router.post('/note', async (req, res) => {
   try {
-    const { date, content, noteId, boxes } = req.body;
+    const { date, content, noteId, boxes, noteCategory, studyMinutes } = req.body;
     if (!date || !content?.trim()) {
       return res.status(400).json({ message: 'date and content are required' });
     }
-    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes });
+    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes, noteCategory, studyMinutes });
     res.json(record);
   } catch (err) {
     console.error('[German] POST note error:', err);
     res.status(500).json({ message: 'Failed to save note' });
+  }
+});
+
+// ── Resources (YouTube videos / channels) ─────────────────────────────────────
+
+// GET /api/german/resource/info?url=… → metadata (kind, ids, title, author, thumbnail)
+router.get('/resource/info', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ message: 'url is required' });
+    const info = await fetchYouTubeResourceInfo(String(url));
+    res.json(info);
+  } catch (err) {
+    console.error('[German] resource/info error:', err);
+    res.status(500).json({ message: 'Failed to fetch resource info' });
+  }
+});
+
+// POST /api/german/resource → add a learning resource
+router.post('/resource', async (req, res) => {
+  try {
+    const { url, kind, videoId, channelId, handle, title, author, thumbnail, notes, sortOrder } = req.body;
+    if (!url?.trim()) return res.status(400).json({ message: 'url is required' });
+    const record = await addResource(req.user.userId, {
+      url: url.trim(),
+      kind: kind || 'video',
+      videoId: videoId || '',
+      channelId: channelId || '',
+      handle: handle || '',
+      title: title || '',
+      author: author || '',
+      thumbnail: thumbnail || '',
+      notes: notes || '',
+      sortOrder: sortOrder || Date.now(),
+    });
+    res.json(record);
+  } catch (err) {
+    console.error('[German] POST resource error:', err);
+    res.status(500).json({ message: 'Failed to add resource' });
+  }
+});
+
+// PUT /api/german/resource/:recordId → update a learning resource
+router.put('/resource/:recordId', async (req, res) => {
+  try {
+    const recordId = decodeURIComponent(req.params.recordId);
+    const updated = await updateResource(req.user.userId, recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Resource not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT resource error:', err);
+    res.status(500).json({ message: 'Failed to update resource' });
   }
 });
 
@@ -612,19 +741,16 @@ router.delete('/:recordId', async (req, res) => {
     const record = records.find(r => r.recordId === recordId);
     if (record) {
       // Clean up associated photo from MinIO/S3
-      if (record.photoUrl) {
-        const keyPrefix = '/api/german/images/';
-        if (record.photoUrl.startsWith(keyPrefix)) {
-          const objectKey = decodeURIComponent(record.photoUrl.slice(keyPrefix.length));
-          await storage.deleteImage(objectKey);
-        }
+      const recordKey = storage.getKeyFromUrl(record.photoUrl);
+      if (recordKey !== null && recordKey !== '') {
+        await storage.deleteImage(recordKey);
       }
       // Clean up dialogue participant photos
       if (record.type === 'dialogue' && record.participants) {
         for (const p of record.participants) {
-          if (p.photoUrl && p.photoUrl.startsWith('/api/german/images/')) {
-            const objectKey = decodeURIComponent(p.photoUrl.slice('/api/german/images/'.length));
-            await storage.deleteImage(objectKey);
+          const pKey = storage.getKeyFromUrl(p.photoUrl);
+          if (pKey !== null && pKey !== '') {
+            await storage.deleteImage(pKey);
           }
         }
       }
@@ -702,6 +828,7 @@ router.post('/notes/export-pdf', async (req, res) => {
       studyMinutes: parseInt(studyMinutes) || 0,
       wordsLearned: parseInt(wordsLearned) || 0,
       author: req.user.name || req.user.email || 'Evolvio User',
+      baseUrl: `${req.protocol}://${req.get('host')}`,
     });
 
     res.set({
@@ -713,6 +840,30 @@ router.post('/notes/export-pdf', async (req, res) => {
   } catch (err) {
     console.error('Note PDF export error:', err);
     res.status(500).json({ message: 'Failed to generate note PDF' });
+  }
+});
+
+// ── Full Report PDF Export ─────────────────────────────────────────────────
+// Fetches all German records for the user and renders the complete
+// "My German Learning Journey" report as a PDF using Puppeteer.
+
+router.post('/report/export-pdf', async (req, res) => {
+  try {
+    const records = await getAllGermanRecords(req.user.userId);
+    const pdfBuffer = await exportReportToPdf(records, {
+      baseUrl: `${req.protocol}://${req.get('host')}`,
+    });
+
+    const filename = `German_Learning_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.end(pdfBuffer);
+  } catch (err) {
+    console.error('Report PDF export error:', err);
+    res.status(500).json({ message: 'Failed to generate report PDF' });
   }
 });
 

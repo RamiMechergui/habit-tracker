@@ -12,8 +12,9 @@
  */
 
 const puppeteer = require('puppeteer');
+const { inlineImages } = require('./pdfImageInliner');
 
-function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, boxes }) {
+function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, boxes, baseUrl = '' }) {
   const dateFormatted = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -22,10 +23,13 @@ function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, boxe
   if (studyMinutes) stats.push(`${studyMinutes} min studied`);
   if (wordsLearned) stats.push(`${wordsLearned} words learned`);
 
+  const baseTag = baseUrl ? `<base href="${baseUrl}/">` : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  ${baseTag}
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -228,7 +232,12 @@ function buildNoteHtml({ date, content, studyMinutes, wordsLearned, author, boxe
 }
 
 async function exportNoteToPdf(opts) {
-  const html = buildNoteHtml(opts);
+  let html = buildNoteHtml(opts);
+
+  // Fetch relative /api images from the backend itself and embed them as
+  // data URIs so Puppeteer renders them regardless of public URL resolution.
+  const localBaseUrl = opts.localBaseUrl || `http://127.0.0.1:${process.env.PORT || 5000}`;
+  html = await inlineImages(html, localBaseUrl);
 
   const launchOptions = {
     headless: 'new',

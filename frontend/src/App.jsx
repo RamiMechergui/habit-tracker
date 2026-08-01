@@ -3,7 +3,7 @@ import {
   LayoutDashboard, CheckSquare, CalendarDays, CalendarRange, Calendar,
   LogOut, Settings as SettingsIcon, Sun, Moon, BookOpen,
   WifiOff, Wallet, Rocket, Video, ShieldCheck, Clock, Menu, X,
-  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank, Brain, BookA
+  StickyNote, KeyRound, Languages, Cloud, ShoppingBag, Flag, PiggyBank, Brain
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from './config';
@@ -62,7 +62,6 @@ const NAV_LINKS = [
   { to: '/savings',       icon: PiggyBank,       label: 'Savings' },
   { to: '/last-day',      icon: Flag,            label: 'Last Day' },
   { to: '/german',        icon: Languages,       label: 'Learning German' },
-  { to: '/alphabets',     icon: BookA,           label: 'Alphabets',    requiresA1: true },
   { to: '/aws',           icon: Cloud,           label: 'Learning AWS' },
   { to: '/settings',      icon: SettingsIcon,    label: 'Settings' },
   { to: '/security',      icon: ShieldCheck,     label: 'Security' },

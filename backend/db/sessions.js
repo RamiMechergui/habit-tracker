@@ -270,6 +270,21 @@ async function cleanRevokedSessions(userId, olderThan) {
   }
 }
 
+async function getRevokedSessionsOlderThan(userId, ageMs) {
+  const cutoff = new Date(Date.now() - ageMs).toISOString();
+  const all = await listAllSessions(userId);
+  return all.filter(s => s.isRevoked && s.revokedAt && s.revokedAt < cutoff);
+}
+
+async function deleteSessions(userId, sessionIds) {
+  for (const sessionId of sessionIds) {
+    await docClient.send(new DeleteCommand({
+      TableName: TABLE,
+      Key: { userId, sessionId },
+    })).catch(() => {});
+  }
+}
+
 module.exports = {
   createSession,
   getSession,
@@ -280,5 +295,7 @@ module.exports = {
   touchSession,
   disconnectSession,
   cleanRevokedSessions,
+  getRevokedSessionsOlderThan,
+  deleteSessions,
   parseUA,
 };

@@ -6,12 +6,13 @@ import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
 
 import { format } from 'date-fns';
+import { nativeFetch } from '../config';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones, BookA, Camera,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -19,6 +20,14 @@ const PERSON_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 const PRESET_CATEGORIES = ['General', 'Animals', 'Food', 'Travel', 'Work', 'Daily Life', 'Grammar', 'Vocabulary', 'Phrases'];
 const ALL_LEVELS = ['A1.1','A1.2','A2.1','A2.2','B1.1','B1.2','B2.1','B2.2','B2.3','C1.1','C1.2','C2.1','C2.2'];
 const LEVEL_COLORS = { 'A1.1':'#3b82f6','A1.2':'#6366f1','A2.1':'#8b5cf6','A2.2':'#a855f7','B1.1':'#ec4899','B1.2':'#f43f5e','B2.1':'#f97316','B2.2':'#eab308','B2.3':'#10b981','C1.1':'#14b8a6','C1.2':'#06b6d4','C2.1':'#3b82f6','C2.2':'#8b5cf6' };
+const NOTE_CATEGORIES = [
+  { value: 'daily', label: 'Daily', title: 'Daily Notes', color: C.gold, icon: NotebookPen },
+  { value: 'writing', label: 'Writing', title: 'Writing Notes', color: C.blue, icon: PenTool },
+  { value: 'reading', label: 'Reading', title: 'Reading Notes', color: C.green, icon: BookOpen },
+  { value: 'speaking', label: 'Speaking', title: 'Speaking Notes', color: C.purple, icon: Volume2 },
+  { value: 'listening', label: 'Listening', title: 'Listening Notes', color: C.teal, icon: Headphones },
+];
+const noteCategoryMeta = (cat) => NOTE_CATEGORIES.find(c => c.value === (cat || 'daily')) || NOTE_CATEGORIES[0];
 
 function LevelBadge({ level, size = 'sm' }) {
   const color = LEVEL_COLORS[level] || '#6b7280';
@@ -188,8 +197,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     if (!form.word.trim() || !form.translation.trim()) return;
     const cat = customCat.trim() || form.category;
     const wordStr = form.article ? `${form.article} ${form.word.trim()}` : form.word.trim();
-    const { article, ...rest } = form;
-    const payload = { ...rest, word: wordStr, category: cat, boxes };
+    const payload = { ...form, word: wordStr, category: cat, boxes };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
       if (newPhotoFile) {
@@ -2180,10 +2188,14 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [uploadingId, setUploadingId] = useState(null);
   const fileRef = useRef(null);
   const [pendingUploadId, setPendingUploadId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [newPhotoPreview, setNewPhotoPreview] = useState('');
+  const addFileRef = useRef(null);
 
   const handleAdd = async () => {
-    if (!letter.trim() || !example.trim()) return;
-    await onAdd({
+    if (letter.trim().length !== 1 || !example.trim()) return;
+    const created = await onAdd({
       type: 'alphabet',
       letter: letter.trim(),
       example: example.trim(),
@@ -2191,9 +2203,14 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       photoUrl: '',
       sortOrder: alphabets.length,
     });
+    if (created?.recordId && newPhoto) {
+      try { await onUploadPhoto(created.recordId, newPhoto); } catch (e) { console.error(e); }
+    }
     setLetter('');
     setExample('');
     setPronunciation('');
+    setNewPhoto(null);
+    setNewPhotoPreview('');
     setShowAdd(false);
   };
 
@@ -2205,7 +2222,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   };
 
   const saveEdit = async (recordId) => {
-    if (!editLetter.trim() || !editExample.trim()) return;
+    if (editLetter.trim().length !== 1 || !editExample.trim()) return;
     await onUpdate(recordId, {
       letter: editLetter.trim(),
       example: editExample.trim(),
@@ -2251,28 +2268,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         </button>
       </div>
 
-      {showAdd && (
-        <div style={{ padding: '1rem', borderRadius: '12px', border: `1px solid ${C.blue}40`, background: `${C.blue}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 0, minWidth: 80 }}>
-              <label style={{ fontSize: '0.72rem', color: C.blue, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Letter</label>
-              <input value={letter} onChange={e => setLetter(e.target.value)} placeholder="A" maxLength={4} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem' }} />
-            </div>
-            <div style={{ flex: 2, minWidth: 150 }}>
-              <label style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Example Word</label>
-              <input value={example} onChange={e => setExample(e.target.value)} placeholder="Apfel (Apple)" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-            </div>
-            <div style={{ flex: 2, minWidth: 150 }}>
-              <label style={{ fontSize: '0.72rem', color: C.gold, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Pronunciation</label>
-              <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-            </div>
-          </div>
-          <button onClick={handleAdd} disabled={!letter.trim() || !example.trim()} style={{ padding: '0.55rem', borderRadius: '8px', border: 'none', background: (!letter.trim() || !example.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, #2563eb)`, color: (!letter.trim() || !example.trim()) ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: (!letter.trim() || !example.trim()) ? 'not-allowed' : 'pointer', opacity: (!letter.trim() || !example.trim()) ? 0.5 : 1 }}>
-            Save Alphabet
-          </button>
-        </div>
-      )}
-
       {sorted.length === 0 && !showAdd && (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <BookA size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
@@ -2280,7 +2275,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         </div>
       )}
 
-      {sorted.length > 0 && (
+      {(sorted.length > 0 || showAdd) && (
         <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2292,6 +2287,45 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                 </tr>
               </thead>
               <tbody>
+                {showAdd && (
+                  <tr key="add-row" style={{ borderBottom: '1px solid var(--border)', background: `${C.blue}08` }}>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      <div style={{ position: 'relative', width: 56, height: 56, borderRadius: '10px', overflow: 'hidden', border: `2px dashed ${C.blue}40`, background: `${C.blue}08`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        onClick={() => addFileRef.current?.click()} title="Click to upload photo">
+                        {newPhotoPreview ? (
+                          <img src={newPhotoPreview} alt="new" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Camera size={20} style={{ color: `${C.blue}60` }} />
+                        )}
+                      </div>
+                      {newPhotoPreview && (
+                        <div style={{ marginTop: 4 }}>
+                          <button type="button" onClick={() => { setNewPhoto(null); setNewPhotoPreview(''); }} style={{ fontSize: '0.7rem', background: 'transparent', border: 'none', color: C.red, cursor: 'pointer', padding: 0, fontWeight: 600 }}>Remove photo</button>
+                        </div>
+                      )}
+                      <input ref={addFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) { setNewPhoto(f); setNewPhotoPreview(URL.createObjectURL(f)); }
+                        e.target.value = '';
+                      }} />
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      <input value={letter} onChange={e => setLetter(e.target.value)} placeholder="A" maxLength={1} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      <input value={example} onChange={e => setExample(e.target.value)} placeholder="Apfel (Apple)" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                        <button onClick={() => setShowAdd(false)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                        <button onClick={handleAdd} disabled={letter.trim().length !== 1 || !example.trim()} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', background: (letter.trim().length !== 1 || !example.trim()) ? 'var(--bg)' : C.blue, color: (letter.trim().length !== 1 || !example.trim()) ? 'var(--text-muted)' : '#fff', fontSize: '0.75rem', cursor: (letter.trim().length !== 1 || !example.trim()) ? 'not-allowed' : 'pointer', fontWeight: 700, opacity: (letter.trim().length !== 1 || !example.trim()) ? 0.5 : 1 }}>Save</button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {sorted.map(a => (
                   <tr key={a.recordId} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
@@ -2318,7 +2352,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
                       {editingId === a.recordId ? (
-                        <input value={editLetter} onChange={e => setEditLetter(e.target.value)} maxLength={4} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} />
+                        <input value={editLetter} onChange={e => setEditLetter(e.target.value)} maxLength={1} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} />
                       ) : (
                         <span style={{ fontSize: '1.4rem', fontWeight: 800, color: C.blue }}>{a.letter}</span>
                       )}
@@ -2347,7 +2381,14 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                         <div style={{ display: 'flex', gap: '0.3rem' }}>
                           {a.photoUrl && <button onClick={async () => { if (confirm('Remove photo?')) await onDeletePhoto(a.recordId); }} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} title="Remove photo"><Camera size={14} /></button>}
                           <button onClick={() => startEdit(a)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} title="Edit"><Edit3 size={14} /></button>
-                          <button onClick={async () => { if (confirm('Delete this alphabet?')) await onDelete(a.recordId); }} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }} title="Delete"><Trash2 size={14} /></button>
+                          {confirmDeleteId === a.recordId ? (
+                            <div style={{ display: 'flex', gap: '0.3rem' }}>
+                              <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>No</button>
+                              <button onClick={async () => { await onDelete(a.recordId); setConfirmDeleteId(null); }} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', background: C.red, color: '#fff', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Delete</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDeleteId(a.recordId)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: C.red }} title="Delete"><Trash2 size={14} /></button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -2355,6 +2396,213 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function parseYouTubeUrl(url) {
+  if (!url) return null;
+  let m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/))([\w-]{11})/i) || url.match(/youtu\.be\/([\w-]{11})/i);
+  if (m) return { kind: 'video', videoId: m[1] };
+  m = url.match(/youtube\.com\/channel\/(UC[\w-]+)/i);
+  if (m) return { kind: 'channel', channelId: m[1], handle: '' };
+  m = url.match(/youtube\.com\/@([\w.\-]+)/i) || url.match(/youtube\.com\/user\/([\w.\-]+)/i);
+  if (m) return { kind: 'channel', channelId: '', handle: m[1] };
+  return null;
+}
+
+function ResourcesForm({ onAdd, onUpdate, onDelete, onFetchInfo, isMobile, resources }) {
+  const [url, setUrl] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editUrl, setEditUrl] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [playing, setPlaying] = useState(null);
+
+  const handleAdd = async () => {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setLoading(true);
+    setError('');
+    try {
+      const parsed = parseYouTubeUrl(trimmed) || { kind: 'link' };
+      let info = null;
+      try { info = await onFetchInfo(trimmed); } catch (_) { info = null; }
+      await onAdd({
+        url: trimmed,
+        kind: info?.kind || parsed.kind || 'link',
+        videoId: info?.videoId || parsed.videoId || '',
+        channelId: info?.channelId || parsed.channelId || '',
+        handle: info?.handle || parsed.handle || '',
+        title: info?.title || '',
+        author: info?.author || '',
+        thumbnail: info?.thumbnail || '',
+        notes: notes.trim(),
+      });
+      setUrl('');
+      setNotes('');
+    } catch (e) {
+      setError(e.message || 'Failed to add resource');
+    } finally { setLoading(false); }
+  };
+
+  const startEdit = (r) => {
+    setEditingId(r.recordId);
+    setEditUrl(r.url || '');
+    setEditNotes(r.notes || '');
+  };
+
+  const saveEdit = async (recordId) => {
+    try {
+      await onUpdate(recordId, { url: editUrl.trim(), notes: editNotes.trim() });
+      setEditingId(null);
+    } catch (e) { setError(e.message); }
+  };
+
+  const thumbFor = (r) => {
+    if (r.thumbnail) return r.thumbnail;
+    if (r.videoId) return `https://img.youtube.com/vi/${r.videoId}/hqdefault.jpg`;
+    return '';
+  };
+
+  const linkFor = (r) => r.url || (r.channelId ? `https://www.youtube.com/channel/${r.channelId}` : r.handle ? `https://www.youtube.com/@${r.handle}` : '');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div className="glass-card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+          <Clapperboard size={20} style={{ color: '#ff0000' }} />
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Add a Learning Resource</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              YouTube Video or Channel Link
+            </label>
+            <input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="https://www.youtube.com/watch?v=… or https://www.youtube.com/@channel"
+              style={inputBase}
+            />
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
+              Paste a YouTube <strong>video</strong> or <strong>channel</strong> link. The app will show its thumbnail automatically.
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Why are you learning from this? e.g. great A1 listening practice"
+              style={inputBase}
+            />
+          </div>
+          {error && <div style={{ fontSize: '0.78rem', color: C.red, fontWeight: 600 }}>{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={handleAdd} disabled={!url.trim() || loading} style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.1rem', borderRadius: '10px',
+              cursor: (!url.trim() || loading) ? 'not-allowed' : 'pointer',
+              background: (!url.trim() || loading) ? 'var(--bg)' : 'linear-gradient(135deg, #ff0000, #dc2626)',
+              border: (!url.trim() || loading) ? '1px solid var(--border)' : 'none',
+              color: (!url.trim() || loading) ? 'var(--text-muted)' : '#fff',
+              fontWeight: 700, fontSize: '0.85rem', opacity: (!url.trim() || loading) ? 0.5 : 1,
+            }}>
+              {loading ? <Loader2 size={15} style={{ animation: 'evolvio-spin 0.8s linear infinite' }} /> : <Clapperboard size={15} />}
+              {loading ? 'Loading…' : 'Add Resource'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {resources.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          <Clapperboard size={44} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+          <p style={{ fontSize: '0.9rem', margin: 0 }}>No resources yet. Add the YouTube videos and channels you're learning from!</p>
+        </div>
+      )}
+
+      {resources.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+          {resources.map(r => {
+            const thumb = thumbFor(r);
+            return (
+              <div key={r.recordId} className="glass-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ position: 'relative', aspectRatio: '16/9', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: r.videoId ? 'pointer' : 'default' }}
+                  onClick={() => r.videoId && setPlaying(r.videoId)}>
+                  {thumb ? (
+                    <img src={thumb} alt={r.title || 'resource'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    <Clapperboard size={40} style={{ color: '#ffffff55' }} />
+                  )}
+                  {r.videoId && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}>
+                        <Play size={22} style={{ color: '#fff', marginLeft: 3 }} />
+                      </div>
+                    </div>
+                  )}
+                  <span style={{ position: 'absolute', top: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.62rem', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: r.kind === 'channel' ? '#1f6feb' : '#ff0000', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                    {r.kind === 'channel' ? <Clapperboard size={10} /> : <Play size={10} />} {r.kind === 'channel' ? 'Channel' : 'Video'}
+                  </span>
+                </div>
+                <div style={{ padding: '0.75rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.82rem', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.title || r.url}</div>
+                  {r.author && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.author}</div>}
+                  {r.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{r.notes}</div>}
+                  {editingId === r.recordId ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.3rem' }}>
+                      <input value={editUrl} onChange={e => setEditUrl(e.target.value)} placeholder="YouTube link" style={inputBase} />
+                      <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes" style={inputBase} />
+                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                        <button onClick={() => setEditingId(null)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                        <button onClick={() => saveEdit(r.recordId)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', background: C.blue, color: '#fff', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginTop: 'auto', paddingTop: '0.5rem' }}>
+                      <a href={linkFor(r)} target="_blank" rel="noopener noreferrer" title="Open on YouTube" style={{ padding: '0.3rem', borderRadius: '6px', background: 'transparent', display: 'inline-flex', color: 'var(--text-muted)' }}><ExternalLink size={14} /></a>
+                      <button onClick={() => startEdit(r)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: 'var(--text-muted)' }} title="Edit"><Edit3 size={14} /></button>
+                      {confirmDeleteId === r.recordId ? (
+                        <span style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto' }}>
+                          <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>No</button>
+                          <button onClick={async () => { try { await onDelete(r.recordId); setConfirmDeleteId(null); } catch (e) { setError(e.message); } }} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: 'none', background: C.red, color: '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 700 }}>Delete</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(r.recordId)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: C.red, marginLeft: 'auto' }} title="Delete"><Trash2 size={14} /></button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {playing && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', padding: '1rem' }} onClick={() => setPlaying(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: 800 }}>
+            <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 12, overflow: 'hidden', background: '#000', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${playing}?rel=0&autoplay=1`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+              />
+            </div>
+            <button onClick={() => setPlaying(null)} style={{ position: 'absolute', top: -14, right: -14, background: 'rgba(0,0,0,0.8)', border: 'none', borderRadius: '50%', color: '#fff', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}
@@ -2376,6 +2624,7 @@ export default function LearningGerman() {
     addGermanIdiom, updateGermanIdiom,
     addGermanMistake, updateGermanMistake,
     addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
+    fetchResourceInfo, addGermanResource, updateGermanResource,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
   } = useHabits();
 
@@ -2390,6 +2639,7 @@ export default function LearningGerman() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [noteContent, setNoteContent] = useState('');
   const [selectedNoteId, setSelectedNoteId] = useState(null);
+  const [confirmDeleteNoteId, setConfirmDeleteNoteId] = useState(null);
   const [noteFont, setNoteFont] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
   const [noteBoxes, setNoteBoxes] = useState([]);
@@ -2490,6 +2740,10 @@ export default function LearningGerman() {
   const alphabets = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'alphabet');
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }, [germanData]);
+  const resources = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'resource');
+    return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
   }, [germanData]);
 
   useEffect(() => {
@@ -2671,6 +2925,18 @@ export default function LearningGerman() {
   const handleSaveNote = () => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     performSave(noteContent, noteBoxes);
+  };
+
+  const handleDeleteNote = async (recordId) => {
+    try {
+      await deleteGermanRecord(recordId);
+      if (selectedNoteId === recordId) {
+        setSelectedNoteId(null);
+        setNoteContent('');
+        setNoteBoxes([]);
+      }
+      setConfirmDeleteNoteId(null);
+    } catch (e) { setError(e.message); }
   };
 
   const addNoteBox = (type) => {
@@ -2860,14 +3126,23 @@ export default function LearningGerman() {
 
   const handleExportDailyNote = async () => {
     try {
-      const { exportGermanPDF } = await import('../utils/exportGermanPDF');
+      const { exportDailyNotePDF } = await import('../utils/exportGermanPDF');
       const dayNotes = germanData.filter(r => r.type === 'note' && r.date === dailyExportDate);
       if (dayNotes.length === 0) {
         setError('No notes found for this date.');
         setShowDailyExportCalendar(false);
         return;
       }
-      await exportGermanPDF(dayNotes);
+      const content = dayNotes.map(n => n.content || '').filter(Boolean).join('<hr/>');
+      const boxes = dayNotes.flatMap(n => n.boxes || []);
+      const first = dayNotes[0] || {};
+      await exportDailyNotePDF({
+        date: dailyExportDate,
+        content,
+        boxes,
+        studyMinutes: parseInt(first.studyMinutes) || 0,
+        wordsLearned: parseInt(first.wordsLearned) || 0,
+      });
     } catch (e) { setError(`PDF error: ${e.message}`); console.error(e); }
     setShowDailyExportCalendar(false);
     setShowExportMenu(false);
@@ -3022,6 +3297,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
         <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
+            <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -3076,6 +3352,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
+        <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -3191,13 +3468,7 @@ export default function LearningGerman() {
                 }}>+ New Note</button>
               </div>
               <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                {[
-                  { value: 'daily', label: 'Daily', color: C.gold, icon: NotebookPen },
-                  { value: 'writing', label: 'Writing', color: C.blue, icon: PenTool },
-                  { value: 'reading', label: 'Reading', color: C.green, icon: BookOpen },
-                  { value: 'speaking', label: 'Speaking', color: C.purple, icon: Volume2 },
-                  { value: 'listening', label: 'Listening', color: C.teal, icon: Headphones },
-                ].map(cat => (
+                {NOTE_CATEGORIES.map(cat => (
                   <button key={cat.value} onClick={() => { setNoteCategory(cat.value); setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
@@ -3224,7 +3495,9 @@ export default function LearningGerman() {
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {filteredNotes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No {noteCategory} notes yet.</p>}
-              {filteredNotes.map(n => (
+              {filteredNotes.map(n => {
+                const meta = noteCategoryMeta(n.noteCategory);
+                return (
                 <div key={n.recordId} onClick={() => {
                   setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || '');
                   const savedBoxes = n.boxes || [];
@@ -3244,14 +3517,32 @@ export default function LearningGerman() {
                   border: `1px solid ${selectedNoteId === n.recordId ? C.gold + '40' : 'transparent'}`,
                   transition: 'all 0.2s ease',
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: selectedNoteId === n.recordId ? C.gold : 'var(--text-primary)' }}>
-                    {format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: selectedNoteId === n.recordId ? C.gold : 'var(--text-primary)' }}>
+                        {format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.66rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}35`, whiteSpace: 'nowrap' }}>
+                        <meta.icon size={10} /> {meta.title}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                      {confirmDeleteNoteId === n.recordId ? (
+                        <>
+                          <button onClick={() => setConfirmDeleteNoteId(null)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>No</button>
+                          <button onClick={() => handleDeleteNote(n.recordId)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: 'none', background: C.red, color: '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 700 }}>Delete</button>
+                        </>
+                      ) : (
+                        <button title="Delete note" onClick={() => setConfirmDeleteNoteId(n.recordId)} style={{ padding: '0.25rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)', opacity: 0.6 }}><Trash2 size={13} /></button>
+                      )}
+                    </div>
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
                     {n.content?.replace(/<[^>]+>/g, '').slice(0, 50)}...
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           <div className="glass-card" style={{ padding: '1.25rem' }}>
@@ -3987,6 +4278,12 @@ export default function LearningGerman() {
         </div>
       )}
 
+      {tab === 'resources' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <ResourcesForm onAdd={addGermanResource} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
+        </div>
+      )}
+
       {tab === 'progress' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
@@ -4091,17 +4388,25 @@ export default function LearningGerman() {
             <div className="glass-card" style={{ padding: '1.25rem' }}>
               <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: C.green }}>Recent Study Sessions</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                {notes.slice(0, 8).map(n => (
+                {notes.slice(0, 8).map(n => {
+                  const meta = noteCategoryMeta(n.noteCategory);
+                  return (
                   <div key={n.recordId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.85rem', background: 'var(--bg)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.66rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}35`, whiteSpace: 'nowrap' }}>
+                          <meta.icon size={10} /> {meta.title}
+                        </span>
+                      </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 1 }}>{n.content?.slice(0, 60)}...</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{n.content?.slice(0, 30)}...</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

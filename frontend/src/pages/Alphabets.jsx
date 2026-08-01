@@ -39,6 +39,9 @@ export default function Alphabets() {
   const [pendingUploadId, setPendingUploadId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const fileRef = useRef(null);
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [newPhotoPreview, setNewPhotoPreview] = useState('');
+  const addFileRef = useRef(null);
 
   useEffect(() => { fetchGermanData(); }, []);
 
@@ -52,8 +55,8 @@ export default function Alphabets() {
   }, [germanData]);
 
   const handleAdd = async () => {
-    if (!letter.trim() || !example.trim()) return;
-    await addGermanAlphabet({
+    if (letter.trim().length !== 1 || !example.trim()) return;
+    const created = await addGermanAlphabet({
       type: 'alphabet',
       letter: letter.trim(),
       example: example.trim(),
@@ -61,7 +64,10 @@ export default function Alphabets() {
       photoUrl: '',
       sortOrder: alphabets.length,
     });
-    setLetter(''); setExample(''); setPronunciation(''); setShowAdd(false);
+    if (created?.recordId && newPhoto) {
+      try { await uploadGermanAlphabetPhoto(created.recordId, newPhoto); } catch (e) { console.error(e); }
+    }
+    setLetter(''); setExample(''); setPronunciation(''); setNewPhoto(null); setNewPhotoPreview(''); setShowAdd(false);
   };
 
   const startEdit = (a) => {
@@ -73,7 +79,7 @@ export default function Alphabets() {
   };
 
   const saveEdit = async (recordId) => {
-    if (!editLetter.trim() || !editExample.trim()) return;
+    if (editLetter.trim().length !== 1 || !editExample.trim()) return;
     await updateGermanAlphabet(recordId, {
       letter: editLetter.trim(),
       example: editExample.trim(),
@@ -125,10 +131,26 @@ export default function Alphabets() {
           background: `${C.blue}08`, marginBottom: '1.25rem',
           display: 'flex', flexDirection: 'column', gap: '0.6rem',
         }}>
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: 56, height: 56, borderRadius: '10px', overflow: 'hidden', border: `2px dashed ${C.blue}40`, background: `${C.blue}08`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+              onClick={() => addFileRef.current?.click()} title="Click to upload photo">
+              {newPhotoPreview ? (
+                <img src={newPhotoPreview} alt="new" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <Camera size={20} style={{ color: `${C.blue}60` }} />
+              )}
+            </div>
+            {newPhotoPreview && (
+              <button type="button" onClick={() => { setNewPhoto(null); setNewPhotoPreview(''); }} style={{ fontSize: '0.7rem', background: 'transparent', border: 'none', color: C.red, cursor: 'pointer', padding: 0, fontWeight: 600 }}>Remove photo</button>
+            )}
+            <input ref={addFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setNewPhoto(f); setNewPhotoPreview(URL.createObjectURL(f)); }
+              e.target.value = '';
+            }} />
             <div style={{ flex: 0, minWidth: 80 }}>
               <label style={{ fontSize: '0.72rem', color: C.blue, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Letter</label>
-              <input value={letter} onChange={e => setLetter(e.target.value)} placeholder="A" maxLength={4} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem' }} />
+              <input value={letter} onChange={e => setLetter(e.target.value)} placeholder="A" maxLength={1} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem' }} />
             </div>
             <div style={{ flex: 2, minWidth: 150 }}>
               <label style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Example Word</label>
@@ -139,13 +161,13 @@ export default function Alphabets() {
               <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
             </div>
           </div>
-          <button onClick={handleAdd} disabled={!letter.trim() || !example.trim()} style={{
+          <button onClick={handleAdd} disabled={letter.trim().length !== 1 || !example.trim()} style={{
             padding: '0.55rem', borderRadius: '8px', border: 'none',
-            background: (!letter.trim() || !example.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, #2563eb)`,
-            color: (!letter.trim() || !example.trim()) ? 'var(--text-muted)' : '#fff',
+            background: (letter.trim().length !== 1 || !example.trim()) ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, #2563eb)`,
+            color: (letter.trim().length !== 1 || !example.trim()) ? 'var(--text-muted)' : '#fff',
             fontWeight: 700, fontSize: '0.82rem',
-            cursor: (!letter.trim() || !example.trim()) ? 'not-allowed' : 'pointer',
-            opacity: (!letter.trim() || !example.trim()) ? 0.5 : 1,
+            cursor: (letter.trim().length !== 1 || !example.trim()) ? 'not-allowed' : 'pointer',
+            opacity: (letter.trim().length !== 1 || !example.trim()) ? 0.5 : 1,
           }}>
             Save Alphabet
           </button>
@@ -210,7 +232,7 @@ export default function Alphabets() {
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
                       {editingId === a.recordId ? (
-                        <input value={editLetter} onChange={e => setEditLetter(e.target.value)} maxLength={4} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} />
+                        <input value={editLetter} onChange={e => setEditLetter(e.target.value)} maxLength={1} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} />
                       ) : (
                         <span style={{ fontSize: '1.4rem', fontWeight: 800, color: C.blue }}>{a.letter}</span>
                       )}

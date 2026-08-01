@@ -36,6 +36,11 @@ export default function SavingsVault() {
   const [editDate, setEditDate] = useState('');
   const [editType, setEditType] = useState('deposit');
   const [editSaving, setEditSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveredPassword, setRecoveredPassword] = useState('');
   const sheetRef = useRef(null);
 
   useEffect(() => { init(); }, []);
@@ -50,6 +55,35 @@ export default function SavingsVault() {
     }
     if (hasPw) await fetchSavings();
     setLoading(false);
+  }
+
+  function generateStrongPassword(length = 16) {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const all = upper + lower + digits + symbols;
+    const array = new Uint32Array(length);
+    crypto.getRandomValues(array);
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += all[array[i] % all.length];
+    }
+    return password;
+  }
+
+  async function handleRecoverPassword() {
+    setRecovering(true);
+    setPasswordError('');
+    try {
+      const newPassword = generateStrongPassword();
+      await setVaultPassword(newPassword);
+      setRecoveredPassword(newPassword);
+      addHistoryEntry('vault_recovery', 'Savings Vault password recovered');
+    } catch (err) {
+      setPasswordError(err.message || 'Failed to recover password');
+    }
+    setRecovering(false);
   }
 
   async function handleSetupPassword(e) {
@@ -192,7 +226,10 @@ export default function SavingsVault() {
               </label>
               <div style={{ position: 'relative' }}>
                 <KeyRound size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Enter vault password" style={{ paddingLeft: '40px', height: '48px', borderRadius: '12px' }} autoFocus />
+                <input type={showPassword ? 'text' : 'password'} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Enter vault password" style={{ paddingLeft: '40px', paddingRight: '44px', height: '48px', borderRadius: '12px' }} autoFocus />
+                <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <div className="input-group">
@@ -201,7 +238,10 @@ export default function SavingsVault() {
               </label>
               <div style={{ position: 'relative' }}>
                 <KeyRound size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm vault password" style={{ paddingLeft: '40px', height: '48px', borderRadius: '12px' }} />
+                <input type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm vault password" style={{ paddingLeft: '40px', paddingRight: '44px', height: '48px', borderRadius: '12px' }} />
+                <button type="button" onClick={() => setShowConfirmPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             {passwordError && <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>{passwordError}</div>}
@@ -332,7 +372,7 @@ export default function SavingsVault() {
 
         {/* ── Animated Unlock Sheet ── */}
         <div style={{
-          maxHeight: showUnlockSheet ? '200px' : '0px',
+          maxHeight: showUnlockSheet ? (recoveredPassword ? '520px' : '280px') : '0px',
           opacity: showUnlockSheet ? 1 : 0,
           overflow: 'hidden',
           transition: 'max-height 0.4s ease, opacity 0.3s ease',
@@ -343,14 +383,25 @@ export default function SavingsVault() {
               <div style={{ position: 'relative' }}>
                 <KeyRound size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
                 <input
-                  type="password" value={passwordInput}
+                  type={showUnlockPassword ? 'text' : 'password'} value={passwordInput}
                   onChange={e => { setPasswordInput(e.target.value); setPasswordError(''); }}
                   placeholder="Enter vault password"
-                  style={{ paddingLeft: '40px', height: '48px', borderRadius: '12px', width: '100%', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(148, 163, 184, 0.15)', color: '#e2e8f0', fontSize: '1rem', outline: 'none' }}
+                  style={{ paddingLeft: '40px', paddingRight: '44px', height: '48px', borderRadius: '12px', width: '100%', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(148, 163, 184, 0.15)', color: '#e2e8f0', fontSize: '1rem', outline: 'none' }}
                   autoFocus
                 />
+                <button type="button" onClick={() => setShowUnlockPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {showUnlockPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
               {passwordError && <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600 }}>{passwordError}</div>}
+              <button type="button" onClick={handleRecoverPassword} disabled={recovering} style={{
+                background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.78rem',
+                fontWeight: 600, cursor: 'pointer', padding: '0.25rem 0', alignSelf: 'flex-start',
+                textDecoration: 'underline', textUnderlineOffset: '2px',
+                opacity: recovering ? 0.5 : 1,
+              }}>
+                {recovering ? 'Generating...' : 'Forgot password?'}
+              </button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={closeUnlockSheet} style={{
                   flex: 1, padding: '0.7rem', borderRadius: '12px',
@@ -370,6 +421,54 @@ export default function SavingsVault() {
                 </button>
               </div>
             </form>
+
+            {/* ── Recovered Password Card ── */}
+            {recoveredPassword && (
+              <div style={{
+                marginTop: '0.75rem', padding: '1rem', borderRadius: '14px',
+                background: 'rgba(5, 150, 105, 0.1)', border: '1px solid rgba(5, 150, 105, 0.2)',
+                animation: 'recSlideUp 0.3s ease',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <ShieldCheck size={18} style={{ color: '#34d399' }} />
+                  <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#34d399' }}>
+                    Password Recovered
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.5rem', marginTop: 0 }}>
+                  Your vault password has been reset. Use this new password to unlock:
+                </p>
+                <div style={{
+                  padding: '0.75rem 1rem', borderRadius: '10px',
+                  background: 'rgba(15, 23, 42, 0.5)', fontFamily: 'monospace',
+                  fontSize: '0.95rem', fontWeight: 700, color: '#34d399',
+                  textAlign: 'center', letterSpacing: '0.05em',
+                  marginBottom: '0.75rem', wordBreak: 'break-all',
+                }}>
+                  {recoveredPassword}
+                </div>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(recoveredPassword); }}
+                  style={{
+                    width: '100%', padding: '0.6rem', borderRadius: '10px', border: 'none',
+                    background: 'linear-gradient(145deg, #059669, #047857)',
+                    color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+                    marginBottom: '0.4rem',
+                  }}
+                >
+                  Copy Password
+                </button>
+                <button
+                  onClick={() => { setRecoveredPassword(''); setPasswordInput(recoveredPassword); }}
+                  style={{
+                    width: '100%', padding: '0.6rem', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.2)',
+                    background: 'transparent', color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+                  }}
+                >
+                  Use to Unlock
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -650,6 +749,13 @@ export default function SavingsVault() {
           </p>
         </div>
       )}
+
+      <style>{`
+        @keyframes recSlideUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

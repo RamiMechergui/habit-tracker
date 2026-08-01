@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
-import { Underline } from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
@@ -9,6 +8,20 @@ import { Highlight } from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { EDITOR_IMAGE_BASE } from '../config';
+
+/* ── Image URL helpers ──────────────────────────────────────────────────────
+   The editor stores RELATIVE `/api/...` image URLs so they are portable.
+   Inside the native WebView the page origin has no backend, so we absolutize
+   for display only and relativize again before the HTML is persisted. */
+function absolutizeImageUrls(html, base) {
+  if (!html || !base) return html;
+  return html.replace(/src="\/(api\/[^"]+)"/g, (m, p) => `src="${base}/${p}"`);
+}
+function relativizeImageUrls(html, base) {
+  if (!html || !base) return html;
+  return html.split(`${base}/`).join('/');
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ResizableImage — custom TipTap Node
@@ -395,15 +408,15 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, history: { depth: 50 } }),
-      Underline, TextStyle, FontFamily, Color,
+      TextStyle, FontFamily, Color,
       Highlight.configure({ multicolor: true }),
       ResizableImage,
       Placeholder.configure({ placeholder: placeholder || 'Type here…' }),
     ],
-    content: value || '',
+    content: absolutizeImageUrls(value || '', EDITOR_IMAGE_BASE),
     onUpdate: ({ editor }) => {
       isInternalChange.current = true;
-      onChange?.(editor.getHTML());
+      onChange?.(relativizeImageUrls(editor.getHTML(), EDITOR_IMAGE_BASE));
     },
     editorProps: {
       attributes: {
@@ -419,7 +432,30 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
             return true;
           }
         }
-        return false;
+        // ProseMirror's default paste path (doPaste → replaceRange →
+        // closeFragment) can throw "Cannot read properties of null (reading
+        // 'append')" on certain clipboard HTML (e.g. rich content copied from
+        // other sites or from exported notes). Inserting via the editor
+        // command parses the content against the registered extensions and
+        // avoids that crashing code path entirely.
+        const html = event.clipboardData.getData('text/html');
+        const text = event.clipboardData.getData('text/plain');
+        event.preventDefault();
+        if (html) {
+          editor.chain().focus().insertContent(html).run();
+        } else if (text) {
+          if (text.includes('\n')) {
+            editor.chain().focus().insertContent(
+              text.split('\n').map(line => ({
+                type: 'paragraph',
+                content: line ? [{ type: 'text', text: line }] : [],
+              }))
+            ).run();
+          } else {
+            editor.chain().focus().insertContent(text).run();
+          }
+        }
+        return true;
       },
       handleDrop: (view, event) => {
         const files = event.dataTransfer?.files;
@@ -442,8 +478,8 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       isInternalChange.current = false;
       return;
     }
-    if (editor && value !== undefined && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '', false);
+    if (editor && value !== undefined && value !== relativizeImageUrls(editor.getHTML(), EDITOR_IMAGE_BASE)) {
+      editor.commands.setContent(absolutizeImageUrls(value || '', EDITOR_IMAGE_BASE), false);
     }
   }, [value, editor]);
 
@@ -476,9 +512,12 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       });
     }
     if (src) {
+      // On native the WebView cannot resolve relative /api/... URLs, so
+      // absolutize for display; onUpdate relativizes it back for storage.
+      const displaySrc = (EDITOR_IMAGE_BASE && src.startsWith('/api/')) ? EDITOR_IMAGE_BASE + src : src;
       editor.chain().focus().insertContent({
         type: 'resizableImage',
-        attrs: { src, alt: file.name, width: '100%', height: 'auto', align: 'center' },
+        attrs: { src: displaySrc, alt: file.name, width: '100%', height: 'auto', align: 'center' },
       }).run();
     }
   }, [editor, onUploadImage]);

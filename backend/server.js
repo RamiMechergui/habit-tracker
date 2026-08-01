@@ -63,6 +63,7 @@ app.use('/api/milestones',  require('./routes/milestones'));
 app.use('/api/savings',     require('./routes/savings'));
 app.use('/api/history',     require('./routes/history'));
 app.use('/api/ai',          require('./routes/ai'));
+app.use('/api/german/progress', require('./routes/germanProgress'));
 app.use('/api/sessions',    require('./routes/sessions'));
 app.use('/api/avatar',      require('./routes/avatar'));
 
@@ -145,6 +146,12 @@ app.get('/api/wishlist/images/:key(*)', async (req, res) => {
 
 // Avatar image proxy (MinIO/S3)
 app.get('/api/avatar/images/:key(*)', async (req, res) => {
+  const objectKey = decodeURIComponent(req.params.key);
+  await storage.streamImage(objectKey, res);
+});
+
+// Notes image proxy (MinIO/S3)
+app.get('/api/notes/images/:key(*)', async (req, res) => {
   const objectKey = decodeURIComponent(req.params.key);
   await storage.streamImage(objectKey, res);
 });

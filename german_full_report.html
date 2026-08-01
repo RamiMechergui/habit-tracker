@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Full Report - My German Learning Journey</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm;
+    @bottom-right {
+      content: counter(page);
+      font-family: 'Times New Roman', serif;
+      font-size: 10pt;
+    }
+  }
+
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #111;
+    margin: 0;
+    padding: 20px;
+  }
+
+  .pdf-button {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
+    background: #800000;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .pdf-button:hover {
+    background: #5f0000;
+  }
+
+  h1 {
+    font-size: 20pt;
+    font-weight: bold;
+    color: #800000;
+    margin-top: 0;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #800000;
+    padding-bottom: 4px;
+  }
+
+  h2 {
+    font-size: 15pt;
+    font-weight: bold;
+    color: #800000;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 3px;
+  }
+
+  h3 {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #333;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+
+  .header-meta {
+    float: right;
+    font-size: 9pt;
+    color: #666;
+  }
+
+  .clear {
+    clear: both;
+  }
+
+  .cover-page {
+    text-align: center;
+    padding-top: 100px;
+    page-break-after: always;
+  }
+
+  .cover-title {
+    font-size: 28pt;
+    font-weight: bold;
+    color: #800000;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+  }
+
+  .cover-subtitle {
+    font-size: 18pt;
+    font-style: italic;
+    color: #333;
+    margin-bottom: 30px;
+  }
+
+  .cover-desc {
+    font-size: 12pt;
+    color: #555;
+    margin-bottom: 50px;
+  }
+
+  .cover-meta {
+    font-size: 11pt;
+    color: #444;
+    margin-top: 40px;
+  }
+
+  .toc {
+    page-break-after: always;
+  }
+
+  .toc-title {
+    font-size: 22pt;
+    font-weight: bold;
+    color: #800000;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #800000;
+    padding-bottom: 5px;
+  }
+
+  .toc-item {
+    margin-bottom: 10px;
+    font-size: 12pt;
+  }
+
+  .alphabet-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 8px;
+    margin-bottom: 20px;
+  }
+
+  .alphabet-card {
+    border: 1px solid #c8b98e;
+    background-color: #faf9f5;
+    text-align: center;
+    padding: 8px;
+    width: 23%;
+    vertical-align: top;
+    box-sizing: border-box;
+  }
+
+  .card-photo-placeholder {
+    background-color: #eee;
+    border: 1px dashed #ccc;
+    color: #777;
+    font-size: 8pt;
+    padding: 15px 2px;
+    margin-bottom: 6px;
+  }
+
+  .card-letter {
+    font-size: 18pt;
+    color: #a00000;
+    font-weight: bold;
+  }
+
+  .card-word {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #222;
+  }
+
+  .daily-header {
+    background-color: #f5f3ed;
+    border: 1px solid #dcd7ca;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    font-size: 10pt;
+  }
+
+  .daily-header table {
+    width: 100%;
+  }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+    font-size: 10pt;
+  }
+
+  table.data-table th, table.data-table td {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    text-align: left;
+  }
+
+  table.data-table th {
+    background-color: #f0ebe0;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .note-box {
+    border-left: 4px solid #800000;
+    background-color: #fbf8f3;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 10pt;
+  }
+
+  .note-box-title {
+    font-weight: bold;
+    color: #800000;
+    margin-bottom: 4px;
+  }
+
+  .warning-box {
+    border-left: 4px solid #d9534f;
+    background-color: #fdf7f7;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 10pt;
+  }
+
+  .warning-box-title {
+    font-weight: bold;
+    color: #d9534f;
+    margin-bottom: 4px;
+  }
+
+  .text-red { color: #c00000; }
+  .text-blue { color: #0000c0; }
+  .text-green { color: #008000; }
+  .bg-gold { background-color: #ffe680; padding: 0 2px; }
+  .bg-gray { background-color: #e6e6e6; padding: 0 2px; }
+
+  .image-placeholder-box {
+    border: 1px solid #aaa;
+    background-color: #fafafa;
+    text-align: center;
+    padding: 25px 10px;
+    color: #666;
+    font-size: 10pt;
+    margin: 10px 0;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    flex: 1;
+    min-width: 100px;
+    border: 1px solid #dcd7ca;
+    background: #faf9f5;
+    border-radius: 8px;
+    padding: 14px 18px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 22pt;
+    font-weight: bold;
+    color: #800000;
+  }
+
+  .stat-label {
+    font-size: 8pt;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 8pt;
+    font-weight: bold;
+  }
+
+  .badge-a1 { background: #3b82f618; color: #3b82f6; border: 1px solid #3b82f635; }
+  .badge-a2 { background: #8b5cf618; color: #8b5cf6; border: 1px solid #8b5cf635; }
+  .badge-b1 { background: #ec489918; color: #ec4899; border: 1px solid #ec489935; }
+  .gender-der { color: #3b82f6; font-weight: bold; }
+  .gender-die { color: #dc2626; font-weight: bold; }
+  .gender-das { color: #10b981; font-weight: bold; }
+
+  .dialogue-speaker {
+    display: inline-block;
+    min-width: 60px;
+    font-weight: bold;
+  }
+
+  @media print {
+    .pdf-button {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<button class="pdf-button" onclick="window.print()">Download PDF</button>
+
+<!-- COVER PAGE -->
+<div class="cover-page">
+  <div style="font-size: 14pt; letter-spacing: 3px; color: #555; margin-bottom: 10px;">DEUTSCH LERNEN</div>
+  <div class="cover-title">My German Learning Journey</div>
+  <div class="cover-subtitle">A structured knowledge base and personal course</div>
+  <div class="cover-desc">Generated by Evolvio</div>
+  <div style="margin-top: 60px;">
+    <div class="stats-row" style="max-width: 500px; margin: 0 auto;">
+      <div class="stat-card"><div class="stat-value">47</div><div class="stat-label">Words</div></div>
+      <div class="stat-card"><div class="stat-value">12</div><div class="stat-label">Grammar Rules</div></div>
+      <div class="stat-card"><div class="stat-value">8</div><div class="stat-label">Verbs</div></div>
+    </div>
+    <div class="stats-row" style="max-width: 500px; margin: 10px auto 0;">
+      <div class="stat-card"><div class="stat-value">14</div><div class="stat-label">Study Days</div></div>
+      <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Dialogues</div></div>
+      <div class="stat-card"><div class="stat-value">6h 45m</div><div class="stat-label">Study Time</div></div>
+    </div>
+  </div>
+  <div style="margin-top: 80px; font-size: 12pt; font-weight: bold;">July 30, 2026</div>
+  <div style="margin-top: 10px; font-size: 10pt; color: #666;">Current Level: <span class="badge badge-a1">A1.2</span></div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <table style="width:100%; font-size: 11pt; border-collapse:collapse;">
+    <tr><td style="font-weight:bold;">1 Learning Day 1 — Introductions & sein</td><td style="text-align:right;">July 26, 2026</td><td style="text-align:right; width: 30px;">1</td></tr>
+    <tr><td style="padding-left: 20px;">1.1 Daily Notes</td><td style="text-align:right;"></td><td style="text-align:right;">2</td></tr>
+    <tr><td style="padding-left: 20px;">1.2 Writing Notes</td><td style="text-align:right;"></td><td style="text-align:right;">3</td></tr>
+    <tr><td style="padding-left: 20px;">1.3 Reading Notes</td><td style="text-align:right;"></td><td style="text-align:right;">3</td></tr>
+    <tr><td style="padding-left: 20px;">1.4 Speaking Notes</td><td style="text-align:right;"></td><td style="text-align:right;">4</td></tr>
+    <tr><td style="padding-left: 20px;">1.5 Listening Notes</td><td style="text-align:right;"></td><td style="text-align:right;">4</td></tr>
+    <tr><td style="padding-left: 20px;">1.6 Vocabulary</td><td style="text-align:right;"></td><td style="text-align:right;">5</td></tr>
+    <tr><td style="padding-left: 20px;">1.7 Grammar Rules</td><td style="text-align:right;"></td><td style="text-align:right;">6</td></tr>
+    <tr><td style="padding-left: 20px;">1.8 Verb</td><td style="text-align:right;"></td><td style="text-align:right;">7</td></tr>
+    <tr><td style="padding-left: 20px;">1.9 Dialogue</td><td style="text-align:right;"></td><td style="text-align:right;">7</td></tr>
+    <tr><td style="padding-left: 20px;">1.10 Memorization</td><td style="text-align:right;"></td><td style="text-align:right;">8</td></tr>
+    <tr><td style="padding-left: 20px;">1.11 Useful Expressions</td><td style="text-align:right;"></td><td style="text-align:right;">8</td></tr>
+    <tr><td style="font-weight:bold;">2 Learning Day 2 — Articles & haben</td><td style="text-align:right;">July 27, 2026</td><td style="text-align:right;">9</td></tr>
+    <tr><td style="padding-left: 20px;">2.1 Daily Notes</td><td style="text-align:right;"></td><td style="text-align:right;">9</td></tr>
+    <tr><td style="padding-left: 20px;">2.2 Vocabulary</td><td style="text-align:right;"></td><td style="text-align:right;">10</td></tr>
+    <tr><td style="padding-left: 20px;">2.3 Grammar: Nominativ & Akkusativ</td><td style="text-align:right;"></td><td style="text-align:right;">11</td></tr>
+    <tr><td style="padding-left: 20px;">2.4 Verb: haben</td><td style="text-align:right;"></td><td style="text-align:right;">12</td></tr>
+    <tr><td style="font-weight:bold;">3 Learning Day 3 — Plurals & Numbers</td><td style="text-align:right;">July 28, 2026</td><td style="text-align:right;">13</td></tr>
+    <tr><td style="font-weight:bold;">4 Learning Day 4 — Modal Verbs</td><td style="text-align:right;">July 29, 2026</td><td style="text-align:right;">15</td></tr>
+    <tr><td style="font-weight:bold;">5 Learning Day 5 — Separable Verbs</td><td style="text-align:right;">July 30, 2026</td><td style="text-align:right;">17</td></tr>
+    <tr style="font-weight:bold;"><td>Grammar Index</td><td></td><td style="text-align:right;">19</td></tr>
+    <tr style="font-weight:bold;"><td>Verb Index</td><td></td><td style="text-align:right;">20</td></tr>
+    <tr style="font-weight:bold;"><td>Vocabulary Index</td><td></td><td style="text-align:right;">21</td></tr>
+    <tr style="font-weight:bold;"><td>Expressions Index</td><td></td><td style="text-align:right;">22</td></tr>
+    <tr style="font-weight:bold;"><td>Idioms Index</td><td></td><td style="text-align:right;">23</td></tr>
+    <tr style="font-weight:bold;"><td>Common Mistakes</td><td></td><td style="text-align:right;">24</td></tr>
+  </table>
+</div>
+
+<!-- CHAPTER 1 -->
+<h1>Chapter 1: Learning Day 1 — Introductions & sein</h1>
+<p class="header-meta">July 26, 2026</p>
+
+<h2>German Alphabet</h2>
+<p><strong>Alphabet overview</strong><br>
+German uses the 26 letters of the Latin alphabet together with the umlauts Ä, Ö, Ü and the letter ß. Every card below has an independent photo path in <code>assets/alphabets/</code>.</p>
+
+<table class="alphabet-grid">
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Apfel</div><div class="card-letter">A</div><div class="card-word">Apfel</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Buch</div><div class="card-letter">B</div><div class="card-word">Buch</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Café</div><div class="card-letter">C</div><div class="card-word">Café</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Delfin</div><div class="card-letter">D</div><div class="card-word">Delfin</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Elefant</div><div class="card-letter">E</div><div class="card-word">Elefant</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Fisch</div><div class="card-letter">F</div><div class="card-word">Fisch</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Garten</div><div class="card-letter">G</div><div class="card-word">Garten</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Haus</div><div class="card-letter">H</div><div class="card-word">Haus</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Igel</div><div class="card-letter">I</div><div class="card-word">Igel</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Jacke</div><div class="card-letter">J</div><div class="card-word">Jacke</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Katze</div><div class="card-letter">K</div><div class="card-word">Katze</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Lampe</div><div class="card-letter">L</div><div class="card-word">Lampe</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Maus</div><div class="card-letter">M</div><div class="card-word">Maus</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Nase</div><div class="card-letter">N</div><div class="card-word">Nase</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Orange</div><div class="card-letter">O</div><div class="card-word">Orange</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Pferd</div><div class="card-letter">P</div><div class="card-word">Pferd</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Quelle</div><div class="card-letter">Q</div><div class="card-word">Quelle</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Regenbogen</div><div class="card-letter">R</div><div class="card-word">Regenbogen</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Sonne</div><div class="card-letter">S</div><div class="card-word">Sonne</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Tiger</div><div class="card-letter">T</div><div class="card-word">Tiger</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Uhr</div><div class="card-letter">U</div><div class="card-word">Uhr</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Vogel</div><div class="card-letter">V</div><div class="card-word">Vogel</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Wasser</div><div class="card-letter">W</div><div class="card-word">Wasser</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Xylophon</div><div class="card-letter">X</div><div class="card-word">Xylophon</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Yacht</div><div class="card-letter">Y</div><div class="card-word">Yacht</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Zebra</div><div class="card-letter">Z</div><div class="card-word">Zebra</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Äpfel</div><div class="card-letter">Ä</div><div class="card-word">Äpfel</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Öl</div><div class="card-letter">Ö</div><div class="card-word">Öl</div></td>
+  </tr>
+  <tr>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Übung</div><div class="card-letter">Ü</div><div class="card-word">Übung</div></td>
+    <td class="alphabet-card"><div class="card-photo-placeholder">Photo: Straße</div><div class="card-letter">ß</div><div class="card-word">Straße</div></td>
+    <td colspan="2" style="border:none;"></td>
+  </tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>1.1 Daily Notes</h2>
+<p class="header-meta">July 26, 2026 — 45 min</p>
+<div class="daily-header">
+  <table>
+    <tr>
+      <td><strong>Topic:</strong> Introductions and the verb <em>sein</em></td>
+      <td><strong>Level:</strong> <span class="badge badge-a1">A1.1</span></td>
+    </tr>
+    <tr>
+      <td><strong>Next review:</strong> Tomorrow</td>
+      <td><strong>Confidence:</strong> Good</td>
+    </tr>
+  </table>
+</div>
+
+<h3>Study Notes & Reflections</h3>
+<p>Today I started my German learning journey. I focused on basic introductions and the verb <em>sein</em> (to be). The most important takeaway is that German has a fixed V2 word order — the conjugated verb always takes the second position in a main clause.</p>
+
+<blockquote style="background: #faf8f5; border-left: 3px solid #800000; padding: 8px 12px; margin: 10px 0; font-style: italic;">
+  <p><strong>Das Leben in einer lebendigen Stadt</strong><br>
+  Das Leben in einer lebendigen Stadt bringt jeden Tag neue Eindrücke und unerwartete Momente mit sich. Während morgens die Sonnenstrahlen langsam durch die Nebelschleier brechen und die Straßen im goldorangenen Licht erstrahlen, erwacht das städtische Treiben zum Leben.<br>
+  Dennoch schätzen viele Menschen die ruhigen Zufluchtsorte wie Parks oder schattige Cafés. Dort kann man bei einer heißen Tasse Kaffee entspannen, dem Alltagsstress für einen kurzen Augenblick entfliehen und neue Energie sammeln.</p>
+</blockquote>
+
+<p><strong>Reflection:</strong> I noticed that the conjugated German verb normally occupies the second position. I should practise changing the subject while keeping the rest of the sentence stable.</p>
+
+<table style="width:100%; border-collapse:collapse; margin-top:15px;">
+  <tr>
+    <td style="width:40%; vertical-align:top; padding-right:15px;">
+      <div class="image-placeholder-box">
+        <strong>Image placeholder</strong><br>
+        Verb position diagram — assets/images/verb-position.png
+      </div>
+      <p style="font-size:9pt; color:#555; text-align:center;">German V2 word order: the verb is always the second element.</p>
+    </td>
+    <td style="vertical-align:top;">
+      <h4 style="margin-top:0;">Key Rule: V2 Word Order</h4>
+      <p>In German declarative sentences, the conjugated verb is always the second element. The first element can be the subject, an adverb, or an object. This is called <strong>V2 (Verb-Second)</strong> word order.</p>
+      <p><em>Ich <strong>bin</strong> heute müde.</em> — I am tired today.<br>
+      <em>Heute <strong>bin</strong> ich müde.</em> — Today I am tired.</p>
+    </td>
+  </tr>
+</table>
+
+<div class="note-box">
+  <div class="note-box-title">Remember</div>
+  In German, only the conjugated verb occupies position 2. If the sentence has a modal verb or compound tense, the infinitive or participle goes to the <em>end</em> of the clause.
+</div>
+
+<h3>Font examples</h3>
+<table class="data-table">
+  <tr><th>Style</th><th>Example</th></tr>
+  <tr><td>Roman font</td><td>Standard textbook text for explanations.</td></tr>
+  <tr><td>Sans-serif font</td><td><span style="font-family: sans-serif;">Clean sans-serif text for labels or summaries.</span></td></tr>
+  <tr><td>Monospaced font</td><td><code>Useful for literal forms and structured data.</code></td></tr>
+  <tr><td>Small text</td><td><small>Supporting detail in a smaller font size.</small></td></tr>
+  <tr><td>Large text</td><td><span style="font-size: 13pt;">Important text in a larger font size.</span></td></tr>
+</table>
+
+<h3>Text colour and background colour</h3>
+<ul>
+  <li><span class="text-red">Red text</span> can identify corrections or key rules.</li>
+  <li><span class="text-blue">Blue text</span> can identify explanations or references.</li>
+  <li><span class="text-green">Green text</span> can identify correct answers.</li>
+  <li><span class="bg-gold">Highlighted text with a gold background.</span></li>
+  <li><span class="bg-gray">Neutral text with a light gray background.</span></li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2>1.2 Writing Notes</h2>
+<p>Write four sentences that introduce your name, home city, occupation, and reason for learning German.</p>
+
+<div class="note-box">
+  <div class="note-box-title">Writing pattern</div>
+  Use the pattern <em>Ich lerne Deutsch, weil</em> to explain a reason. Remember that the conjugated verb moves to the end of a <em>weil</em> clause.
+</div>
+
+<div class="warning-box">
+  <div class="warning-box-title">Writing warning</div>
+  Do not write a comma between the subject and verb. Use a comma before a subordinate clause introduced by <em>weil</em>.
+</div>
+
+<p><strong>My practice sentences:</strong></p>
+<ol>
+  <li>Ich heiße Rami.</li>
+  <li>Ich wohne in Tunis.</li>
+  <li>Ich bin Softwareentwickler.</li>
+  <li>Ich lerne Deutsch, weil ich in Deutschland arbeiten möchte.</li>
+  <li>Mein Name ist Rami und ich komme aus Tunesien.</li>
+</ol>
+
+<h2>1.3 Reading Notes</h2>
+<p>In short introductions, German speakers often state their name with <em>Ich heiße</em> or <em>Mein Name ist</em>.</p>
+
+<div class="note-box">
+  <div class="note-box-title">Reading strategy</div>
+  Read once for the general meaning, then underline names, verbs, and unfamiliar words. Use the surrounding sentence before checking a translation.
+</div>
+
+<div class="warning-box">
+  <div class="warning-box-title">Reading warning</div>
+  Do not translate every German word in isolation. Compound nouns and context can change the meaning you expect from individual word parts.
+</div>
+
+<p><strong>Reading text:</strong> Jeden Morgen liest Lea einen kurzen deutschen Artikel und notiert drei neue Wörter in ihrem Lernbuch. Sie markiert die Verben und sucht die Bedeutung unbekannter Nomen im Wörterbuch.</p>
+
+<p><strong>Comprehension questions:</strong></p>
+<ul>
+  <li>Was macht Lea jeden Morgen? — Sie liest einen deutschen Artikel.</li>
+  <li>Wie viele Wörter notiert sie? — Drei neue Wörter.</li>
+  <li>Was markiert sie? — Die Verben.</li>
+</ul>
+
+<h2>1.4 Speaking Notes</h2>
+<p>Say the dialogue aloud twice. Then repeat it without reading and replace the names and personal details with your own.</p>
+
+<div class="note-box">
+  <div class="note-box-title">Speaking strategy</div>
+  Practise complete phrases rather than isolated words. Record yourself, listen once for pronunciation, and repeat the sentence at a natural speed.
+</div>
+
+<div class="warning-box">
+  <div class="warning-box-title">Speaking warning</div>
+  Do not sacrifice clarity for speed. Pay particular attention to German vowel length and the final consonants in words such as <em>Tag</em> and <em>Hund</em>.
+</div>
+
+<p><strong>Speaking prompt:</strong> Hallo! Ich heiße Alex. Ich komme aus London und lerne seit drei Monaten Deutsch. Ich bin Ingenieur und möchte nächstes Jahr nach Berlin ziehen.</p>
+
+<h2>1.5 Listening Notes</h2>
+<p>Listen for the reduced spoken form <em>Wie geht's?</em> and note whether speakers use the informal <em>du</em> or formal <em>Sie</em>.</p>
+
+<div class="note-box">
+  <div class="note-box-title">Listening strategy</div>
+  Listen first without pausing. On the second pass, write down keywords. On the third pass, check endings, numbers, names, and any words you initially missed.
+</div>
+
+<div class="warning-box">
+  <div class="warning-box-title">Listening warning</div>
+  Spoken German often joins words together. Do not assume that every sound you cannot separate represents a new or unknown word.
+</div>
+
+<p><strong>Listening transcript:</strong> Guten Morgen! Heute sprechen wir über das Leben in einer deutschen Stadt. Viele Menschen wohnen gern in der Stadt, weil es dort viele Geschäfte und Restaurants gibt.</p>
+
+<div class="page-break"></div>
+
+<h2>1.6 Vocabulary</h2>
+<div class="note-box">
+  <div class="note-box-title">Vocabulary entry: der Hund</div>
+  <table style="width:100%; border:none;">
+    <tr><td><strong>German word:</strong> <span class="gender-der">der Hund</span></td><td><strong>Category:</strong> Animals</td></tr>
+    <tr><td><strong>Plural form:</strong> Hunde</td><td><strong>Mastery:</strong> ★★★☆☆ (3/5)</td></tr>
+    <tr><td><strong>Translation:</strong> dog</td><td><strong>Level:</strong> <span class="badge badge-a1">A1</span></td></tr>
+  </table>
+  <p><strong>Example sentence:</strong> Der Hund bellt laut.</p>
+  <p><strong>Notes:</strong> Masculine noun. The plural does not add an umlaut.</p>
+</div>
+
+<h3>Vocabulary list — Day 1</h3>
+<table class="data-table">
+  <tr><th>Photo</th><th>German</th><th>Article</th><th>Plural</th><th>English</th><th>Example</th></tr>
+  <tr><td>[Photo]</td><td>Hund</td><td><span class="gender-der">der</span></td><td>Hunde</td><td>dog</td><td>Der Hund bellt.</td></tr>
+  <tr><td>[Photo]</td><td>Katze</td><td><span class="gender-die">die</span></td><td>Katzen</td><td>cat</td><td>Die Katze schläft.</td></tr>
+  <tr><td>[Photo]</td><td>Haus</td><td><span class="gender-das">das</span></td><td>Häuser</td><td>house</td><td>Ich wohne in einem Haus.</td></tr>
+  <tr><td>[Photo]</td><td>Name</td><td><span class="gender-der">der</span></td><td>Namen</td><td>name</td><td>Mein Name ist Lea.</td></tr>
+  <tr><td>[Photo]</td><td>Stadt</td><td><span class="gender-die">die</span></td><td>Städte</td><td>city</td><td>Berlin ist eine große Stadt.</td></tr>
+  <tr><td>[Photo]</td><td>Freund</td><td><span class="gender-der">der</span></td><td>Freunde</td><td>friend</td><td>Er ist mein Freund.</td></tr>
+  <tr><td>[Photo]</td><td>lernen</td><td>—</td><td>—</td><td>to learn</td><td>Ich lerne Deutsch.</td></tr>
+  <tr><td>[Photo]</td><td>heute</td><td>—</td><td>—</td><td>today</td><td>Heute habe ich Zeit.</td></tr>
+  <tr><td>[Photo]</td><td>zusammen</td><td>—</td><td>—</td><td>together</td><td>Wir lernen zusammen.</td></tr>
+  <tr><td>[Photo]</td><td>heißen</td><td>—</td><td>—</td><td>to be called</td><td>Ich heiße Rami.</td></tr>
+</table>
+
+<h2>1.7 Grammar Rules</h2>
+<p><strong>The present tense of <em>sein</em></strong><br>
+The verb <em>sein</em> (to be) is irregular. Its form changes with the subject. German statements normally place the conjugated verb in the second position: <em>Ich bin heute müde.</em></p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>Ich bin Studentin. (I am a student.)</li>
+  <li>Du bist freundlich. (You are friendly.)</li>
+  <li>Er ist heute in Berlin. (He is in Berlin today.)</li>
+  <li>Sie ist Ärztin. (She is a doctor.)</li>
+  <li>Es ist kalt. (It is cold.)</li>
+  <li>Wir sind Freunde. (We are friends.)</li>
+  <li>Ihr seid müde. (You all are tired.)</li>
+  <li>Sie sind Lehrer. (They are teachers.)</li>
+</ul>
+
+<div class="note-box">
+  <div class="note-box-title">Word order note</div>
+  <strong>Ich bin heute müde.</strong> — verb in position 2.<br>
+  <strong>Heute bin ich müde.</strong> — adverbial phrase in position 1, verb still in position 2.<br>
+  The subject swaps places with the adverb, but the verb position is fixed.
+</div>
+
+<h2>1.8 Verb</h2>
+<p><strong>Verb of the Day</strong></p>
+<table class="data-table" style="width: 60%;">
+  <tr><td><strong>Infinitive</strong></td><td>sein</td></tr>
+  <tr><td><strong>Meaning</strong></td><td>to be</td></tr>
+  <tr><td><strong>Past participle</strong></td><td>gewesen</td></tr>
+  <tr><td><strong>Auxiliary</strong></td><td>sein</td></tr>
+  <tr><td><strong>Type</strong></td><td>irregular, non-separable</td></tr>
+  <tr><td><strong>Example</strong></td><td>Ich bin bereit. (I am ready.)</td></tr>
+</table>
+
+<p><strong>Verb Conjugation</strong></p>
+<table class="data-table" style="width: 50%;">
+  <tr><th>ich</th><td>bin</td><th>wir</th><td>sind</td></tr>
+  <tr><th>du</th><td>bist</td><th>ihr</th><td>seid</td></tr>
+  <tr><th>er/sie/es</th><td>ist</td><th>sie/Sie</th><td>sind</td></tr>
+</table>
+
+<h2>1.9 Dialogue</h2>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+  <tr><td style="width: 60px; font-weight: bold; color: #800000;">Anna</td><td>Hallo! Ich heiße Anna. Wie heißt du?</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Tom</td><td>Ich heiße Tom. Freut mich!</td></tr>
+  <tr><td style="font-weight: bold; color: #800000;">Anna</td><td>Freut mich auch. Wie geht es dir?</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Tom</td><td>Mir geht es gut, danke. Und dir?</td></tr>
+  <tr><td style="font-weight: bold; color: #800000;">Anna</td><td>Auch gut, danke! Woher kommst du?</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Tom</td><td>Ich komme aus Frankreich. Und du?</td></tr>
+  <tr><td style="font-weight: bold; color: #800000;">Anna</td><td>Ich komme aus Spanien.</td></tr>
+</table>
+
+<h2>1.10 Memorization</h2>
+<div class="note-box">
+  <div class="note-box-title">Memorization method</div>
+  Read the paragraph aloud three times. Cover it, recall one sentence at a time, then write the full paragraph from memory and compare it with the original.
+</div>
+
+<p style="background: #faf8f5; border: 1px solid #dcd7ca; padding: 12px; font-style: italic;">
+  <strong>Mein erster Lerntag</strong><br>
+  Hallo! Ich heiße Alex und ich lerne Deutsch. Ich wohne in einer großen Stadt. Heute übe ich neue Wörter und das Verb sein. Ich bin motiviert, weil ich später in Deutschland arbeiten möchte. Jeden Tag lerne ich ein bisschen mehr. Meine Freunde helfen mir beim Lernen und wir sprechen zusammen Deutsch.
+</p>
+
+<h2>1.11 Useful Expressions</h2>
+<table class="data-table" style="width: 60%;">
+  <tr><th>German</th><th>English</th></tr>
+  <tr><td><strong>Wie geht's?</strong></td><td>How are you?</td></tr>
+  <tr><td><strong>Freut mich!</strong></td><td>Nice to meet you!</td></tr>
+  <tr><td><strong>Mir geht es gut.</strong></td><td>I am doing well.</td></tr>
+  <tr><td><strong>Und dir?</strong></td><td>And you? (informal)</td></tr>
+  <tr><td><strong>Woher kommst du?</strong></td><td>Where are you from?</td></tr>
+  <tr><td><strong>Ich komme aus</strong></td><td>I come from</td></tr>
+  <tr><td><strong>Guten Morgen!</strong></td><td>Good morning!</td></tr>
+  <tr><td><strong>Tschüss!</strong></td><td>Bye!</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- CHAPTER 2 -->
+<h1>Chapter 2: Learning Day 2 — Articles & haben</h1>
+<p class="header-meta">July 27, 2026</p>
+
+<h2>2.1 Daily Notes</h2>
+<p class="header-meta">July 27, 2026 — 55 min</p>
+<div class="daily-header">
+  <table>
+    <tr>
+      <td><strong>Topic:</strong> Definite articles & the verb <em>haben</em></td>
+      <td><strong>Level:</strong> <span class="badge badge-a1">A1.1</span></td>
+    </tr>
+    <tr>
+      <td><strong>Next review:</strong> In 3 days</td>
+      <td><strong>Confidence:</strong> Fair</td>
+    </tr>
+  </table>
+</div>
+
+<h3>Study Notes & Reflections</h3>
+<p>Today I studied the three German genders. Every noun has one of three genders: masculine (der), feminine (die), or neuter (das). There is no simple rule for predicting gender, so I must always learn each noun with its article.</p>
+
+<h3>Gender patterns (partial rules)</h3>
+<table class="data-table">
+  <tr><th>Ending</th><th>Usually</th><th>Examples</th></tr>
+  <tr><td>-ung, -heit, -keit, -schaft, -ion, -tät</td><td><span class="gender-die">die</span></td><td>die Zeitung, die Freiheit, die Freundschaft</td></tr>
+  <tr><td>-er, -ich, -ig, -ling</td><td><span class="gender-der">der</span></td><td>der Lehrer, der Teppich, der Schmetterling</td></tr>
+  <tr><td>-chen, -lein, -ment, -um</td><td><span class="gender-das">das</span></td><td>das Mädchen, das Büchlein, das Dokument</td></tr>
+  <tr><td>-e (most)</td><td><span class="gender-die">die</span></td><td>die Lampe, die Tasche, die Blume</td></tr>
+</table>
+
+<div class="note-box">
+  <div class="note-box-title">Tip: Learn gender with colour</div>
+  Use <span class="gender-der">blue</span> for der, <span class="gender-die">red</span> for die, and <span class="gender-das">green</span> for das when making flashcards. This creates a visual association that helps memory.
+</div>
+
+<h2>2.2 Vocabulary — Day 2</h2>
+<table class="data-table">
+  <tr><th>Photo</th><th>German</th><th>Article</th><th>Plural</th><th>English</th><th>Example</th></tr>
+  <tr><td>[Photo]</td><td>Mann</td><td><span class="gender-der">der</span></td><td>Männer</td><td>man</td><td>Der Mann ist groß.</td></tr>
+  <tr><td>[Photo]</td><td>Frau</td><td><span class="gender-die">die</span></td><td>Frauen</td><td>woman</td><td>Die Frau lacht.</td></tr>
+  <tr><td>[Photo]</td><td>Kind</td><td><span class="gender-das">das</span></td><td>Kinder</td><td>child</td><td>Das Kind spielt.</td></tr>
+  <tr><td>[Photo]</td><td>Buch</td><td><span class="gender-das">das</span></td><td>Bücher</td><td>book</td><td>Das Buch ist interessant.</td></tr>
+  <tr><td>[Photo]</td><td>Tisch</td><td><span class="gender-der">der</span></td><td>Tische</td><td>table</td><td>Der Tisch ist braun.</td></tr>
+  <tr><td>[Photo]</td><td>Lampe</td><td><span class="gender-die">die</span></td><td>Lampen</td><td>lamp</td><td>Die Lampe leuchtet.</td></tr>
+  <tr><td>[Photo]</td><td>haben</td><td>—</td><td>—</td><td>to have</td><td>Ich habe einen Hund.</td></tr>
+  <tr><td>[Photo]</td><td>groß</td><td>—</td><td>—</td><td>big/tall</td><td>Berlin ist eine große Stadt.</td></tr>
+  <tr><td>[Photo]</td><td>klein</td><td>—</td><td>—</td><td>small</td><td>Die Katze ist klein.</td></tr>
+  <tr><td>[Photo]</td><td>neu</td><td>—</td><td>—</td><td>new</td><td>Ich habe ein neues Buch.</td></tr>
+  <tr><td>[Photo]</td><td>alt</td><td>—</td><td>—</td><td>old</td><td>Das Haus ist alt.</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>2.3 Grammar: Nominativ & Akkusativ</h2>
+
+<p><strong>Definite articles in Nominativ and Akkusativ</strong></p>
+<p>The <strong>Nominativ</strong> case is used for the subject of a sentence. The <strong>Akkusativ</strong> case is used for the direct object. Only the masculine article changes:</p>
+
+<table class="data-table" style="width: 50%;">
+  <tr><th>Case</th><th>der (m)</th><th>die (f)</th><th>das (n)</th><th>die (pl)</th></tr>
+  <tr><td><strong>Nominativ</strong></td><td>der</td><td>die</td><td>das</td><td>die</td></tr>
+  <tr><td><strong>Akkusativ</strong></td><td><span class="text-red">den</span></td><td>die</td><td>das</td><td>die</td></tr>
+</table>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li><strong>Nominativ:</strong> <em>Der Hund</em> sieht die Katze. (The dog sees the cat.)</li>
+  <li><strong>Akkusativ:</strong> Die Katze sieht <em>den Hund</em>. (The cat sees the dog.)</li>
+  <li><strong>Nominativ:</strong> <em>Der Mann</em> hat einen Hund. (The man has a dog.)</li>
+  <li><strong>Akkusativ:</strong> Ich sehe <em>den Mann</em>. (I see the man.)</li>
+</ul>
+
+<div class="warning-box">
+  <div class="warning-box-title">Common mistake</div>
+  Do not use the Nominativ article for the object. Saying <em>Ich sehe der Hund</em> is incorrect. The correct form is <em>Ich sehe <strong>den</strong> Hund</em>.
+</div>
+
+<h2>2.4 Verb: haben</h2>
+<p><strong>Present tense conjugation of <em>haben</em> (to have)</strong></p>
+
+<table class="data-table" style="width: 50%;">
+  <tr><th>Person</th><th>Form</th><th>Example</th></tr>
+  <tr><td>ich</td><td><strong>habe</strong></td><td>Ich habe einen Bruder.</td></tr>
+  <tr><td>du</td><td><strong>hast</strong></td><td>Du hast eine Schwester.</td></tr>
+  <tr><td>er/sie/es</td><td><strong>hat</strong></td><td>Er hat ein Auto.</td></tr>
+  <tr><td>wir</td><td><strong>haben</strong></td><td>Wir haben ein Haus.</td></tr>
+  <tr><td>ihr</td><td><strong>habt</strong></td><td>Ihr habt Hunger.</td></tr>
+  <tr><td>sie/Sie</td><td><strong>haben</strong></td><td>Sie haben Zeit.</td></tr>
+</table>
+
+<p><strong>Dialogue practice:</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+  <tr><td style="width: 60px; font-weight: bold; color: #800000;">Laura</td><td>Hast du ein Haustier?</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Max</td><td>Ja, ich habe einen Hund und eine Katze. Und du?</td></tr>
+  <tr><td style="font-weight: bold; color: #800000;">Laura</td><td>Ich habe keine Haustiere, aber ich habe einen Bruder.</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- CHAPTER 3 -->
+<h1>Chapter 3: Learning Day 3 — Plurals & Numbers</h1>
+<p class="header-meta">July 28, 2026</p>
+
+<h2>3.1 Daily Notes</h2>
+<p class="header-meta">July 28, 2026 — 40 min</p>
+<div class="daily-header">
+  <table>
+    <tr><td><strong>Topic:</strong> Plural forms and numbers 1–100</td><td><strong>Level:</strong> <span class="badge badge-a1">A1.1</span></td></tr>
+    <tr><td><strong>Next review:</strong> In 7 days</td><td><strong>Confidence:</strong> Good</td></tr>
+  </table>
+</div>
+
+<h3>Plural formation patterns</h3>
+<p>German has several ways to form plurals. Here are the main patterns:</p>
+
+<table class="data-table">
+  <tr><th>Pattern</th><th>Singular</th><th>Plural</th><th>Example</th></tr>
+  <tr><td>Add <strong>-e</strong></td><td>der Tisch</td><td>die Tische</td><td>Der Tisch → die Tische</td></tr>
+  <tr><td>Add <strong>-e + umlaut</strong></td><td>der Sohn</td><td>die Söhne</td><td>Der Sohn → die Söhne</td></tr>
+  <tr><td>Add <strong>-er + umlaut</strong></td><td>das Haus</td><td>die Häuser</td><td>Das Haus → die Häuser</td></tr>
+  <tr><td>Add <strong>-n / -en</strong></td><td>die Frau</td><td>die Frauen</td><td>Die Frau → die Frauen</td></tr>
+  <tr><td>Add <strong>-s</strong> (foreign)</td><td>das Café</td><td>die Cafés</td><td>Das Café → die Cafés</td></tr>
+  <tr><td>No change + umlaut</td><td>der Vater</td><td>die Väter</td><td>Der Vater → die Väter</td></tr>
+  <tr><td>No change</td><td>der Lehrer</td><td>die Lehrer</td><td>Der Lehrer → die Lehrer</td></tr>
+</table>
+
+<h3>Numbers 1–20</h3>
+<table class="data-table" style="width: 40%;">
+  <tr><th>Number</th><th>German</th></tr>
+  <tr><td>1</td><td>eins</td></tr>
+  <tr><td>2</td><td>zwei</td></tr>
+  <tr><td>3</td><td>drei</td></tr>
+  <tr><td>4</td><td>vier</td></tr>
+  <tr><td>5</td><td>fünf</td></tr>
+  <tr><td>6</td><td>sechs</td></tr>
+  <tr><td>7</td><td>sieben</td></tr>
+  <tr><td>8</td><td>acht</td></tr>
+  <tr><td>9</td><td>neun</td></tr>
+  <tr><td>10</td><td>zehn</td></tr>
+  <tr><td>11</td><td>elf</td></tr>
+  <tr><td>12</td><td>zwölf</td></tr>
+  <tr><td>13–19</td><td>-zehn (dreizehn, vierzehn, ...)</td></tr>
+  <tr><td>20</td><td>zwanzig</td></tr>
+</table>
+
+<div class="note-box">
+  <div class="note-box-title">Number formation pattern</div>
+  For numbers 21–99, German says the <strong>units before the tens</strong>, connected with <em>und</em>:<br>
+  21 = einundzwanzig (literally "one-and-twenty")<br>
+  45 = fünfundvierzig ("five-and-forty")<br>
+  99 = neunundneunzig ("nine-and-ninety")
+</div>
+
+<h2>3.2 Vocabulary — Day 3</h2>
+<table class="data-table">
+  <tr><th>Photo</th><th>German</th><th>Article</th><th>Plural</th><th>English</th></tr>
+  <tr><td>[Photo]</td><td>Apfel</td><td><span class="gender-der">der</span></td><td>Äpfel</td><td>apple</td></tr>
+  <tr><td>[Photo]</td><td>Brot</td><td><span class="gender-das">das</span></td><td>Brote</td><td>bread</td></tr>
+  <tr><td>[Photo]</td><td>Milch</td><td><span class="gender-die">die</span></td><td>—</td><td>milk</td></tr>
+  <tr><td>[Photo]</td><td>Wasser</td><td><span class="gender-das">das</span></td><td>—</td><td>water</td></tr>
+  <tr><td>[Photo]</td><td>Kaffee</td><td><span class="gender-der">der</span></td><td>—</td><td>coffee</td></tr>
+  <tr><td>[Photo]</td><td>Zahl</td><td><span class="gender-die">die</span></td><td>Zahlen</td><td>number</td></tr>
+  <tr><td>[Photo]</td><td>zählen</td><td>—</td><td>—</td><td>to count</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- CHAPTER 4 -->
+<h1>Chapter 4: Learning Day 4 — Modal Verbs</h1>
+<p class="header-meta">July 29, 2026</p>
+
+<h2>4.1 Daily Notes</h2>
+<p class="header-meta">July 29, 2026 — 60 min</p>
+<div class="daily-header">
+  <table>
+    <tr><td><strong>Topic:</strong> Modal verbs: können, müssen, wollen</td><td><strong>Level:</strong> <span class="badge badge-a1">A1.2</span></td></tr>
+    <tr><td><strong>Next review:</strong> In 3 days</td><td><strong>Confidence:</strong> Fair</td></tr>
+  </table>
+</div>
+
+<h3>Modal verb sentence structure</h3>
+<p>Modal verbs follow a <strong>frame structure</strong>: the modal is conjugated in position 2, and the main verb goes to the <strong>end</strong> of the clause in its infinitive form.</p>
+
+<p><strong>Formula:</strong> Subject + <em>modal</em> (conjugated) + ... + <em>main verb</em> (infinitive)</p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li>Ich <em>kann</em> gut Deutsch <em>sprechen</em>. (I can speak German well.)</li>
+  <li>Wir <em>müssen</em> jetzt <em>gehen</em>. (We must go now.)</li>
+  <li>Er <em>will</em> Arzt <em>werden</em>. (He wants to become a doctor.)</li>
+  <li>Du <em>kannst</em> mich später <em>anrufen</em>. (You can call me later.)</li>
+</ul>
+
+<h3>Conjugation of modal verbs</h3>
+<table class="data-table" style="width: 70%;">
+  <tr><th>Person</th><th>können (can)</th><th>müssen (must)</th><th>wollen (want)</th><th>dürfen (may)</th></tr>
+  <tr><td>ich</td><td>kann</td><td>muss</td><td>will</td><td>darf</td></tr>
+  <tr><td>du</td><td>kannst</td><td>musst</td><td>willst</td><td>darfst</td></tr>
+  <tr><td>er/sie/es</td><td>kann</td><td>muss</td><td>will</td><td>darf</td></tr>
+  <tr><td>wir</td><td>können</td><td>müssen</td><td>wollen</td><td>dürfen</td></tr>
+  <tr><td>ihr</td><td>könnt</td><td>müsst</td><td>wollt</td><td>dürft</td></tr>
+  <tr><td>sie/Sie</td><td>können</td><td>müssen</td><td>wollen</td><td>dürfen</td></tr>
+</table>
+
+<div class="warning-box">
+  <div class="warning-box-title">Common mistake</div>
+  Do NOT conjugate the main verb after a modal. <span class="text-red">Ich kann Deutsch spreche</span> is wrong. The correct form is <span class="text-green">Ich kann Deutsch sprechen</span> (infinitive at the end).
+</div>
+
+<h2>4.2 Vocabulary — Day 4</h2>
+<table class="data-table">
+  <tr><th>Photo</th><th>German</th><th>English</th><th>Example</th></tr>
+  <tr><td>[Photo]</td><td>sprechen</td><td>to speak</td><td>Ich kann Deutsch sprechen.</td></tr>
+  <tr><td>[Photo]</td><td>gehen</td><td>to go</td><td>Wir müssen nach Hause gehen.</td></tr>
+  <tr><td>[Photo]</td><td>werden</td><td>to become</td><td>Er will Arzt werden.</td></tr>
+  <tr><td>[Photo]</td><td>anrufen</td><td>to call (phone)</td><td>Du kannst mich anrufen.</td></tr>
+  <tr><td>[Photo]</td><td>arbeiten</td><td>to work</td><td>Sie muss heute arbeiten.</td></tr>
+  <tr><td>[Photo]</td><td>kaufen</td><td>to buy</td><td>Ich will ein Auto kaufen.</td></tr>
+  <tr><td>[Photo]</td><td>trinken</td><td>to drink</td><td>Darf ich Wasser trinken?</td></tr>
+  <tr><td>[Photo]</td><td>essen</td><td>to eat</td><td>Wir wollen Pizza essen.</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- CHAPTER 5 -->
+<h1>Chapter 5: Learning Day 5 — Separable Verbs</h1>
+<p class="header-meta">July 30, 2026</p>
+
+<h2>5.1 Daily Notes</h2>
+<p class="header-meta">July 30, 2026 — 50 min</p>
+<div class="daily-header">
+  <table>
+    <tr><td><strong>Topic:</strong> Separable prefix verbs</td><td><strong>Level:</strong> <span class="badge badge-a1">A1.2</span></td></tr>
+    <tr><td><strong>Next review:</strong> In 3 days</td><td><strong>Confidence:</strong> Fair</td></tr>
+  </table>
+</div>
+
+<h3>Separable verb rule</h3>
+<p>Many German verbs have separable prefixes (e.g., <em>an-, auf-, ein-, mit-, nach-, vor-, zu-</em>). In the present tense, the prefix separates and moves to the <strong>end</strong> of the clause.</p>
+
+<p><strong>Structure:</strong> Subject + <em>prefix-verb</em> (conjugated) + ... <em>prefix</em> (at end)</p>
+
+<p><strong>Examples:</strong></p>
+<ul>
+  <li><em>aufstehen</em> (to get up) → Ich <strong>stehe</strong> um 7 Uhr <strong>auf</strong>.</li>
+  <li><em>einkaufen</em> (to shop) → Wir <strong>kaufen</strong> im Supermarkt <strong>ein</strong>.</li>
+  <li><em>anfangen</em> (to start) → Der Kurs <strong>fängt</strong> morgen <strong>an</strong>.</li>
+  <li><em>mitkommen</em> (to come along) → Kommst du <strong>mit</strong>?</li>
+  <li><em>zumachen</em> (to close) → Er <strong>macht</strong> die Tür <strong>zu</strong>.</li>
+</ul>
+
+<div class="note-box">
+  <div class="note-box-title">Tip: Learn verbs with their prefixes</div>
+  Learn the base verb and the meaning that the prefix adds. <em>kommen</em> = to come, <em>mitkommen</em> = to come along, <em>ankommen</em> = to arrive, <em>bekommen</em> = to receive (non-separable).
+</div>
+
+<h2>5.2 Vocabulary — Day 5</h2>
+<table class="data-table">
+  <tr><th>Photo</th><th>German</th><th>Prefix</th><th>English</th><th>Example</th></tr>
+  <tr><td>[Photo]</td><td>aufstehen</td><td>auf-</td><td>to get up</td><td>Ich stehe um 6 Uhr auf.</td></tr>
+  <tr><td>[Photo]</td><td>einkaufen</td><td>ein-</td><td>to shop</td><td>Wir kaufen morgen ein.</td></tr>
+  <tr><td>[Photo]</td><td>anfangen</td><td>an-</td><td>to start</td><td>Der Film fängt um 8 an.</td></tr>
+  <tr><td>[Photo]</td><td>mitkommen</td><td>mit-</td><td>to come along</td><td>Kommst du ins Kino mit?</td></tr>
+  <tr><td>[Photo]</td><td>zumachen</td><td>zu-</td><td>to close</td><td>Mach bitte das Fenster zu.</td></tr>
+  <tr><td>[Photo]</td><td>aufräumen</td><td>auf-</td><td>to tidy up</td><td>Ich räume mein Zimmer auf.</td></tr>
+  <tr><td>[Photo]</td><td>ausgehen</td><td>aus-</td><td>to go out</td><td>Wir gehen heute Abend aus.</td></tr>
+  <tr><td>[Photo]</td><td>fernsehen</td><td>fern-</td><td>to watch TV</td><td>Sie sieht abends fern.</td></tr>
+</table>
+
+<h2>5.3 Dialogue</h2>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+  <tr><td style="width: 70px; font-weight: bold; color: #800000;">Lisa</td><td>Hallo, Peter! Kommst du heute mit ins Kino?</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Peter</td><td>Ja, gerne! Wann fängt der Film an?</td></tr>
+  <tr><td style="font-weight: bold; color: #800000;">Lisa</td><td>Um 19 Uhr. Ich stehe um 18 Uhr vor dem Kino.</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Peter</td><td>Super! Ich muss vorher noch schnell einkaufen. Aber um 18 Uhr bin ich da.</td></tr>
+  <tr><td style="font-weight: bold; color: #800000;">Lisa</td><td>Perfekt! Ach ja, machst du bitte das Fenster zu? Es ist kalt.</td></tr>
+  <tr><td style="font-weight: bold; color: #000080;">Peter</td><td>Klar, ich mache es zu. Bis später!</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- INDICES -->
+<h1>Indices</h1>
+
+<h2>Grammar Index</h2>
+<div class="note-box">
+  <div class="note-box-title">All grammar rules covered</div>
+</div>
+<table class="data-table">
+  <tr><th>Rule</th><th>Level</th><th>Category</th><th>Page</th></tr>
+  <tr><td>Present tense of <em>sein</em></td><td><span class="badge badge-a1">A1.1</span></td><td>Verb Conjugation</td><td>1</td></tr>
+  <tr><td>V2 word order</td><td><span class="badge badge-a1">A1.1</span></td><td>Syntax</td><td>2</td></tr>
+  <tr><td>Definite articles (der/die/das)</td><td><span class="badge badge-a1">A1.1</span></td><td>Nouns</td><td>9</td></tr>
+  <tr><td>Nominativ vs Akkusativ</td><td><span class="badge badge-a1">A1.1</span></td><td>Cases</td><td>11</td></tr>
+  <tr><td>Present tense of <em>haben</em></td><td><span class="badge badge-a1">A1.1</span></td><td>Verb Conjugation</td><td>12</td></tr>
+  <tr><td>Plural formation patterns</td><td><span class="badge badge-a1">A1.1</span></td><td>Nouns</td><td>13</td></tr>
+  <tr><td>Numbers 1–100</td><td><span class="badge badge-a1">A1.1</span></td><td>Vocabulary</td><td>13</td></tr>
+  <tr><td>Modal verbs (können, müssen, wollen)</td><td><span class="badge badge-a1">A1.2</span></td><td>Verb Conjugation</td><td>15</td></tr>
+  <tr><td>Modal verb frame structure</td><td><span class="badge badge-a1">A1.2</span></td><td>Syntax</td><td>15</td></tr>
+  <tr><td>Separable prefix verbs</td><td><span class="badge badge-a1">A1.2</span></td><td>Verbs</td><td>17</td></tr>
+  <tr><td>Gender patterns (noun endings)</td><td><span class="badge badge-a1">A1.1</span></td><td>Nouns</td><td>9</td></tr>
+  <tr><td><em>weil</em> clause (verb at end)</td><td><span class="badge badge-a1">A1.2</span></td><td>Syntax</td><td>3</td></tr>
+</table>
+
+<h2>Verb Index</h2>
+<table class="data-table">
+  <tr><th>Infinitive</th><th>Meaning</th><th>Type</th><th>Page</th></tr>
+  <tr><td>sein</td><td>to be</td><td>irregular</td><td>1, 7</td></tr>
+  <tr><td>haben</td><td>to have</td><td>irregular</td><td>9, 12</td></tr>
+  <tr><td>heißen</td><td>to be called</td><td>regular</td><td>5</td></tr>
+  <tr><td>lernen</td><td>to learn</td><td>regular</td><td>5</td></tr>
+  <tr><td>können</td><td>can / to be able to</td><td>modal</td><td>15</td></tr>
+  <tr><td>müssen</td><td>must / to have to</td><td>modal</td><td>15</td></tr>
+  <tr><td>wollen</td><td>to want to</td><td>modal</td><td>15</td></tr>
+  <tr><td>dürfen</td><td>may / to be allowed to</td><td>modal</td><td>16</td></tr>
+  <tr><td>sprechen</td><td>to speak</td><td>strong (e→i)</td><td>17</td></tr>
+  <tr><td>gehen</td><td>to go</td><td>irregular</td><td>17</td></tr>
+  <tr><td>aufstehen</td><td>to get up</td><td>separable</td><td>18</td></tr>
+  <tr><td>einkaufen</td><td>to shop</td><td>separable</td><td>18</td></tr>
+  <tr><td>mitkommen</td><td>to come along</td><td>separable</td><td>18</td></tr>
+  <tr><td>anfangen</td><td>to start</td><td>separable + strong</td><td>18</td></tr>
+  <tr><td>fernsehen</td><td>to watch TV</td><td>separable</td><td>18</td></tr>
+</table>
+
+<h2>Vocabulary Index</h2>
+<table class="data-table">
+  <tr><th>Word</th><th>Article</th><th>English</th><th>Category</th><th>Page</th></tr>
+  <tr><td>alt</td><td>—</td><td>old</td><td>Adjective</td><td>10</td></tr>
+  <tr><td>anfangen</td><td>—</td><td>to start</td><td>Verb</td><td>18</td></tr>
+  <tr><td>anrufen</td><td>—</td><td>to call</td><td>Verb</td><td>17</td></tr>
+  <tr><td>Apfel</td><td>der</td><td>apple</td><td>Food</td><td>14</td></tr>
+  <tr><td>arbeiten</td><td>—</td><td>to work</td><td>Verb</td><td>17</td></tr>
+  <tr><td>aufstehen</td><td>—</td><td>to get up</td><td>Verb</td><td>18</td></tr>
+  <tr><td>Brot</td><td>das</td><td>bread</td><td>Food</td><td>14</td></tr>
+  <tr><td>Buch</td><td>das</td><td>book</td><td>Objects</td><td>10</td></tr>
+  <tr><td>einkaufen</td><td>—</td><td>to shop</td><td>Verb</td><td>18</td></tr>
+  <tr><td>essen</td><td>—</td><td>to eat</td><td>Verb</td><td>17</td></tr>
+  <tr><td>fernsehen</td><td>—</td><td>to watch TV</td><td>Verb</td><td>18</td></tr>
+  <tr><td>Frau</td><td>die</td><td>woman</td><td>People</td><td>10</td></tr>
+  <tr><td>Freund</td><td>der</td><td>friend</td><td>People</td><td>5</td></tr>
+  <tr><td>gehen</td><td>—</td><td>to go</td><td>Verb</td><td>17</td></tr>
+  <tr><td>groß</td><td>—</td><td>big/tall</td><td>Adjective</td><td>10</td></tr>
+  <tr><td>haben</td><td>—</td><td>to have</td><td>Verb</td><td>10</td></tr>
+  <tr><td>Haus</td><td>das</td><td>house</td><td>Places</td><td>5</td></tr>
+  <tr><td>heißen</td><td>—</td><td>to be called</td><td>Verb</td><td>5</td></tr>
+  <tr><td>heute</td><td>—</td><td>today</td><td>Adverb</td><td>5</td></tr>
+  <tr><td>Hund</td><td>der</td><td>dog</td><td>Animals</td><td>5</td></tr>
+  <tr><td>Kaffee</td><td>der</td><td>coffee</td><td>Food</td><td>14</td></tr>
+  <tr><td>Katze</td><td>die</td><td>cat</td><td>Animals</td><td>5</td></tr>
+  <tr><td>kaufen</td><td>—</td><td>to buy</td><td>Verb</td><td>17</td></tr>
+  <tr><td>Kind</td><td>das</td><td>child</td><td>People</td><td>10</td></tr>
+  <tr><td>klein</td><td>—</td><td>small</td><td>Adjective</td><td>10</td></tr>
+  <tr><td>Lampe</td><td>die</td><td>lamp</td><td>Objects</td><td>10</td></tr>
+  <tr><td>lernen</td><td>—</td><td>to learn</td><td>Verb</td><td>5</td></tr>
+  <tr><td>Mann</td><td>der</td><td>man</td><td>People</td><td>10</td></tr>
+  <tr><td>Milch</td><td>die</td><td>milk</td><td>Food</td><td>14</td></tr>
+  <tr><td>mitkommen</td><td>—</td><td>to come along</td><td>Verb</td><td>18</td></tr>
+  <tr><td>Name</td><td>der</td><td>name</td><td>General</td><td>5</td></tr>
+  <tr><td>neu</td><td>—</td><td>new</td><td>Adjective</td><td>10</td></tr>
+  <tr><td>sprechen</td><td>—</td><td>to speak</td><td>Verb</td><td>17</td></tr>
+  <tr><td>Stadt</td><td>die</td><td>city</td><td>Places</td><td>5</td></tr>
+  <tr><td>Tisch</td><td>der</td><td>table</td><td>Objects</td><td>10</td></tr>
+  <tr><td>trinken</td><td>—</td><td>to drink</td><td>Verb</td><td>17</td></tr>
+  <tr><td>Wasser</td><td>das</td><td>water</td><td>Food</td><td>14</td></tr>
+  <tr><td>werden</td><td>—</td><td>to become</td><td>Verb</td><td>17</td></tr>
+  <tr><td>Zahl</td><td>die</td><td>number</td><td>General</td><td>14</td></tr>
+  <tr><td>zählen</td><td>—</td><td>to count</td><td>Verb</td><td>14</td></tr>
+  <tr><td>zumachen</td><td>—</td><td>to close</td><td>Verb</td><td>18</td></tr>
+  <tr><td>zusammen</td><td>—</td><td>together</td><td>Adverb</td><td>5</td></tr>
+  <tr><td>aufräumen</td><td>—</td><td>to tidy up</td><td>Verb</td><td>18</td></tr>
+  <tr><td>ausgehen</td><td>—</td><td>to go out</td><td>Verb</td><td>18</td></tr>
+  <tr><td>können</td><td>—</td><td>can</td><td>Modal Verb</td><td>15</td></tr>
+  <tr><td>müssen</td><td>—</td><td>must</td><td>Modal Verb</td><td>15</td></tr>
+  <tr><td>wollen</td><td>—</td><td>to want</td><td>Modal Verb</td><td>15</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Expressions Index</h2>
+<table class="data-table">
+  <tr><th>Expression</th><th>English</th><th>Page</th></tr>
+  <tr><td>Wie geht's?</td><td>How are you?</td><td>8</td></tr>
+  <tr><td>Freut mich!</td><td>Nice to meet you!</td><td>8</td></tr>
+  <tr><td>Mir geht es gut.</td><td>I am doing well.</td><td>8</td></tr>
+  <tr><td>Und dir?</td><td>And you? (informal)</td><td>8</td></tr>
+  <tr><td>Woher kommst du?</td><td>Where are you from?</td><td>8</td></tr>
+  <tr><td>Ich komme aus</td><td>I come from</td><td>8</td></tr>
+  <tr><td>Guten Morgen!</td><td>Good morning!</td><td>8</td></tr>
+  <tr><td>Tschüss!</td><td>Bye!</td><td>8</td></tr>
+  <tr><td>Bis später!</td><td>See you later!</td><td>18</td></tr>
+  <tr><td>Gerne!</td><td>Gladly! / You're welcome!</td><td>18</td></tr>
+  <tr><td>Klar!</td><td>Sure! / Of course!</td><td>18</td></tr>
+  <tr><td>Viel Spaß!</td><td>Have fun!</td><td>—</td></tr>
+  <tr><td>Gute Reise!</td><td>Have a good trip!</td><td>—</td></tr>
+  <tr><td>Alles Gute!</td><td>All the best!</td><td>—</td></tr>
+</table>
+
+<h2>Idioms Index</h2>
+<table class="data-table">
+  <tr><th>Idiom</th><th>Literal</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><strong>Da liegt der Hund begraben.</strong></td><td>There lies the dog buried.</td><td>That's the real reason.</td><td>Jetzt verstehe ich — da liegt der Hund begraben!</td></tr>
+  <tr><td><strong>Ich verstehe nur Bahnhof.</strong></td><td>I only understand train station.</td><td>I don't understand anything.</td><td>Bei diesem Thema verstehe ich nur Bahnhof.</td></tr>
+  <tr><td><strong>Lügen haben kurze Beine.</strong></td><td>Lies have short legs.</td><td>Lies don't last long.</td><td>Er wurde erwischt — Lügen haben kurze Beine.</td></tr>
+  <tr><td><strong>Tomaten auf den Augen haben.</strong></td><td>To have tomatoes on the eyes.</td><td>To not see what's obvious.</td><td>Hast du Tomaten auf den Augen? Das ist klar zu sehen!</td></tr>
+  <tr><td><strong>Das ist nicht mein Bier.</strong></td><td>That's not my beer.</td><td>That's not my problem.</td><td>Ob er das macht oder nicht, das ist nicht mein Bier.</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Common Mistakes</h2>
+<table class="data-table">
+  <tr><th>Incorrect</th><th>Correct</th><th>Explanation</th></tr>
+  <tr>
+    <td><span class="text-red">Ich sein müde.</span></td>
+    <td><span class="text-green">Ich bin müde.</span></td>
+    <td>Conjugate <em>sein</em> to agree with <em>ich</em>.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Ich kann Deutsch spreche.</span></td>
+    <td><span class="text-green">Ich kann Deutsch sprechen.</span></td>
+    <td>After a modal verb, the main verb stays in the infinitive.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Ich sehe der Hund.</span></td>
+    <td><span class="text-green">Ich sehe den Hund.</span></td>
+    <td>The direct object takes Akkusativ: der → den.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Er hat ein Apfel.</span></td>
+    <td><span class="text-green">Er hat einen Apfel.</span></td>
+    <td>Masculine nouns take <em>einen</em> in Akkusativ.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Ich lerne Deutsch, weil ich möchte in Deutschland arbeiten.</span></td>
+    <td><span class="text-green">Ich lerne Deutsch, weil ich in Deutschland arbeiten möchte.</span></td>
+    <td>In <em>weil</em> clauses, the conjugated verb goes to the <strong>end</strong>.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Die Katze schön ist.</span></td>
+    <td><span class="text-green">Die Katze ist schön.</span></td>
+    <td>The verb must be in position 2, not at the end.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Er will mich anruft.</span></td>
+    <td><span class="text-green">Er will mich anrufen.</span></td>
+    <td>After modal verb, use infinitive, not conjugated form.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Ich stehe auf um 7 Uhr.</span></td>
+    <td><span class="text-green">Ich stehe um 7 Uhr auf.</span></td>
+    <td>The separable prefix goes at the very end of the clause.</td>
+  </tr>
+  <tr>
+    <td><span class="text-red">Der Mann hat groß.</span></td>
+    <td><span class="text-green">Der Mann ist groß.</span></td>
+    <td>Use <em>sein</em> for describing characteristics, not <em>haben</em>.</td>
+  </tr>
+</table>
+
+</body>
+</html>

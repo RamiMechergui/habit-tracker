@@ -22,7 +22,7 @@
  *   USE_PATH_STYLE     – true for MinIO / false for AWS S3
  */
 
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListBucketsCommand, HeadBucketCommand, CreateBucketCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListBucketsCommand, HeadBucketCommand, CreateBucketCommand, PutBucketPolicyCommand } = require('@aws-sdk/client-s3');
 
 // ── Configuration (read from environment) ──────────────────────────────────
 const ENDPOINT     = process.env.STORAGE_ENDPOINT;
@@ -31,6 +31,8 @@ const SECRET_KEY   = process.env.STORAGE_SECRET_KEY;
 const BUCKET       = process.env.STORAGE_BUCKET || 'learning-german-images';
 const REGION       = process.env.STORAGE_REGION || 'us-east-1';
 const USE_PATH_STYLE = process.env.USE_PATH_STYLE === 'true';
+const PUBLIC_ENDPOINT = (process.env.PUBLIC_STORAGE_ENDPOINT || '').replace(/\/+$/, '');
+const PUBLIC_READ = process.env.STORAGE_PUBLIC_READ === 'true';
 
 let client = null;
 let bucketReady = false;
@@ -97,6 +99,25 @@ async function initBucket() {
       }
     }
     bucketReady = true;
+    if (PUBLIC_READ) {
+      try {
+        await c.send(new PutBucketPolicyCommand({
+          Bucket: BUCKET,
+          Policy: JSON.stringify({
+            Version: '2012-10-17',
+            Statement: [{
+              Effect: 'Allow',
+              Principal: { AWS: ['*'] },
+              Action: ['s3:GetObject'],
+              Resource: [`arn:aws:s3:::${BUCKET}/*`],
+            }],
+          }),
+        }));
+        console.log(`[Storage] Bucket "${BUCKET}" set to public-read (anonymous GET allowed)`);
+      } catch (err) {
+        console.error(`[Storage] Failed to apply public-read policy to "${BUCKET}":`, err.message);
+      }
+    }
     return true;
   } catch (err) {
     console.error(`[Storage] Failed to initialise bucket "${BUCKET}":`, err.message);
@@ -162,20 +183,64 @@ async function deleteImage(objectKey) {
 }
 
 /**
- * Get a proxy URL for the object (served through Express).
- * The frontend uses this URL in <img> tags.
+ * Get the URL a browser can use to load the object.
  *
- * For AWS S3 migration, replace with a presigned URL generator:
- *   import { GetObjectCommand } from '@aws-sdk/client-s3';
- *   import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
- *   return getSignedUrl(client, new GetObjectCommand({ Bucket: BUCKET, Key: objectKey }), { expiresIn: 3600 });
+ * When PUBLIC_STORAGE_ENDPOINT is set, a direct object-store URL is returned
+ * (e.g. http://host:9000/<bucket>/<key>) so the web app fetches images straight
+ * from MinIO. The bucket must allow anonymous GET (public-read policy).
+ *
+ * Otherwise it falls back to the Express image-proxy path for compatibility.
  *
  * @param {string} objectKey
- * @returns {string} relative URL path
+ * @returns {string} URL for <img> tags
  */
 function getImageUrl(objectKey) {
   if (!objectKey) return '';
+  if (PUBLIC_ENDPOINT) {
+    const encodedKey = objectKey.split('/').map(encodeURIComponent).join('/');
+    return `${PUBLIC_ENDPOINT}/${BUCKET}/${encodedKey}`;
+  }
   return `/api/german/images/${encodeURIComponent(objectKey)}`;
+}
+
+/**
+ * Resolve an object key from any stored image URL shape:
+ *  - Express proxy: /api/{area}/images/{encodedKey}
+ *  - Direct MinIO:  {PUBLIC_ENDPOINT}/{BUCKET}/{key}
+ *
+ * @param {string} url
+ * @returns {string|null} object key, or null if the URL is not a known shape
+ */
+function getKeyFromUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const proxyPrefixes = [
+    '/api/german/images/',
+    '/api/notes/images/',
+    '/api/wishlist/images/',
+    '/api/avatar/images/',
+  ];
+  for (const prefix of proxyPrefixes) {
+    if (url.startsWith(prefix)) {
+      try {
+        return decodeURIComponent(url.slice(prefix.length));
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+  if (PUBLIC_ENDPOINT && url.startsWith(PUBLIC_ENDPOINT)) {
+    const rest = url.slice(PUBLIC_ENDPOINT.length).replace(/^\//, '');
+    if (rest === BUCKET) return '';
+    if (rest.startsWith(BUCKET + '/')) {
+      const key = rest.slice(BUCKET.length + 1);
+      try {
+        return key.split('/').map(decodeURIComponent).join('/');
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -193,6 +258,43 @@ async function updateImage(oldKey, buffer, mimetype, newKey) {
     try { await deleteImage(oldKey); } catch (_) {}
   }
   return uploadImage(newKey, buffer, mimetype);
+}
+
+/**
+ * Fetch an object's raw bytes + content type directly from the object store.
+ *
+ * Used by the PDF exporters to embed images as data URIs WITHOUT an HTTP
+ * round-trip through the Express image-proxy route. Works with both MinIO
+ * and real AWS S3 (same client / credentials as the rest of the service).
+ *
+ * @param {string} objectKey
+ * @returns {Promise<{ buffer: Buffer, contentType: string }>}
+ */
+async function getImageBuffer(objectKey) {
+  const c = getClient();
+  if (!c) throw new Error('Storage service is not configured');
+
+  const data = await c.send(new GetObjectCommand({ Bucket: BUCKET, Key: objectKey }));
+  const contentType = data.ContentType || 'image/jpeg';
+  const body = data.Body;
+  if (!body) throw new Error('Empty object body');
+
+  let buffer;
+  if (typeof body.transformToByteArray === 'function') {
+    buffer = Buffer.from(await body.transformToByteArray());
+  } else if (typeof body.transformToString === 'function') {
+    buffer = Buffer.from(await body.transformToString(), 'binary');
+  } else if (Buffer.isBuffer(body)) {
+    buffer = body;
+  } else {
+    const chunks = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    buffer = Buffer.concat(chunks);
+  }
+
+  return { buffer, contentType };
 }
 
 /**
@@ -246,7 +348,9 @@ module.exports = {
   uploadImage,
   deleteImage,
   getImageUrl,
+  getKeyFromUrl,
   updateImage,
+  getImageBuffer,
   streamImage,
   isReady,
   validateMime,

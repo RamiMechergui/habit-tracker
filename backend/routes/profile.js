@@ -62,7 +62,7 @@ router.get('/', protect, async (req, res) => {
       expenseCategories: user.expenseCategories,
       recurringTasks:    settings.recurringTasks  || {},
       timelinePrefs:     settings.timelinePrefs   || { defaultDuration: 30, intervalGranularity: 30 },
-      noteSections:      settings.noteSections    || ['General'],
+      noteSections:      settings.noteSections    || ['General', 'App Development'],
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -98,7 +98,7 @@ router.put('/', protect, async (req, res) => {
       expenseCategories: user.expenseCategories,
       recurringTasks:    settings.recurringTasks  || {},
       timelinePrefs:     settings.timelinePrefs   || { defaultDuration: 30, intervalGranularity: 30 },
-      noteSections:      settings.noteSections    || ['General', 'Home Notes', 'Dev Notes', 'Work Notes', 'Personal Notes'],
+      noteSections:      settings.noteSections    || ['General', 'Home Notes', 'Dev Notes', 'Work Notes', 'Personal Notes', 'App Development'],
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -31,6 +31,24 @@ export const API_URL = (() => {
   return '';
 })();
 
+// True only inside a native Capacitor WebView (Android/iOS app), where the
+// page origin (app.evolvio.app) has no backend behind it, so relative
+// `/api/...` image URLs would never resolve.
+export const isNativePlatform = () => {
+  try {
+    return typeof window !== 'undefined' && !!window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === 'function' &&
+      window.Capacitor.isNativePlatform();
+  } catch (_) {
+    return false;
+  }
+};
+
+// Base used to absolutize relative image URLs for DISPLAY inside the editor.
+// Empty on the web (relative URLs resolve via the same-origin nginx proxy),
+// absolute on native so the WebView can load the image from the backend.
+export const EDITOR_IMAGE_BASE = isNativePlatform() ? NATIVE_BACKEND_URL : '';
+
 
 
 

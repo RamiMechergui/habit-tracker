@@ -32,6 +32,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   { name: 'Entertainment',     icon: '🎬' },
   { name: 'Health',            icon: '🩺' },
   { name: 'Other',             icon: '📦' },
+  { name: 'Reconciliation',    icon: '🔄' },
 ];
 
 /**
@@ -41,7 +42,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 function normalizeCats(cats) {
   if (!Array.isArray(cats)) return DEFAULT_EXPENSE_CATEGORIES;
   return cats.map(c => {
-    if (c && typeof c === 'object' && c.name) return c;
+    if (c && typeof c === 'object' && c.name) return { name: c.name, icon: c.icon || '📦' };
     return { name: String(c), icon: '📦' };
   });
 }
@@ -72,6 +73,7 @@ function toUserShape(item) {
     archivedBooks:     item.archivedBooks || [],
     plannedBooks:      item.plannedBooks || [],
     history:           item.history || [],
+    sessionCleanupConfirmedAt: item.sessionCleanupConfirmedAt || null,
     essentials:        (item.essentials || []).map(e => ({ ...e, _id: e.essentialId })),
     pushSubscription:  item.pushSubscription || null,
     createdAt:         item.createdAt,
@@ -99,6 +101,7 @@ async function createUser(data) {
     archivedBooks:     [],
     plannedBooks:      [],
     history:           [],
+    sessionCleanupConfirmedAt: null,
     essentials:        [],
     pushSubscription:  null,
     createdAt:         ts,

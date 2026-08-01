@@ -1,12 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } from 'date-fns';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal } from 'lucide-react';
+import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal, Shield, AlertTriangle, X as XIcon } from 'lucide-react';
 import EmojiPickerPopover from '../components/EmojiPickerPopover';
 export default function Dashboard() {
-  const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, getCategoryName, getCategoryIcon, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs } = useHabits();
+  const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, getCategoryName, getCategoryIcon, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs, checkSessionCleanupStatus, confirmSessionCleanup } = useHabits();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
   const displayName = user?.firstName || user?.lastName
@@ -27,6 +27,34 @@ export default function Dashboard() {
   const [categoryMessage, setCategoryMessage] = useState({ text: '', type: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: '', category: '' });
   const [calendarDate, setCalendarDate] = useState(new Date());
+
+  // ── Session Cleanup Banner ──────────────────────────────────────────────────
+  const [cleanupNeeded, setCleanupNeeded] = useState(false);
+  const [cleanupCount, setCleanupCount] = useState(0);
+  const [cleanupDismissed, setCleanupDismissed] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    checkSessionCleanupStatus().then(status => {
+      if (!mounted) return;
+      setCleanupNeeded(status.needsCleanup);
+      setCleanupCount(status.count);
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [checkSessionCleanupStatus]);
+
+  async function handleConfirmCleanup() {
+    setCleanupLoading(true);
+    try {
+      await confirmSessionCleanup();
+      setCleanupNeeded(false);
+      setCleanupCount(0);
+    } catch (err) {
+      console.error('Cleanup failed:', err);
+    }
+    setCleanupLoading(false);
+  }
 
   // ── Tasks List State ────────────────────────────────────────────────────────
   const [taskSearch, setTaskSearch] = useState('');
@@ -214,27 +242,46 @@ export default function Dashboard() {
   const monthlyTotals = React.useMemo(() => {
     let totalIncome = 0;
     let totalExpenses = 0;
-    monthData.forEach(day => {
-      const log = day.log;
-      if (log) {
+    let openingBalance = 0;
+    const monthStart = startOfMonth(calendarDate);
+    Object.entries(logs).forEach(([dateStr, log]) => {
+      if (!log) return;
+      const logDate = new Date(dateStr + 'T00:00:00');
+      // Carry over cumulative Remaining from all months BEFORE the current one
+      // as the Opening Balance (Rollover).
+      if (logDate < monthStart) {
         if (Array.isArray(log.income)) {
           log.income.forEach(i => {
-            totalIncome += parseFloat(i.amount) || 0;
+            openingBalance += parseFloat(i.amount) || 0;
           });
         }
         if (Array.isArray(log.expenses)) {
           log.expenses.forEach(e => {
-            totalExpenses += parseFloat(e.amount) || 0;
+            openingBalance -= parseFloat(e.amount) || 0;
           });
         }
+        return;
+      }
+      if (Array.isArray(log.income)) {
+        log.income.forEach(i => {
+          totalIncome += parseFloat(i.amount) || 0;
+        });
+      }
+      if (Array.isArray(log.expenses)) {
+        log.expenses.forEach(e => {
+          totalExpenses += parseFloat(e.amount) || 0;
+        });
       }
     });
+    const totalAvailable = openingBalance + totalIncome;
     return {
       totalIncome,
       totalExpenses,
-      remaining: totalIncome - totalExpenses
+      openingBalance,
+      totalAvailable,
+      remaining: totalAvailable - totalExpenses
     };
-  }, [monthData]);
+  }, [logs, calendarDate]);
 
   const firstDay = startOfMonth(calendarDate);
   const emptyCells = getDay(firstDay);
@@ -357,6 +404,62 @@ export default function Dashboard() {
 
   return (
     <>
+      {/* ── Session Cleanup Banner ── */}
+      {cleanupNeeded && !cleanupDismissed && (
+        <div style={{
+          marginBottom: '1.5rem', padding: '1rem 1.25rem', borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.03))',
+          border: '1px solid rgba(245,158,11,0.25)',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          flexWrap: 'wrap', animation: 'evolvio-up 0.4s ease-out',
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: 'rgba(245,158,11,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <AlertTriangle size={20} style={{ color: '#f59e0b' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+              Session History Cleanup
+            </p>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              {cleanupCount} session{cleanupCount > 1 ? 's' : ''} older than 24 hours {cleanupCount > 1 ? 'are' : 'is'} ready to be deleted.
+              Confirm cleanup to remove them from your history.
+              {cleanupCount > 0 && ' Unconfirmed sessions will be auto-deleted after 48 hours.'}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <button
+              onClick={handleConfirmCleanup}
+              disabled={cleanupLoading}
+              style={{
+                padding: '0.55rem 1rem', borderRadius: '10px', border: 'none',
+                background: 'linear-gradient(145deg, #f59e0b, #d97706)',
+                color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                opacity: cleanupLoading ? 0.6 : 1,
+              }}
+            >
+              {cleanupLoading ? 'Cleaning...' : <><Shield size={15} /> Confirm Cleanup</>}
+            </button>
+            <button
+              onClick={() => setCleanupDismissed(true)}
+              style={{
+                padding: '0.55rem 0.8rem', borderRadius: '10px', border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              title="Dismiss"
+            >
+              <XIcon size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="dashboard-welcome mb-8" style={{ animation: 'evolvio-up 0.5s ease-out' }}>
         <h1 style={{ 
           fontSize: isMobile ? '1.5rem' : '2.5rem', 
@@ -405,9 +508,21 @@ export default function Dashboard() {
           <h3 className="mb-6" style={{ opacity: 0.8 }}>Quick Metrics</h3>
           <div className="flex-col gap-4">
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
+              <span className="text-muted">📥 Opening Balance (Rollover)</span>
+              <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
+                {monthlyTotals.openingBalance.toFixed(3)} TND
+              </strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
               <span className="text-muted">Total Income</span>
               <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
                 {monthlyTotals.totalIncome.toFixed(3)} TND
+              </strong>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span className="text-muted">Total Available</span>
+              <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>
+                {monthlyTotals.totalAvailable.toFixed(3)} TND
               </strong>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>

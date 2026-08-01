@@ -34,6 +34,7 @@ function toNoteShape(item) {
     date:      item.date,
     content:   item.content,
     section:   item.section || '',
+    image:     item.image || '',
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -94,10 +95,10 @@ async function getNotesByDate(userId, date) {
  * @param {string} content
  * @returns {Promise<object>}
  */
-async function createNote(userId, date, content, section = '') {
+async function createNote(userId, date, content, section = '', image = '') {
   const ts     = new Date().toISOString();
   const noteId = randomUUID();
-  const item   = { userId, noteId, date, content, section, createdAt: ts, updatedAt: ts };
+  const item   = { userId, noteId, date, content, section, image, createdAt: ts, updatedAt: ts };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return toNoteShape(item);
 }
@@ -109,14 +110,22 @@ async function createNote(userId, date, content, section = '') {
  * @param {string} content
  * @returns {Promise<object|null>}
  */
-async function updateNote(userId, noteId, content, section) {
+async function updateNote(userId, noteId, content, section, image) {
   const ts  = new Date().toISOString();
   let UpdateExpression = 'SET content = :c, updatedAt = :ts';
   const ExpressionAttributeValues = { ':c': content, ':ts': ts };
+  const ExpressionAttributeNames = {};
   
   if (section !== undefined) {
     UpdateExpression += ', #sec = :sec';
     ExpressionAttributeValues[':sec'] = section;
+    ExpressionAttributeNames['#sec'] = 'section';
+  }
+  
+  if (image !== undefined) {
+    UpdateExpression += ', #img = :img';
+    ExpressionAttributeValues[':img'] = image;
+    ExpressionAttributeNames['#img'] = 'image';
   }
   
   const params = {
@@ -125,12 +134,9 @@ async function updateNote(userId, noteId, content, section) {
     UpdateExpression,
     ConditionExpression:       'attribute_exists(noteId)',
     ExpressionAttributeValues,
+    ExpressionAttributeNames:  Object.keys(ExpressionAttributeNames).length > 0 ? ExpressionAttributeNames : undefined,
     ReturnValues:              'ALL_NEW',
   };
-  
-  if (section !== undefined) {
-    params.ExpressionAttributeNames = { '#sec': 'section' };
-  }
 
   const res = await docClient.send(new UpdateCommand(params));
   return toNoteShape(res.Attributes);

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, ShieldCheck, Loader } from 'lucide-react';
+import { format } from 'date-fns';
+import { Plus, Trash2, ShieldCheck, Loader, Calendar, Bell } from 'lucide-react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -36,6 +37,8 @@ export default function Essentials() {
   // Add-item form state
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('🧴');
+  const [newPurchaseDate, setNewPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [newRenewAfter, setNewRenewAfter] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
   const iconBtnRef = useRef(null);
@@ -45,6 +48,8 @@ export default function Essentials() {
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [editingIconId, setEditingIconId] = useState(null);
+  const [editingPurchaseId, setEditingPurchaseId] = useState(null);
+  const [editPurchaseDate, setEditPurchaseDate] = useState('');
   const [formError, setFormError] = useState('');
 
   // Close picker on outside click
@@ -91,9 +96,11 @@ export default function Essentials() {
     }
     setAdding(true);
     try {
-      await addEssential(name, newIcon);
+      await addEssential(name, newIcon, newPurchaseDate || null, newRenewAfter ? parseInt(newRenewAfter) : null);
       setNewName('');
       setNewIcon('🧴');
+      setNewPurchaseDate('');
+      setNewRenewAfter('');
     } catch (err) {
       setFormError(err.message || 'Failed to add item');
     } finally {
@@ -128,6 +135,25 @@ export default function Essentials() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleEditPurchaseDate = async (id) => {
+    if (!editPurchaseDate) return;
+    try {
+      await updateEssential(id, { purchaseDate: editPurchaseDate });
+    } catch (err) {
+      console.error('Failed to update purchase date:', err);
+    }
+    setEditingPurchaseId(null);
+    setEditPurchaseDate('');
+  };
+
+  const isRenewalDue = (item) => {
+    if (!item.purchaseDate || !item.renewAfter) return false;
+    const purchase = new Date(item.purchaseDate + 'T00:00:00');
+    const dueDate = new Date(purchase);
+    dueDate.setMonth(dueDate.getMonth() + item.renewAfter);
+    return new Date() >= dueDate;
   };
 
   return (
@@ -228,6 +254,41 @@ export default function Essentials() {
             className="essentials-name-input"
             maxLength={60}
           />
+
+          {/* Purchase Date + Renew After */}
+          <div style={{ display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 160px', position: 'relative' }}>
+              <Calendar size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input
+                type="date"
+                value={newPurchaseDate}
+                onChange={e => setNewPurchaseDate(e.target.value)}
+                style={{
+                  width: '100%', paddingLeft: '30px', height: '42px', borderRadius: '8px',
+                  border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)',
+                  fontSize: '0.82rem', outline: 'none',
+                }}
+                title="Purchase date"
+              />
+            </div>
+            <div style={{ flex: '1 1 180px', position: 'relative' }}>
+              <Bell size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <select
+                value={newRenewAfter}
+                onChange={e => setNewRenewAfter(e.target.value)}
+                style={{
+                  width: '100%', paddingLeft: '30px', height: '42px', borderRadius: '8px',
+                  border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)',
+                  fontSize: '0.82rem', outline: 'none',
+                }}
+              >
+                <option value="">No reminder</option>
+                {[1, 2, 3, 4, 5, 6].map(m => (
+                  <option key={m} value={m}>Renew after {m} month{m > 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <button
             type="submit"
@@ -338,6 +399,52 @@ export default function Essentials() {
 
                 {/* Name */}
                 <h3 className="essential-card-name">{item.name}</h3>
+
+                {/* Purchase & Renew Info */}
+                {item.purchaseDate && editingPurchaseId === item._id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.25rem' }}>
+                    <input
+                      type="date"
+                      value={editPurchaseDate}
+                      onChange={e => setEditPurchaseDate(e.target.value)}
+                      autoFocus
+                      style={{
+                        flex: 1, height: '28px', borderRadius: '5px', fontSize: '0.7rem',
+                        border: '1px solid var(--accent-blue)', background: 'var(--bg)',
+                        color: 'var(--text-primary)', outline: 'none', padding: '0 4px',
+                      }}
+                    />
+                    <button onClick={() => handleEditPurchaseDate(item._id)} style={{
+                      padding: '2px 8px', borderRadius: '4px', border: 'none',
+                      background: 'var(--accent-blue)', color: '#fff', fontSize: '0.65rem',
+                      fontWeight: 600, cursor: 'pointer',
+                    }}>Save</button>
+                    <button onClick={() => setEditingPurchaseId(null)} style={{
+                      padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)',
+                      background: 'transparent', color: 'var(--text-muted)', fontSize: '0.65rem',
+                      fontWeight: 600, cursor: 'pointer',
+                    }}>Cancel</button>
+                  </div>
+                ) : item.purchaseDate && (
+                  <div
+                    onClick={() => { setEditingPurchaseId(item._id); setEditPurchaseDate(item.purchaseDate); }}
+                    style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem', lineHeight: 1.4, cursor: 'pointer' }}
+                    title="Click to edit purchase date"
+                  >
+                    <span>Purchased {format(new Date(item.purchaseDate + 'T00:00:00'), 'MMM dd, yyyy')}</span>
+                    {item.renewAfter && <span> · Renew every {item.renewAfter} month{item.renewAfter > 1 ? 's' : ''}</span>}
+                  </div>
+                )}
+                {isRenewalDue(item) && (
+                  <div style={{
+                    marginTop: '0.35rem', padding: '0.25rem 0.5rem', borderRadius: '6px',
+                    background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)',
+                    fontSize: '0.7rem', fontWeight: 600, color: '#f59e0b',
+                    textAlign: 'center',
+                  }}>
+                    It's date to renew it.
+                  </div>
+                )}
 
                 {/* Status toggle button */}
                 <button

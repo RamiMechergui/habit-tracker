@@ -17,7 +17,7 @@ router.get('/', protect, async (req, res) => {
 // POST /api/essentials
 router.post('/', protect, async (req, res) => {
   try {
-    const { name, icon } = req.body;
+    const { name, icon, purchaseDate, renewAfter } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Item name is required' });
 
     const user        = await getUserById(req.user.userId);
@@ -28,6 +28,8 @@ router.post('/', protect, async (req, res) => {
       name:        name.trim(),
       icon:        icon || '🧴',
       status:      'A',
+      purchaseDate: purchaseDate || null,
+      renewAfter:   renewAfter ? parseInt(renewAfter) : null,
       lastUpdated: new Date().toISOString(),
     };
     const essentials = [...(user.essentials || []), newItem];
@@ -41,7 +43,7 @@ router.post('/', protect, async (req, res) => {
 // PUT /api/essentials/:id
 router.put('/:id', protect, async (req, res) => {
   try {
-    const { name, icon, status } = req.body;
+    const { name, icon, status, purchaseDate, renewAfter } = req.body;
     if (status !== undefined && !['A', 'BS', 'NA'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
@@ -54,9 +56,11 @@ router.put('/:id', protect, async (req, res) => {
 
     const essentials = [...(user.essentials || [])];
     const item       = { ...essentials[idx] };
-    if (name   !== undefined) item.name   = name.trim();
-    if (icon   !== undefined) item.icon   = icon;
-    if (status !== undefined) item.status = status;
+    if (name          !== undefined) item.name          = name.trim();
+    if (icon          !== undefined) item.icon          = icon;
+    if (status        !== undefined) item.status        = status;
+    if (purchaseDate  !== undefined) item.purchaseDate  = purchaseDate;
+    if (renewAfter    !== undefined) item.renewAfter    = parseInt(renewAfter);
     item.lastUpdated = new Date().toISOString();
     essentials[idx]  = item;
 

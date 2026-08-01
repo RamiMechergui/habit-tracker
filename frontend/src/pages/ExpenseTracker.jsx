@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Doughnut } from 'react-chartjs-2';
-import { format, parseISO, isSameDay, isSameMonth, isSameYear } from 'date-fns';
+import { format, parseISO, isSameDay, isSameMonth, isSameYear, startOfDay, startOfMonth, startOfYear } from 'date-fns';
 import { ChevronLeft, ChevronRight, Wallet, Download, Trash2, Edit3 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
@@ -30,6 +30,7 @@ export default function ExpenseTracker() {
   const [reconSuccess, setReconSuccess] = useState(null);
   const [reconEditTarget, setReconEditTarget] = useState(null);
   const [reconDeleteTarget, setReconDeleteTarget] = useState(null);
+  const [viewingEditHistory, setViewingEditHistory] = useState(null);
 
   useEffect(() => {
     if (reconSubmitted) {
@@ -102,12 +103,18 @@ export default function ExpenseTracker() {
     let categoryTotals = {};
     let totalSpent = 0;
     let totalIncome = 0;
-    
+    let openingBalance = 0;
+
     // Initialize categories with 0
     expenseCategories.forEach(cat => {
       categoryTotals[getCategoryName(cat)] = 0;
     });
     categoryTotals['Other'] = 0;
+
+    let periodStart;
+    if (viewMode === 'daily') periodStart = startOfDay(currentDate);
+    else if (viewMode === 'monthly') periodStart = startOfMonth(currentDate);
+    else periodStart = startOfYear(currentDate);
 
     Object.entries(logs).forEach(([dateStr, log]) => {
       const logDate = new Date(dateStr + 'T00:00:00');
@@ -119,6 +126,22 @@ export default function ExpenseTracker() {
         include = isSameMonth(logDate, currentDate);
       } else if (viewMode === 'yearly') {
         include = isSameYear(logDate, currentDate);
+      }
+
+      // Carry over the cumulative Remaining from every period BEFORE the current one
+      // as the Opening Balance (Rollover).
+      if (logDate < periodStart) {
+        if (Array.isArray(log.income)) {
+          log.income.forEach(i => {
+            openingBalance += parseFloat(i.amount) || 0;
+          });
+        }
+        if (Array.isArray(log.expenses)) {
+          log.expenses.forEach(e => {
+            openingBalance -= parseFloat(e.amount) || 0;
+          });
+        }
+        return;
       }
 
       if (include) {
@@ -152,7 +175,12 @@ export default function ExpenseTracker() {
     // Sort by amount descending
     activeCategories.sort((a, b) => b[1] - a[1]);
 
-    return { totalSpent, totalIncome, remaining: totalIncome - totalSpent, activeCategories };
+    // Total Available = Opening Balance (Previous Remaining) + New Period Income
+    // Remaining = Total Available - Total Expenses
+    const totalAvailable = openingBalance + totalIncome;
+    const remaining = totalAvailable - totalSpent;
+
+    return { totalSpent, totalIncome, openingBalance, totalAvailable, remaining, activeCategories };
   }, [logs, viewMode, currentDate, expenseCategories]);
 
   // Build a fast name → icon lookup map from the user's category list.
@@ -273,11 +301,13 @@ export default function ExpenseTracker() {
     doc.text(`Financial Report - ${dateTitle}`, 14, 22);
     
     doc.setFontSize(12);
-    doc.text(`Total Income: ${aggregatedData.totalIncome.toFixed(3)} TND`, 14, 32);
-    doc.text(`Total Spent: ${aggregatedData.totalSpent.toFixed(3)} TND`, 14, 39);
-    doc.text(`Remaining Balance: ${aggregatedData.remaining.toFixed(3)} TND`, 14, 46);
+    doc.text(`Opening Balance (Rollover): ${aggregatedData.openingBalance.toFixed(3)} TND`, 14, 32);
+    doc.text(`Total Income: ${aggregatedData.totalIncome.toFixed(3)} TND`, 14, 39);
+    doc.text(`Total Available: ${aggregatedData.totalAvailable.toFixed(3)} TND`, 14, 46);
+    doc.text(`Total Spent: ${aggregatedData.totalSpent.toFixed(3)} TND`, 14, 53);
+    doc.text(`Remaining Balance: ${aggregatedData.remaining.toFixed(3)} TND`, 14, 60);
     
-    let yPos = 54;
+    let yPos = 68;
     doc.setFontSize(14);
     doc.text('Category Breakdown:', 14, yPos);
     yPos += 8;
@@ -374,21 +404,59 @@ export default function ExpenseTracker() {
   }, [logs]);
 
   const handleRecordRecon = async () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    // If editing, delete the old entry first
+    const targetDate = reconEditTarget ? reconEditTarget.logKey : format(new Date(), 'yyyy-MM-dd');
+    const editHistory = [];
+
     if (reconEditTarget) {
       const log = logs[reconEditTarget.logKey];
       if (reconEditTarget.type === 'missing' && Array.isArray(log?.expenses)) {
+        const oldExp = log.expenses[reconEditTarget.index];
+        if (oldExp) {
+          editHistory.push({
+            type: 'missing',
+            amount: parseFloat(oldExp.amount) || 0,
+            note: oldExp.desc || '',
+            expected: oldExp.reconMeta?.expected,
+            actual: oldExp.reconMeta?.actual,
+            diff: oldExp.reconMeta?.diff,
+            editedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
+          });
+          if (oldExp.reconMeta?.editHistory) {
+            editHistory.push(...oldExp.reconMeta.editHistory);
+          }
+        }
         const filtered = log.expenses.filter((_, i) => i !== reconEditTarget.index);
         await saveLog(reconEditTarget.logKey, { ...log, expenses: filtered.length ? filtered : [{ desc: '', category: 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] });
       } else if (reconEditTarget.type === 'extra' && Array.isArray(log?.income)) {
+        const oldInc = log.income[reconEditTarget.index];
+        if (oldInc) {
+          editHistory.push({
+            type: 'extra',
+            amount: parseFloat(oldInc.amount) || 0,
+            note: '',
+            expected: oldInc.reconMeta?.expected,
+            actual: oldInc.reconMeta?.actual,
+            diff: oldInc.reconMeta?.diff,
+            editedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
+          });
+          if (oldInc.reconMeta?.editHistory) {
+            editHistory.push(...oldInc.reconMeta.editHistory);
+          }
+        }
         const filtered = log.income.filter((_, i) => i !== reconEditTarget.index);
         await saveIncome(reconEditTarget.logKey, filtered);
       }
     }
 
+    const existing = logs[targetDate];
+    const reconMeta = {
+      expected: reconExpected,
+      actual: parseFloat(reconActual),
+      diff: reconAbs,
+      editHistory,
+    };
+
     if (reconMissing) {
-      const existing = logs[today];
       const expenses = existing && Array.isArray(existing.expenses) ? [...existing.expenses] : [];
       expenses.push({
         desc: reconNote || 'Unrecorded Expense (Reconciliation)',
@@ -396,18 +464,17 @@ export default function ExpenseTracker() {
         amount: reconAbs,
         time: format(new Date(), 'HH:mm'),
         cigarettesCount: 0,
-        reconMeta: { expected: reconExpected, actual: parseFloat(reconActual), diff: reconAbs },
+        reconMeta,
       });
-      await saveLog(today, { ...(existing || {}), expenses });
+      await saveLog(targetDate, { ...(existing || {}), expenses });
     } else {
-      const existing = logs[today];
       const income = existing && Array.isArray(existing.income) ? [...existing.income] : [];
       income.push({
         source: 'Reconciliation',
         amount: reconAbs,
-        reconMeta: { expected: reconExpected, actual: parseFloat(reconActual), diff: reconAbs },
+        reconMeta,
       });
-      await saveIncome(today, income);
+      await saveIncome(targetDate, income);
     }
     setReconEditTarget(null);
     setReconActual('');
@@ -557,8 +624,16 @@ export default function ExpenseTracker() {
               <h3 className="mb-4">Period Summary</h3>
               <div className="flex-col gap-3">
                 <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>💰 Total Income</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>📥 Opening Balance (Rollover)</span>
+                  <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>{aggregatedData.openingBalance.toFixed(3)} TND</strong>
+                </div>
+                <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>💰 New Income</span>
                   <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>{aggregatedData.totalIncome.toFixed(3)} TND</strong>
+                </div>
+                <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(59,130,246,0.06)' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>💵 Total Available</span>
+                  <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>{aggregatedData.totalAvailable.toFixed(3)} TND</strong>
                 </div>
                 <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.06)' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>💸 Total Expenses</span>
@@ -1047,9 +1122,24 @@ export default function ExpenseTracker() {
                           {entry.amount.toFixed(3)} TND
                         </span>
                       </div>
-                      <p style={{ margin: '1px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {format(parseISO(entry.date), 'MMM dd, yyyy')}{entry.note && entry.note !== 'Unrecorded Expense (Reconciliation)' ? ` · ${entry.note}` : ''}
-                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '1px 0 0 0' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {format(parseISO(entry.date), 'MMM dd, yyyy')}{entry.note && entry.note !== 'Unrecorded Expense (Reconciliation)' ? ` · ${entry.note}` : ''}
+                        </span>
+                        {entry.meta?.editHistory?.length > 0 && (
+                          <span
+                            onClick={(e) => { e.stopPropagation(); setViewingEditHistory(entry); }}
+                            style={{
+                              fontSize: '0.65rem', fontWeight: 600, color: '#8b5cf6', cursor: 'pointer',
+                              padding: '1px 8px', borderRadius: 4,
+                              background: 'rgba(139,92,246,0.1)',
+                              border: '1px solid rgba(139,92,246,0.2)',
+                            }}
+                          >
+                            Edited
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
@@ -1076,6 +1166,82 @@ export default function ExpenseTracker() {
                       </button>
                     </div>
                     </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Edit History Viewer */}
+          {viewingEditHistory && (
+            <div className="glass-card p-6 mb-4" style={{
+              animation: 'recSlideUp 0.3s ease',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+                  Edit History
+                </p>
+                <button
+                  onClick={() => setViewingEditHistory(null)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                    background: 'transparent', color: 'var(--text-muted)', fontSize: '0.8rem',
+                    fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{
+                  padding: '10px 14px', borderRadius: 10,
+                  background: 'rgba(139,92,246,0.06)', border: '1.5px solid rgba(139,92,246,0.2)',
+                  fontSize: '0.85rem',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Current
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{viewingEditHistory.type === 'missing' ? 'Missing' : 'Extra'}</span>
+                    <span style={{ fontWeight: 700, color: viewingEditHistory.type === 'missing' ? '#dc2626' : '#16a34a' }}>
+                      {viewingEditHistory.amount.toFixed(3)} TND
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {format(parseISO(viewingEditHistory.date), 'MMM dd, yyyy')}
+                    {viewingEditHistory.note && viewingEditHistory.note !== 'Unrecorded Expense (Reconciliation)' ? ` · ${viewingEditHistory.note}` : ''}
+                  </div>
+                </div>
+                {viewingEditHistory.meta?.editHistory?.map((prev, i) => (
+                  <div key={i} style={{
+                    padding: '10px 14px', borderRadius: 10,
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    fontSize: '0.85rem', opacity: 0.85,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Previous {i + 1}
+                      </span>
+                      <span style={{ fontWeight: 600 }}>{prev.type === 'missing' ? 'Missing' : 'Extra'}</span>
+                      <span style={{ fontWeight: 700, color: prev.type === 'missing' ? '#dc2626' : '#16a34a' }}>
+                        {prev.amount.toFixed(3)} TND
+                      </span>
+                    </div>
+                    {prev.expected != null && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Expected: {prev.expected.toFixed(3)} · Actual: {prev.actual} · Diff: {prev.diff?.toFixed(3)}
+                      </div>
+                    )}
+                    {prev.note && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Note: {prev.note}
+                      </div>
+                    )}
+                    {prev.editedAt && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Edited at {format(parseISO(prev.editedAt), 'MMM dd, yyyy HH:mm')}
+                      </div>
                     )}
                   </div>
                 ))}

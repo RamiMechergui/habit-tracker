@@ -51,6 +51,11 @@ services:
       - STORAGE_BUCKET=learning-german-images
       - STORAGE_REGION=us-east-1
       - USE_PATH_STYLE=true
+      # Public URL browsers use to load images straight from MinIO
+      # (EC2 public IP + MinIO S3 port 9000). Set STORAGE_PUBLIC_READ=true
+      # so anonymous GETs are allowed on the bucket.
+      - PUBLIC_STORAGE_ENDPOINT=${PUBLIC_STORAGE_ENDPOINT:-}
+      - STORAGE_PUBLIC_READ=${STORAGE_PUBLIC_READ:-false}
     networks:
       - habit-network
     volumes:

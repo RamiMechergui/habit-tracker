@@ -499,9 +499,10 @@
 
 .dl-input-icon-prefix {
   position: absolute;
-  left: var(--dl-space-3);
+  left: 0;
   top: 50%;
   transform: translateY(-50%);
+  width: 40px;
   color: var(--text-muted, #71717a);
   pointer-events: none;
   display: flex;

@@ -169,7 +169,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 fontSize: '0.68rem', color: 'var(--text-muted)',
                 paddingRight: '8px', flexShrink: 0, lineHeight: 1,
               }}>
-                {`${h.toString().padStart(2,'0')}:00`}
+                {`${(h % 24).toString().padStart(2,'0')}:00`}
               </div>
               <div style={{ width: 8, height: 1, background: 'var(--border)', flexShrink: 0 }} />
               {/* Half-hour tick */}

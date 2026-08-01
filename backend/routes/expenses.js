@@ -14,7 +14,7 @@ const { getUserById, updateUser } = require('../db/users');
 // Legacy data may be plain strings — normalise on every read.
 
 function normalizeCategory(cat) {
-  if (cat && typeof cat === 'object' && cat.name) return cat;
+  if (cat && typeof cat === 'object' && cat.name) return { name: cat.name, icon: cat.icon || '📦' };
   return { name: String(cat), icon: '📦' };
 }
 

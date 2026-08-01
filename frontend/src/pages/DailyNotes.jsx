@@ -5,7 +5,8 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import {
   Plus, Trash2, Edit2, Check, X, Clock, StickyNote,
   WifiOff, CloudOff, Folder, Settings, FolderPlus, ChevronDown,
-  ChevronUp, Send, BookOpen, Tag, MoreHorizontal, AlertTriangle, Pencil
+  ChevronUp, Send, BookOpen, Tag, MoreHorizontal, AlertTriangle, Pencil,
+  Image
 } from 'lucide-react';
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -47,7 +48,7 @@ function getSectionColor(name, sections) {
 
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
-function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId, editingId, editContent, setEditContent, editSection, setEditSection, editSaving, onSaveEdit, onCancelEdit, noteSections, sectionColor }) {
+function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId, editingId, editContent, setEditContent, editSection, setEditSection, editSaving, onSaveEdit, onCancelEdit, noteSections, sectionColor, editPhotoPreview, setEditPhotoPreview, onEditPhotoSelect, onRemoveEditPhoto, editPhotoInputRef }) {
   const isEditing = editingId === note._id;
   const isConfirming = deleteConfirmId === note._id;
 
@@ -80,6 +81,32 @@ function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId,
         </div>
       ) : isEditing ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {(note.image || editPhotoPreview) && (
+            <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', maxWidth: '100%' }}>
+              <img
+                src={editPhotoPreview || note.image}
+                alt="Note photo"
+                style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px' }}
+              />
+              <button
+                onClick={onRemoveEditPhoto}
+                style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          {(editSection || note.section || 'General') === 'App Development' && !editPhotoPreview && !note.image && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => editPhotoInputRef.current?.click()}
+                style={{ background: 'transparent', border: '1px dashed var(--border)', borderRadius: '8px', padding: '8px 14px', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Image size={14} /> Add Photo
+              </button>
+              <input ref={editPhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onEditPhotoSelect} />
+            </div>
+          )}
           <textarea
             className="w-full"
             style={{ minHeight: '90px', resize: 'vertical', padding: '10px', fontSize: '0.9rem', borderRadius: '8px' }}
@@ -111,6 +138,15 @@ function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId,
         </div>
       ) : (
         <>
+          {note.image && (
+            <div style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', maxWidth: '100%' }}>
+              <img
+                src={note.image}
+                alt="Note photo"
+                style={{ width: '100%', maxHeight: '250px', objectFit: 'cover', borderRadius: '8px' }}
+              />
+            </div>
+          )}
           <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', lineHeight: 1.65, color: 'var(--text-primary)', marginBottom: '10px' }}>
             {note.content}
           </div>
@@ -153,7 +189,7 @@ function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId,
 export default function DailyNotes() {
   const {
     allNotes, fetchAllNotes, addDailyNote, updateDailyNote, deleteDailyNote,
-    noteSections, setNoteSections, isOnline
+    noteSections, setNoteSections, isOnline, uploadNotePhoto
   } = useHabits();
 
   const [loading, setLoading] = useState(false);
@@ -177,6 +213,15 @@ export default function DailyNotes() {
   const [composeContent, setComposeContent] = useState('');
   const [composeFocused, setComposeFocused] = useState(false);
   const textareaRef = useRef(null);
+
+  // Photo upload (App Development section only)
+  const [composePhotoFile, setComposePhotoFile] = useState(null);
+  const [composePhotoPreview, setComposePhotoPreview] = useState('');
+  const [editPhotoFile, setEditPhotoFile] = useState(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const composePhotoInputRef = useRef(null);
+  const editPhotoInputRef = useRef(null);
 
   // Collapsed past-day cards
   const [collapsedDates, setCollapsedDates] = useState({});
@@ -205,21 +250,34 @@ export default function DailyNotes() {
     }
   }, [noteSections, activeSection]);
 
+  // Clear compose photo when section changes
+  useEffect(() => {
+    handleRemoveComposePhoto();
+  }, [activeSection]);
+
   /* ── Compose ── */
   const handleAddNote = async () => {
     const content = composeContent.trim();
     if (!content) return;
     setSavingSection(activeSection);
+    setUploadingPhoto(true);
     try {
+      let imageUrl = '';
+      if (composePhotoFile) {
+        const { url } = await uploadNotePhoto(composePhotoFile);
+        imageUrl = url;
+      }
       const dbSection = activeSection === 'General' ? '' : activeSection;
-      await addDailyNote(todayStr, content, dbSection);
+      await addDailyNote(todayStr, content, dbSection, imageUrl);
       setComposeContent('');
       setComposeFocused(false);
+      handleRemoveComposePhoto();
       showMessage('Note saved ✓');
     } catch (error) {
       showMessage(error.message || 'Failed to save note.', 'error');
     } finally {
       setSavingSection(null);
+      setUploadingPhoto(false);
     }
   };
 
@@ -233,11 +291,46 @@ export default function DailyNotes() {
     }
   };
 
+  /* ── Photo handlers ── */
+  const handleComposePhotoSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    setComposePhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setComposePhotoPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveComposePhoto = () => {
+    setComposePhotoFile(null);
+    setComposePhotoPreview('');
+    if (composePhotoInputRef.current) composePhotoInputRef.current.value = '';
+  };
+
+  const handleEditPhotoSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    setEditPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setEditPhotoPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveEditPhoto = () => {
+    setEditPhotoFile(null);
+    setEditPhotoPreview('');
+    if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+  };
+
   /* ── Edit ── */
   const handleStartEdit = (note) => {
     setEditingId(note._id);
     setEditContent(note.content);
     setEditSection(note.section || 'General');
+    setEditPhotoPreview(note.image || '');
+    setEditPhotoFile(null);
     setDeleteConfirmId(null);
   };
 
@@ -245,10 +338,18 @@ export default function DailyNotes() {
     if (!editContent.trim()) return;
     setEditSaving(true);
     try {
+      let image;
+      if (editPhotoFile) {
+        const { url } = await uploadNotePhoto(editPhotoFile);
+        image = url;
+      } else if (editPhotoPreview === '' && note.image) {
+        image = '';
+      }
       const dbSection = editSection === 'General' ? '' : editSection;
-      await updateDailyNote(editingId, note.date, editContent.trim(), dbSection);
+      await updateDailyNote(editingId, note.date, editContent.trim(), dbSection, image);
       setEditingId(null);
       setEditContent('');
+      handleRemoveEditPhoto();
       showMessage('Note updated ✓');
     } catch (error) {
       showMessage(error.message || 'Failed to update note.', 'error');
@@ -257,7 +358,7 @@ export default function DailyNotes() {
     }
   };
 
-  const handleCancelEdit = () => { setEditingId(null); setEditContent(''); };
+  const handleCancelEdit = () => { setEditingId(null); setEditContent(''); handleRemoveEditPhoto(); };
 
   /* ── Delete note ── */
   const confirmDelete = async (note) => {
@@ -709,6 +810,11 @@ export default function DailyNotes() {
                           onCancelEdit={handleCancelEdit}
                           noteSections={noteSections}
                           sectionColor={getSectionColor(activeSection, noteSections)}
+                          editPhotoPreview={editPhotoPreview}
+                          setEditPhotoPreview={setEditPhotoPreview}
+                          onEditPhotoSelect={handleEditPhotoSelect}
+                          onRemoveEditPhoto={handleRemoveEditPhoto}
+                          editPhotoInputRef={editPhotoInputRef}
                         />
                       </div>
                     ))}
@@ -722,6 +828,22 @@ export default function DailyNotes() {
                   background: composeFocused ? 'var(--dn-compose-focus)' : 'var(--dn-compose-bg)',
                   transition: 'border-color 0.2s, background 0.2s',
                 }}>
+                  {/* Photo preview above textarea */}
+                  {composePhotoPreview && (
+                    <div style={{ position: 'relative', padding: '10px 14px 0' }}>
+                      <img
+                        src={composePhotoPreview}
+                        alt="Preview"
+                        style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '8px' }}
+                      />
+                      <button
+                        onClick={handleRemoveComposePhoto}
+                        style={{ position: 'absolute', top: '16px', right: '20px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
                   <textarea
                     ref={textareaRef}
                     className="compose-textarea"
@@ -745,21 +867,33 @@ export default function DailyNotes() {
                   {/* Always-visible footer bar */}
                   <div style={{
                     padding: isMobile ? '10px 14px' : '8px 14px',
-                    borderTop: composeContent || composeFocused ? '1px solid var(--border)' : 'none',
+                    borderTop: composeContent || composeFocused || composePhotoPreview ? '1px solid var(--border)' : 'none',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     transition: 'border-color 0.2s',
                   }}>
-                    {composeContent ? (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Ctrl+Enter to save · Esc to cancel
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.72rem', color: 'transparent', userSelect: 'none' }}> </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {activeSection === 'App Development' && !composePhotoFile && !composePhotoPreview && (
+                        <button
+                          onClick={() => composePhotoInputRef.current?.click()}
+                          style={{ background: 'transparent', border: '1px dashed var(--border)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Add photo to note"
+                        >
+                          <Image size={13} /> Photo
+                        </button>
+                      )}
+                      <input ref={composePhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleComposePhotoSelect} />
+                      {composeContent ? (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          Ctrl+Enter to save · Esc to cancel
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.72rem', color: 'transparent', userSelect: 'none' }}> </span>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       {composeContent && (
                         <button
-                          onClick={() => { setComposeContent(''); setComposeFocused(false); }}
+                          onClick={() => { setComposeContent(''); setComposeFocused(false); handleRemoveComposePhoto(); }}
                           style={{
                             background: 'transparent', border: 'none', color: 'var(--text-muted)',
                             cursor: 'pointer', padding: isMobile ? '8px 12px' : '4px 10px',
@@ -772,25 +906,25 @@ export default function DailyNotes() {
                       )}
                       <button
                         onClick={handleAddNote}
-                        disabled={!composeContent.trim() || !!savingSection}
+                        disabled={(!composeContent.trim() && !composePhotoFile) || !!savingSection || uploadingPhoto}
                         style={{
                           padding: isMobile ? '10px 20px' : '6px 16px',
                           fontSize: '0.84rem', fontWeight: 700,
-                          background: composeContent.trim() ? 'var(--accent-amber)' : 'var(--dn-disabled-bg)',
-                          color: composeContent.trim() ? '#000' : 'var(--text-muted)',
+                          background: (composeContent.trim() || composePhotoFile) ? 'var(--accent-amber)' : 'var(--dn-disabled-bg)',
+                          color: (composeContent.trim() || composePhotoFile) ? '#000' : 'var(--text-muted)',
                           border: 'none', borderRadius: '8px',
-                          cursor: composeContent.trim() ? 'pointer' : 'not-allowed',
+                          cursor: (composeContent.trim() || composePhotoFile) && !uploadingPhoto ? 'pointer' : 'not-allowed',
                           display: 'flex', alignItems: 'center', gap: '6px',
                           transition: 'all 0.15s', fontFamily: 'var(--font-sans)',
                           minHeight: isMobile ? '44px' : 'auto',
                         }}
                       >
-                        {savingSection ? (
+                        {savingSection || uploadingPhoto ? (
                           <div className="spinner" style={{ width: '12px', height: '12px', border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000' }} />
                         ) : (
                           <Send size={14} />
                         )}
-                        {composeContent ? 'Save Note' : 'Add Note'}
+                        {uploadingPhoto ? 'Uploading…' : composeContent ? 'Save Note' : 'Add Note'}
                       </button>
                     </div>
                   </div>
@@ -892,6 +1026,11 @@ export default function DailyNotes() {
                                           onCancelEdit={handleCancelEdit}
                                           noteSections={noteSections}
                                           sectionColor={col}
+                                          editPhotoPreview={editPhotoPreview}
+                                          setEditPhotoPreview={setEditPhotoPreview}
+                                          onEditPhotoSelect={handleEditPhotoSelect}
+                                          onRemoveEditPhoto={handleRemoveEditPhoto}
+                                          editPhotoInputRef={editPhotoInputRef}
                                         />
                                       </div>
                                     ))}
