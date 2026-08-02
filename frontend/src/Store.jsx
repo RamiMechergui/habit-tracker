@@ -2689,6 +2689,34 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const addGermanChapter = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/chapter`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add chapter');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_chapter_add', `Added German chapter: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanChapter = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/chapter/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update chapter');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_chapter_update', `Updated German chapter: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
   const uploadGermanAlphabetPhoto = useCallback(async (recordId, file) => {
     const formData = new FormData();
     formData.append('photo', file);
@@ -3167,6 +3195,7 @@ export const HabitProvider = ({ children }) => {
       // German Learning
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
+      addGermanChapter, updateGermanChapter,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
       germanStudy, fetchGermanStudy, addGermanStudyMs,

@@ -4,7 +4,12 @@ import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', orange: '#f97316' };
 
-const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'];
+const ALL_LEVELS = ['A1.1','A1.2','A2.1','A2.2','B1.1','B1.2','B2.1','B2.2','B2.3','C1.1','C1.2','C2.1','C2.2'];
+const COARSE_TO_LEVEL = { A1: 'A1.1', A2: 'A2.1', B1: 'B1.1', B2: 'B2.1', C1: 'C1.1', C2: 'C2.1' };
+function normalizeLevel(level) {
+  if (!level) return null;
+  return COARSE_TO_LEVEL[level] || level;
+}
 
 const GENDER_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 
@@ -109,14 +114,14 @@ function DialogueCard({ dialogue, onEdit, onDelete }) {
   );
 }
 
-export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialogue, onCancelEdit, translating, isMobile, onTranslate, onUploadParticipantPhoto, onDeleteParticipantPhoto }) {
+export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialogue, onCancelEdit, translating, isMobile, onTranslate, onUploadParticipantPhoto, onDeleteParticipantPhoto, defaultLevel = 'A1.1' }) {
   const [participants, setParticipants] = useState(editDialogue ? editDialogue.participants : [
     { name: '', gender: 'male', photoUrl: '' },
     { name: '', gender: 'female', photoUrl: '' },
   ]);
   const [exchanges, setExchanges] = useState(editDialogue ? editDialogue.exchanges : []);
   const [title, setTitle] = useState(editDialogue?.title || '');
-  const [level, setLevel] = useState(editDialogue?.level || 'A2');
+  const [level, setLevel] = useState(normalizeLevel(editDialogue?.level) || defaultLevel);
   const [boxes, setBoxes] = useState(editDialogue?.boxes || []);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -378,7 +383,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
             <div>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Language Level</label>
               <select value={level} onChange={e => setLevel(e.target.value)} style={{ ...inputBase, padding: '0.5rem 0.7rem' }}>
-                {CEFR_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                {ALL_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
           </div>

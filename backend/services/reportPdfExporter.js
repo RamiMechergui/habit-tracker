@@ -275,6 +275,7 @@ function buildTocPage(records) {
   const idiomCount = (records || []).filter(r => r.type === 'idiom').length;
   const mistakeCount = (records || []).filter(r => r.type === 'mistake').length;
   const alphabetCount = (records || []).filter(r => r.type === 'alphabet').length;
+  const chapterCount = (records || []).filter(r => r.type === 'chapter').length;
 
   const rows = [];
   let page = 3;
@@ -284,6 +285,7 @@ function buildTocPage(records) {
   };
 
   if (alphabetCount > 0) add('German Alphabet', alphabetCount);
+  if (chapterCount > 0) add('Chapters', chapterCount);
   if (noteCount > 0) add('Study Notes', noteCount);
   if (vocabCount > 0) add('Vocabulary', vocabCount);
   if (grammarCount > 0) add('Grammar Rules', grammarCount);
@@ -308,6 +310,27 @@ function buildTocPage(records) {
         ${rows.join('\n')}
       </table>
     </div>`;
+}
+
+function buildChaptersHtml(records) {
+  const chapters = (records || []).filter(r => r.type === 'chapter');
+  if (chapters.length === 0) return '';
+  const byLevel = {};
+  for (const c of chapters) {
+    const lvl = c.level || 'A1.1';
+    if (!byLevel[lvl]) byLevel[lvl] = [];
+    byLevel[lvl].push(c);
+  }
+  const levels = Object.keys(byLevel).sort();
+  let html = '<h2>Chapters</h2>';
+  for (const lvl of levels) {
+    const list = byLevel[lvl]
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+      .map(c => `<li>${escapeHtml(c.title)}</li>`)
+      .join('');
+    html += `<div class="note-box"><div class="note-box-title">${levelBadge(lvl)}</div><ul style="margin:4px 0 0 18px;padding-left:0;">${list}</ul></div>`;
+  }
+  return html;
 }
 
 function buildAlphabetHtml(records) {
@@ -616,6 +639,7 @@ function buildReportHtml(records, opts = {}) {
   const { baseUrl = '' } = opts;
   const body = [
     buildAlphabetHtml(records),
+    buildChaptersHtml(records),
     buildNotesHtml(records),
     buildVocabularyHtml(records),
     buildGrammarHtml(records),

@@ -17,6 +17,7 @@ const { protect } = require('../middleware/auth');
 const storage = require('../services/storage');
 const {
   getAllGermanRecords,
+  backfillLevels,
   addVocab,
   updateVocab,
   addGrammar,
@@ -45,10 +46,13 @@ const {
   updateResource,
   addBook,
   updateBook,
+  addChapter,
+  updateChapter,
   getOrInitStudy,
   addStudyMs,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
+const { getOrInitProgress } = require('../db/germanProgress');
 const { exportToPdf } = require('../services/pdfExporter');
 const { exportNoteToPdf } = require('../services/notesPdfExporter');
 const { exportReportToPdf } = require('../services/reportPdfExporter');
@@ -148,6 +152,13 @@ async function fetchYouTubeResourceInfo(rawUrl) {
 router.get('/', async (req, res) => {
   try {
     const records = await getAllGermanRecords(req.user.userId);
+    const progress = await getOrInitProgress(req.user.userId);
+    const currentLevel = progress?.currentLevel || 'A1.1';
+    const backfilled = await backfillLevels(req.user.userId, currentLevel);
+    if (backfilled > 0) {
+      const refetched = await getAllGermanRecords(req.user.userId);
+      return res.json(refetched);
+    }
     res.json(records);
   } catch (err) {
     console.error('[German] GET all error:', err);
@@ -201,11 +212,11 @@ router.post('/study', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes } = req.body;
+    const { word, translation, example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST vocab error:', err);
@@ -469,7 +480,7 @@ router.post('/dialogue', async (req, res) => {
     const { title, level, participants, exchanges, boxes } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
     if (!participants?.length || participants.length < 2) return res.status(400).json({ message: 'At least 2 participants required' });
-    const record = await addDialogue(req.user.userId, { title: title.trim(), level: level || 'A2', participants, exchanges: exchanges || [], boxes });
+    const record = await addDialogue(req.user.userId, { title: title.trim(), level: level || 'A1.1', participants, exchanges: exchanges || [], boxes });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST dialogue error:', err);
@@ -492,7 +503,7 @@ router.put('/dialogue/:recordId', async (req, res) => {
 // ── POST /api/german/memo ──────────────────────────────────────────────────────
 router.post('/memo', async (req, res) => {
   try {
-    const { title, content, germanContent, englishContent, memoFont, boxes } = req.body;
+    const { title, content, germanContent, englishContent, memoFont, boxes, level } = req.body;
     if (!title?.trim() || !(content?.trim() || germanContent?.trim())) {
       return res.status(400).json({ message: 'title and content are required' });
     }
@@ -504,6 +515,7 @@ router.post('/memo', async (req, res) => {
       englishContent: (englishContent ?? '').trim(),
       memoFont,
       boxes,
+      level: level || 'A1.1',
     });
     res.status(201).json(record);
   } catch (err) {
@@ -527,11 +539,11 @@ router.put('/memo/:recordId', async (req, res) => {
 // ── POST /api/german/expression ──────────────────────────────────────────────
 router.post('/expression', async (req, res) => {
   try {
-    const { phrase, translation, category, favorite, boxes } = req.body;
+    const { phrase, translation, category, favorite, boxes, level } = req.body;
     if (!phrase?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'phrase and translation are required' });
     }
-    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite, boxes });
+    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite, boxes, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST expression error:', err);
@@ -554,11 +566,11 @@ router.put('/expression/:recordId', async (req, res) => {
 // ── POST /api/german/idiom ───────────────────────────────────────────────────
 router.post('/idiom', async (req, res) => {
   try {
-    const { phrase, translation, meaning, usage, category, favorite } = req.body;
+    const { phrase, translation, meaning, usage, category, favorite, level } = req.body;
     if (!phrase?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'phrase and translation are required' });
     }
-    const record = await addIdiom(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), meaning, usage, category, favorite });
+    const record = await addIdiom(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), meaning, usage, category, favorite, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST idiom error:', err);
@@ -581,11 +593,11 @@ router.put('/idiom/:recordId', async (req, res) => {
 // ── POST /api/german/mistake ─────────────────────────────────────────────────
 router.post('/mistake', async (req, res) => {
   try {
-    const { incorrect, correct, why, category, favorite } = req.body;
+    const { incorrect, correct, why, category, favorite, level } = req.body;
     if (!incorrect?.trim() || !correct?.trim()) {
       return res.status(400).json({ message: 'incorrect and correct are required' });
     }
-    const record = await addMistake(req.user.userId, { incorrect: incorrect.trim(), correct: correct.trim(), why, category, favorite });
+    const record = await addMistake(req.user.userId, { incorrect: incorrect.trim(), correct: correct.trim(), why, category, favorite, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST mistake error:', err);
@@ -608,11 +620,11 @@ router.put('/mistake/:recordId', async (req, res) => {
 // ── POST /api/german/alphabet ────────────────────────────────────────────────
 router.post('/alphabet', async (req, res) => {
   try {
-    const { letter, example, pronunciation, photoUrl } = req.body;
+    const { letter, example, pronunciation, photoUrl, level } = req.body;
     if (!letter?.trim() || !example?.trim()) {
       return res.status(400).json({ message: 'letter and example are required' });
     }
-    const record = await addAlphabet(req.user.userId, { letter: letter.trim(), example: example.trim(), pronunciation, photoUrl });
+    const record = await addAlphabet(req.user.userId, { letter: letter.trim(), example: example.trim(), pronunciation, photoUrl, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST alphabet error:', err);
@@ -674,11 +686,11 @@ router.delete('/alphabet/:recordId/photo', async (req, res) => {
 // ── POST /api/german/verb ──────────────────────────────────────────────────────
 router.post('/verb', async (req, res) => {
   try {
-    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes } = req.body;
+    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level } = req.body;
     if (!infinitive?.trim() || !meaning?.trim()) {
       return res.status(400).json({ message: 'infinitive and meaning are required' });
     }
-    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes });
+    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST verb error:', err);
@@ -701,11 +713,11 @@ router.put('/verb/:recordId', async (req, res) => {
 // ── POST /api/german/note ─────────────────────────────────────────────────────
 router.post('/note', async (req, res) => {
   try {
-    const { date, content, noteId, boxes, noteCategory, studyMinutes } = req.body;
+    const { date, content, noteId, boxes, noteCategory, studyMinutes, level } = req.body;
     if (!date || !content?.trim()) {
       return res.status(400).json({ message: 'date and content are required' });
     }
-    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes, noteCategory, studyMinutes });
+    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes, noteCategory, studyMinutes, level: level || 'A1.1' });
     res.json(record);
   } catch (err) {
     console.error('[German] POST note error:', err);
@@ -716,7 +728,7 @@ router.post('/note', async (req, res) => {
 // ── POST /api/german/book → add a book being studied ─────────────────────────
 router.post('/book', async (req, res) => {
   try {
-    const { name, author, notes, photoUrl, sortOrder } = req.body;
+    const { name, author, notes, photoUrl, sortOrder, level } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'name is required' });
     const record = await addBook(req.user.userId, {
       name: name.trim(),
@@ -724,6 +736,7 @@ router.post('/book', async (req, res) => {
       notes: notes || '',
       photoUrl: photoUrl || '',
       sortOrder: sortOrder || Date.now(),
+      level: level || 'A1.1',
     });
     res.status(201).json(record);
   } catch (err) {
@@ -785,7 +798,7 @@ router.get('/resource/info', async (req, res) => {
 // POST /api/german/resource → add a learning resource
 router.post('/resource', async (req, res) => {
   try {
-    const { url, kind, videoId, channelId, handle, title, author, thumbnail, notes, sortOrder } = req.body;
+    const { url, kind, videoId, channelId, handle, title, author, thumbnail, notes, sortOrder, level } = req.body;
     if (!url?.trim()) return res.status(400).json({ message: 'url is required' });
     const record = await addResource(req.user.userId, {
       url: url.trim(),
@@ -798,6 +811,7 @@ router.post('/resource', async (req, res) => {
       thumbnail: thumbnail || '',
       notes: notes || '',
       sortOrder: sortOrder || Date.now(),
+      level: level || 'A1.1',
     });
     res.json(record);
   } catch (err) {
@@ -816,6 +830,32 @@ router.put('/resource/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT resource error:', err);
     res.status(500).json({ message: 'Failed to update resource' });
+  }
+});
+
+// ── POST /api/german/chapter → add a course chapter under a level ────────────
+router.post('/chapter', async (req, res) => {
+  try {
+    const { title, level, sortOrder } = req.body;
+    if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
+    const record = await addChapter(req.user.userId, { title: title.trim(), level: level || 'A1.1', sortOrder });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST chapter error:', err);
+    res.status(500).json({ message: 'Failed to add chapter' });
+  }
+});
+
+// ── PUT /api/german/chapter/:recordId → update a chapter ─────────────────────
+router.put('/chapter/:recordId', async (req, res) => {
+  try {
+    const recordId = decodeURIComponent(req.params.recordId);
+    const updated = await updateChapter(req.user.userId, recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Chapter not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT chapter error:', err);
+    res.status(500).json({ message: 'Failed to update chapter' });
   }
 });
 

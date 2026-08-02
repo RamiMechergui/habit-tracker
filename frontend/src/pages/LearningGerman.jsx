@@ -12,7 +12,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -20,6 +20,11 @@ const PERSON_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 const PRESET_CATEGORIES = ['General', 'Animals', 'Food', 'Travel', 'Work', 'Daily Life', 'Grammar', 'Vocabulary', 'Phrases'];
 const ALL_LEVELS = ['A1.1','A1.2','A2.1','A2.2','B1.1','B1.2','B2.1','B2.2','B2.3','C1.1','C1.2','C2.1','C2.2'];
 const LEVEL_COLORS = { 'A1.1':'#3b82f6','A1.2':'#6366f1','A2.1':'#8b5cf6','A2.2':'#a855f7','B1.1':'#ec4899','B1.2':'#f43f5e','B2.1':'#f97316','B2.2':'#eab308','B2.3':'#10b981','C1.1':'#14b8a6','C1.2':'#06b6d4','C2.1':'#3b82f6','C2.2':'#8b5cf6' };
+const COARSE_TO_LEVEL = { A1: 'A1.1', A2: 'A2.1', B1: 'B1.1', B2: 'B2.1', C1: 'C1.1', C2: 'C2.1' };
+function normalizeLevel(level) {
+  if (!level) return null;
+  return COARSE_TO_LEVEL[level] || level;
+}
 const NOTE_CATEGORIES = [
   { value: 'daily', label: 'Daily', title: 'Daily Notes', color: C.gold, icon: NotebookPen },
   { value: 'writing', label: 'Writing', title: 'Writing Notes', color: C.blue, icon: PenTool },
@@ -115,6 +120,130 @@ function StatCard({ value, label, color, icon: Icon }) {
   );
 }
 
+function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onClose, modal = true }) {
+  const [title, setTitle] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const color = LEVEL_COLORS[level] || '#6b7280';
+  const list = (chapters || [])
+    .filter(c => normalizeLevel(c.level) === level)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    try { await onAdd({ title: title.trim(), level }); setTitle(''); }
+    finally { setSaving(false); }
+  };
+
+  const saveEdit = async (c) => {
+    if (!editTitle.trim() || saving) return;
+    setSaving(true);
+    try { await onUpdate(c.recordId, { title: editTitle.trim() }); setEditingId(null); }
+    finally { setSaving(false); }
+  };
+
+  const confirmDelete = async (c) => {
+    setSaving(true);
+    try { await onDelete(c.recordId); setConfirmDeleteId(null); }
+    finally { setSaving(false); }
+  };
+
+  const iconBtn = (c) => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
+    background: `${c}18`, border: `1px solid ${c}35`, color: c, flexShrink: 0,
+    transition: 'all 0.15s ease',
+  });
+
+  const card = (
+    <div style={{
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      borderRadius: '16px', padding: '1.25rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <BookOpen size={17} /> Chapters — <LevelBadge level={level} size="sm" />
+        </h3>
+        {modal && onClose && (
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+        )}
+      </div>
+      <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginBottom: '1rem' }}>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Chapter name (e.g. Wohnung)" style={{ ...inputBase, marginTop: 0, flex: 1 }} />
+        <button type="submit" disabled={saving || !title.trim()} title="Add chapter" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          padding: '0 1rem', background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+          border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700,
+          fontSize: '0.85rem', cursor: saving || !title.trim() ? 'not-allowed' : 'pointer',
+          opacity: saving || !title.trim() ? 0.6 : 1, flexShrink: 0,
+        }}>
+          {saving ? <Loader2 size={16} className="spin" /> : <Plus size={16} />} Add
+        </button>
+      </form>
+      {list.length === 0 ? (
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1.25rem 0' }}>
+          No chapters yet. Add the first one above.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {list.map(c => (
+            <div key={c.recordId} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              padding: '0.6rem 0.8rem', background: 'var(--bg)', borderRadius: '10px',
+              border: '1px solid var(--border)',
+            }}>
+              {editingId === c.recordId ? (
+                <input autoFocus value={editTitle} onChange={e => setEditTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(c); if (e.key === 'Escape') setEditingId(null); }}
+                  style={{ ...inputBase, marginTop: 0, flex: 1 }} />
+              ) : (
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.title}</span>
+              )}
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                {editingId === c.recordId ? (
+                  <>
+                    <button onClick={() => saveEdit(c)} style={iconBtn(color)} title="Save"><Check size={14} /></button>
+                    <button onClick={() => setEditingId(null)} style={iconBtn('#6b7280')} title="Cancel"><X size={14} /></button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => { setEditingId(c.recordId); setEditTitle(c.title || ''); }} style={iconBtn(color)} title="Edit"><Edit3 size={14} /></button>
+                    {confirmDeleteId === c.recordId ? (
+                      <>
+                        <button onClick={() => confirmDelete(c)} disabled={saving} style={iconBtn(C.red)} title="Confirm delete"><Check size={14} /></button>
+                        <button onClick={() => setConfirmDeleteId(null)} style={iconBtn('#6b7280')} title="Cancel"><X size={14} /></button>
+                      </>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteId(c.recordId)} style={iconBtn('#6b7280')} title="Delete"><Trash2 size={14} /></button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (!modal) return card;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: 460, maxHeight: '85vh', overflowY: 'auto' }}>
+        {card}
+      </div>
+    </div>
+  );
+}
+
 function ErrorToast({ message, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
   return (
@@ -160,8 +289,8 @@ function GenderBadge({ article }) {
   );
 }
 
-function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading }) {
-  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: 'A1.1' });
+function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading, defaultLevel = 'A1.1' }) {
+  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -185,12 +314,12 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         plural: editRecord.plural || '',
         mastery: editRecord.mastery || 0,
         article: detected ? detected.article : (editRecord.article || ''),
-        level: editRecord.level || 'A1.1',
+        level: editRecord.level || defaultLevel,
       });
       setBoxes(editRecord.boxes || []);
       setOpen(true);
     }
-  }, [editRecord]);
+  }, [editRecord, defaultLevel]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -211,7 +340,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         setNewPhotoFile(null);
       }
     }
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: 'A1.1' });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel });
     setCustomCat('');
     setNewPhotoFile(null);
     setDirty(false);
@@ -235,7 +364,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: 'A1.1' });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel });
     setBoxes([]);
     setCustomCat('');
     setNewPhotoFile(null);
@@ -474,8 +603,8 @@ function masteryStars(m, onChange) {
   </span>;
 }
 
-function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
-  const [form, setForm] = useState({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1.1', mastery: 0 });
+function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, defaultLevel = 'A1.1' }) {
+  const [form, setForm] = useState({ rule: '', explanation: '', examples: '', category: 'General', level: defaultLevel, mastery: 0 });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -488,12 +617,12 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
       setForm({
         rule: editRecord.rule || '', explanation: editRecord.explanation || '',
         examples: Array.isArray(editRecord.examples) ? editRecord.examples.join('\n') : (editRecord.examples || ''),
-        category: editRecord.category || 'General', level: editRecord.level || 'A1.1', mastery: editRecord.mastery || 0,
+        category: editRecord.category || 'General', level: editRecord.level || defaultLevel, mastery: editRecord.mastery || 0,
       });
       setBoxes(editRecord.boxes || []);
       setOpen(true);
     }
-  }, [editRecord]);
+  }, [editRecord, defaultLevel]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -505,7 +634,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
     } else {
       await onAdd(payload);
     }
-    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1.1', mastery: 0 });
+    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: defaultLevel, mastery: 0 });
     setBoxes([]);
     setCustomCat('');
     setDirty(false);
@@ -518,7 +647,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: 'A1.1', mastery: 0 });
+    setForm({ rule: '', explanation: '', examples: '', category: 'General', level: defaultLevel, mastery: 0 });
     setBoxes([]);
     setCustomCat('');
     setDirty(false);
@@ -779,7 +908,7 @@ function StreakCalendar({ notes }) {
   );
 }
 
-function ImportExport({ germanData, onImport }) {
+function ImportExport({ germanData, onImport, workspaceLevel = 'A1.1' }) {
   const fileRef = useRef(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
@@ -807,9 +936,9 @@ function ImportExport({ germanData, onImport }) {
       for (const item of data) {
         if (!item.type) { skipped++; continue; }
         try {
-          if (item.type === 'vocab') await onImport.addVocab({ word: item.word || '', translation: item.translation || '', example: item.example || '', notes: item.notes || '', category: item.category || 'General' });
-          else if (item.type === 'grammar') await onImport.addGrammar({ rule: item.rule || '', explanation: item.explanation || '', examples: item.examples || [], category: item.category || 'General', level: item.level || 'A1' });
-          else if (item.type === 'note') await onImport.saveNote({ date: item.date || format(new Date(), 'yyyy-MM-dd'), content: item.content || '' });
+          if (item.type === 'vocab') await onImport.addVocab({ word: item.word || '', translation: item.translation || '', example: item.example || '', notes: item.notes || '', category: item.category || 'General', level: item.level || workspaceLevel });
+          else if (item.type === 'grammar') await onImport.addGrammar({ rule: item.rule || '', explanation: item.explanation || '', examples: item.examples || [], category: item.category || 'General', level: item.level || workspaceLevel });
+          else if (item.type === 'note') await onImport.saveNote({ date: item.date || format(new Date(), 'yyyy-MM-dd'), content: item.content || '', level: item.level || workspaceLevel });
           else { skipped++; continue; }
           added++;
         } catch { skipped++; }
@@ -2826,6 +2955,7 @@ export default function LearningGerman() {
     addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
+    addGermanChapter, updateGermanChapter,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs,
   } = useHabits();
@@ -2851,6 +2981,7 @@ export default function LearningGerman() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDailyExportCalendar, setShowDailyExportCalendar] = useState(false);
   const [dailyExportDate, setDailyExportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [chapterModalLevel, setChapterModalLevel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
@@ -2880,7 +3011,8 @@ export default function LearningGerman() {
   const [editMemo, setEditMemo] = useState(null);
   const [practiceMemo, setPracticeMemo] = useState(null);
   const [memoSaving, setMemoSaving] = useState(false);
-  const [levelFilter, setLevelFilter] = useState('all');
+  const [workspaceLevel, setWorkspaceLevel] = useState('A1.1');
+  const workspaceTouchedRef = useRef(false);
   const PAGE_SIZE = 15;
 
   const debouncedSearch = useDebounce(search, 250);
@@ -2901,59 +3033,79 @@ export default function LearningGerman() {
   const currentLevel = germanProgress?.currentLevel || 'A1.1';
   const levelsCompleted = germanProgress?.levelsCompleted || [];
 
+  // The "workspace" scopes every section to one level. It starts on the user's
+  // current level and only moves off it if the user picks another level manually.
+  useEffect(() => {
+    if (!workspaceTouchedRef.current && germanProgress?.currentLevel) {
+      setWorkspaceLevel(germanProgress.currentLevel);
+    }
+  }, [germanProgress]);
+
+  const changeWorkspace = (level) => {
+    workspaceTouchedRef.current = true;
+    setWorkspaceLevel(level);
+  };
+
+  const levelOf = useCallback((r) => normalizeLevel(r?.level) || currentLevel, [currentLevel]);
+  const matchesLevel = useCallback((r) => levelOf(r) === workspaceLevel, [levelOf, workspaceLevel]);
+
   const vocab     = useMemo(() => {
-    let filtered = germanData.filter(r => r.type === 'vocab');
-    if (levelFilter !== 'all') filtered = filtered.filter(r => r.level === levelFilter);
+    const filtered = germanData.filter(r => r.type === 'vocab' && matchesLevel(r));
     return filtered;
-  }, [germanData, levelFilter]);
+  }, [germanData, matchesLevel]);
   const grammar   = useMemo(() => {
-    let filtered = germanData.filter(r => r.type === 'grammar');
-    if (levelFilter !== 'all') filtered = filtered.filter(r => r.level === levelFilter);
+    const filtered = germanData.filter(r => r.type === 'grammar' && matchesLevel(r));
     return filtered;
-  }, [germanData, levelFilter]);
-  const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb'), [germanData]);
+  }, [germanData, matchesLevel]);
+  const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r)), [germanData, matchesLevel]);
   const dialogues = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'dialogue');
+    const filtered = germanData.filter(r => r.type === 'dialogue' && matchesLevel(r));
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const memos = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'memo');
+    const filtered = germanData.filter(r => r.type === 'memo' && matchesLevel(r));
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const notes   = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'note');
+    const filtered = germanData.filter(r => r.type === 'note' && matchesLevel(r));
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const filteredNotes = useMemo(() => {
     return notes.filter(n => (n.noteCategory || 'daily') === noteCategory);
   }, [notes, noteCategory]);
   const expressions = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'expression');
+    const filtered = germanData.filter(r => r.type === 'expression' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const idioms = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'idiom');
+    const filtered = germanData.filter(r => r.type === 'idiom' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const mistakes = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'mistake');
+    const filtered = germanData.filter(r => r.type === 'mistake' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const alphabets = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'alphabet');
+    const filtered = germanData.filter(r => r.type === 'alphabet' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const resources = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'resource');
+    const filtered = germanData.filter(r => r.type === 'resource' && matchesLevel(r));
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
   const books = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'book');
+    const filtered = germanData.filter(r => r.type === 'book' && matchesLevel(r));
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
-  }, [germanData]);
+  }, [germanData, matchesLevel]);
+  const chapters = useMemo(() => germanData.filter(r => r.type === 'chapter'), [germanData]);
+  const workspaceChapters = useMemo(() => {
+    return chapters
+      .filter(c => normalizeLevel(c.level) === workspaceLevel)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }, [chapters, workspaceLevel]);
 
   useEffect(() => {
-    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate && (r.noteCategory || 'daily') === noteCategory);
+    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate && matchesLevel(r) && (r.noteCategory || 'daily') === noteCategory);
     if (dateNotes.length > 0) {
       const lastNote = dateNotes[dateNotes.length - 1];
       setSelectedNoteId(lastNote.recordId);
@@ -2975,7 +3127,7 @@ export default function LearningGerman() {
     }
     setSelectedBoxId(null);
     setNoteSaved(false);
-  }, [selectedDate, germanData, noteCategory]);
+  }, [selectedDate, germanData, noteCategory, matchesLevel]);
 
   // ── Study time tracking (persisted to DB) ──
   // The timer starts when the Learning German section opens and banks the
@@ -3155,6 +3307,7 @@ export default function LearningGerman() {
         noteCategory,
         content: contentToSave.trim(),
         boxes: boxesToSave.map(({ id, ...rest }) => rest),
+        level: workspaceLevel,
       };
       if (selectedNoteId) payload.noteId = selectedNoteId;
       const saved = await saveGermanNote(payload);
@@ -3272,7 +3425,7 @@ export default function LearningGerman() {
 
   const handleAddVerb = async (payload) => {
     setVerbSaving(true);
-    try { await addGermanVerb(payload); } catch (e) { setError(e.message); } finally { setVerbSaving(false); }
+    try { await addGermanVerb({ ...payload, level: workspaceLevel }); } catch (e) { setError(e.message); } finally { setVerbSaving(false); }
   };
 
   const handleUpdateVerb = async (recordId, payload) => {
@@ -3408,7 +3561,7 @@ export default function LearningGerman() {
   // ── Dialogue handlers ─────────────────────────────────────────────────────
   const handleAddDialogue = async (payload) => {
     setDialogueSaving(true);
-    try { const created = await addGermanDialogue(payload); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
+    try { const created = await addGermanDialogue({ ...payload, level: workspaceLevel }); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
   };
 
   const handleUpdateDialogue = async (recordId, payload) => {
@@ -3449,7 +3602,7 @@ export default function LearningGerman() {
   // ── Memo handlers ──────────────────────────────────────────────────────────
   const handleAddMemo = async (payload) => {
     setMemoSaving(true);
-    try { const created = await addGermanMemo(payload); setEditMemo(null); return created; } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
+    try { const created = await addGermanMemo({ ...payload, level: workspaceLevel }); setEditMemo(null); return created; } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
   };
 
   const handleUpdateMemo = async (recordId, payload) => {
@@ -3461,6 +3614,18 @@ export default function LearningGerman() {
     try { await deleteGermanRecord(recordId); } catch (e) { setError(e.message); }
   };
 
+  // ── Chapter handlers ────────────────────────────────────────────────────────
+  const handleAddChapter = async (payload) => {
+    try { await addGermanChapter(payload); } catch (e) { setError(e.message); }
+  };
+
+  const handleUpdateChapter = async (recordId, payload) => {
+    try { await updateGermanChapter(recordId, payload); } catch (e) { setError(e.message); }
+  };
+
+  const handleDeleteChapter = async (recordId) => {
+    try { await deleteGermanRecord(recordId); } catch (e) { setError(e.message); }
+  };
 
 
   const cellStyle = {
@@ -3529,20 +3694,39 @@ export default function LearningGerman() {
       </div>
 
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
-        marginBottom: '0.5rem',
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: '14px', padding: '0.75rem', marginBottom: '1rem',
       }}>
-        <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>Filter by Level:</label>
-        <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} style={{
-          padding: '0.4rem 0.7rem', borderRadius: '8px', border: '1px solid var(--border)',
-          background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.8rem',
-          cursor: 'pointer', outline: 'none',
-        }}>
-          <option value="all">All Levels</option>
-          {ALL_LEVELS.map(l => (
-            <option key={l} value={l}>{l}</option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <GraduationCap size={15} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280' }} />
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Level Workspace</span>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Every section below shows only this level. New items are saved to it automatically.
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? 4 : 0, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+          {ALL_LEVELS.map(l => {
+            const active = workspaceLevel === l;
+            const color = LEVEL_COLORS[l] || '#6b7280';
+            return (
+              <button key={l} onClick={() => changeWorkspace(l)} title={`Switch to level ${l}`} style={{
+                padding: '6px 13px', borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap',
+                flexShrink: 0,
+                background: active ? `${color}22` : 'var(--bg)',
+                border: active ? `1.5px solid ${color}` : '1px solid var(--border)',
+                color: active ? color : 'var(--text-muted)',
+                fontWeight: active ? 800 : 600, fontSize: '0.78rem', letterSpacing: '0.02em',
+                boxShadow: active ? `0 2px 10px ${color}35` : 'none',
+                transition: 'all 0.18s ease',
+              }}>
+                {l}
+                {active && <Check size={11} style={{ marginLeft: 4, verticalAlign: 'middle' }} />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{
@@ -3558,6 +3742,7 @@ export default function LearningGerman() {
             <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
             <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
             <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
+        <TabBtn active={tab === 'chapters'} onClick={() => setTab('chapters')} icon={BookMarked} label="Chapters" />
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         <TabBtn active={tab === 'idioms'} onClick={() => setTab('idioms')} icon={Quote} label="Idioms" />
         <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
@@ -3582,7 +3767,7 @@ export default function LearningGerman() {
             <button onClick={() => setShowGlobalSearch(true)} title="Global Search" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.85rem' }}>
               <List size={15} /> Search
             </button>
-            <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} />
+            <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <button onClick={() => { setShowExportMenu(p => !p); setShowDailyExportCalendar(false); }} disabled={germanData.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer', background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1, boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
                 <Download size={15} /> Export PDF
@@ -3615,6 +3800,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'verbs'}   onClick={() => setTab('verbs')}   icon={PenTool}       label="Verbs" />
         <TabBtn active={tab === 'dialogues'} onClick={() => setTab('dialogues')} icon={MessageSquare} label="Dialogues" />
         <TabBtn active={tab === 'memos'} onClick={() => setTab('memos')} icon={BrainCircuit} label="Memorization" />
+        <TabBtn active={tab === 'chapters'} onClick={() => setTab('chapters')} icon={BookMarked} label="Chapters" />
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
         <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
@@ -3682,7 +3868,7 @@ export default function LearningGerman() {
           }}>
             <List size={15} /> Search
           </button>
-          <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} />
+          <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
           <div style={{ position: 'relative' }}>
             <button onClick={() => { setShowExportMenu(p => !p); setShowDailyExportCalendar(false); }} disabled={germanData.length === 0} style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -3718,6 +3904,43 @@ export default function LearningGerman() {
           </>
         )}
       </div>
+
+      {tab !== 'progress' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+          padding: '0.6rem 0.8rem', marginBottom: '1.25rem',
+          background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}0d`,
+          border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25`,
+          borderRadius: '12px',
+        }}>
+          <BookMarked size={15} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Chapters</span>
+          {workspaceChapters.length === 0 ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No chapters for {workspaceLevel} yet.</span>
+          ) : (
+            workspaceChapters.map(c => (
+              <span key={c.recordId} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
+                background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`,
+                color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
+                border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`,
+                whiteSpace: 'nowrap',
+              }}>
+                <BookMarked size={11} /> {c.title}
+              </span>
+            ))
+          )}
+          <button onClick={() => setTab('chapters')} title="Manage chapters" style={{
+            marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+            background: 'transparent', border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`,
+            color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
+          }}>
+            <Plus size={12} /> Manage
+          </button>
+        </div>
+      )}
 
       {tab === 'notes' && (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: '1.25rem' }}>
@@ -3984,7 +4207,7 @@ export default function LearningGerman() {
 
       {tab === 'vocab' && (
         <div>
-          <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} onUploadPhoto={handleUploadPhoto} onDeletePhoto={handleDeletePhoto} uploading={photoUploading} />
+          <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} onUploadPhoto={handleUploadPhoto} onDeletePhoto={handleDeletePhoto} uploading={photoUploading} defaultLevel={workspaceLevel} />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? 140 : 200 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -4104,7 +4327,7 @@ export default function LearningGerman() {
 
       {tab === 'grammar' && (
         <div>
-          <GrammarForm onAdd={handleAddGrammar} onUpdate={handleUpdateGrammar} editRecord={editGrammar} onCancelEdit={() => setEditGrammar(null)} saving={grammarSaving} isMobile={isMobile} />
+          <GrammarForm onAdd={handleAddGrammar} onUpdate={handleUpdateGrammar} editRecord={editGrammar} onCancelEdit={() => setEditGrammar(null)} saving={grammarSaving} isMobile={isMobile} defaultLevel={workspaceLevel} />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? 140 : 200 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -4291,6 +4514,7 @@ export default function LearningGerman() {
               onSave={handleAddDialogue}
               onCancelEdit={() => setNewDialogueOpen(false)}
               isMobile={isMobile}
+              defaultLevel={workspaceLevel}
               onTranslate={handleTranslateDialogue}
               translating={dialogueTranslating}
               onUploadParticipantPhoto={handleUploadDialogueParticipantPhoto}
@@ -4313,6 +4537,7 @@ export default function LearningGerman() {
               onUpdate={handleUpdateDialogue}
               onCancelEdit={() => setEditDialogue(null)}
               isMobile={isMobile}
+              defaultLevel={workspaceLevel}
               onTranslate={handleTranslateDialogue}
               translating={dialogueTranslating}
               onUploadParticipantPhoto={handleUploadDialogueParticipantPhoto}
@@ -4521,32 +4746,36 @@ export default function LearningGerman() {
 
       {tab === 'expressions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <ExpressionForm onAdd={addGermanExpression} onUpdate={updateGermanExpression} onDelete={deleteGermanRecord} isMobile={isMobile} expressions={expressions} />
+          <ExpressionForm onAdd={(p) => addGermanExpression({ ...p, level: workspaceLevel })} onUpdate={updateGermanExpression} onDelete={deleteGermanRecord} isMobile={isMobile} expressions={expressions} />
         </div>
       )}
 
       {tab === 'idioms' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <IdiomForm onAdd={addGermanIdiom} onUpdate={updateGermanIdiom} onDelete={deleteGermanRecord} isMobile={isMobile} idioms={idioms} />
+          <IdiomForm onAdd={(p) => addGermanIdiom({ ...p, level: workspaceLevel })} onUpdate={updateGermanIdiom} onDelete={deleteGermanRecord} isMobile={isMobile} idioms={idioms} />
         </div>
       )}
 
       {tab === 'mistakes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <MistakeForm onAdd={addGermanMistake} onUpdate={updateGermanMistake} onDelete={deleteGermanRecord} isMobile={isMobile} mistakes={mistakes} />
+          <MistakeForm onAdd={(p) => addGermanMistake({ ...p, level: workspaceLevel })} onUpdate={updateGermanMistake} onDelete={deleteGermanRecord} isMobile={isMobile} mistakes={mistakes} />
         </div>
       )}
 
       {tab === 'alphabets' && currentLevel === 'A1.1' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <AlphabetForm onAdd={addGermanAlphabet} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} />
+          <AlphabetForm onAdd={(p) => addGermanAlphabet({ ...p, level: workspaceLevel })} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} />
         </div>
+      )}
+
+      {tab === 'chapters' && (
+        <ChapterManager level={workspaceLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} modal={false} />
       )}
 
       {tab === 'resources' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <BooksForm onAdd={addGermanBook} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
-          <ResourcesForm onAdd={addGermanResource} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
+          <BooksForm onAdd={(p) => addGermanBook({ ...p, level: workspaceLevel })} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
+          <ResourcesForm onAdd={(p) => addGermanResource({ ...p, level: workspaceLevel })} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
         </div>
       )}
 
@@ -4573,13 +4802,17 @@ export default function LearningGerman() {
                 const isCompleted = levelsCompleted.includes(level);
                 const isCurrent = level === currentLevel;
                 const isLocked = idx > ALL_LEVELS.indexOf(currentLevel) && !isCompleted;
-                const vocabCount = germanData.filter(r => r.type === 'vocab' && r.level === level).length;
-                const grammarCount = germanData.filter(r => r.type === 'grammar' && r.level === level).length;
-                const noteCount = germanData.filter(r => r.type === 'note' && r.level === level).length;
+                const vocabCount = germanData.filter(r => r.type === 'vocab' && levelOf(r) === level).length;
+                const grammarCount = germanData.filter(r => r.type === 'grammar' && levelOf(r) === level).length;
+                const noteCount = germanData.filter(r => r.type === 'note' && levelOf(r) === level).length;
                 const total = vocabCount + grammarCount + noteCount;
+                const chapterCount = chapters.filter(c => normalizeLevel(c.level) === level).length;
                 const color = LEVEL_COLORS[level] || '#6b7280';
                 return (
-                  <div key={level} style={{
+                  <div key={level}
+                    onDoubleClick={isLocked ? undefined : () => setChapterModalLevel(level)}
+                    title={isLocked ? undefined : 'Double-click to manage chapters'}
+                    style={{
                     padding: '0.75rem 0.85rem', borderRadius: '12px',
                     background: isCurrent ? `${color}15` : isCompleted ? `${color}10` : 'var(--bg)',
                     border: `1.5px solid ${isCurrent ? color + '50' : isCompleted ? color + '25' : 'var(--border)'}`,
@@ -4593,7 +4826,7 @@ export default function LearningGerman() {
                       {isCurrent && <span style={{ fontSize: '0.6rem', fontWeight: 700, color, background: `${color}20`, padding: '1px 6px', borderRadius: 4 }}>ACTIVE</span>}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {total} items
+                      {total} items{chapterCount > 0 ? ` · ${chapterCount} chapter${chapterCount > 1 ? 's' : ''}` : ''}
                     </div>
                     {isCurrent && !isCompleted && (
                       <button
@@ -4687,6 +4920,9 @@ export default function LearningGerman() {
       {showMCQuiz && <MultipleChoiceQuiz vocab={vocab} onClose={() => setShowMCQuiz(false)} />}
       {showWriting && <WritingPractice vocab={vocab} onClose={() => setShowWriting(false)} />}
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
+      {chapterModalLevel && (
+        <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onClose={() => setChapterModalLevel(null)} modal />
+      )}
 
       {showDailyExportCalendar && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
