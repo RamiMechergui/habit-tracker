@@ -3498,12 +3498,25 @@ export default function LearningGerman() {
           </div>
           <div style={{ minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: isMobile ? '1.2rem' : '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', background: `linear-gradient(135deg, ${C.gold} 0%, ${C.red} 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Learning German</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-              <LevelBadge level={currentLevel} />
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                {(levelsCompleted.length || 0)} / 13 levels done
-              </span>
-            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              padding: '6px 18px', borderRadius: '24px',
+              fontSize: isMobile ? '1.15rem' : '1.4rem', fontWeight: 900, letterSpacing: '0.02em', lineHeight: 1,
+              background: `${LEVEL_COLORS[currentLevel] || '#6b7280'}18`, color: LEVEL_COLORS[currentLevel] || '#6b7280',
+              border: `1.5px solid ${(LEVEL_COLORS[currentLevel] || '#6b7280')}45`,
+              boxShadow: `0 4px 14px ${(LEVEL_COLORS[currentLevel] || '#6b7280')}30`,
+            }}>
+              <GraduationCap size={isMobile ? 18 : 22} /> {currentLevel}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              {(levelsCompleted.length || 0)} / 13 levels done
+            </span>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
