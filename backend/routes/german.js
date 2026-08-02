@@ -43,6 +43,8 @@ const {
   updateAlphabet,
   addResource,
   updateResource,
+  getOrInitStudy,
+  addStudyMs,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { exportToPdf } = require('../services/pdfExporter');
@@ -161,6 +163,36 @@ router.get('/note', async (req, res) => {
   } catch (err) {
     console.error('[German] GET note error:', err);
     res.status(500).json({ message: 'Failed to fetch note' });
+  }
+});
+
+// ── GET /api/german/study → accumulated study time ──────────────────────────
+router.get('/study', async (req, res) => {
+  try {
+    const study = await getOrInitStudy(req.user.userId);
+    res.json(study);
+  } catch (err) {
+    console.error('[German] GET study error:', err);
+    res.status(500).json({ message: 'Failed to fetch study time' });
+  }
+});
+
+// ── POST /api/german/study → add study time (ms) for a date ─────────────────
+router.post('/study', async (req, res) => {
+  try {
+    const { date, ms } = req.body;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'date (YYYY-MM-DD) is required' });
+    }
+    const amount = parseInt(ms);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ message: 'ms must be a positive number' });
+    }
+    const study = await addStudyMs(req.user.userId, date, amount);
+    res.json(study);
+  } catch (err) {
+    console.error('[German] POST study error:', err);
+    res.status(500).json({ message: 'Failed to save study time' });
   }
 });
 

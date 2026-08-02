@@ -354,6 +354,7 @@ export const HabitProvider = ({ children }) => {
   // ── German Learning state ─────────────────────────────────────
   const [germanData, setGermanData] = useState([]);
   const [germanProgress, setGermanProgress] = useState(null);
+  const [germanStudy, setGermanStudy] = useState(null);
 
   // ── AWS Learning state ────────────────────────────────────────
   const [awsData, setAwsData] = useState([]);
@@ -2656,6 +2657,33 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  // ── German Study Time API methods ─────────────────────────────
+  const fetchGermanStudy = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const res = await fetch(`${API_URL}/api/german/study`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setGermanStudy(data);
+      }
+    } catch (e) {
+      console.warn('[Store] fetchGermanStudy error:', e.message);
+    }
+  }, [API_URL]);
+
+  const addGermanStudyMs = useCallback(async ({ date, ms }) => {
+    const res = await fetch(`${API_URL}/api/german/study`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, ms }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save study time');
+    setGermanStudy(data);
+    return data;
+  }, [API_URL]);
+
   // ── German Progress API methods ─────────────────────────────────
   const fetchGermanProgress = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -3083,6 +3111,7 @@ export const HabitProvider = ({ children }) => {
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto, fetchResourceInfo, addGermanResource, updateGermanResource,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
+      germanStudy, fetchGermanStudy, addGermanStudyMs,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist

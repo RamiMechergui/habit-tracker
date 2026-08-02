@@ -480,6 +480,51 @@ async function updateMistake(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Study time tracking ───────────────────────────────────────────────────────
+const STUDY_RECORD = 'STUDY#v1';
+
+async function getStudy(userId) {
+  const res = await docClient.send(new GetCommand({
+    TableName: TABLE,
+    Key: { userId, recordId: STUDY_RECORD },
+  }));
+  return res.Item || null;
+}
+
+async function initStudy(userId) {
+  const item = {
+    userId,
+    recordId: STUDY_RECORD,
+    type: 'study',
+    totalMs: 0,
+    days: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function getOrInitStudy(userId) {
+  const existing = await getStudy(userId);
+  if (existing) return existing;
+  return initStudy(userId);
+}
+
+async function addStudyMs(userId, date, ms) {
+  const state = await getOrInitStudy(userId);
+  const days = { ...(state.days || {}) };
+  days[date] = (parseInt(days[date]) || 0) + ms;
+  const updated = {
+    ...state,
+    totalMs: (parseInt(state.totalMs) || 0) + ms,
+    days,
+    updatedAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: updated }));
+  return updated;
+}
+
 module.exports = {
   getAllGermanRecords,
   addVocab,
@@ -508,6 +553,8 @@ module.exports = {
   updateAlphabet,
   addResource,
   updateResource,
+  getOrInitStudy,
+  addStudyMs,
 };
 
 // ── Alphabets ────────────────────────────────────────────────────────────────

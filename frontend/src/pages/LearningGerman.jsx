@@ -1364,7 +1364,7 @@ function GrammarQuizModal({ grammar, onClose }) {
   );
 }
 
-function StudyTimeChart({ notes }) {
+function StudyTimeChart({ notes, days = {} }) {
   const last30 = [];
   const today = new Date();
   for (let i = 29; i >= 0; i--) {
@@ -1372,7 +1372,8 @@ function StudyTimeChart({ notes }) {
     d.setDate(d.getDate() - i);
     const ds = format(d, 'yyyy-MM-dd');
     const note = notes.find(n => n.date === ds);
-    last30.push({ date: ds, minutes: parseInt(note?.studyMinutes) || 0 });
+    const autoMin = Math.round((parseInt(days[ds]) || 0) / 60000);
+    last30.push({ date: ds, minutes: autoMin || (parseInt(note?.studyMinutes) || 0) });
   }
 
   const maxMin = Math.max(...last30.map(d => d.minutes), 1);
@@ -2626,6 +2627,7 @@ export default function LearningGerman() {
     addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
     fetchResourceInfo, addGermanResource, updateGermanResource,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
+    germanStudy, fetchGermanStudy, addGermanStudyMs,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -2687,14 +2689,14 @@ export default function LearningGerman() {
     (async () => {
       setLoading(true);
       try {
-        await Promise.all([fetchGermanData(), fetchGermanProgress()]);
+        await Promise.all([fetchGermanData(), fetchGermanProgress(), fetchGermanStudy()]);
       } catch (e) {
         setError(e.message || 'Failed to load German data');
       } finally {
         setLoading(false);
       }
     })();
-  }, [fetchGermanData]);
+  }, [fetchGermanData, fetchGermanProgress, fetchGermanStudy]);
 
   const currentLevel = germanProgress?.currentLevel || 'A1.1';
   const levelsCompleted = germanProgress?.levelsCompleted || [];
@@ -2771,40 +2773,87 @@ export default function LearningGerman() {
     setNoteSaved(false);
   }, [selectedDate, germanData, noteCategory]);
 
-  // ── Auto time tracking (milliseconds) ──
+  // ── Study time tracking (persisted to DB) ──
+  // The timer starts when the Learning German section opens and banks the
+  // elapsed time to the database (per-day + all-time total) periodically,
+  // when the tab/app is hidden, and on leaving the section.
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const [elapsedMs, setElapsedMs] = useState(0);
-  const todayBaseRef = useRef(parseInt(localStorage.getItem(`german_today_${todayStr}`)) || 0);
+  const todayBaseRef = useRef(0);   // ms already banked for today (from DB)
+  const totalBaseRef = useRef(0);   // ms banked all-time (from DB)
   const sessionStartRef = useRef(Date.now());
-  const prevTodayRef = useRef(todayStr);
+  const dayRef = useRef(todayStr);
+
+  useEffect(() => {
+    if (!germanStudy) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    todayBaseRef.current = parseInt(germanStudy.days?.[today]) || 0;
+    totalBaseRef.current = parseInt(germanStudy.totalMs) || 0;
+    dayRef.current = today;
+    sessionStartRef.current = Date.now();
+    setElapsedMs(0);
+  }, [germanStudy]);
+
+  const flushStudy = useCallback(async (dayOverride) => {
+    const now = Date.now();
+    const delta = now - sessionStartRef.current;
+    sessionStartRef.current = now;
+    setElapsedMs(0);
+    if (delta < 1000) return;
+    const day = dayOverride || format(new Date(), 'yyyy-MM-dd');
+    try {
+      const updated = await addGermanStudyMs({ date: day, ms: delta });
+      if (updated) {
+        const nowDay = format(new Date(), 'yyyy-MM-dd');
+        todayBaseRef.current = day === nowDay
+          ? (parseInt(updated.days?.[day]) || todayBaseRef.current + delta)
+          : 0;
+        totalBaseRef.current = parseInt(updated.totalMs) || totalBaseRef.current + delta;
+      } else {
+        todayBaseRef.current += delta;
+        totalBaseRef.current += delta;
+      }
+    } catch {
+      todayBaseRef.current += delta;
+      totalBaseRef.current += delta;
+    }
+  }, [addGermanStudyMs]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
-      const currentDay = format(now, 'yyyy-MM-dd');
-
-      if (currentDay !== prevTodayRef.current) {
-        prevTodayRef.current = currentDay;
+      const currentDay = format(new Date(), 'yyyy-MM-dd');
+      if (currentDay !== dayRef.current) {
+        flushStudy(dayRef.current);
+        dayRef.current = currentDay;
         todayBaseRef.current = 0;
-        localStorage.removeItem(`german_today_${currentDay}`);
         sessionStartRef.current = Date.now();
         setElapsedMs(0);
-      } else {
+      } else if (document.visibilityState === 'visible') {
         setElapsedMs(Date.now() - sessionStartRef.current);
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [flushStudy]);
 
   useEffect(() => {
-    return () => {
-      const elapsed = Date.now() - sessionStartRef.current;
-      const day = format(new Date(), 'yyyy-MM-dd');
-      const prev = localStorage.getItem(`german_today_${day}`);
-      const base = prev ? parseInt(prev) : 0;
-      localStorage.setItem(`german_today_${day}`, String(base + elapsed));
+    const flushTimer = setInterval(() => flushStudy(), 30000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushStudy();
+      else { sessionStartRef.current = Date.now(); setElapsedMs(0); }
     };
-  }, []);
+    const onPageHide = () => flushStudy();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      clearInterval(flushTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [flushStudy]);
+
+  useEffect(() => {
+    return () => { flushStudy(); };
+  }, [flushStudy]);
 
   const formatMs = (ms) => {
     const totalSec = Math.floor(ms / 1000);
@@ -2816,8 +2865,7 @@ export default function LearningGerman() {
   };
 
   const todayStudyMs = todayBaseRef.current + elapsedMs;
-  const totalStudyMinutes = notes.reduce((a, n) => a + (parseInt(n.studyMinutes) || 0), 0);
-  const totalStudyMsAllTime = (totalStudyMinutes * 60 * 1000) + todayStudyMs;
+  const totalStudyMsAllTime = totalBaseRef.current + elapsedMs;
 
   const sortedVocab = useMemo(() => {
     let list = [...vocab];
@@ -4411,7 +4459,7 @@ export default function LearningGerman() {
             </div>
           )}
           <WordsChart notes={notes} />
-          <StudyTimeChart notes={notes} />
+          <StudyTimeChart notes={notes} days={germanStudy?.days || {}} />
         </div>
       )}
 
