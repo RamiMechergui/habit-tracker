@@ -2611,6 +2611,205 @@ function ResourcesForm({ onAdd, onUpdate, onDelete, onFetchInfo, isMobile, resou
   );
 }
 
+function BooksForm({ onAdd, onUpdate, onDelete, isMobile, books }) {
+  const [name, setName] = useState('');
+  const [author, setAuthor] = useState('');
+  const [notes, setNotes] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editPhotoFile, setEditPhotoFile] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const handlePhotoSelect = (file) => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(file);
+    setPhotoPreview(file ? URL.createObjectURL(file) : '');
+  };
+
+  const handleAdd = async () => {
+    if (!name.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      await onAdd(
+        { name: name.trim(), author: author.trim(), notes: notes.trim() },
+        photoFile || undefined
+      );
+      setName('');
+      setAuthor('');
+      setNotes('');
+      handlePhotoSelect(null);
+    } catch (e) {
+      setError(e.message || 'Failed to add book');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEdit = (b) => {
+    setEditingId(b.recordId);
+    setEditName(b.name || '');
+    setEditAuthor(b.author || '');
+    setEditNotes(b.notes || '');
+    setEditPhotoFile(null);
+  };
+
+  const saveEdit = async (recordId) => {
+    try {
+      await onUpdate(
+        recordId,
+        { name: editName.trim(), author: editAuthor.trim(), notes: editNotes.trim() },
+        editPhotoFile || undefined
+      );
+      setEditingId(null);
+      setEditPhotoFile(null);
+    } catch (e) { setError(e.message); }
+  };
+
+  const photoUrlFor = (b) => {
+    if (!b.photoUrl) return '';
+    return b.photoUrl.startsWith('http') ? b.photoUrl : (b.photoUrl.startsWith('/') ? b.photoUrl : `/uploads/${b.photoUrl}`);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div className="glass-card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+          <BookOpen size={20} style={{ color: C.gold }} />
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Add a Book You're Learning From</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Book Name *</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="e.g. Menschen A1.1"
+              style={inputBase}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Author (optional)</label>
+            <input
+              value={author}
+              onChange={e => setAuthor(e.target.value)}
+              placeholder="e.g. Sandra Evans"
+              style={inputBase}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. Great A1.1 vocabulary and dialogues"
+              style={inputBase}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Book Photo</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {photoPreview ? (
+                <img src={photoPreview} alt="book cover preview" style={{ width: 54, height: 74, objectFit: 'cover', borderRadius: 6, border: `1px solid ${C.border}` }} />
+              ) : (
+                <div style={{ width: 54, height: 74, borderRadius: 6, border: `1px dashed ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+                  <Camera size={18} style={{ color: 'var(--text-muted)' }} />
+                </div>
+              )}
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', borderRadius: '8px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                <Upload size={14} /> {photoPreview ? 'Change Photo' : 'Upload Photo'}
+                <input type="file" accept="image/*" hidden onChange={e => handlePhotoSelect(e.target.files?.[0] || null)} />
+              </label>
+              {photoPreview && (
+                <button onClick={() => handlePhotoSelect(null)} style={{ border: 'none', background: 'transparent', color: C.red, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Remove</button>
+              )}
+            </div>
+          </div>
+          {error && <div style={{ fontSize: '0.78rem', color: C.red, fontWeight: 600 }}>{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={handleAdd} disabled={!name.trim() || loading} style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.1rem', borderRadius: '10px',
+              cursor: (!name.trim() || loading) ? 'not-allowed' : 'pointer',
+              background: (!name.trim() || loading) ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, ${C.red})`,
+              border: (!name.trim() || loading) ? '1px solid var(--border)' : 'none',
+              color: (!name.trim() || loading) ? 'var(--text-muted)' : '#fff',
+              fontWeight: 700, fontSize: '0.85rem', opacity: (!name.trim() || loading) ? 0.5 : 1,
+            }}>
+              {loading ? <Loader2 size={15} style={{ animation: 'evolvio-spin 0.8s linear infinite' }} /> : <Plus size={15} />}
+              {loading ? 'Adding…' : 'Add Book'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {books.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          <BookOpen size={44} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+          <p style={{ fontSize: '0.9rem', margin: 0 }}>No books yet. Add the book you're learning German from!</p>
+        </div>
+      )}
+
+      {books.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+          {books.map(b => {
+            const cover = photoUrlFor(b);
+            return (
+              <div key={b.recordId} className="glass-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ position: 'relative', aspectRatio: '3/4', background: `linear-gradient(135deg, ${C.gold}22, ${C.blue}22)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {cover ? (
+                    <img src={cover} alt={b.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    <BookOpen size={44} style={{ color: `${C.gold}55` }} />
+                  )}
+                </div>
+                <div style={{ padding: '0.75rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.name}</div>
+                  {b.author && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>by {b.author}</div>}
+                  {b.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{b.notes}</div>}
+                  {editingId === b.recordId ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.3rem' }}>
+                      <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Book name" style={inputBase} />
+                      <input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} placeholder="Author" style={inputBase} />
+                      <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes" style={inputBase} />
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                        <Upload size={12} /> {editPhotoFile ? editPhotoFile.name : 'Change photo…'}
+                        <input type="file" accept="image/*" hidden onChange={e => setEditPhotoFile(e.target.files?.[0] || null)} />
+                      </label>
+                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                        <button onClick={() => { setEditingId(null); setEditPhotoFile(null); }} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                        <button onClick={() => saveEdit(b.recordId)} style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', background: C.blue, color: '#fff', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginTop: 'auto', paddingTop: '0.5rem' }}>
+                      <button onClick={() => startEdit(b)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: 'var(--text-muted)' }} title="Edit"><Edit3 size={14} /></button>
+                      {confirmDeleteId === b.recordId ? (
+                        <span style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto' }}>
+                          <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>No</button>
+                          <button onClick={async () => { try { await onDelete(b.recordId); setConfirmDeleteId(null); } catch (e) { setError(e.message); } }} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: 'none', background: C.red, color: '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 700 }}>Delete</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(b.recordId)} style={{ padding: '0.3rem', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: C.red, marginLeft: 'auto' }} title="Delete"><Trash2 size={14} /></button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
@@ -2626,6 +2825,7 @@ export default function LearningGerman() {
     addGermanMistake, updateGermanMistake,
     addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
     fetchResourceInfo, addGermanResource, updateGermanResource,
+    addGermanBook, updateGermanBook,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs,
   } = useHabits();
@@ -2745,6 +2945,10 @@ export default function LearningGerman() {
   }, [germanData]);
   const resources = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'resource');
+    return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
+  }, [germanData]);
+  const books = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'book');
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
   }, [germanData]);
 
@@ -4328,6 +4532,7 @@ export default function LearningGerman() {
 
       {tab === 'resources' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <BooksForm onAdd={addGermanBook} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
           <ResourcesForm onAdd={addGermanResource} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
         </div>
       )}

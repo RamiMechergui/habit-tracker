@@ -43,6 +43,8 @@ const {
   updateAlphabet,
   addResource,
   updateResource,
+  addBook,
+  updateBook,
   getOrInitStudy,
   addStudyMs,
 } = require('../db/german');
@@ -708,6 +710,60 @@ router.post('/note', async (req, res) => {
   } catch (err) {
     console.error('[German] POST note error:', err);
     res.status(500).json({ message: 'Failed to save note' });
+  }
+});
+
+// ── POST /api/german/book → add a book being studied ─────────────────────────
+router.post('/book', async (req, res) => {
+  try {
+    const { name, author, notes, photoUrl, sortOrder } = req.body;
+    if (!name?.trim()) return res.status(400).json({ message: 'name is required' });
+    const record = await addBook(req.user.userId, {
+      name: name.trim(),
+      author: author || '',
+      notes: notes || '',
+      photoUrl: photoUrl || '',
+      sortOrder: sortOrder || Date.now(),
+    });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST book error:', err);
+    res.status(500).json({ message: 'Failed to add book' });
+  }
+});
+
+// ── POST /api/german/book/photo → upload a book cover photo ──────────────────
+router.post('/book/photo', (req, res, next) => {
+  upload.single('photo')(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message || 'Upload error' });
+    if (!req.file) return res.status(400).json({ message: 'No file provided' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { buffer, mimetype, originalname } = req.file;
+    const ext = path.extname(originalname) || '.jpg';
+    const objectKey = `german/book/${userId}/${Date.now()}${ext}`;
+
+    const result = await storage.uploadImage(objectKey, buffer, mimetype);
+    res.json({ url: result.url, filename: objectKey });
+  } catch (err) {
+    console.error('[German] POST book photo error:', err);
+    res.status(500).json({ message: 'Failed to upload photo' });
+  }
+});
+
+// ── PUT /api/german/book/:recordId → update a book being studied ─────────────
+router.put('/book/:recordId', async (req, res) => {
+  try {
+    const recordId = decodeURIComponent(req.params.recordId);
+    const updated = await updateBook(req.user.userId, recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Book not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT book error:', err);
+    res.status(500).json({ message: 'Failed to update book' });
   }
 });
 

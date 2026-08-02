@@ -525,6 +525,45 @@ async function addStudyMs(userId, date, ms) {
   return updated;
 }
 
+// ── Books (physical / PDF books being studied) ───────────────────────────────
+async function addBook(userId, { name, author = '', notes = '', photoUrl = '', sortOrder = Date.now() }) {
+  const recordId = `BOOK#${uuidv4()}`;
+  const item = {
+    userId, recordId, type: 'book',
+    name, author, notes, photoUrl, sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateBook(userId, recordId, updates) {
+  const allowed = ['name', 'author', 'notes', 'photoUrl', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 module.exports = {
   getAllGermanRecords,
   addVocab,
@@ -553,6 +592,8 @@ module.exports = {
   updateAlphabet,
   addResource,
   updateResource,
+  addBook,
+  updateBook,
   getOrInitStudy,
   addStudyMs,
 };

@@ -2632,6 +2632,63 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const addGermanBook = useCallback(async (payload, photoFile) => {
+    let photoUrl = payload.photoUrl || '';
+    if (photoFile) {
+      const photoFormData = new FormData();
+      photoFormData.append('photo', photoFile);
+      const photoRes = await fetch(`${API_URL}/api/german/book/photo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: photoFormData,
+      });
+      if (photoRes.ok) {
+        const photoData = await photoRes.json();
+        photoUrl = photoData.url || '';
+      }
+    }
+    const res = await fetch(`${API_URL}/api/german/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ...payload, photoUrl }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add book');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_book_add', `Added German book: ${payload?.name || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanBook = useCallback(async (recordId, payload, photoFile) => {
+    let photoUrl = payload.photoUrl;
+    if (photoFile) {
+      const photoFormData = new FormData();
+      photoFormData.append('photo', photoFile);
+      const photoRes = await fetch(`${API_URL}/api/german/book/photo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: photoFormData,
+      });
+      if (photoRes.ok) {
+        const photoData = await photoRes.json();
+        photoUrl = photoData.url || photoUrl;
+      }
+    }
+    const body = photoUrl !== undefined ? { ...payload, photoUrl } : payload;
+    const res = await fetch(`${API_URL}/api/german/book/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update book');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_book_update', `Updated German book`);
+    return data;
+  }, [API_URL]);
+
   const uploadGermanAlphabetPhoto = useCallback(async (recordId, file) => {
     const formData = new FormData();
     formData.append('photo', file);
@@ -3108,7 +3165,8 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto, fetchResourceInfo, addGermanResource, updateGermanResource,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
+      addGermanBook, updateGermanBook,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
       germanStudy, fetchGermanStudy, addGermanStudyMs,
