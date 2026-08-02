@@ -31,6 +31,7 @@ export default function Dashboard() {
   // ── Session Cleanup Banner ──────────────────────────────────────────────────
   const [cleanupNeeded, setCleanupNeeded] = useState(false);
   const [cleanupCount, setCleanupCount] = useState(0);
+  const [cleanupDismissed, setCleanupDismissed] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [cleanupError, setCleanupError] = useState('');
 
