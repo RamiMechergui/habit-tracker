@@ -102,21 +102,20 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
   );
 }
 
-function StatCard({ value, label, color, icon: Icon, action }) {
+function StatCard({ value, label, color, icon: Icon, action, isMobile }) {
   return (
     <div style={{
       background: `${color}10`, border: `1px solid ${color}30`,
-      borderRadius: '14px', padding: '1rem 1.25rem',
-      display: 'flex', alignItems: 'center', gap: '0.85rem', flex: '1 1 0', minWidth: 0,
+      borderRadius: '14px', padding: isMobile ? '0.75rem 0.5rem' : '1rem 1.25rem',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? '0.3rem' : '0.5rem',
+      flex: '1 1 0', minWidth: 0, textAlign: 'center',
     }}>
-      <div style={{ width: 38, height: 38, borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={18} style={{ color }} />
+      <div style={{ width: isMobile ? 32 : 38, height: isMobile ? 32 : 38, borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={isMobile ? 15 : 18} style={{ color }} />
       </div>
-      <div style={{ flex: '1 1 0', minWidth: 0 }}>
-        <div style={{ fontSize: '1.4rem', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>{label}</div>
-      </div>
-      {action && <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{action}</div>}
+      <div style={{ fontSize: isMobile ? '1.1rem' : '1.4rem', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: isMobile ? '0.65rem' : '0.72rem', color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
+      {action && <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: isMobile ? 2 : 4 }}>{action}</div>}
     </div>
   );
 }
@@ -3756,30 +3755,30 @@ export default function LearningGerman() {
             </span>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
-          <StatCard value={levelVocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} />
-          <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
-          <StatCard value={levelNotes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} />
-          <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} action={
-            <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
+          <StatCard value={levelVocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} isMobile={isMobile} />
+          <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} isMobile={isMobile} />
+          <StatCard value={levelNotes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} isMobile={isMobile} />
+          <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} isMobile={isMobile} action={
+            <div style={{ display: 'flex', gap: 3 }}>
               <button title="Start counting daily study time" onClick={startStudyTimer} disabled={!studyPaused}
-                style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? `${C.green}22` : 'transparent', opacity: studyPaused ? 1 : 0.35 }}>
-                <Play size={14} style={{ color: C.green }} />
+                style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? `${C.green}22` : 'transparent', opacity: studyPaused ? 1 : 0.35 }}>
+                <Play size={isMobile ? 12 : 14} style={{ color: C.green }} />
               </button>
               <button title="Stop counting daily study time" onClick={stopStudyTimer} disabled={studyPaused}
-                style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? 'transparent' : `${C.red}22`, opacity: studyPaused ? 0.35 : 1 }}>
-                <Pause size={14} style={{ color: C.red }} />
+                style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? 'transparent' : `${C.red}22`, opacity: studyPaused ? 0.35 : 1 }}>
+                <Pause size={isMobile ? 12 : 14} style={{ color: C.red }} />
               </button>
               <button title="Reset daily study time to zero" onClick={() => setShowResetDailyConfirm(true)}
-                style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.teal}22` }}>
-                <Settings2 size={14} style={{ color: C.teal }} />
+                style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.teal}22` }}>
+                <Settings2 size={isMobile ? 12 : 14} style={{ color: C.teal }} />
               </button>
             </div>
           } />
-          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} action={
+          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} isMobile={isMobile} action={
             <button title="Reset total study time to zero" onClick={() => setShowResetTotalConfirm(true)}
-              style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.purple}22` }}>
-              <Settings2 size={14} style={{ color: C.purple }} />
+              style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.purple}22` }}>
+              <Settings2 size={isMobile ? 12 : 14} style={{ color: C.purple }} />
             </button>
           } />
         </div>
