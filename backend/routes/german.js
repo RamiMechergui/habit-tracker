@@ -54,7 +54,6 @@ const {
 const { translateText } = require('../services/translate');
 const { getOrInitProgress } = require('../db/germanProgress');
 const { exportToPdf } = require('../services/pdfExporter');
-const { exportNoteToPdf } = require('../services/notesPdfExporter');
 const { exportReportToPdf } = require('../services/reportPdfExporter');
 
 router.use(protect);
@@ -944,36 +943,6 @@ router.post('/documents/:recordId/export-pdf', async (req, res) => {
   } catch (err) {
     console.error('PDF export error:', err);
     res.status(500).json({ message: 'Failed to generate PDF' });
-  }
-});
-
-// ── Daily Note PDF Export ──────────────────────────────────────────────────
-// Accepts { date, content (HTML), studyMinutes, wordsLearned } in body.
-// Returns a ready-to-download PDF buffer.
-
-router.post('/notes/export-pdf', async (req, res) => {
-  try {
-    const { date, content, studyMinutes, wordsLearned } = req.body;
-    if (!date) return res.status(400).json({ message: 'date is required' });
-
-    const pdfBuffer = await exportNoteToPdf({
-      date,
-      content: content || '',
-      studyMinutes: parseInt(studyMinutes) || 0,
-      wordsLearned: parseInt(wordsLearned) || 0,
-      author: req.user.name || req.user.email || 'Evolvio User',
-      baseUrl: `${req.protocol}://${req.get('host')}`,
-    });
-
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="German-Study-Note-${date}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-    });
-    res.end(pdfBuffer);
-  } catch (err) {
-    console.error('Note PDF export error:', err);
-    res.status(500).json({ message: 'Failed to generate note PDF' });
   }
 });
 

@@ -12,7 +12,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Calendar, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -2982,8 +2982,6 @@ export default function LearningGerman() {
   const [draggedBoxId, setDraggedBoxId] = useState(null);
   const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showDailyExportCalendar, setShowDailyExportCalendar] = useState(false);
-  const [dailyExportDate, setDailyExportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [chapterModalLevel, setChapterModalLevel] = useState(null);
   const [selectedChapterId, setSelectedChapterId] = useState(null);
   const [selectedChapterTitle, setSelectedChapterTitle] = useState('');
@@ -3581,33 +3579,8 @@ export default function LearningGerman() {
     setShowExportMenu(false);
   };
 
-  const handleExportDailyNote = async () => {
-    try {
-      const { exportDailyNotePDF } = await import('../utils/exportGermanPDF');
-      const dayNotes = germanData.filter(r => r.type === 'note' && r.date === dailyExportDate);
-      if (dayNotes.length === 0) {
-        setError('No notes found for this date.');
-        setShowDailyExportCalendar(false);
-        return;
-      }
-      const content = dayNotes.map(n => n.content || '').filter(Boolean).join('<hr/>');
-      const boxes = dayNotes.flatMap(n => n.boxes || []);
-      const first = dayNotes[0] || {};
-      await exportDailyNotePDF({
-        date: dailyExportDate,
-        content,
-        boxes,
-        studyMinutes: parseInt(first.studyMinutes) || 0,
-        wordsLearned: parseInt(first.wordsLearned) || 0,
-      });
-    } catch (e) { setError(`PDF error: ${e.message}`); console.error(e); }
-    setShowDailyExportCalendar(false);
-    setShowExportMenu(false);
-  };
-
   const exportMenuItemStyle = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' };
   const exportMenuHoverGreen = (e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.07)'; };
-  const exportMenuHoverBlue = (e) => { e.currentTarget.style.background = 'rgba(59,130,246,0.07)'; };
   const exportMenuLeave = (e) => { e.currentTarget.style.background = 'transparent'; };
 
   // ── Dialogue handlers ─────────────────────────────────────────────────────
@@ -3883,7 +3856,7 @@ export default function LearningGerman() {
             </button>
             <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <button onClick={() => { setShowExportMenu(p => !p); setShowDailyExportCalendar(false); }} disabled={germanData.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer', background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1, boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
+              <button onClick={() => { setShowExportMenu(p => !p); }} disabled={germanData.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer', background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1, boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
                 <Download size={15} /> Export PDF
                 <ChevronDown size={13} style={{ transform: showExportMenu ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
@@ -3897,10 +3870,6 @@ export default function LearningGerman() {
                   <button onClick={handleExport} style={exportMenuItemStyle} onMouseEnter={exportMenuHoverGreen} onMouseLeave={exportMenuLeave}>
                     <FileText size={15} style={{ color: C.green }} />
                     <div><div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Export Full Report</div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>All vocab, grammar, notes</div></div>
-                  </button>
-                  <button onClick={() => { setShowDailyExportCalendar(true); }} style={exportMenuItemStyle} onMouseEnter={exportMenuHoverBlue} onMouseLeave={exportMenuLeave}>
-                    <Calendar size={15} style={{ color: C.blue }} />
-                    <div><div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Export Daily Report</div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Pick a day to export</div></div>
                   </button>
                 </div>
               )}
@@ -3984,7 +3953,7 @@ export default function LearningGerman() {
           </button>
           <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
           <div style={{ position: 'relative' }}>
-            <button onClick={() => { setShowExportMenu(p => !p); setShowDailyExportCalendar(false); }} disabled={germanData.length === 0} style={{
+            <button onClick={() => { setShowExportMenu(p => !p); }} disabled={germanData.length === 0} style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
               padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer',
               background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
@@ -4006,10 +3975,6 @@ export default function LearningGerman() {
                 <button onClick={handleExport} style={exportMenuItemStyle} onMouseEnter={exportMenuHoverGreen} onMouseLeave={exportMenuLeave}>
                   <FileText size={15} style={{ color: C.green }} />
                   <div><div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Export Full Report</div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>All vocab, grammar, notes</div></div>
-                </button>
-                <button onClick={() => { setShowDailyExportCalendar(true); }} style={exportMenuItemStyle} onMouseEnter={exportMenuHoverBlue} onMouseLeave={exportMenuLeave}>
-                  <Calendar size={15} style={{ color: C.blue }} />
-                  <div><div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Export Daily Report</div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Pick a day to export</div></div>
                 </button>
               </div>
             )}
@@ -5076,58 +5041,6 @@ export default function LearningGerman() {
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
       {chapterModalLevel && (
         <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onClose={() => setChapterModalLevel(null)} modal />
-      )}
-
-      {showDailyExportCalendar && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-          onClick={() => { setShowDailyExportCalendar(false); setShowExportMenu(false); }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '1.5rem', width: '90%', maxWidth: 380,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.blue, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Calendar size={18} /> Export Daily Report
-              </h3>
-              <button onClick={() => { setShowDailyExportCalendar(false); setShowExportMenu(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <X size={18} />
-              </button>
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Select Date</label>
-              <input type="date" value={dailyExportDate} onChange={e => setDailyExportDate(e.target.value)}
-                style={{
-                  ...inputBase,
-                  border: `1px solid ${C.blue}40`, colorScheme: 'dark', accentColor: C.blue,
-                }}
-              />
-            </div>
-            {(() => {
-              const count = germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length;
-              return (
-                <div style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: count > 0 ? `${C.green}10` : `${C.red}10`, border: `1px solid ${count > 0 ? C.green : C.red}20`, marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: count > 0 ? C.green : C.red }}>
-                    {count > 0 ? `${count} note${count > 1 ? 's' : ''} found` : 'No notes for this date'}
-                  </span>
-                </div>
-              );
-            })()}
-            <button onClick={handleExportDailyNote} disabled={germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length === 0} style={{
-              width: '100%', padding: '0.7rem',
-              background: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0
-                ? `linear-gradient(135deg, ${C.blue}, ${C.purple})` : 'var(--bg)',
-              border: 'none', borderRadius: '10px',
-              cursor: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0 ? 'pointer' : 'not-allowed',
-              color: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0 ? '#fff' : 'var(--text-muted)',
-              fontWeight: 700, fontSize: '0.9rem',
-              opacity: germanData.filter(r => r.type === 'note' && r.date === dailyExportDate).length > 0 ? 1 : 0.5,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}>
-              <Download size={16} /> Download Report
-            </button>
-          </div>
-        </div>
       )}
 
       {previewImage && (
