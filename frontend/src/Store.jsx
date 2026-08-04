@@ -2769,6 +2769,17 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const resetGermanStudy = useCallback(async () => {
+    const res = await fetch(`${API_URL}/api/german/study`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to reset study time');
+    setGermanStudy(data);
+    return data;
+  }, [API_URL]);
+
   // ── German Progress API methods ─────────────────────────────────
   const fetchGermanProgress = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -3198,7 +3209,7 @@ export const HabitProvider = ({ children }) => {
       addGermanChapter, updateGermanChapter,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
-      germanStudy, fetchGermanStudy, addGermanStudyMs,
+      germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy,
       // AWS Learning
       awsData, fetchAwsData, addAwsService, updateAwsService, addAwsCert, updateAwsCert, saveAwsNote, deleteAwsRecord,
       // Wishlist

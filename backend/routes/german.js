@@ -50,6 +50,7 @@ const {
   updateChapter,
   getOrInitStudy,
   addStudyMs,
+  resetStudyTotal,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { getOrInitProgress } = require('../db/germanProgress');
@@ -205,6 +206,17 @@ router.post('/study', async (req, res) => {
   } catch (err) {
     console.error('[German] POST study error:', err);
     res.status(500).json({ message: 'Failed to save study time' });
+  }
+});
+
+// ── DELETE /api/german/study → reset total study time to zero ────────────────
+router.delete('/study', async (req, res) => {
+  try {
+    const study = await resetStudyTotal(req.user.userId);
+    res.json(study);
+  } catch (err) {
+    console.error('[German] DELETE study error:', err);
+    res.status(500).json({ message: 'Failed to reset study time' });
   }
 });
 

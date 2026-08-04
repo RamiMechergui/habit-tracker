@@ -12,7 +12,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, Pause, Settings2, ExternalLink, Loader2, BookMarked,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -102,7 +102,7 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
   );
 }
 
-function StatCard({ value, label, color, icon: Icon }) {
+function StatCard({ value, label, color, icon: Icon, action }) {
   return (
     <div style={{
       background: `${color}10`, border: `1px solid ${color}30`,
@@ -112,10 +112,11 @@ function StatCard({ value, label, color, icon: Icon }) {
       <div style={{ width: 38, height: 38, borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Icon size={18} style={{ color }} />
       </div>
-      <div>
+      <div style={{ flex: '1 1 0', minWidth: 0 }}>
         <div style={{ fontSize: '1.4rem', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>{label}</div>
       </div>
+      {action && <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{action}</div>}
     </div>
   );
 }
@@ -2960,7 +2961,7 @@ export default function LearningGerman() {
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
-    germanStudy, fetchGermanStudy, addGermanStudyMs,
+    germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -3183,6 +3184,9 @@ export default function LearningGerman() {
   const totalBaseRef = useRef(0);   // ms banked all-time (from DB)
   const sessionStartRef = useRef(Date.now());
   const dayRef = useRef(todayStr);
+  const pausedRef = useRef(false);
+  const [studyPaused, setStudyPaused] = useState(false);
+  const [showResetTotalConfirm, setShowResetTotalConfirm] = useState(false);
 
   useEffect(() => {
     if (!germanStudy) return;
@@ -3199,6 +3203,7 @@ export default function LearningGerman() {
     const delta = now - sessionStartRef.current;
     sessionStartRef.current = now;
     setElapsedMs(0);
+    if (pausedRef.current) return;
     if (delta < 1000) return;
     const day = dayOverride || format(new Date(), 'yyyy-MM-dd');
     try {
@@ -3228,7 +3233,7 @@ export default function LearningGerman() {
         todayBaseRef.current = 0;
         sessionStartRef.current = Date.now();
         setElapsedMs(0);
-      } else if (document.visibilityState === 'visible') {
+      } else if (document.visibilityState === 'visible' && !pausedRef.current) {
         setElapsedMs(Date.now() - sessionStartRef.current);
       }
     }, 1000);
@@ -3262,6 +3267,34 @@ export default function LearningGerman() {
     if (h > 0) return `${h}h ${m}m`;
     if (m > 0) return `${m}m`;
     return `${Math.floor(totalSec)}s`;
+  };
+
+  const startStudyTimer = () => {
+    if (!pausedRef.current) return;
+    pausedRef.current = false;
+    sessionStartRef.current = Date.now();
+    setElapsedMs(0);
+    setStudyPaused(false);
+  };
+
+  const stopStudyTimer = () => {
+    if (pausedRef.current) return;
+    flushStudy();
+    pausedRef.current = true;
+    setElapsedMs(0);
+    setStudyPaused(true);
+  };
+
+  const handleResetTotalStudy = async () => {
+    setShowResetTotalConfirm(false);
+    try {
+      await resetGermanStudy();
+      totalBaseRef.current = 0;
+      setElapsedMs(0);
+    } catch (e) {
+      setError(`Reset failed: ${e.message}`);
+      console.error(e);
+    }
   };
 
   const todayStudyMs = todayBaseRef.current + elapsedMs;
@@ -3713,8 +3746,24 @@ export default function LearningGerman() {
           <StatCard value={levelVocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} />
           <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
           <StatCard value={levelNotes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} />
-          <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} />
-          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
+          <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} action={
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button title="Start counting daily study time" onClick={startStudyTimer} disabled={!studyPaused}
+                style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? `${C.green}22` : 'transparent', opacity: studyPaused ? 1 : 0.35 }}>
+                <Play size={14} style={{ color: C.green }} />
+              </button>
+              <button title="Stop counting daily study time" onClick={stopStudyTimer} disabled={studyPaused}
+                style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? 'transparent' : `${C.red}22`, opacity: studyPaused ? 0.35 : 1 }}>
+                <Pause size={14} style={{ color: C.red }} />
+              </button>
+            </div>
+          } />
+          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} action={
+            <button title="Reset total study time to zero" onClick={() => setShowResetTotalConfirm(true)}
+              style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.purple}22` }}>
+              <Settings2 size={14} style={{ color: C.purple }} />
+            </button>
+          } />
         </div>
       </div>
 
@@ -5041,6 +5090,32 @@ export default function LearningGerman() {
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
       {chapterModalLevel && (
         <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onClose={() => setChapterModalLevel(null)} modal />
+      )}
+
+      {showResetTotalConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setShowResetTotalConfirm(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '1.5rem', width: '90%', maxWidth: 360,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.red, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={18} /> Reset Total Study Time?
+            </h3>
+            <p style={{ margin: '0.75rem 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              This will set your all-time Total Study Time to 0. Your per-day study history is kept.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowResetTotalConfirm(false)} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleResetTotalStudy} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.red}, #b91c1c)`, color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {previewImage && (

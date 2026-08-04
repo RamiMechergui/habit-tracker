@@ -616,6 +616,17 @@ async function addStudyMs(userId, date, ms) {
   return updated;
 }
 
+async function resetStudyTotal(userId) {
+  const state = await getOrInitStudy(userId);
+  const updated = {
+    ...state,
+    totalMs: 0,
+    updatedAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: updated }));
+  return updated;
+}
+
 // ── Books (physical / PDF books being studied) ───────────────────────────────
 async function addBook(userId, { name, author = '', notes = '', photoUrl = '', sortOrder = Date.now(), level = 'A1.1', chapterId = null, chapterTitle = '' }) {
   const recordId = `BOOK#${uuidv4()}`;
@@ -692,6 +703,7 @@ module.exports = {
   updateChapter,
   getOrInitStudy,
   addStudyMs,
+  resetStudyTotal,
 };
 
 // ── Alphabets ────────────────────────────────────────────────────────────────
