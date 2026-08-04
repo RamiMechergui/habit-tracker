@@ -25,21 +25,6 @@ function parseTimeToMinutes(timeStr) {
   return 0;
 }
 
-function extractTotalFocus(history, sectionKey) {
-  let total = 0;
-  const re = /You passed(?: today)? (\d+) minutes of Deep Work/;
-  for (const entry of history) {
-    const sec = entry[sectionKey];
-    if (sec?.lessons) {
-      for (const lesson of sec.lessons) {
-        const m = lesson.match(re);
-        if (m) total += parseInt(m[1], 10);
-      }
-    }
-  }
-  return total;
-}
-
 function formatSessionTime(ts) {
   const d = new Date(ts);
   const month = String(d.getMonth() + 1).padStart(2, '0');

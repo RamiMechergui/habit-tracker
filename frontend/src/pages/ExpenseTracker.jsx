@@ -66,7 +66,7 @@ export default function ExpenseTracker() {
     resetIncomeForm();
   };
 
-  const handleEditIncome = (entry, idx) => {
+  const handleEditIncome = (entry) => {
     setIncomeSource(entry.source);
     setIncomeAmount(String(entry.amount));
     setIncomeDate(entry.date);
@@ -521,7 +521,6 @@ export default function ExpenseTracker() {
   const reconExpected = aggregatedData.remaining;
   const reconDiff = reconExpected - (parseFloat(reconActual) || 0);
   const reconMissing = reconDiff > 0;
-  const reconExtra = reconDiff < 0;
   const reconAbs = Math.abs(reconDiff);
 
   return (

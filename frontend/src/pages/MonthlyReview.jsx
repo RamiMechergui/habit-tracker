@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
 import { useMediaQuery } from '../hooks/useMediaQuery';

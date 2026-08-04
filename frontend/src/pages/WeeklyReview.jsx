@@ -188,7 +188,6 @@ export default function WeeklyReview() {
   const avgScore = submittedDays.length
     ? Math.round(submittedDays.reduce((s, d) => s + d.log.totalScore, 0) / submittedDays.length)
     : 0;
-  const bestScore = Math.max(...weeklyData.map(d => d.log.totalScore), 0);
   const totalExpenses = weeklyData.reduce(
     (t, d) => t + (Array.isArray(d.log.expenses) ? d.log.expenses : []).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0),
     0

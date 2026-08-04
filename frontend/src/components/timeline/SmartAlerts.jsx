@@ -22,7 +22,6 @@ function detectAlerts(date, tasks, logs, recurringTasks) {
   const alerts = [];
 
   // 1. Overloaded day — more than 5 critical/high tasks
-  const heavyTasks = tasks.filter(t => t.priority === 'critical' || t.priority === 'high');
   const criticalCount = tasks.filter(t => t.priority === 'critical').length;
   if (criticalCount >= 3) {
     alerts.push({

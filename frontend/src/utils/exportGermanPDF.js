@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { nativeFetch } from '../config';
 
-export async function exportGermanPDF(data) {
+export async function exportGermanPDF() {
   const res = await nativeFetch('/api/german/report/export-pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

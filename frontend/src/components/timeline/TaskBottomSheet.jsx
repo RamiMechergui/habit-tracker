@@ -99,9 +99,9 @@ function TimePicker24h({ id, value, onChange, granularity = 30, label, endMinute
 }
 
 export default function TaskBottomSheet({
-  isOpen, onClose, onSave, onDelete, onDuplicate, initialData, isFutureDate, suggestedHour, onCloneToDate, availableTasks = []
+  isOpen, onClose, onSave, onDelete, onDuplicate, initialData, suggestedHour, onCloneToDate, availableTasks = []
 }) {
-  const { timelinePrefs, saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask } = useHabits();
+  const { timelinePrefs, saveRecurringTask, updateRecurringTask, disableRecurringTask } = useHabits();
   const { defaultDuration, intervalGranularity } = timelinePrefs;
 
   const [templates, setTemplates] = useState(loadTemplates);
@@ -229,12 +229,6 @@ export default function TaskBottomSheet({
     saveTemplates(updated);
   }, [title, priority, categories, startTime, duration, templates]);
 
-  const removeTemplate = useCallback((tmplTitle) => {
-    const updated = templates.filter(t => t.title !== tmplTitle);
-    setTemplates(updated);
-    saveTemplates(updated);
-  }, [templates]);
-
   if (!isOpen) return null;
 
   const isRecurringTask = recurrence !== 'none';
@@ -292,12 +286,6 @@ export default function TaskBottomSheet({
     if (initialData?.recurringId) {
       disableRecurringTask(initialData.recurringId);
     }
-    if (initialData?.id) onDelete?.(initialData.id);
-    onClose();
-  };
-
-  const handleDeleteRecurring = () => {
-    if (initialData?.recurringId) deleteRecurringTask(initialData.recurringId);
     if (initialData?.id) onDelete?.(initialData.id);
     onClose();
   };

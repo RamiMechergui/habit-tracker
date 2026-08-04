@@ -97,7 +97,7 @@ function DayExpandPanel({ dateStr, tasks, onClose, onAddClick, onSelectDate }) {
 // ── Burnout strip ─────────────────────────────────────────────────────────────
 function BurnoutStrip({ logs, viewDate }) {
   const days = eachDayOfInterval({ start: startOfMonth(viewDate), end: endOfMonth(viewDate) });
-  let streak = 0, maxStreak = 0, cur = 0;
+  let maxStreak = 0, cur = 0;
   days.forEach(d => {
     const ds = format(d, 'yyyy-MM-dd');
     const t = logs[ds]?.tasks || [];
@@ -116,7 +116,7 @@ function BurnoutStrip({ logs, viewDate }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function MonthlyCalendar({ currentDate, logs, onSelectDate, onAddClick }) {
-  const [viewDate,       setViewDate]       = useState(parseISO(currentDate));
+  const [viewDate] = useState(parseISO(currentDate));
   const [filterStatus,   setFilterStatus]   = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');

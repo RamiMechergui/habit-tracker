@@ -30,7 +30,7 @@ function TabBtn({ active, onClick, icon: Icon, label, count }) {
   );
 }
 
-function BookProgressCard({ book, bookProgress, formatDate, onFinishBook }) {
+function BookProgressCard({ book, bookProgress, formatDate }) {
   return (
     <div className="glass-card" style={{
       padding: '1.5rem',
@@ -144,7 +144,7 @@ export default function BookArchive() {
   const [readingMsgIdx, setReadingMsgIdx] = useState(null);
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState(null);
 
-  const openEditModal = (book, bookId) => {
+  const openEditModal = (book) => {
     setEditBook(book);
     setEditBookName(book.bookName || '');
     setEditAuthor(book.author || '');

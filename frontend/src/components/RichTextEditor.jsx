@@ -6,7 +6,7 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extension-placeholder';
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { EDITOR_IMAGE_BASE } from '../config';
 
@@ -143,11 +143,6 @@ const ResizableImageComponent = ({ node, updateAttributes }) => {
 
   /* ── Preset size buttons ─────────────────────────────────────────────  */
   const applyPreset = useCallback((preset) => {
-    const img = imgRef.current;
-    if (img) {
-      img.style.width  = preset;
-      img.style.height = 'auto';
-    }
     updateAttributes({ width: preset, height: 'auto' });
     setWInput(''); setHInput('');
   }, [updateAttributes]);

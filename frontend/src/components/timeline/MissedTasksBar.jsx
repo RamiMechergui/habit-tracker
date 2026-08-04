@@ -137,8 +137,6 @@ export default function MissedTasksBar({ tasks, onUpdateTaskStatus, onSnooze }) 
 // ── Task Alert Card ───────────────────────────────────────────────────────────
 function TaskAlertCard({ task, variant, reason, onReasonChange, onComplete, onMark, onSnooze }) {
   const taskCats = Array.isArray(task.categories) ? task.categories : (task.category ? [task.category] : ['Other']);
-  const catColor = CATEGORY_COLORS[taskCats[0]] ?? CATEGORY_COLORS.Other;
-
   return (
     <div className={`task-alert-card task-alert-card--${variant}`}>
       {/* Header */}

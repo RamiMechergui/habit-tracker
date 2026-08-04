@@ -1497,7 +1497,7 @@ export default function Dashboard() {
             <div key={`empty-${i}`} className="calendar-cell is-empty"></div>
           ))}
           
-          {monthData.map((d, i) => {
+          {monthData.map((d) => {
             const isToday = d.date === todayStr;
             const isCurrentMonthView = isSameMonth(calendarDate, todayDate);
             const logData = d.log;

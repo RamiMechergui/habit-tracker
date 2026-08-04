@@ -15,6 +15,12 @@ import { Preferences } from '@capacitor/preferences';
 // The deployed EC2 backend (proxied through Nginx on port 80).
 const NATIVE_BACKEND_URL = 'http://54.91.207.131';
 
+// Optional build-time override for web deployments (Render/docker-compose).
+// Render sets VITE_API_URL to the API service host; docker-compose sets
+// VITE_API_TARGET for the dev proxy. When set, the browser uses it directly
+// instead of assuming the frontend host proxies /api.
+const WEB_API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_TARGET || '';
+
 export const API_URL = (() => {
   // During build-time (Node.js), window is undefined. We return the EC2 URL
   // to force Vite to keep it in the built bundle instead of tree-shaking it.
@@ -28,7 +34,7 @@ export const API_URL = (() => {
   }
   
   // Fallback for browser / local dev proxy
-  return '';
+  return WEB_API_URL;
 })();
 
 // True only inside a native Capacitor WebView (Android/iOS app), where the
@@ -45,9 +51,9 @@ export const isNativePlatform = () => {
 };
 
 // Base used to absolutize relative image URLs for DISPLAY inside the editor.
-// Empty on the web (relative URLs resolve via the same-origin nginx proxy),
-// absolute on native so the WebView can load the image from the backend.
-export const EDITOR_IMAGE_BASE = isNativePlatform() ? NATIVE_BACKEND_URL : '';
+// Empty on the web when using the same-origin nginx proxy, otherwise the
+// configured API base; absolute on native so the WebView can reach the backend.
+export const EDITOR_IMAGE_BASE = isNativePlatform() ? NATIVE_BACKEND_URL : (WEB_API_URL || '');
 
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { exportAwsPDF } from '../utils/exportAwsPDF';
 import { format } from 'date-fns';
@@ -160,7 +160,7 @@ function Textarea({ value, onChange, placeholder, rows, style: extra }) {
   );
 }
 
-function FormActions({ onCancel, onSubmit, loading, submitLabel }) {
+function FormActions({ onCancel, loading, submitLabel }) {
   return (
     <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
       <button type="button" onClick={onCancel} style={{

@@ -41,7 +41,7 @@ export default function Security() {
   const [error, setError] = useState(null);
   const [revokingId, setRevokingId] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
-  const [confirmDeviceName, setConfirmDeviceName] = useState('');
+  const [, setConfirmDeviceName] = useState('');
   const [fetched, setFetched] = useState(false);
 
   // Password change state

@@ -35,7 +35,7 @@ export default function InstallPrompt() {
   const [show, setShow] = useState(false);
   const [showIOS, setShowIOS] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const [, setInstalled] = useState(false);
 
   useEffect(() => {
     // Already running as installed PWA — no prompt needed

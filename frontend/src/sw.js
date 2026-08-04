@@ -14,7 +14,7 @@
 
 import { clientsClaim } from 'workbox-core';
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching';
-import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { registerRoute, NavigationRoute, setCatchHandler } from 'workbox-routing';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 
@@ -36,11 +36,21 @@ self.addEventListener('message', (event) => {
 });
 
 // ─── Navigation — SPA fallback to index.html ────────────────────────────────
-// For any navigation request, serve the cached index.html (SPA shell)
+// For any navigation request, serve the cached index.html (SPA shell),
+// falling back to offline.html if the shell is missing from cache.
 registerRoute(
-  new NavigationRoute(createHandlerBoundToURL('/index.html'), {
-    denylist: [/^\/api\//, /^\/uploads\//],
-  })
+  new NavigationRoute(
+    async ({ event, request }) => {
+      try {
+        return await createHandlerBoundToURL('/index.html')({ event, request });
+      } catch {
+        const offline = await caches.match('/offline.html');
+        if (offline) return offline;
+        return new Response('App is offline', { status: 503, statusText: 'Offline' });
+      }
+    },
+    { denylist: [/^\/api\//, /^\/uploads\//] },
+  )
 );
 
 // ─── MinIO / S3 Images — CacheFirst (immutable after upload) ──────────────
@@ -101,6 +111,19 @@ registerRoute(
   })
 );
 
+// ─── Global Catch Handler ───────────────────────────────────────────────────
+// Any route that fails to produce a response (e.g. Workbox's "no-response"
+// when the network is down and nothing is cached) lands here instead of
+// surfacing as an unhandled promise rejection in the console.
+setCatchHandler(({ request }) => {
+  console.warn('[SW] No cached response for', request.url);
+  return new Response('', {
+    status: 503,
+    statusText: 'Offline',
+    headers: { 'Content-Type': 'text/plain' },
+  });
+});
+
 // ─── Background Sync — relay to app clients ─────────────────────────────────
 self.addEventListener('sync', (event) => {
   if (event.tag === 'evolvio-sync') {
@@ -115,16 +138,3 @@ async function notifyClientsToSync() {
     client.postMessage({ type: 'SYNC_REPLAY' });
   }
 }
-
-// ─── Offline fallback for non-precached navigations ─────────────────────────
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cached = await caches.match('/index.html');
-        if (cached) return cached;
-        return caches.match('/offline.html');
-      })
-    );
-  }
-});

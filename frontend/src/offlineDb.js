@@ -187,7 +187,7 @@ export async function saveUser(userData) {
 export async function loadUser() {
   const row = await getItem(STORES.USER, 'profile');
   if (!row) return null;
-  const { id, ...rest } = row;
+  const { ...rest } = row;
   return rest;
 }
 
@@ -213,7 +213,7 @@ export async function saveCurrentBook(book) {
 export async function loadCurrentBook() {
   const row = await getItem(STORES.BOOK, 'book');
   if (!row) return null;
-  const { id, ...rest } = row;
+  const { ...rest } = row;
   return rest;
 }
 

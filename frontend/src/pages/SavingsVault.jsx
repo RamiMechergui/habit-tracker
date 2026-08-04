@@ -12,7 +12,7 @@ export default function SavingsVault() {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const {
     savings, fetchSavings, addSavingsEntry, updateSavingsEntry, deleteSavingsEntry,
-    vaultLocked, setVaultLocked, vaultHasPassword, setVaultHasPassword,
+    vaultLocked, setVaultLocked, setVaultHasPassword,
     checkVaultStatus, setVaultPassword, verifyVaultPassword,
     addHistoryEntry,
   } = useHabits();
@@ -43,8 +43,6 @@ export default function SavingsVault() {
   const [recoveredPassword, setRecoveredPassword] = useState('');
   const sheetRef = useRef(null);
 
-  useEffect(() => { init(); }, []);
-
   async function init() {
     setLoading(true);
     const hasPw = await checkVaultStatus();
@@ -56,6 +54,8 @@ export default function SavingsVault() {
     if (hasPw) await fetchSavings();
     setLoading(false);
   }
+
+  useEffect(() => { init(); }, []);
 
   function generateStrongPassword(length = 16) {
     const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';

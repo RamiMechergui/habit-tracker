@@ -27,8 +27,9 @@ export default defineConfig({
 
       // Workbox injectManifest config
       injectManifest: {
-        // Precache all Vite build output assets
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,webp}'],
+        // Precache all Vite build output assets (incl. manifest.json so the
+        // PWA install manifest is available offline)
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,webp,json}'],
         // Don't precache huge files
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
       },

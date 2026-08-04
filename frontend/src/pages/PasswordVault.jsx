@@ -43,7 +43,7 @@ const getLogoUrl = (urlStr, serviceName) => {
 };
 
 export default function PasswordVault() {
-  const { isOnline, addHistoryEntry } = useHabits();
+  const { addHistoryEntry } = useHabits();
   
   // Security locks
   const [isLocked, setIsLocked] = useState(true);

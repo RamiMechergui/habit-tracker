@@ -35,9 +35,7 @@ import Alphabets from './pages/Alphabets';
 import AvatarUploader from './components/AvatarUploader';
 import InstallPrompt from './components/InstallPrompt';
 import UpdateToast from './components/UpdateToast';
-import { registerPlugin } from '@capacitor/core';
-
-const UsageStats = registerPlugin('UsageStats');
+import { UsageStats } from './utils/usageStats';
 
 import { useHabits } from './Store';
 
@@ -68,7 +66,7 @@ const NAV_LINKS = [
 ];
 
 function App() {
-  const { loading, user, logout, isOnline, toasts, dismissToast, germanProgress, fetchGermanProgress } = useHabits();
+  const { loading, user, logout, isOnline, germanProgress, fetchGermanProgress } = useHabits();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();

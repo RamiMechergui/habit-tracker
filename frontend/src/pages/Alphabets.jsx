@@ -23,7 +23,7 @@ export default function Alphabets() {
   const nav = useNavigate();
   const {
     germanData, addGermanAlphabet, updateGermanAlphabet,
-    uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto, deleteGermanRecord,
+    uploadGermanAlphabetPhoto, deleteGermanRecord,
     fetchGermanData,
   } = useHabits();
 

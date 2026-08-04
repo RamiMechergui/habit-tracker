@@ -66,7 +66,7 @@ const PRIORITY_VISUALS = {
 };
 
 export default function TaskCard({
-  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, zoomFactor = 1, sectionOffsetMins = 0, hourHeight = 90,
+  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, sectionOffsetMins = 0, hourHeight = 90,
   bulkMode, isSelected, onBulkSelect, onDragStart, onDragEnd, blocked = false, onReorder, onMoveToDate,
 }) {
   const [swipeOffset,    setSwipeOffset]    = useState(0);
@@ -77,7 +77,7 @@ export default function TaskCard({
   const [progress,       setProgress]       = useState(() => getTimeProgress(task.time, task.duration));
   const [timerOn,        setTimerOn]        = useState(false);
   const [timerSeconds,   setTimerSeconds]   = useState(0);
-  const [completionFlash, setCompletionFlash] = useState(false);
+  const [completionFlash] = useState(false);
 
   // ── Deep focus ring calculation ──
   const RING_CIRCUMFERENCE = 2 * Math.PI * 11; // r=11
@@ -204,7 +204,6 @@ export default function TaskCard({
   const statusMeta   = STATUS_META[statusKey] ?? STATUS_META.Pending;
   const priorityColor = PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.medium;
   const taskCats = Array.isArray(task.categories) ? task.categories : (task.category ? [task.category] : ['Other']);
-  const catColor = CATEGORY_COLORS[taskCats[0]] ?? CATEGORY_COLORS.Other;
   const pVisual       = PRIORITY_VISUALS[task.priority] || PRIORITY_VISUALS.medium;
 
   const showProgress = task.status === 'Pending' && progress > 0 && progress < 100;

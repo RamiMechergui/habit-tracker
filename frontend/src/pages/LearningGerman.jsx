@@ -6,7 +6,6 @@ import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
 
 import { format } from 'date-fns';
-import { nativeFetch } from '../config';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
@@ -16,6 +15,12 @@ import {
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
+
+let boxSeq = 0;
+function nextBoxId() {
+  boxSeq += 1;
+  return `box-${boxSeq}`;
+}
 const PERSON_COLORS = { male: '#3b82f6', female: '#ec4899', other: '#8b5cf6' };
 const PRESET_CATEGORIES = ['General', 'Animals', 'Food', 'Travel', 'Work', 'Daily Life', 'Grammar', 'Vocabulary', 'Phrases'];
 const ALL_LEVELS = ['A1.1','A1.2','A2.1','A2.2','B1.1','B1.2','B2.1','B2.2','B2.3','C1.1','C1.2','C2.1','C2.2'];
@@ -58,8 +63,6 @@ const inputBase = {
   boxSizing: 'border-box', outline: 'none',
   transition: 'border-color 0.2s ease',
 };
-
-const inputFocus = { borderColor: C.gold + '60' };
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -299,7 +302,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
   const [newPhotoFile, setNewPhotoFile] = useState(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoUploading] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [confirmPhotoDelete, setConfirmPhotoDelete] = useState(false);
   const fileRef = useRef(null);
@@ -508,7 +511,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
 
 function BoxManager({ boxes = [], onBoxesChange }) {
   const addBox = (type) => {
-    const newBox = { id: `box-${Date.now()}`, type, content: '' };
+    const newBox = { id: nextBoxId(), type, content: '' };
     onBoxesChange([...boxes, newBox]);
   };
   const updateBox = (id, content) => {
@@ -587,13 +590,6 @@ function BoxDisplay({ boxes }) {
 }
 
 const CEFR_LEVELS = ALL_LEVELS;
-const LEITNER_INTERVALS = [1, 3, 7, 14, 30];
-
-function calcNextReview(box) {
-  const d = new Date();
-  d.setDate(d.getDate() + (LEITNER_INTERVALS[box] || 1));
-  return d.toISOString().slice(0, 10);
-}
 
 function masteryStars(m, onChange) {
   return <span style={{ display: 'inline-flex', gap: 2, alignItems: 'center' }}>
@@ -755,7 +751,7 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
   );
 }
 
-function QuizModal({ vocab, onClose }) {
+function QuizModal({ vocab, onClose, isMobile }) {
   const [queue, setQueue] = useState(() => [...vocab].sort(() => Math.random() - 0.5));
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -864,7 +860,6 @@ function StreakCalendar({ notes }) {
   const firstDow = new Date(year, month, 1).getDay();
   const noteDates = new Set(notes.map(n => n.date));
 
-  const streakDates = [...notes].sort((a, b) => b.date?.localeCompare(a.date));
   let streak = 0;
   const check = new Date(today);
   check.setHours(0, 0, 0, 0);
@@ -1532,21 +1527,20 @@ function StudyTimeChart({ notes, days = {} }) {
   );
 }
 
+function buildMcOptions(vocab, current) {
+  const wrong = vocab.filter(v => v.recordId !== current.recordId).sort(() => Math.random() - 0.5).slice(0, 3).map(v => v.translation);
+  return [...wrong, current.translation].sort(() => Math.random() - 0.5);
+}
+
 function MultipleChoiceQuiz({ vocab, onClose }) {
-  const [queue, setQueue] = useState(() => [...vocab].sort(() => Math.random() - 0.5).slice(0, 20));
+  const [queue] = useState(() => [...vocab].sort(() => Math.random() - 0.5).slice(0, 20));
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(false);
   const [selected, setSelected] = useState(null);
   const [done, setDone] = useState(false);
   const current = queue[index];
-
-  const options = useMemo(() => {
-    if (!current) return [];
-    const wrong = vocab.filter(v => v.recordId !== current.recordId).sort(() => Math.random() - 0.5).slice(0, 3).map(v => v.translation);
-    const all = [...wrong, current.translation].sort(() => Math.random() - 0.5);
-    return all;
-  }, [current, vocab]);
+  const [options, setOptions] = useState(() => buildMcOptions(vocab, queue[0]));
 
   const handleAnswer = (ans) => {
     if (answered) return;
@@ -1557,7 +1551,12 @@ function MultipleChoiceQuiz({ vocab, onClose }) {
 
   const next = () => {
     if (index + 1 >= queue.length) setDone(true);
-    else { setIndex(p => p + 1); setAnswered(false); setSelected(null); }
+    else {
+      setIndex(p => p + 1);
+      setAnswered(false);
+      setSelected(null);
+      setOptions(buildMcOptions(vocab, queue[index + 1]));
+    }
   };
 
   if (vocab.length < 4) {
@@ -1619,7 +1618,7 @@ function MultipleChoiceQuiz({ vocab, onClose }) {
 }
 
 function WritingPractice({ vocab, onClose }) {
-  const [queue, setQueue] = useState(() => [...vocab].sort(() => Math.random() - 0.5).slice(0, 15));
+  const [queue] = useState(() => [...vocab].sort(() => Math.random() - 0.5).slice(0, 15));
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState(null);
@@ -1742,7 +1741,7 @@ function GlobalSearchModal({ germanData, onClose }) {
   );
 }
 
-function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
+function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
   const [phrase, setPhrase] = useState('');
   const [translation, setTranslation] = useState('');
   const [category, setCategory] = useState('general');
@@ -1916,7 +1915,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, isMobile, expressions }) {
   );
 }
 
-function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
+function IdiomForm({ onAdd, onUpdate, onDelete, _isMobile, idioms }) {
   const [phrase, setPhrase] = useState('');
   const [translation, setTranslation] = useState('');
   const [meaning, setMeaning] = useState('');
@@ -2101,7 +2100,7 @@ function IdiomForm({ onAdd, onUpdate, onDelete, isMobile, idioms }) {
   );
 }
 
-function MistakeForm({ onAdd, onUpdate, onDelete, isMobile, mistakes }) {
+function MistakeForm({ onAdd, onUpdate, onDelete, _isMobile, mistakes }) {
   const [incorrect, setIncorrect] = useState('');
   const [correct, setCorrect] = useState('');
   const [why, setWhy] = useState('');
@@ -2309,7 +2308,7 @@ function MistakeForm({ onAdd, onUpdate, onDelete, isMobile, mistakes }) {
   );
 }
 
-function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, isMobile, alphabets }) {
+function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets }) {
   const [letter, setLetter] = useState('');
   const [example, setExample] = useState('');
   const [pronunciation, setPronunciation] = useState('');
@@ -2542,7 +2541,7 @@ function parseYouTubeUrl(url) {
   if (m) return { kind: 'video', videoId: m[1] };
   m = url.match(/youtube\.com\/channel\/(UC[\w-]+)/i);
   if (m) return { kind: 'channel', channelId: m[1], handle: '' };
-  m = url.match(/youtube\.com\/@([\w.\-]+)/i) || url.match(/youtube\.com\/user\/([\w.\-]+)/i);
+  m = url.match(/youtube\.com\/@([\w.-]+)/i) || url.match(/youtube\.com\/user\/([\w.-]+)/i);
   if (m) return { kind: 'channel', channelId: '', handle: m[1] };
   return null;
 }
@@ -2959,7 +2958,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
-    germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
+    germanProgress, fetchGermanProgress, advanceGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
   } = useHabits();
 
@@ -2992,7 +2991,7 @@ export default function LearningGerman() {
   const [editVerb, setEditVerb] = useState(null);
   const [newDialogueOpen, setNewDialogueOpen] = useState(false);
   const [editDialogue, setEditDialogue] = useState(null);
-  const [dialogueSaving, setDialogueSaving] = useState(false);
+  const [, setDialogueSaving] = useState(false);
   const [dialogueTranslating, setDialogueTranslating] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showGrammarQuiz, setShowGrammarQuiz] = useState(false);
@@ -3013,7 +3012,7 @@ export default function LearningGerman() {
   const [confirmDeleteDialogue, setConfirmDeleteDialogue] = useState(null);
   const [editMemo, setEditMemo] = useState(null);
   const [practiceMemo, setPracticeMemo] = useState(null);
-  const [memoSaving, setMemoSaving] = useState(false);
+  const [, setMemoSaving] = useState(false);
   const [workspaceLevel, setWorkspaceLevel] = useState('A1.1');
   const workspaceTouchedRef = useRef(false);
   const PAGE_SIZE = 15;
@@ -3396,7 +3395,7 @@ export default function LearningGerman() {
         date: selectedDate,
         noteCategory,
         content: contentToSave.trim(),
-        boxes: boxesToSave.map(({ id, ...rest }) => rest),
+        boxes: boxesToSave.map(({ id: _id, ...rest }) => rest),
         level: workspaceLevel,
         chapterId: selectedChapterId,
         chapterTitle: selectedChapterTitle,
@@ -3506,7 +3505,7 @@ export default function LearningGerman() {
 
   const handleUpdateVocab = async (recordId, payload) => {
     setVocabSaving(true);
-    try { return await updateGermanVocab(recordId, payload); setEditVocab(null); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
+    try { const result = await updateGermanVocab(recordId, payload); setEditVocab(null); return result; } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
   };
 
   const handleAddGrammar = async (payload) => {
@@ -3527,10 +3526,6 @@ export default function LearningGerman() {
   const handleUpdateVerb = async (recordId, payload) => {
     setVerbSaving(true);
     try { await updateGermanVerb(recordId, payload); setEditVerb(null); } catch (e) { setError(e.message); } finally { setVerbSaving(false); }
-  };
-
-  const handleReviewUpdate = async (recordId, updates) => {
-    try { await updateGermanVocab(recordId, updates); } catch (e) { setError(e.message); }
   };
 
   const handleReviewAction = async (recordId, score) => {
@@ -4068,7 +4063,7 @@ export default function LearningGerman() {
                   <button key={cat.value} onClick={() => { setNoteCategory(cat.value); setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '0.3rem 0.6rem', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                      padding: '0.3rem 0.6rem', borderRadius: '6px', cursor: 'pointer',
                       fontSize: '0.7rem', fontWeight: 600, transition: 'all 0.15s',
                       background: noteCategory === cat.value ? `${cat.color}20` : 'transparent',
                       color: noteCategory === cat.value ? cat.color : 'var(--text-muted)',
@@ -5018,7 +5013,7 @@ export default function LearningGerman() {
                         onClick={async (e) => {
                           e.stopPropagation();
                           try {
-                            const newState = await advanceGermanLevel();
+                            await advanceGermanLevel();
                             setError(null);
                           } catch (err) {
                             setError(err.message);
@@ -5100,7 +5095,7 @@ export default function LearningGerman() {
       )}
 
       {showReview && <ReviewPanel vocab={vocab} onReviewVocab={handleReviewAction} onClose={() => setShowReview(false)} />}
-      {showQuiz && <QuizModal vocab={vocab} onClose={() => setShowQuiz(false)} />}
+      {showQuiz && <QuizModal vocab={vocab} onClose={() => setShowQuiz(false)} isMobile={isMobile} />}
       {showGrammarQuiz && <GrammarQuizModal grammar={grammar} onClose={() => setShowGrammarQuiz(false)} />}
       {showMCQuiz && <MultipleChoiceQuiz vocab={vocab} onClose={() => setShowMCQuiz(false)} />}
       {showWriting && <WritingPractice vocab={vocab} onClose={() => setShowWriting(false)} />}

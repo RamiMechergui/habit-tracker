@@ -69,13 +69,19 @@ function useIntervalTimer(storageKey, onBlockComplete) {
   const today = new Date().toDateString();
   const fullKey = `timer_${storageKey}_${today}`;
   const cbRef = useRef(onBlockComplete);
-  cbRef.current = onBlockComplete;
+
+  useEffect(() => {
+    cbRef.current = onBlockComplete;
+  });
 
   const [phase, setPhase] = useState('idle');
   const [secondsLeft, setSecondsLeft] = useState(FOCUS_MIN * 60);
   const [isRunning, setIsRunning] = useState(false);
   const phaseRef = useRef(phase);
-  phaseRef.current = phase;
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  });
 
   useEffect(() => {
     try {
@@ -137,35 +143,10 @@ function useIntervalTimer(storageKey, onBlockComplete) {
   return { phase, secondsLeft, isRunning, start, pause, reset };
 }
 
-function playChime(nextPhase) {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = nextPhase === 'release' ? 660 : 880;
-    gain.gain.setValueAtTime(0.25, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.5);
-  } catch {}
-}
-
 function formatTime(sec) {
   const m = String(Math.floor(sec / 60)).padStart(2, '0');
   const s = String(sec % 60).padStart(2, '0');
   return `${m}:${s}`;
-}
-
-function formatBlockTime(ts) {
-  const d = new Date(ts);
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const year = d.getFullYear();
-  const hours = d.getHours();
-  const mins = String(d.getMinutes()).padStart(2, '0');
-  return `${month}/${day}/${year} ${hours}:${mins}`;
 }
 
 export default function DeepTimerSection({ category, title, icon: Icon, accentColor }) {
@@ -174,7 +155,7 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
 
   // ── Timer hook with block-complete callback ──
   const [activeTaskId, setActiveTaskId] = useState(() => loadActiveTask(category));
-  const taskTimeRef = useRef(loadTaskTimes(category));
+  const [taskTimes, setTaskTimes] = useState(loadTaskTimes(category));
 
   // Track start time of the currently-running block
   const currentBlockStartRef = useRef(null);
@@ -182,36 +163,26 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
   const prevPhaseRef = useRef('idle');
 
   const onBlockComplete = useCallback((completedPhase) => {
-    const id = activeTaskIdRef.current;
+    const id = activeTaskId;
     if (!id) return;
     const now = Date.now();
     const start = completedBlockStartRef.current || (now - (completedPhase === 'focus' ? FOCUS_MIN : RELEASE_MIN) * 60 * 1000);
 
-    if (!taskTimeRef.current[id]) {
-      taskTimeRef.current[id] = { focusMinutes: 0, restMinutes: 0, blocks: [] };
-    }
-    const rec = taskTimeRef.current[id];
-    if (completedPhase === 'focus') {
-      rec.focusMinutes += FOCUS_MIN;
-    } else {
-      rec.restMinutes += RELEASE_MIN;
-    }
-    if (!rec.blocks) rec.blocks = [];
-    rec.blocks.push({
-      type: completedPhase,
-      start,
-      end: now,
-      date: new Date().toISOString().slice(0, 10),
-    });
-    persistTaskTimes(category, taskTimeRef.current);
-  }, [category]);
+    const rec = taskTimes[id] || { focusMinutes: 0, restMinutes: 0, blocks: [] };
+    const next = {
+      ...rec,
+      focusMinutes: rec.focusMinutes + (completedPhase === 'focus' ? FOCUS_MIN : 0),
+      restMinutes: rec.restMinutes + (completedPhase === 'release' ? RELEASE_MIN : 0),
+      blocks: [...(rec.blocks || []), { type: completedPhase, start, end: now, date: new Date().toISOString().slice(0, 10) }],
+    };
+    const updated = { ...taskTimes, [id]: next };
+    setTaskTimes(updated);
+    persistTaskTimes(category, updated);
+  }, [category, activeTaskId, taskTimes]);
 
   const { phase, secondsLeft, isRunning, start, pause, reset } = useIntervalTimer(category, onBlockComplete);
 
   // ── Track block start/end timestamps ──
-  const activeTaskIdRef = useRef(activeTaskId);
-  activeTaskIdRef.current = activeTaskId;
-
   useEffect(() => {
     const prev = prevPhaseRef.current;
     if ((prev === 'focus' || prev === 'release') && prev !== phase) {
@@ -247,9 +218,9 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
   // ── Persist task times on pause/reset ──
   useEffect(() => {
     if (!isRunning) {
-      persistTaskTimes(category, taskTimeRef.current);
+      persistTaskTimes(category, taskTimes);
     }
-  }, [isRunning, category]);
+  }, [isRunning, category, taskTimes]);
 
   // ── Log completion summary + blocks to target section ──
   const logCompletion = useCallback(async (task, focusMins, restMins, blocks) => {
@@ -339,11 +310,13 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
 
     if (newStatus === 'Completed') {
-      const times = taskTimeRef.current[task.id];
+      const times = taskTimes[task.id];
       if (times && (times.focusMinutes > 0 || times.restMinutes > 0)) {
         await logCompletion(task, times.focusMinutes, times.restMinutes, times.blocks || []);
-        delete taskTimeRef.current[task.id];
-        persistTaskTimes(category, taskTimeRef.current);
+        const updated = { ...taskTimes };
+        delete updated[task.id];
+        setTaskTimes(updated);
+        persistTaskTimes(category, updated);
         if (activeTaskId === task.id) {
           setActiveTaskId(null);
           persistActiveTask(category, null);
@@ -357,7 +330,7 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
     const today = new Date().toISOString().slice(0, 10);
     const log = getLog(today);
     if (!log) return;
-    const times = taskTimeRef.current;
+    const times = taskTimes;
     const entries = Object.entries(times).filter(([, v]) => v.focusMinutes > 0 || v.restMinutes > 0);
     if (entries.length === 0) { setSessionMsg({ type: 'info', text: 'No time tracked yet.' }); setTimeout(() => setSessionMsg(null), 3000); return; }
     const updatedLog = { ...log };
@@ -387,14 +360,14 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
       loggedCount++;
     }
     await saveLog(today, updatedLog);
-    taskTimeRef.current = {};
+    setTaskTimes({});
     persistTaskTimes(category, {});
     setActiveTaskId(null);
     persistActiveTask(category, null);
     setSessionMsg({ type: 'log', text: `Session logged — ${loggedCount} task${loggedCount > 1 ? 's' : ''} summarised.` });
     setTimeout(() => setSessionMsg(null), 4000);
     if (isRunning) pause();
-  }, [getLog, saveLog, tasks, category, isRunning, pause]);
+  }, [getLog, saveLog, tasks, category, isRunning, pause, taskTimes]);
 
   // ── Select active task ──
   const selectTask = useCallback((taskId) => {
@@ -409,7 +382,7 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
   const maxSec = phase === 'release' ? RELEASE_MIN * 60 : FOCUS_MIN * 60;
   const pct = phase === 'idle' ? 0 : ((maxSec - secondsLeft) / maxSec) * 100;
 
-  const trackedCount = Object.values(taskTimeRef.current).filter(t => t.focusMinutes > 0 || t.restMinutes > 0).length;
+  const trackedCount = Object.values(taskTimes).filter(t => t.focusMinutes > 0 || t.restMinutes > 0).length;
 
   return (
     <div className="glass-card" style={{
@@ -525,9 +498,9 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
           <span style={{ fontWeight: 600, flex: 1 }}>Tracking focus on:</span>
           <span style={{ color: 'var(--text-muted)' }}>
             {tasks.find(t => t.id === activeTaskId)?.title || 'Unknown task'}
-            {taskTimeRef.current[activeTaskId] && (
+            {taskTimes[activeTaskId] && (
               <span style={{ marginLeft: 8, color: accentColor, fontWeight: 700 }}>
-                {taskTimeRef.current[activeTaskId].focusMinutes}m focus / {taskTimeRef.current[activeTaskId].restMinutes}m rest
+                {taskTimes[activeTaskId].focusMinutes}m focus / {taskTimes[activeTaskId].restMinutes}m rest
               </span>
             )}
           </span>
@@ -546,7 +519,7 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
           tasks.map(task => {
             const done = task.status === 'Completed';
             const isActive = activeTaskId === task.id;
-            const times = taskTimeRef.current[task.id];
+            const times = taskTimes[task.id];
             const hasTimes = times && (times.focusMinutes > 0 || times.restMinutes > 0);
 
             // Deep focus progress toward target

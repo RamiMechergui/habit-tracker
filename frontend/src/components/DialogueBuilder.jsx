@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, Languages, Save, X, ChevronDown, ChevronUp, MessageSquare, Volume2, AlertTriangle, Camera, Image, HelpCircle, FileText } from 'lucide-react';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
 
@@ -114,7 +114,7 @@ function DialogueCard({ dialogue, onEdit, onDelete }) {
   );
 }
 
-export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialogue, onCancelEdit, translating, isMobile, onTranslate, onUploadParticipantPhoto, onDeleteParticipantPhoto, defaultLevel = 'A1.1' }) {
+export default function DialogueBuilder({ onSave, onUpdate, editDialogue, onCancelEdit, translating, isMobile, onTranslate, onUploadParticipantPhoto, onDeleteParticipantPhoto, defaultLevel = 'A1.1' }) {
   const [participants, setParticipants] = useState(editDialogue ? editDialogue.participants : [
     { name: '', gender: 'male', photoUrl: '' },
     { name: '', gender: 'female', photoUrl: '' },
@@ -247,7 +247,7 @@ export default function DialogueBuilder({ onSave, onUpdate, onDelete, editDialog
     markDirty();
   };
 
-  const doTranslate = onTranslate || (async (text, target) => { console.warn('No onTranslate provided'); return text; });
+  const doTranslate = onTranslate || (async (text) => { console.warn('No onTranslate provided'); return text; });
 
   const translateExchange = async (idx) => {
     const ex = exchanges[idx];

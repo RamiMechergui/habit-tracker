@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { Preferences } from '@capacitor/preferences';
 
 // Safe fallback for startOfWeek in case the build/runtime environment
@@ -756,23 +756,19 @@ export const HabitProvider = ({ children }) => {
     // Optimistic update
     const current = essentials.find(i => i._id === id);
     setEssentials(prev => prev.map(i => i._id === id ? { ...i, ...updates, lastUpdated: new Date().toISOString() } : i));
-    try {
-      const res = await fetch(`${API_URL}/api/essentials/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      if (!res.ok) {
-        // Roll back on failure
-        await loadEssentials();
-        const data = await res.json();
-        throw new Error(data.message);
-      }
-      logHistory('essential_update', `Updated essential item "${current?.name || id}"`);
-    } catch (e) {
-      throw e;
+    const res = await fetch(`${API_URL}/api/essentials/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) {
+      // Roll back on failure
+      await loadEssentials();
+      const data = await res.json();
+      throw new Error(data.message);
     }
+    logHistory('essential_update', `Updated essential item "${current?.name || id}"`);
   }, [API_URL, loadEssentials, essentials]);
 
 

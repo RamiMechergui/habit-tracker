@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -48,7 +48,7 @@ function getSectionColor(name, sections) {
 
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
-function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId, editingId, editContent, setEditContent, editSection, setEditSection, editSaving, onSaveEdit, onCancelEdit, noteSections, sectionColor, editPhotoPreview, setEditPhotoPreview, onEditPhotoSelect, onRemoveEditPhoto, editPhotoInputRef }) {
+function NoteCard({ note, onEdit, onDelete, deleteConfirmId, setDeleteConfirmId, editingId, editContent, setEditContent, editSection, setEditSection, editSaving, onSaveEdit, onCancelEdit, noteSections, sectionColor, editPhotoPreview, onEditPhotoSelect, onRemoveEditPhoto, editPhotoInputRef }) {
   const isEditing = editingId === note._id;
   const isConfirming = deleteConfirmId === note._id;
 
@@ -620,7 +620,7 @@ export default function DailyNotes() {
 
             {/* Section chips */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-              {noteSections.map((sec, idx) => {
+              {noteSections.map((sec) => {
                 const col = getSectionColor(sec, noteSections);
                 return (
                   <div key={sec} style={{
