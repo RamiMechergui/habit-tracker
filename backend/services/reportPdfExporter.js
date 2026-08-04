@@ -268,7 +268,7 @@ function buildTocPage(records) {
   const vocabCount = (records || []).filter(r => r.type === 'vocab').length;
   const grammarCount = (records || []).filter(r => r.type === 'grammar').length;
   const verbCount = (records || []).filter(r => r.type === 'verb').length;
-  const noteCount = (records || []).filter(r => r.type === 'note').length;
+  const unassignedNoteCount = (records || []).filter(r => r.type === 'note' && !r.chapterId).length;
   const dialogueCount = (records || []).filter(r => r.type === 'dialogue').length;
   const memoCount = (records || []).filter(r => r.type === 'memo').length;
   const expressionCount = (records || []).filter(r => r.type === 'expression').length;
@@ -286,7 +286,7 @@ function buildTocPage(records) {
 
   if (alphabetCount > 0) add('German Alphabet', alphabetCount);
   if (chapterCount > 0) add('Chapters', chapterCount);
-  if (noteCount > 0) add('Study Notes', noteCount);
+  if (unassignedNoteCount > 0) add('Study Notes', unassignedNoteCount);
   if (vocabCount > 0) add('Vocabulary', vocabCount);
   if (grammarCount > 0) add('Grammar Rules', grammarCount);
   if (verbCount > 0) add('Verbs', verbCount);
@@ -312,25 +312,53 @@ function buildTocPage(records) {
     </div>`;
 }
 
-function buildChaptersHtml(records) {
+// Each chapter gets its own independent page: the chapter title is at the top
+// and every note attached to that chapter is listed underneath in
+// chronological order (Note 1, Note 2, ...).
+function buildChapterPagesHtml(records) {
   const chapters = (records || []).filter(r => r.type === 'chapter');
   if (chapters.length === 0) return '';
+
+  const notesByChapter = {};
+  for (const n of (records || []).filter(r => r.type === 'note' && r.chapterId)) {
+    if (!notesByChapter[n.chapterId]) notesByChapter[n.chapterId] = [];
+    notesByChapter[n.chapterId].push(n);
+  }
+  for (const key of Object.keys(notesByChapter)) {
+    notesByChapter[key].sort((a, b) => {
+      const ta = a.createdAt || `${a.date}T00:00:00.000Z`;
+      const tb = b.createdAt || `${b.date}T00:00:00.000Z`;
+      return ta.localeCompare(tb);
+    });
+  }
+
   const byLevel = {};
   for (const c of chapters) {
     const lvl = c.level || 'A1.1';
     if (!byLevel[lvl]) byLevel[lvl] = [];
     byLevel[lvl].push(c);
   }
-  const levels = Object.keys(byLevel).sort();
-  let html = '<h2>Chapters</h2>';
-  for (const lvl of levels) {
-    const list = byLevel[lvl]
+
+  const ordered = [];
+  for (const lvl of Object.keys(byLevel).sort()) {
+    byLevel[lvl]
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-      .map(c => `<li>${escapeHtml(c.title)}</li>`)
-      .join('');
-    html += `<div class="note-box"><div class="note-box-title">${levelBadge(lvl)}</div><ul style="margin:4px 0 0 18px;padding-left:0;">${list}</ul></div>`;
+      .forEach(c => ordered.push(c));
   }
-  return html;
+
+  return ordered.map(c => {
+    const notes = notesByChapter[c.recordId] || [];
+    return `
+    <div class="chapter-page">
+      <div class="chapter-title-bar">
+        <span class="chapter-title">${escapeHtml(c.title)}</span>
+        ${levelBadge(c.level || 'A1.1')}
+      </div>
+      ${notes.length === 0
+        ? '<p class="chapter-empty">No notes for this chapter yet.</p>'
+        : notes.map((n, i) => buildNoteEntryHtml(n, i + 1)).join('\n')}
+    </div>`;
+  }).join('\n');
 }
 
 function buildAlphabetHtml(records) {
@@ -357,19 +385,32 @@ function buildAlphabetHtml(records) {
     <table class="alphabet-grid">${rows}</table>`;
 }
 
+// The "Study Notes" section only carries notes that are NOT attached to a
+// chapter; chapter-attached notes are rendered on their chapter's own page.
 function buildNotesHtml(records) {
-  const notes = (records || []).filter(r => r.type === 'note').sort((a, b) => ((b.date || '') > (a.date || '') ? 1 : -1));
+  const notes = (records || [])
+    .filter(r => r.type === 'note' && !r.chapterId)
+    .sort((a, b) => ((b.date || '') > (a.date || '') ? 1 : -1));
   if (notes.length === 0) return '';
-  const labels = { daily: 'Daily Notes', writing: 'Writing Notes', reading: 'Reading Notes', speaking: 'Speaking Notes', listening: 'Listening Notes' };
   let html = '<h2>Study Notes</h2>';
-  for (const note of notes) {
-    const header = note.noteCategory ? (labels[note.noteCategory] || 'Notes') : 'Daily Notes';
-    html += `<h3>${escapeHtml(header)}</h3>`;
-    html += `<p class="header-meta">${fmtDateLong(note.date)}${note.studyMinutes ? ' &mdash; ' + note.studyMinutes + ' min' : ''}</p>`;
-    html += buildBoxesHtml(note.boxes);
-    if (note.content && hasRichContent(note.content)) {
-      html += `<div class="note-editor-content">${note.content}</div>`;
-    }
+  for (const note of notes) html += buildNoteEntryHtml(note, null);
+  return html;
+}
+
+const NOTE_SECTION_LABELS = { daily: 'Daily Notes', writing: 'Writing Notes', reading: 'Reading Notes', speaking: 'Speaking Notes', listening: 'Listening Notes' };
+
+// Renders a single note. When noteIndex is provided the heading becomes
+// "Note N" (matching the in-app numbering for chapter-attached notes).
+function buildNoteEntryHtml(note, noteIndex) {
+  const categoryLabel = note.noteCategory ? (NOTE_SECTION_LABELS[note.noteCategory] || 'Notes') : 'Daily Notes';
+  const heading = noteIndex != null
+    ? `Note ${noteIndex}${note.noteCategory ? ' \u2014 ' + categoryLabel.replace(/ Notes$/, ' Note') : ''}`
+    : categoryLabel;
+  let html = `<h3>${escapeHtml(heading)}</h3>`;
+  html += `<p class="header-meta">${fmtDateLong(note.date)}${note.studyMinutes ? ' &mdash; ' + note.studyMinutes + ' min' : ''}</p>`;
+  html += buildBoxesHtml(note.boxes);
+  if (note.content && hasRichContent(note.content)) {
+    html += `<div class="note-editor-content">${note.content}</div>`;
   }
   return html;
 }
@@ -639,7 +680,7 @@ function buildReportHtml(records, opts = {}) {
   const { baseUrl = '' } = opts;
   const body = [
     buildAlphabetHtml(records),
-    buildChaptersHtml(records),
+    buildChapterPagesHtml(records),
     buildNotesHtml(records),
     buildVocabularyHtml(records),
     buildGrammarHtml(records),
@@ -733,6 +774,10 @@ ${baseTag}
   .gender-das { color: #10b981; font-weight: bold; }
 
   .page-break { page-break-after: always; }
+  .chapter-page { page-break-before: always; }
+  .chapter-title-bar { border-bottom: 2px solid #800000; padding-bottom: 6px; margin-bottom: 16px; }
+  .chapter-title { display: inline-block; font-size: 20pt; font-weight: bold; color: #800000; margin-right: 10px; vertical-align: middle; }
+  .chapter-empty { color: #888; font-style: italic; }
   h2 { page-break-after: avoid; }
   table.data-table tr { page-break-inside: avoid; }
 
@@ -812,4 +857,4 @@ async function exportReportToPdf(records, opts = {}) {
   }
 }
 
-module.exports = { exportReportToPdf, backfillVocabTranslations, backfillMemoTranslations };
+module.exports = { exportReportToPdf, backfillVocabTranslations, backfillMemoTranslations, buildReportHtml };
