@@ -265,17 +265,26 @@ function buildCoverPage(records) {
 }
 
 function buildTocPage(records) {
-  const vocabCount = (records || []).filter(r => r.type === 'vocab').length;
-  const grammarCount = (records || []).filter(r => r.type === 'grammar').length;
-  const verbCount = (records || []).filter(r => r.type === 'verb').length;
-  const unassignedNoteCount = (records || []).filter(r => r.type === 'note' && !r.chapterId).length;
-  const dialogueCount = (records || []).filter(r => r.type === 'dialogue').length;
-  const memoCount = (records || []).filter(r => r.type === 'memo').length;
-  const expressionCount = (records || []).filter(r => r.type === 'expression').length;
-  const idiomCount = (records || []).filter(r => r.type === 'idiom').length;
-  const mistakeCount = (records || []).filter(r => r.type === 'mistake').length;
-  const alphabetCount = (records || []).filter(r => r.type === 'alphabet').length;
-  const chapterCount = (records || []).filter(r => r.type === 'chapter').length;
+  const list = records || [];
+  // Global section counts only cover unassigned content (chapter-attached
+  // items live on chapter pages); indices are full-reference lists.
+  const unassigned = list.filter(r => !r.chapterId);
+  const unassignedVocabCount = unassigned.filter(r => r.type === 'vocab').length;
+  const unassignedGrammarCount = unassigned.filter(r => r.type === 'grammar').length;
+  const unassignedVerbCount = unassigned.filter(r => r.type === 'verb').length;
+  const unassignedNoteCount = unassigned.filter(r => r.type === 'note').length;
+  const unassignedDialogueCount = unassigned.filter(r => r.type === 'dialogue').length;
+  const unassignedMemoCount = unassigned.filter(r => r.type === 'memo').length;
+  const unassignedExpressionCount = unassigned.filter(r => r.type === 'expression').length;
+  const unassignedIdiomCount = unassigned.filter(r => r.type === 'idiom').length;
+  const unassignedMistakeCount = unassigned.filter(r => r.type === 'mistake').length;
+  const alphabetCount = list.filter(r => r.type === 'alphabet').length;
+  const chapterCount = list.filter(r => r.type === 'chapter').length;
+  const grammarCount = list.filter(r => r.type === 'grammar').length;
+  const verbCount = list.filter(r => r.type === 'verb').length;
+  const vocabCount = list.filter(r => r.type === 'vocab').length;
+  const expressionCount = list.filter(r => r.type === 'expression').length;
+  const idiomCount = list.filter(r => r.type === 'idiom').length;
 
   const rows = [];
   let page = 3;
@@ -287,14 +296,14 @@ function buildTocPage(records) {
   if (alphabetCount > 0) add('German Alphabet', alphabetCount);
   if (chapterCount > 0) add('Chapters', chapterCount);
   if (unassignedNoteCount > 0) add('Study Notes', unassignedNoteCount);
-  if (vocabCount > 0) add('Vocabulary', vocabCount);
-  if (grammarCount > 0) add('Grammar Rules', grammarCount);
-  if (verbCount > 0) add('Verbs', verbCount);
-  if (dialogueCount > 0) add('Dialogues', dialogueCount);
-  if (memoCount > 0) add('Memorization', memoCount);
-  if (expressionCount > 0) add('Expressions', expressionCount);
-  if (idiomCount > 0) add('Idioms', idiomCount);
-  if (mistakeCount > 0) add('Common Mistakes', mistakeCount);
+  if (unassignedVocabCount > 0) add('Vocabulary', unassignedVocabCount);
+  if (unassignedGrammarCount > 0) add('Grammar Rules', unassignedGrammarCount);
+  if (unassignedVerbCount > 0) add('Verbs', unassignedVerbCount);
+  if (unassignedDialogueCount > 0) add('Dialogues', unassignedDialogueCount);
+  if (unassignedMemoCount > 0) add('Memorization', unassignedMemoCount);
+  if (unassignedExpressionCount > 0) add('Expressions', unassignedExpressionCount);
+  if (unassignedIdiomCount > 0) add('Idioms', unassignedIdiomCount);
+  if (unassignedMistakeCount > 0) add('Common Mistakes', unassignedMistakeCount);
   if (grammarCount > 0) add('Grammar Index', '');
   if (verbCount > 0) add('Verb Index', '');
   if (vocabCount > 0) add('Vocabulary Index', '');
@@ -312,13 +321,23 @@ function buildTocPage(records) {
     </div>`;
 }
 
-// Each chapter gets its own independent page: the chapter title is at the top
-// and every note attached to that chapter is listed underneath in
-// chronological order (Note 1, Note 2, ...).
+// Each chapter gets its own page. Under the chapter title, EVERY section that
+// is attached to that chapter is rendered grouped by type: Notes (numbered in
+// chronological order), then Vocabulary, Grammar, Memorization, Verbs,
+// Dialogues, Expressions, Idioms and Common Mistakes.
 function buildChapterPagesHtml(records) {
   const chapters = (records || []).filter(r => r.type === 'chapter');
   if (chapters.length === 0) return '';
 
+  // All non-chapter records tagged to a chapter, grouped by chapterId.
+  const itemsByChapter = {};
+  for (const r of (records || [])) {
+    if (r.type === 'chapter' || !r.chapterId) continue;
+    if (!itemsByChapter[r.chapterId]) itemsByChapter[r.chapterId] = [];
+    itemsByChapter[r.chapterId].push(r);
+  }
+
+  // Notes inside a chapter are numbered Note 1, Note 2, ... chronologically.
   const notesByChapter = {};
   for (const n of (records || []).filter(r => r.type === 'note' && r.chapterId)) {
     if (!notesByChapter[n.chapterId]) notesByChapter[n.chapterId] = [];
@@ -347,16 +366,37 @@ function buildChapterPagesHtml(records) {
   }
 
   return ordered.map(c => {
+    const chapterItems = itemsByChapter[c.recordId] || [];
     const notes = notesByChapter[c.recordId] || [];
+
+    const sections = [];
+    if (notes.length > 0) {
+      sections.push('<h2>Daily Notes</h2>');
+      sections.push(notes.map((n, i) => buildNoteEntryHtml(n, i + 1)).join('\n'));
+    }
+    for (const build of [
+      buildVocabularyHtml,
+      buildGrammarHtml,
+      buildMemosHtml,
+      buildVerbsHtml,
+      buildDialoguesHtml,
+      buildExpressionsHtml,
+      buildIdiomsHtml,
+      buildMistakesHtml,
+    ]) {
+      const html = build(chapterItems);
+      if (html) sections.push(html);
+    }
+
     return `
     <div class="chapter-page">
       <div class="chapter-title-bar">
         <span class="chapter-title">${escapeHtml(c.title)}</span>
         ${levelBadge(c.level || 'A1.1')}
       </div>
-      ${notes.length === 0
-        ? '<p class="chapter-empty">No notes for this chapter yet.</p>'
-        : notes.map((n, i) => buildNoteEntryHtml(n, i + 1)).join('\n')}
+      ${sections.length === 0
+        ? '<p class="chapter-empty">No content for this chapter yet.</p>'
+        : sections.join('\n')}
     </div>`;
   }).join('\n');
 }
@@ -482,7 +522,7 @@ function buildGrammarHtml(records) {
 function buildVerbsHtml(records) {
   const verbs = (records || []).filter(r => r.type === 'verb').sort((a, b) => ((a.infinitive || '') > (b.infinitive || '') ? 1 : -1));
   if (verbs.length === 0) return '';
-  let html = '<h2>Verb Conjugations</h2>';
+  let html = '<h2>Verbs</h2>';
   for (const v of verbs) {
     html += `<div class="note-box"><div class="note-box-title">${escapeHtml(v.infinitive)} &mdash; ${escapeHtml(v.meaning || '')}</div>`;
     html += '<table class="data-table" style="width:60%;">';
@@ -543,7 +583,7 @@ function buildDialoguesHtml(records) {
 function buildMemosHtml(records) {
   const memos = (records || []).filter(r => r.type === 'memo');
   if (memos.length === 0) return '';
-  let html = '<h2>Memorization Paragraphs</h2>';
+  let html = '<h2>Memorization</h2>';
   for (const m of memos) {
     html += '<div class="note-box">';
     html += `<div class="note-box-title">${escapeHtml(m.title || 'Memorization')}</div>`;
@@ -571,7 +611,7 @@ function buildExpressionsHtml(records) {
     }
   }
   return `
-    <h2>Useful Expressions</h2>
+    <h2>Expressions</h2>
     <table class="data-table" style="width:85%;">
       <tr><th>German</th><th>English</th><th>Category</th></tr>
       ${rows}
@@ -678,18 +718,21 @@ function buildIdiomIndexHtml(records) {
 
 function buildReportHtml(records, opts = {}) {
   const { baseUrl = '' } = opts;
+  // Global sections only carry content that is NOT attached to a chapter;
+  // chapter-attached items are rendered on their chapter's own page.
+  const unassigned = (records || []).filter(r => !r.chapterId);
   const body = [
     buildAlphabetHtml(records),
     buildChapterPagesHtml(records),
-    buildNotesHtml(records),
-    buildVocabularyHtml(records),
-    buildGrammarHtml(records),
-    buildVerbsHtml(records),
-    buildDialoguesHtml(records),
-    buildMemosHtml(records),
-    buildExpressionsHtml(records),
-    buildIdiomsHtml(records),
-    buildMistakesHtml(records),
+    buildNotesHtml(unassigned),
+    buildVocabularyHtml(unassigned),
+    buildGrammarHtml(unassigned),
+    buildVerbsHtml(unassigned),
+    buildDialoguesHtml(unassigned),
+    buildMemosHtml(unassigned),
+    buildExpressionsHtml(unassigned),
+    buildIdiomsHtml(unassigned),
+    buildMistakesHtml(unassigned),
     `<div class="page-break"></div>`,
     buildGrammarIndexHtml(records),
     buildVerbIndexHtml(records),
