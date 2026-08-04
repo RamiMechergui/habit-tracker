@@ -2961,7 +2961,7 @@ export default function LearningGerman() {
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
-    germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy,
+    germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
   } = useHabits();
 
   const [tab, setTab] = useState('notes');
@@ -3187,6 +3187,7 @@ export default function LearningGerman() {
   const pausedRef = useRef(false);
   const [studyPaused, setStudyPaused] = useState(false);
   const [showResetTotalConfirm, setShowResetTotalConfirm] = useState(false);
+  const [showResetDailyConfirm, setShowResetDailyConfirm] = useState(false);
 
   useEffect(() => {
     if (!germanStudy) return;
@@ -3290,6 +3291,19 @@ export default function LearningGerman() {
     try {
       await resetGermanStudy();
       totalBaseRef.current = 0;
+      setElapsedMs(0);
+    } catch (e) {
+      setError(`Reset failed: ${e.message}`);
+      console.error(e);
+    }
+  };
+
+  const handleResetDailyStudy = async () => {
+    setShowResetDailyConfirm(false);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    try {
+      await resetGermanStudyDay(today);
+      todayBaseRef.current = 0;
       setElapsedMs(0);
     } catch (e) {
       setError(`Reset failed: ${e.message}`);
@@ -3755,6 +3769,10 @@ export default function LearningGerman() {
               <button title="Stop counting daily study time" onClick={stopStudyTimer} disabled={studyPaused}
                 style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? 'transparent' : `${C.red}22`, opacity: studyPaused ? 0.35 : 1 }}>
                 <Pause size={14} style={{ color: C.red }} />
+              </button>
+              <button title="Reset daily study time to zero" onClick={() => setShowResetDailyConfirm(true)}
+                style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.teal}22` }}>
+                <Settings2 size={14} style={{ color: C.teal }} />
               </button>
             </div>
           } />
@@ -5111,6 +5129,32 @@ export default function LearningGerman() {
                 Cancel
               </button>
               <button onClick={handleResetTotalStudy} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.red}, #b91c1c)`, color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetDailyConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setShowResetDailyConfirm(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '1.5rem', width: '90%', maxWidth: 360,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={18} /> Reset Daily Study Time?
+            </h3>
+            <p style={{ margin: '0.75rem 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              This will set today's Daily Study Time to 0. Your total study time will also be reduced by the same amount.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowResetDailyConfirm(false)} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleResetDailyStudy} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.teal}, #0d9488)`, color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
                 Reset
               </button>
             </div>

@@ -51,6 +51,7 @@ const {
   getOrInitStudy,
   addStudyMs,
   resetStudyTotal,
+  resetStudyDay,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { getOrInitProgress } = require('../db/germanProgress');
@@ -217,6 +218,21 @@ router.delete('/study', async (req, res) => {
   } catch (err) {
     console.error('[German] DELETE study error:', err);
     res.status(500).json({ message: 'Failed to reset study time' });
+  }
+});
+
+// ── DELETE /api/german/study/day → reset study time for a specific date ──────
+router.delete('/study/day', async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'date (YYYY-MM-DD) query param is required' });
+    }
+    const study = await resetStudyDay(req.user.userId, date);
+    res.json(study);
+  } catch (err) {
+    console.error('[German] DELETE study/day error:', err);
+    res.status(500).json({ message: 'Failed to reset daily study time' });
   }
 });
 

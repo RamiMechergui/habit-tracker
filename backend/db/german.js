@@ -627,6 +627,21 @@ async function resetStudyTotal(userId) {
   return updated;
 }
 
+async function resetStudyDay(userId, date) {
+  const state = await getOrInitStudy(userId);
+  const days = { ...(state.days || {}) };
+  const removedMs = parseInt(days[date]) || 0;
+  delete days[date];
+  const updated = {
+    ...state,
+    totalMs: Math.max(0, (parseInt(state.totalMs) || 0) - removedMs),
+    days,
+    updatedAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: updated }));
+  return updated;
+}
+
 // ── Books (physical / PDF books being studied) ───────────────────────────────
 async function addBook(userId, { name, author = '', notes = '', photoUrl = '', sortOrder = Date.now(), level = 'A1.1', chapterId = null, chapterTitle = '' }) {
   const recordId = `BOOK#${uuidv4()}`;
@@ -704,6 +719,7 @@ module.exports = {
   getOrInitStudy,
   addStudyMs,
   resetStudyTotal,
+  resetStudyDay,
 };
 
 // ── Alphabets ────────────────────────────────────────────────────────────────
