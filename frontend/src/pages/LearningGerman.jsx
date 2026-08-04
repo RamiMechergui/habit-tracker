@@ -120,7 +120,7 @@ function StatCard({ value, label, color, icon: Icon }) {
   );
 }
 
-function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onClose, modal = true }) {
+function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onTakeNotes, onClose, modal = true }) {
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -211,6 +211,9 @@ function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onClose, m
                   </>
                 ) : (
                   <>
+                    {onTakeNotes && (
+                      <button onClick={() => onTakeNotes(c)} style={iconBtn(color)} title="Take notes"><NotebookPen size={14} /></button>
+                    )}
                     <button onClick={() => { setEditingId(c.recordId); setEditTitle(c.title || ''); }} style={iconBtn(color)} title="Edit"><Edit3 size={14} /></button>
                     {confirmDeleteId === c.recordId ? (
                       <>
@@ -2982,6 +2985,8 @@ export default function LearningGerman() {
   const [showDailyExportCalendar, setShowDailyExportCalendar] = useState(false);
   const [dailyExportDate, setDailyExportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [chapterModalLevel, setChapterModalLevel] = useState(null);
+  const [selectedChapterId, setSelectedChapterId] = useState(null);
+  const [selectedChapterTitle, setSelectedChapterTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editVocab, setEditVocab] = useState(null);
@@ -3044,6 +3049,8 @@ export default function LearningGerman() {
   const changeWorkspace = (level) => {
     workspaceTouchedRef.current = true;
     setWorkspaceLevel(level);
+    setSelectedChapterId(null);
+    setSelectedChapterTitle('');
   };
 
   const levelOf = useCallback((r) => normalizeLevel(r?.level) || currentLevel, [currentLevel]);
@@ -3071,8 +3078,30 @@ export default function LearningGerman() {
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
   }, [germanData, matchesLevel]);
   const filteredNotes = useMemo(() => {
-    return notes.filter(n => (n.noteCategory || 'daily') === noteCategory);
-  }, [notes, noteCategory]);
+    const list = notes.filter(n => (n.noteCategory || 'daily') === noteCategory);
+    if (selectedChapterId) {
+      return list
+        .filter(n => n.chapterId === selectedChapterId)
+        .sort((a, b) => (a.createdAt || a.updatedAt || a.date || '').localeCompare(b.createdAt || b.updatedAt || b.date || ''));
+    }
+    return list;
+  }, [notes, noteCategory, selectedChapterId]);
+
+  // Chapter → notes interaction. Double-clicking a chapter (per spec) — or a
+  // single click anywhere a chapter is offered — selects it as the active
+  // note-taking chapter and jumps to the Notes tab.
+  const openChapterNotes = (chapter) => {
+    if (!chapter) return;
+    setSelectedChapterId(chapter.recordId);
+    setSelectedChapterTitle(chapter.title || '');
+    setChapterModalLevel(null);
+    setTab('notes');
+  };
+
+  const clearChapterSelection = () => {
+    setSelectedChapterId(null);
+    setSelectedChapterTitle('');
+  };
   const expressions = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'expression' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -3105,7 +3134,7 @@ export default function LearningGerman() {
   }, [chapters, workspaceLevel]);
 
   useEffect(() => {
-    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate && matchesLevel(r) && (r.noteCategory || 'daily') === noteCategory);
+    const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate && matchesLevel(r) && (r.noteCategory || 'daily') === noteCategory && (!selectedChapterId || r.chapterId === selectedChapterId));
     if (dateNotes.length > 0) {
       const lastNote = dateNotes[dateNotes.length - 1];
       setSelectedNoteId(lastNote.recordId);
@@ -3127,7 +3156,7 @@ export default function LearningGerman() {
     }
     setSelectedBoxId(null);
     setNoteSaved(false);
-  }, [selectedDate, germanData, noteCategory, matchesLevel]);
+  }, [selectedDate, germanData, noteCategory, matchesLevel, selectedChapterId]);
 
   // ── Study time tracking (persisted to DB) ──
   // The timer starts when the Learning German section opens and banks the
@@ -3308,8 +3337,14 @@ export default function LearningGerman() {
         content: contentToSave.trim(),
         boxes: boxesToSave.map(({ id, ...rest }) => rest),
         level: workspaceLevel,
+        chapterId: selectedChapterId,
+        chapterTitle: selectedChapterTitle,
       };
-      if (selectedNoteId) payload.noteId = selectedNoteId;
+      if (selectedNoteId) {
+        payload.noteId = selectedNoteId;
+        const existing = notes.find(n => n.recordId === selectedNoteId);
+        if (existing?.createdAt) payload.createdAt = existing.createdAt;
+      }
       const saved = await saveGermanNote(payload);
       if (saved?.recordId) setSelectedNoteId(saved.recordId);
       setNoteSaved(true);
@@ -3918,18 +3953,32 @@ export default function LearningGerman() {
           {workspaceChapters.length === 0 ? (
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No chapters for {workspaceLevel} yet.</span>
           ) : (
-            workspaceChapters.map(c => (
-              <span key={c.recordId} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
-                background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`,
-                color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
-                border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`,
-                whiteSpace: 'nowrap',
-              }}>
-                <BookMarked size={11} /> {c.title}
-              </span>
-            ))
+            workspaceChapters.map(c => {
+              const active = selectedChapterId === c.recordId;
+              const count = notes.filter(n => n.chapterId === c.recordId).length;
+              return (
+                <button
+                  key={c.recordId}
+                  onClick={() => openChapterNotes(c)}
+                  onDoubleClick={() => openChapterNotes(c)}
+                  title={`Take notes under "${c.title}" (double-click)`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: active ? `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}32` : `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`,
+                    color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
+                    border: active ? `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}80` : `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`,
+                    boxShadow: active ? `0 0 0 2px ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25` : 'none',
+                    transition: 'all 0.15s ease',
+                  }}>
+                  <BookMarked size={11} /> {c.title}
+                  {count > 0 && (
+                    <span style={{ fontSize: '0.66rem', fontWeight: 800, background: 'rgba(0,0,0,0.28)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+                  )}
+                </button>
+              );
+            })
           )}
           <button onClick={() => setTab('chapters')} title="Manage chapters" style={{
             marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -3972,6 +4021,53 @@ export default function LearningGerman() {
               </div>
             </div>
             <div style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                Chapter
+              </label>
+              {workspaceChapters.length === 0 ? (
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>
+                  No chapters for {workspaceLevel} yet.{' '}
+                  <button onClick={() => setTab('chapters')} style={{
+                    background: 'none', border: 'none', padding: 0, color: C.gold, fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem', textDecoration: 'underline',
+                  }}>Create chapters</button>{' '}
+                  to organize your notes under them.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <button onClick={clearChapterSelection} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left', cursor: 'pointer',
+                    padding: '0.45rem 0.65rem', borderRadius: '9px', fontSize: '0.8rem', fontWeight: 600,
+                    background: !selectedChapterId ? `${C.gold}18` : 'transparent',
+                    color: !selectedChapterId ? C.gold : 'var(--text-muted)',
+                    border: `1px solid ${!selectedChapterId ? C.gold + '45' : 'transparent'}`,
+                    transition: 'all 0.15s ease',
+                  }}>
+                    <NotebookPen size={12} /> All notes
+                    <span style={{ marginLeft: 'auto', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                      {notes.filter(n => !n.chapterId).length}
+                    </span>
+                  </button>
+                  {workspaceChapters.map(c => {
+                    const active = selectedChapterId === c.recordId;
+                    const count = notes.filter(n => n.chapterId === c.recordId).length;
+                    return (
+                      <button key={c.recordId} onClick={() => openChapterNotes(c)} onDoubleClick={() => openChapterNotes(c)} title={`Double-click "${c.title}" to take notes`} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left', cursor: 'pointer',
+                        padding: '0.45rem 0.65rem', borderRadius: '9px', fontSize: '0.8rem', fontWeight: 600,
+                        background: active ? `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}22` : 'transparent',
+                        color: active ? (LEVEL_COLORS[workspaceLevel] || '#6b7280') : 'var(--text-secondary)',
+                        border: `1px solid ${active ? (LEVEL_COLORS[workspaceLevel] || '#6b7280') + '50' : 'transparent'}`,
+                        transition: 'all 0.15s ease',
+                      }}>
+                        <BookMarked size={12} /> {c.title}
+                        <span style={{ marginLeft: 'auto', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)' }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Select Date</label>
               <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
                 style={{
@@ -3982,8 +4078,8 @@ export default function LearningGerman() {
               />
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-              {filteredNotes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>No {noteCategory} notes yet.</p>}
-              {filteredNotes.map(n => {
+              {filteredNotes.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', paddingTop: '1rem' }}>{selectedChapterTitle ? `No notes for "${selectedChapterTitle}" yet.` : `No ${noteCategory} notes yet.`}</p>}
+              {filteredNotes.map((n, i) => {
                 const meta = noteCategoryMeta(n.noteCategory);
                 return (
                 <div key={n.recordId} onClick={() => {
@@ -4007,12 +4103,22 @@ export default function LearningGerman() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {selectedChapterId && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.66rem', fontWeight: 800, padding: '2px 8px', borderRadius: '20px', background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}22`, color: LEVEL_COLORS[workspaceLevel] || '#6b7280', border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`, whiteSpace: 'nowrap' }}>
+                          Note {i + 1}
+                        </span>
+                      )}
                       <span style={{ fontWeight: 700, fontSize: '0.82rem', color: selectedNoteId === n.recordId ? C.gold : 'var(--text-primary)' }}>
                         {format(new Date(n.date + 'T12:00:00'), 'EEE, MMM d yyyy')}
                       </span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.66rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}35`, whiteSpace: 'nowrap' }}>
                         <meta.icon size={10} /> {meta.title}
                       </span>
+                      {!selectedChapterId && n.chapterTitle && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.66rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`, color: LEVEL_COLORS[workspaceLevel] || '#6b7280', border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`, whiteSpace: 'nowrap' }}>
+                          <BookMarked size={10} /> {n.chapterTitle}
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                       {confirmDeleteNoteId === n.recordId ? (
@@ -4034,10 +4140,30 @@ export default function LearningGerman() {
             </div>
           </div>
           <div className="glass-card" style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.green }}>
-                {format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMMM d yyyy')}
-              </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {selectedChapterTitle ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0,
+                  padding: '0.55rem 0.85rem', borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}26, ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}0a)`,
+                  border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}50`,
+                }}>
+                  <BookMarked size={18} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280', flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                      Chapter Notes
+                    </div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: LEVEL_COLORS[workspaceLevel] || '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                      {selectedChapterTitle}
+                    </div>
+                  </div>
+                  <button onClick={clearChapterSelection} title="Clear chapter selection" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', flexShrink: 0 }}><X size={15} /></button>
+                </div>
+              ) : (
+                <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.green }}>
+                  {format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMMM d yyyy')}
+                </h3>
+              )}
               {noteSaved && <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.green, fontSize: '0.8rem', fontWeight: 700 }}><Check size={14} /> Saved!</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
@@ -4769,7 +4895,7 @@ export default function LearningGerman() {
       )}
 
       {tab === 'chapters' && (
-        <ChapterManager level={workspaceLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} modal={false} />
+        <ChapterManager level={workspaceLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} modal={false} />
       )}
 
       {tab === 'resources' && (
@@ -4921,7 +5047,7 @@ export default function LearningGerman() {
       {showWriting && <WritingPractice vocab={vocab} onClose={() => setShowWriting(false)} />}
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
       {chapterModalLevel && (
-        <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onClose={() => setChapterModalLevel(null)} modal />
+        <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onClose={() => setChapterModalLevel(null)} modal />
       )}
 
       {showDailyExportCalendar && (

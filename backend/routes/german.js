@@ -713,11 +713,11 @@ router.put('/verb/:recordId', async (req, res) => {
 // ── POST /api/german/note ─────────────────────────────────────────────────────
 router.post('/note', async (req, res) => {
   try {
-    const { date, content, noteId, boxes, noteCategory, studyMinutes, level } = req.body;
+    const { date, content, noteId, boxes, noteCategory, studyMinutes, level, chapterId, chapterTitle, createdAt } = req.body;
     if (!date || !content?.trim()) {
       return res.status(400).json({ message: 'date and content are required' });
     }
-    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes, noteCategory, studyMinutes, level: level || 'A1.1' });
+    const record = await saveNote(req.user.userId, date, { noteId, content: content.trim(), boxes, noteCategory, studyMinutes, level: level || 'A1.1', chapterId, chapterTitle, createdAt });
     res.json(record);
   } catch (err) {
     console.error('[German] POST note error:', err);

@@ -161,7 +161,9 @@ async function updateGrammar(userId, recordId, updates) {
 
 // ── Daily Notes ───────────────────────────────────────────────────────────────
 // Supports multiple notes per day. recordId: NOTE#YYYY-MM-DD#<uuid>
-async function saveNote(userId, date, { noteId, content, boxes, noteCategory, studyMinutes, level = 'A1.1' }) {
+// Notes can be attached to a chapter (chapterId + denormalized chapterTitle) so
+// they are organized under a selected study chapter while keeping their date.
+async function saveNote(userId, date, { noteId, content, boxes, noteCategory, studyMinutes, level = 'A1.1', chapterId = null, chapterTitle = '', createdAt }) {
   const recordId = noteId || `NOTE#${date}#${uuidv4()}`;
   const item = {
     userId,
@@ -173,6 +175,9 @@ async function saveNote(userId, date, { noteId, content, boxes, noteCategory, st
     noteCategory: noteCategory || 'daily',
     studyMinutes: studyMinutes ? parseInt(studyMinutes) || 0 : 0,
     level,
+    chapterId: chapterId || null,
+    chapterTitle: chapterTitle || '',
+    createdAt: createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
