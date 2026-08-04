@@ -212,11 +212,11 @@ router.post('/study', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level } = req.body;
+    const { word, translation, example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1' });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST vocab error:', err);
@@ -437,11 +437,11 @@ router.post('/note/photo', (req, res, next) => {
 // ── POST /api/german/grammar ──────────────────────────────────────────────────
 router.post('/grammar', async (req, res) => {
   try {
-    const { rule, explanation, examples, category, level, mastery, favorite, boxes } = req.body;
+    const { rule, explanation, examples, category, level, mastery, favorite, boxes, chapterId, chapterTitle } = req.body;
     if (!rule?.trim() || !explanation?.trim()) {
       return res.status(400).json({ message: 'rule and explanation are required' });
     }
-    const record = await addGrammar(req.user.userId, { rule: rule.trim(), explanation: explanation.trim(), examples, category, level, mastery, favorite, boxes });
+    const record = await addGrammar(req.user.userId, { rule: rule.trim(), explanation: explanation.trim(), examples, category, level, mastery, favorite, boxes, chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST grammar error:', err);
@@ -477,10 +477,10 @@ router.post('/translate', async (req, res) => {
 // ── POST /api/german/dialogue ─────────────────────────────────────────────
 router.post('/dialogue', async (req, res) => {
   try {
-    const { title, level, participants, exchanges, boxes } = req.body;
+    const { title, level, participants, exchanges, boxes, chapterId, chapterTitle } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
     if (!participants?.length || participants.length < 2) return res.status(400).json({ message: 'At least 2 participants required' });
-    const record = await addDialogue(req.user.userId, { title: title.trim(), level: level || 'A1.1', participants, exchanges: exchanges || [], boxes });
+    const record = await addDialogue(req.user.userId, { title: title.trim(), level: level || 'A1.1', participants, exchanges: exchanges || [], boxes, chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST dialogue error:', err);
@@ -503,7 +503,7 @@ router.put('/dialogue/:recordId', async (req, res) => {
 // ── POST /api/german/memo ──────────────────────────────────────────────────────
 router.post('/memo', async (req, res) => {
   try {
-    const { title, content, germanContent, englishContent, memoFont, boxes, level } = req.body;
+    const { title, content, germanContent, englishContent, memoFont, boxes, level, chapterId, chapterTitle } = req.body;
     if (!title?.trim() || !(content?.trim() || germanContent?.trim())) {
       return res.status(400).json({ message: 'title and content are required' });
     }
@@ -516,6 +516,8 @@ router.post('/memo', async (req, res) => {
       memoFont,
       boxes,
       level: level || 'A1.1',
+      chapterId,
+      chapterTitle,
     });
     res.status(201).json(record);
   } catch (err) {
@@ -539,11 +541,11 @@ router.put('/memo/:recordId', async (req, res) => {
 // ── POST /api/german/expression ──────────────────────────────────────────────
 router.post('/expression', async (req, res) => {
   try {
-    const { phrase, translation, category, favorite, boxes, level } = req.body;
+    const { phrase, translation, category, favorite, boxes, level, chapterId, chapterTitle } = req.body;
     if (!phrase?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'phrase and translation are required' });
     }
-    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite, boxes, level: level || 'A1.1' });
+    const record = await addExpression(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), category, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST expression error:', err);
@@ -566,11 +568,11 @@ router.put('/expression/:recordId', async (req, res) => {
 // ── POST /api/german/idiom ───────────────────────────────────────────────────
 router.post('/idiom', async (req, res) => {
   try {
-    const { phrase, translation, meaning, usage, category, favorite, level } = req.body;
+    const { phrase, translation, meaning, usage, category, favorite, level, chapterId, chapterTitle } = req.body;
     if (!phrase?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'phrase and translation are required' });
     }
-    const record = await addIdiom(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), meaning, usage, category, favorite, level: level || 'A1.1' });
+    const record = await addIdiom(req.user.userId, { phrase: phrase.trim(), translation: translation.trim(), meaning, usage, category, favorite, level: level || 'A1.1', chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST idiom error:', err);
@@ -593,11 +595,11 @@ router.put('/idiom/:recordId', async (req, res) => {
 // ── POST /api/german/mistake ─────────────────────────────────────────────────
 router.post('/mistake', async (req, res) => {
   try {
-    const { incorrect, correct, why, category, favorite, level } = req.body;
+    const { incorrect, correct, why, category, favorite, level, chapterId, chapterTitle } = req.body;
     if (!incorrect?.trim() || !correct?.trim()) {
       return res.status(400).json({ message: 'incorrect and correct are required' });
     }
-    const record = await addMistake(req.user.userId, { incorrect: incorrect.trim(), correct: correct.trim(), why, category, favorite, level: level || 'A1.1' });
+    const record = await addMistake(req.user.userId, { incorrect: incorrect.trim(), correct: correct.trim(), why, category, favorite, level: level || 'A1.1', chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST mistake error:', err);
@@ -686,11 +688,11 @@ router.delete('/alphabet/:recordId/photo', async (req, res) => {
 // ── POST /api/german/verb ──────────────────────────────────────────────────────
 router.post('/verb', async (req, res) => {
   try {
-    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level } = req.body;
+    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level, chapterId, chapterTitle } = req.body;
     if (!infinitive?.trim() || !meaning?.trim()) {
       return res.status(400).json({ message: 'infinitive and meaning are required' });
     }
-    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level: level || 'A1.1' });
+    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST verb error:', err);
@@ -728,7 +730,7 @@ router.post('/note', async (req, res) => {
 // ── POST /api/german/book → add a book being studied ─────────────────────────
 router.post('/book', async (req, res) => {
   try {
-    const { name, author, notes, photoUrl, sortOrder, level } = req.body;
+    const { name, author, notes, photoUrl, sortOrder, level, chapterId, chapterTitle } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'name is required' });
     const record = await addBook(req.user.userId, {
       name: name.trim(),
@@ -737,6 +739,8 @@ router.post('/book', async (req, res) => {
       photoUrl: photoUrl || '',
       sortOrder: sortOrder || Date.now(),
       level: level || 'A1.1',
+      chapterId,
+      chapterTitle,
     });
     res.status(201).json(record);
   } catch (err) {
@@ -798,7 +802,7 @@ router.get('/resource/info', async (req, res) => {
 // POST /api/german/resource → add a learning resource
 router.post('/resource', async (req, res) => {
   try {
-    const { url, kind, videoId, channelId, handle, title, author, thumbnail, notes, sortOrder, level } = req.body;
+    const { url, kind, videoId, channelId, handle, title, author, thumbnail, notes, sortOrder, level, chapterId, chapterTitle } = req.body;
     if (!url?.trim()) return res.status(400).json({ message: 'url is required' });
     const record = await addResource(req.user.userId, {
       url: url.trim(),
@@ -812,6 +816,8 @@ router.post('/resource', async (req, res) => {
       notes: notes || '',
       sortOrder: sortOrder || Date.now(),
       level: level || 'A1.1',
+      chapterId,
+      chapterTitle,
     });
     res.json(record);
   } catch (err) {

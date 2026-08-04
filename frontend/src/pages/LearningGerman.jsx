@@ -939,9 +939,9 @@ function ImportExport({ germanData, onImport, workspaceLevel = 'A1.1' }) {
       for (const item of data) {
         if (!item.type) { skipped++; continue; }
         try {
-          if (item.type === 'vocab') await onImport.addVocab({ word: item.word || '', translation: item.translation || '', example: item.example || '', notes: item.notes || '', category: item.category || 'General', level: item.level || workspaceLevel });
-          else if (item.type === 'grammar') await onImport.addGrammar({ rule: item.rule || '', explanation: item.explanation || '', examples: item.examples || [], category: item.category || 'General', level: item.level || workspaceLevel });
-          else if (item.type === 'note') await onImport.saveNote({ date: item.date || format(new Date(), 'yyyy-MM-dd'), content: item.content || '', level: item.level || workspaceLevel });
+          if (item.type === 'vocab') await onImport.addVocab({ word: item.word || '', translation: item.translation || '', example: item.example || '', notes: item.notes || '', category: item.category || 'General', level: item.level || workspaceLevel, chapterId: item.chapterId || null, chapterTitle: item.chapterTitle || null });
+          else if (item.type === 'grammar') await onImport.addGrammar({ rule: item.rule || '', explanation: item.explanation || '', examples: item.examples || [], category: item.category || 'General', level: item.level || workspaceLevel, chapterId: item.chapterId || null, chapterTitle: item.chapterTitle || null });
+          else if (item.type === 'note') await onImport.saveNote({ date: item.date || format(new Date(), 'yyyy-MM-dd'), content: item.content || '', level: item.level || workspaceLevel, chapterId: item.chapterId || null, chapterTitle: item.chapterTitle || null });
           else { skipped++; continue; }
           added++;
         } catch { skipped++; }
@@ -3056,27 +3056,44 @@ export default function LearningGerman() {
   const levelOf = useCallback((r) => normalizeLevel(r?.level) || currentLevel, [currentLevel]);
   const matchesLevel = useCallback((r) => levelOf(r) === workspaceLevel, [levelOf, workspaceLevel]);
 
+  // When a chapter is active, every section is scoped to it: only items tagged
+  // with that chapter are shown, and new items are saved to the chapter.
+  const matchesChapter = useCallback((r) => !selectedChapterId || r.chapterId === selectedChapterId, [selectedChapterId]);
+
+  // Adds the active chapter to a payload so a newly created item is stored
+  // under the selected chapter automatically.
+  const withChapter = (payload) => selectedChapterId
+    ? { ...payload, chapterId: selectedChapterId, chapterTitle: selectedChapterTitle }
+    : payload;
+
+  // Level-wide views used by the header stats (always reflect the whole level,
+  // even when a chapter is selected).
+  const levelVocab = useMemo(() => germanData.filter(r => r.type === 'vocab' && matchesLevel(r)), [germanData, matchesLevel]);
+  const levelGrammar = useMemo(() => germanData.filter(r => r.type === 'grammar' && matchesLevel(r)), [germanData, matchesLevel]);
+  const levelVerbs = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r)), [germanData, matchesLevel]);
+  const levelNotes = useMemo(() => germanData.filter(r => r.type === 'note' && matchesLevel(r)), [germanData, matchesLevel]);
+
   const vocab     = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'vocab' && matchesLevel(r));
+    const filtered = levelVocab.filter(matchesChapter);
     return filtered;
-  }, [germanData, matchesLevel]);
+  }, [levelVocab, matchesChapter]);
   const grammar   = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'grammar' && matchesLevel(r));
+    const filtered = levelGrammar.filter(matchesChapter);
     return filtered;
-  }, [germanData, matchesLevel]);
-  const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r)), [germanData, matchesLevel]);
+  }, [levelGrammar, matchesChapter]);
+  const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r) && matchesChapter(r)), [germanData, matchesLevel, matchesChapter]);
   const dialogues = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'dialogue' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'dialogue' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const memos = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'memo' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'memo' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const notes   = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'note' && matchesLevel(r));
+    const filtered = levelNotes;
     return [...filtered].sort((a, b) => b.date?.localeCompare(a.date));
-  }, [germanData, matchesLevel]);
+  }, [levelNotes]);
   const filteredNotes = useMemo(() => {
     const list = notes.filter(n => (n.noteCategory || 'daily') === noteCategory);
     if (selectedChapterId) {
@@ -3103,29 +3120,29 @@ export default function LearningGerman() {
     setSelectedChapterTitle('');
   };
   const expressions = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'expression' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'expression' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const idioms = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'idiom' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'idiom' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const mistakes = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'mistake' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'mistake' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const alphabets = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'alphabet' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [germanData, matchesLevel]);
   const resources = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'resource' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'resource' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const books = useMemo(() => {
-    const filtered = germanData.filter(r => r.type === 'book' && matchesLevel(r));
+    const filtered = germanData.filter(r => r.type === 'book' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
-  }, [germanData, matchesLevel]);
+  }, [germanData, matchesLevel, matchesChapter]);
   const chapters = useMemo(() => germanData.filter(r => r.type === 'chapter'), [germanData]);
   const workspaceChapters = useMemo(() => {
     return chapters
@@ -3440,7 +3457,7 @@ export default function LearningGerman() {
 
   const handleAddVocab = async (payload) => {
     setVocabSaving(true);
-    try { return await addGermanVocab(payload); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
+    try { return await addGermanVocab(withChapter(payload)); } catch (e) { setError(e.message); } finally { setVocabSaving(false); }
   };
 
   const handleUpdateVocab = async (recordId, payload) => {
@@ -3450,7 +3467,7 @@ export default function LearningGerman() {
 
   const handleAddGrammar = async (payload) => {
     setGrammarSaving(true);
-    try { await addGermanGrammar(payload); } catch (e) { setError(e.message); } finally { setGrammarSaving(false); }
+    try { await addGermanGrammar(withChapter(payload)); } catch (e) { setError(e.message); } finally { setGrammarSaving(false); }
   };
 
   const handleUpdateGrammar = async (recordId, payload) => {
@@ -3460,7 +3477,7 @@ export default function LearningGerman() {
 
   const handleAddVerb = async (payload) => {
     setVerbSaving(true);
-    try { await addGermanVerb({ ...payload, level: workspaceLevel }); } catch (e) { setError(e.message); } finally { setVerbSaving(false); }
+    try { await addGermanVerb({ ...withChapter(payload), level: workspaceLevel }); } catch (e) { setError(e.message); } finally { setVerbSaving(false); }
   };
 
   const handleUpdateVerb = async (recordId, payload) => {
@@ -3596,7 +3613,7 @@ export default function LearningGerman() {
   // ── Dialogue handlers ─────────────────────────────────────────────────────
   const handleAddDialogue = async (payload) => {
     setDialogueSaving(true);
-    try { const created = await addGermanDialogue({ ...payload, level: workspaceLevel }); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
+    try { const created = await addGermanDialogue({ ...withChapter(payload), level: workspaceLevel }); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
   };
 
   const handleUpdateDialogue = async (recordId, payload) => {
@@ -3637,7 +3654,7 @@ export default function LearningGerman() {
   // ── Memo handlers ──────────────────────────────────────────────────────────
   const handleAddMemo = async (payload) => {
     setMemoSaving(true);
-    try { const created = await addGermanMemo({ ...payload, level: workspaceLevel }); setEditMemo(null); return created; } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
+    try { const created = await addGermanMemo({ ...withChapter(payload), level: workspaceLevel }); setEditMemo(null); return created; } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
   };
 
   const handleUpdateMemo = async (recordId, payload) => {
@@ -3720,9 +3737,9 @@ export default function LearningGerman() {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(130px, 1fr))', gap: isMobile ? '0.5rem' : '0.75rem', marginTop: '1.25rem' }}>
-          <StatCard value={vocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} />
-          <StatCard value={grammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
-          <StatCard value={notes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} />
+          <StatCard value={levelVocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} />
+          <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
+          <StatCard value={levelNotes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} />
           <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} />
           <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
         </div>
@@ -3774,6 +3791,17 @@ export default function LearningGerman() {
         }}>
           <BookMarked size={15} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280', flexShrink: 0 }} />
           <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Chapters</span>
+          {selectedChapterId && (
+            <button onClick={clearChapterSelection} title="Show all chapters (clear chapter filter)" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
+              cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+              background: 'rgba(0,0,0,0.18)', color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
+            }}>
+              <X size={11} /> All
+            </button>
+          )}
           {workspaceChapters.length === 0 ? (
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No chapters for {workspaceLevel} yet.</span>
           ) : (
@@ -4872,19 +4900,19 @@ export default function LearningGerman() {
 
       {tab === 'expressions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <ExpressionForm onAdd={(p) => addGermanExpression({ ...p, level: workspaceLevel })} onUpdate={updateGermanExpression} onDelete={deleteGermanRecord} isMobile={isMobile} expressions={expressions} />
+          <ExpressionForm onAdd={(p) => addGermanExpression({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanExpression} onDelete={deleteGermanRecord} isMobile={isMobile} expressions={expressions} />
         </div>
       )}
 
       {tab === 'idioms' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <IdiomForm onAdd={(p) => addGermanIdiom({ ...p, level: workspaceLevel })} onUpdate={updateGermanIdiom} onDelete={deleteGermanRecord} isMobile={isMobile} idioms={idioms} />
+          <IdiomForm onAdd={(p) => addGermanIdiom({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanIdiom} onDelete={deleteGermanRecord} isMobile={isMobile} idioms={idioms} />
         </div>
       )}
 
       {tab === 'mistakes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <MistakeForm onAdd={(p) => addGermanMistake({ ...p, level: workspaceLevel })} onUpdate={updateGermanMistake} onDelete={deleteGermanRecord} isMobile={isMobile} mistakes={mistakes} />
+          <MistakeForm onAdd={(p) => addGermanMistake({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanMistake} onDelete={deleteGermanRecord} isMobile={isMobile} mistakes={mistakes} />
         </div>
       )}
 
@@ -4900,18 +4928,18 @@ export default function LearningGerman() {
 
       {tab === 'resources' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <BooksForm onAdd={(p) => addGermanBook({ ...p, level: workspaceLevel })} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
-          <ResourcesForm onAdd={(p) => addGermanResource({ ...p, level: workspaceLevel })} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
+          <BooksForm onAdd={(p) => addGermanBook({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
+          <ResourcesForm onAdd={(p) => addGermanResource({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
         </div>
       )}
 
       {tab === 'progress' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
-            <StatCard value={vocab.length}   label="Total Words"      color={C.gold}   icon={BookOpen} />
-            <StatCard value={grammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
-            <StatCard value={verbs.length}   label="Verbs"            color={C.purple} icon={PenTool} />
-            <StatCard value={notes.length}   label="Study Sessions"   color={C.green}  icon={FileText} />
+            <StatCard value={levelVocab.length}   label="Total Words"      color={C.gold}   icon={BookOpen} />
+            <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
+            <StatCard value={levelVerbs.length}   label="Verbs"            color={C.purple} icon={PenTool} />
+            <StatCard value={levelNotes.length}   label="Study Sessions"   color={C.green}  icon={FileText} />
           <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
           </div>
 
@@ -4984,15 +5012,15 @@ export default function LearningGerman() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
             <StreakCalendar notes={notes} />
           </div>
-          {vocab.length > 0 && (() => {
+          {levelVocab.length > 0 && (() => {
             const cats = {};
-            vocab.forEach(v => { const c = v.category || 'General'; cats[c] = (cats[c] || 0) + 1; });
+            levelVocab.forEach(v => { const c = v.category || 'General'; cats[c] = (cats[c] || 0) + 1; });
             return (
               <div className="glass-card" style={{ padding: '1.25rem' }}>
                 <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: C.gold }}>Vocabulary by Category</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {Object.entries(cats).sort(([, a], [, b]) => b - a).map(([cat, count]) => {
-                    const pct = Math.round((count / vocab.length) * 100);
+                    const pct = Math.round((count / levelVocab.length) * 100);
                     return (
                       <div key={cat}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
