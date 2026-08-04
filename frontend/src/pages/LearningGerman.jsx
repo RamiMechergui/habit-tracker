@@ -3764,6 +3764,57 @@ export default function LearningGerman() {
         </div>
       </div>
 
+      {tab !== 'progress' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+          padding: '0.6rem 0.8rem', marginBottom: '1.25rem',
+          background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}0d`,
+          border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25`,
+          borderRadius: '12px',
+        }}>
+          <BookMarked size={15} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Chapters</span>
+          {workspaceChapters.length === 0 ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No chapters for {workspaceLevel} yet.</span>
+          ) : (
+            workspaceChapters.map(c => {
+              const active = selectedChapterId === c.recordId;
+              const count = notes.filter(n => n.chapterId === c.recordId).length;
+              return (
+                <button
+                  key={c.recordId}
+                  onClick={() => openChapterNotes(c)}
+                  onDoubleClick={() => openChapterNotes(c)}
+                  title={`Take notes under "${c.title}" (double-click)`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: active ? `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}32` : `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`,
+                    color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
+                    border: active ? `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}80` : `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`,
+                    boxShadow: active ? `0 0 0 2px ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25` : 'none',
+                    transition: 'all 0.15s ease',
+                  }}>
+                  <BookMarked size={11} /> {c.title}
+                  {count > 0 && (
+                    <span style={{ fontSize: '0.66rem', fontWeight: 800, background: 'rgba(0,0,0,0.28)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+                  )}
+                </button>
+              );
+            })
+          )}
+          <button onClick={() => setTab('chapters')} title="Manage chapters" style={{
+            marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+            background: 'transparent', border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`,
+            color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
+          }}>
+            <Plus size={12} /> Manage
+          </button>
+        </div>
+      )}
+
       <div style={{
         display: 'flex', gap: '0.4rem', flexWrap: 'wrap',
         background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -3939,57 +3990,6 @@ export default function LearningGerman() {
           </>
         )}
       </div>
-
-      {tab !== 'progress' && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
-          padding: '0.6rem 0.8rem', marginBottom: '1.25rem',
-          background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}0d`,
-          border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25`,
-          borderRadius: '12px',
-        }}>
-          <BookMarked size={15} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280', flexShrink: 0 }} />
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Chapters</span>
-          {workspaceChapters.length === 0 ? (
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No chapters for {workspaceLevel} yet.</span>
-          ) : (
-            workspaceChapters.map(c => {
-              const active = selectedChapterId === c.recordId;
-              const count = notes.filter(n => n.chapterId === c.recordId).length;
-              return (
-                <button
-                  key={c.recordId}
-                  onClick={() => openChapterNotes(c)}
-                  onDoubleClick={() => openChapterNotes(c)}
-                  title={`Take notes under "${c.title}" (double-click)`}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                    background: active ? `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}32` : `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`,
-                    color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
-                    border: active ? `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}80` : `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`,
-                    boxShadow: active ? `0 0 0 2px ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25` : 'none',
-                    transition: 'all 0.15s ease',
-                  }}>
-                  <BookMarked size={11} /> {c.title}
-                  {count > 0 && (
-                    <span style={{ fontSize: '0.66rem', fontWeight: 800, background: 'rgba(0,0,0,0.28)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
-                  )}
-                </button>
-              );
-            })
-          )}
-          <button onClick={() => setTab('chapters')} title="Manage chapters" style={{
-            marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
-            background: 'transparent', border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`,
-            color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
-          }}>
-            <Plus size={12} /> Manage
-          </button>
-        </div>
-      )}
 
       {tab === 'notes' && (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: '1.25rem' }}>
