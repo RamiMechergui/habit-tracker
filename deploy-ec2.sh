@@ -99,6 +99,10 @@ sudo chown -R www-data:www-data "$WEB_ROOT" 2>/dev/null || \
   sudo chown -R nginx:nginx "$WEB_ROOT" 2>/dev/null || \
   sudo chmod -R 755 "$WEB_ROOT"
 
+# Copy Nginx config (ensures timeout changes are applied)
+info "Updating Nginx config..."
+sudo cp "$APP_DIR/nginx.ec2.conf" /etc/nginx/sites-available/EVOLVIO
+
 # Reload Nginx (zero-downtime — tests config first)
 if sudo nginx -t 2>/dev/null; then
   sudo systemctl reload nginx
@@ -112,14 +116,23 @@ info "Step 5/5 — Restarting backend (PM2)..."
 cd "$APP_DIR"
 
 if pm2 show "$PM2_APP_NAME" &>/dev/null; then
-  # Process already registered — reload it (zero-downtime rolling restart)
-  pm2 reload "$PM2_APP_NAME" --update-env
-  success "PM2 process '${PM2_APP_NAME}' reloaded"
-else
-  # First deploy — start fresh from ecosystem config
-  pm2 start ecosystem.config.js --env production
-  success "PM2 process '${PM2_APP_NAME}' started"
+  # Stop the old process first to avoid port conflicts
+  pm2 delete "$PM2_APP_NAME" 2>/dev/null || true
 fi
+
+# Always start fresh from ecosystem config (avoids stale config issues)
+pm2 start ecosystem.config.js --env production
+success "PM2 process '${PM2_APP_NAME}' started"
+
+# Wait for the server to be ready
+info "Waiting for backend to be ready..."
+for i in $(seq 1 30); do
+  if curl -s http://127.0.0.1:5001/api/settings >/dev/null 2>&1; then
+    success "Backend is responding"
+    break
+  fi
+  sleep 1
+done
 
 # Persist PM2 process list so it survives reboots
 pm2 save --force
