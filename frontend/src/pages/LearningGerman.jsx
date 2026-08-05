@@ -5334,7 +5334,7 @@ export default function LearningGerman() {
 
       {tab === 'resources' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <BooksForm onAdd={(p) => addGermanBook({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
+          <BooksForm onAdd={(p, photoFile) => addGermanBook({ ...withChapter(p), level: workspaceLevel }, photoFile)} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
           <ResourcesForm onAdd={(p) => addGermanResource({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
         </div>
       )}
