@@ -879,6 +879,7 @@ async function exportReportToPdf(records, opts = {}) {
 
   const launchOptions = {
     headless: 'new',
+    protocolTimeout: 300000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   };
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
@@ -888,7 +889,10 @@ async function exportReportToPdf(records, opts = {}) {
   const browser = await puppeteer.launch(launchOptions);
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, {
+      waitUntil: 'load',
+      timeout: 120000,
+    });
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,

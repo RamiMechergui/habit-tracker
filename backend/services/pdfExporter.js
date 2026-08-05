@@ -221,6 +221,7 @@ async function exportToPdf(opts) {
 
   const launchOptions = {
     headless: 'new',
+    protocolTimeout: 300000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   };
   // In Docker (Alpine), PUPPETEER_EXECUTABLE_PATH points to system Chromium
@@ -232,7 +233,7 @@ async function exportToPdf(opts) {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { waitUntil: 'load', timeout: 120000 });
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
