@@ -11,7 +11,7 @@ import {
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, Pause, Settings2, ExternalLink, Loader2, BookMarked,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, Pause, Settings2, ExternalLink, Loader2, BookMarked, Sparkles,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -2386,6 +2386,16 @@ function MistakeForm({ onAdd, onUpdate, onDelete, _isMobile, mistakes }) {
   );
 }
 
+const SPECIAL_CHARS = [
+  { letter: 'ä', example: 'Apfel', pronunciation: 'ah' },
+  { letter: 'ö', example: 'öffnen', pronunciation: 'uh-fnen' },
+  { letter: 'ü', example: 'über', pronunciation: 'oo-ber' },
+  { letter: 'ß', example: 'Straße', pronunciation: 'shtrah-se' },
+  { letter: 'Ä', example: 'Ärger', pronunciation: 'air-ger' },
+  { letter: 'Ö', example: 'Öl', pronunciation: 'uhl' },
+  { letter: 'Ü', example: 'Übung', pronunciation: 'oo-boong' },
+];
+
 function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets }) {
   const [letter, setLetter] = useState('');
   const [example, setExample] = useState('');
@@ -2402,6 +2412,8 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [newPhoto, setNewPhoto] = useState(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState('');
   const addFileRef = useRef(null);
+  const [subTab, setSubTab] = useState('letters');
+  const [addingSpecialId, setAddingSpecialId] = useState(null);
 
   const handleAdd = async () => {
     if (letter.trim().length !== 1 || !example.trim()) return;
@@ -2456,6 +2468,40 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     });
   }, [alphabets]);
 
+  const addedLetters = useMemo(() => {
+    return new Set(alphabets.map(a => a.letter));
+  }, [alphabets]);
+
+  const specialChars = useMemo(() => {
+    return SPECIAL_CHARS.map(sc => ({
+      ...sc,
+      added: addedLetters.has(sc.letter),
+    }));
+  }, [addedLetters]);
+
+  const handleAddSpecial = async (sc) => {
+    if (addedLetters.has(sc.letter)) return;
+    setAddingSpecialId(sc.letter);
+    try {
+      await onAdd({
+        type: 'alphabet',
+        letter: sc.letter,
+        example: sc.example,
+        pronunciation: sc.pronunciation,
+        photoUrl: '',
+        sortOrder: alphabets.length + SPECIAL_CHARS.findIndex(s => s.letter === sc.letter),
+      });
+    } catch (e) { console.error(e); }
+    finally { setAddingSpecialId(null); }
+  };
+
+  const handleAddAllSpecial = async () => {
+    const toAdd = SPECIAL_CHARS.filter(sc => !addedLetters.has(sc.letter));
+    for (const sc of toAdd) {
+      await handleAddSpecial(sc);
+    }
+  };
+
   const inputStyle = {
     padding: '0.6rem 0.75rem',
     borderRadius: '8px',
@@ -2473,19 +2519,48 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
           <BookA size={20} style={{ color: C.blue }} /> German Alphabets ({alphabets.length})
         </h3>
-        <button onClick={() => setShowAdd(!showAdd)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.blue}, #2563eb)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
-          {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Alphabet'}
+      </div>
+
+      {/* Sub-tab selector */}
+      <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.35rem' }}>
+        <button onClick={() => setSubTab('letters')} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+          padding: '0.55rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
+          background: subTab === 'letters' ? `linear-gradient(135deg, ${C.blue}, #2563eb)` : 'transparent',
+          color: subTab === 'letters' ? '#fff' : 'var(--text-muted)',
+          fontWeight: subTab === 'letters' ? 700 : 600, fontSize: '0.82rem',
+          transition: 'all 0.2s',
+        }}>
+          <BookA size={15} /> Regular Letters
+        </button>
+        <button onClick={() => setSubTab('special')} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+          padding: '0.55rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
+          background: subTab === 'special' ? `linear-gradient(135deg, ${C.gold}, #d97706)` : 'transparent',
+          color: subTab === 'special' ? '#fff' : 'var(--text-muted)',
+          fontWeight: subTab === 'special' ? 700 : 600, fontSize: '0.82rem',
+          transition: 'all 0.2s',
+        }}>
+          <Sparkles size={15} /> Special Characters
         </button>
       </div>
 
-      {sorted.length === 0 && !showAdd && (
+      {subTab === 'letters' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={() => setShowAdd(!showAdd)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.blue}, #2563eb)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+            {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Alphabet'}
+          </button>
+        </div>
+      )}
+
+      {subTab === 'letters' && sorted.length === 0 && !showAdd && (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <BookA size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
           <p style={{ fontSize: '0.9rem', margin: 0 }}>No alphabets added yet. Add your first German alphabet!</p>
         </div>
       )}
 
-      {(sorted.length > 0 || showAdd) && (
+      {subTab === 'letters' && (sorted.length > 0 || showAdd) && (
         <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2606,6 +2681,66 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {subTab === 'special' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                <Sparkles size={20} style={{ color: C.gold }} /> Special Characters (Umlaute)
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                German umlauts and special characters — {specialChars.filter(s => s.added).length}/{SPECIAL_CHARS.length} added
+              </p>
+            </div>
+            {specialChars.some(s => !s.added) && (
+              <button onClick={handleAddAllSpecial} style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
+                background: `linear-gradient(135deg, ${C.gold}, #d97706)`,
+                color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+              }}>
+                <Plus size={14} /> Add All Missing
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem' }}>
+            {specialChars.map((sc) => (
+              <div key={sc.letter} style={{
+                background: 'var(--bg-card)', border: `1px solid ${sc.added ? C.green + '40' : 'var(--border)'}`,
+                borderRadius: '14px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem',
+                transition: 'all 0.2s',
+                opacity: sc.added ? 0.7 : 1,
+              }}>
+                <span style={{
+                  fontSize: '2.5rem', fontWeight: 900,
+                  color: sc.added ? C.green : C.gold,
+                  lineHeight: 1,
+                }}>{sc.letter}</span>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.example}</div>
+                  <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.pronunciation}</div>
+                </div>
+                <button
+                  onClick={() => !sc.added && handleAddSpecial(sc)}
+                  disabled={sc.added || addingSpecialId === sc.letter}
+                  style={{
+                    padding: '0.4rem 1rem', borderRadius: '8px', border: 'none',
+                    background: sc.added ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, #d97706)`,
+                    color: sc.added ? C.green : '#fff',
+                    fontWeight: 700, fontSize: '0.78rem', cursor: sc.added ? 'default' : 'pointer',
+                    opacity: sc.added ? 0.7 : 1,
+                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                  }}
+                >
+                  {sc.added ? '✓ Added' : addingSpecialId === sc.letter ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
