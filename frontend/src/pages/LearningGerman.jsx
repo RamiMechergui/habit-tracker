@@ -2387,22 +2387,24 @@ function MistakeForm({ onAdd, onUpdate, onDelete, _isMobile, mistakes }) {
 }
 
 const SPECIAL_CHARS = [
-  { letter: 'ä', example: 'Apfel', pronunciation: 'ah' },
-  { letter: 'ö', example: 'öffnen', pronunciation: 'uh-fnen' },
-  { letter: 'ü', example: 'über', pronunciation: 'oo-ber' },
-  { letter: 'ß', example: 'Straße', pronunciation: 'shtrah-se' },
-  { letter: 'Ä', example: 'Ärger', pronunciation: 'air-ger' },
-  { letter: 'Ö', example: 'Öl', pronunciation: 'uhl' },
-  { letter: 'Ü', example: 'Übung', pronunciation: 'oo-boong' },
+  { letter: 'ä', example: 'Apfel', english: 'Apple', pronunciation: 'ah' },
+  { letter: 'ö', example: 'öffnen', english: 'to open', pronunciation: 'uh-fnen' },
+  { letter: 'ü', example: 'über', english: 'over', pronunciation: 'oo-ber' },
+  { letter: 'ß', example: 'Straße', english: 'Street', pronunciation: 'shtrah-se' },
+  { letter: 'Ä', example: 'Ärger', english: 'Anger', pronunciation: 'air-ger' },
+  { letter: 'Ö', example: 'Öl', english: 'Oil', pronunciation: 'uhl' },
+  { letter: 'Ü', example: 'Übung', english: 'Exercise', pronunciation: 'oo-boong' },
 ];
 
 function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets }) {
   const [letter, setLetter] = useState('');
   const [example, setExample] = useState('');
+  const [english, setEnglish] = useState('');
   const [pronunciation, setPronunciation] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editLetter, setEditLetter] = useState('');
   const [editExample, setEditExample] = useState('');
+  const [editEnglish, setEditEnglish] = useState('');
   const [editPronunciation, setEditPronunciation] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [uploadingId, setUploadingId] = useState(null);
@@ -2416,6 +2418,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [addingSpecialId, setAddingSpecialId] = useState(null);
   const [editSpecialId, setEditSpecialId] = useState(null);
   const [editSpecialExample, setEditSpecialExample] = useState('');
+  const [editSpecialEnglish, setEditSpecialEnglish] = useState('');
   const [editSpecialPronunciation, setEditSpecialPronunciation] = useState('');
   const [uploadingSpecialId, setUploadingSpecialId] = useState(null);
   const [pendingSpecialUploadId, setPendingSpecialUploadId] = useState(null);
@@ -2427,6 +2430,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       type: 'alphabet',
       letter: letter.trim(),
       example: example.trim(),
+      english: english.trim(),
       pronunciation: pronunciation.trim(),
       photoUrl: '',
       sortOrder: alphabets.length,
@@ -2436,6 +2440,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     }
     setLetter('');
     setExample('');
+    setEnglish('');
     setPronunciation('');
     setNewPhoto(null);
     setNewPhotoPreview('');
@@ -2446,6 +2451,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setEditingId(a.recordId);
     setEditLetter(a.letter);
     setEditExample(a.example);
+    setEditEnglish(a.english || '');
     setEditPronunciation(a.pronunciation || '');
   };
 
@@ -2454,6 +2460,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     await onUpdate(recordId, {
       letter: editLetter.trim(),
       example: editExample.trim(),
+      english: editEnglish.trim(),
       pronunciation: editPronunciation.trim(),
     });
     setEditingId(null);
@@ -2495,6 +2502,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         recordId: record?.recordId || null,
         photoUrl: record?.photoUrl || '',
         dbExample: record?.example || sc.example,
+        dbEnglish: record?.english || sc.english,
         dbPronunciation: record?.pronunciation || sc.pronunciation,
       };
     });
@@ -2508,6 +2516,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         type: 'alphabet',
         letter: sc.letter,
         example: sc.example,
+        english: sc.english,
         pronunciation: sc.pronunciation,
         photoUrl: '',
         sortOrder: alphabets.length + SPECIAL_CHARS.findIndex(s => s.letter === sc.letter),
@@ -2526,6 +2535,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const startEditSpecial = (sc) => {
     setEditSpecialId(sc.recordId);
     setEditSpecialExample(sc.dbExample);
+    setEditSpecialEnglish(sc.dbEnglish);
     setEditSpecialPronunciation(sc.dbPronunciation);
   };
 
@@ -2533,6 +2543,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     if (!editSpecialExample.trim()) return;
     await onUpdate(recordId, {
       example: editSpecialExample.trim(),
+      english: editSpecialEnglish.trim(),
       pronunciation: editSpecialPronunciation.trim(),
     });
     setEditSpecialId(null);
@@ -2609,7 +2620,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Photo', 'Letter', 'Example Word', 'Pronunciation', ''].map(h => (
+                  {['Photo', 'Letter', 'Example Word', 'English', 'Pronunciation', ''].map(h => (
                     <th key={h} style={{ padding: '0.7rem 1rem', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', background: 'var(--bg)', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -2641,7 +2652,10 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       <input value={letter} onChange={e => setLetter(e.target.value)} placeholder="A" maxLength={1} style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', width: 60 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
-                      <input value={example} onChange={e => setExample(e.target.value)} placeholder="Apfel (Apple)" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                      <input value={example} onChange={e => setExample(e.target.value)} placeholder="Apfel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      <input value={english} onChange={e => setEnglish(e.target.value)} placeholder="Apple" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
                       <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
@@ -2690,6 +2704,13 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                         <input value={editExample} onChange={e => setEditExample(e.target.value)} style={{ ...inputStyle }} />
                       ) : (
                         <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{a.example}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
+                      {editingId === a.recordId ? (
+                        <input value={editEnglish} onChange={e => setEditEnglish(e.target.value)} placeholder="English" style={{ ...inputStyle }} />
+                      ) : (
+                        <span style={{ fontSize: '0.9rem', color: C.teal }}>{a.english || '—'}</span>
                       )}
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
@@ -2808,6 +2829,10 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       <input value={editSpecialExample} onChange={e => setEditSpecialExample(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
                     </div>
                     <div>
+                      <label style={{ fontSize: '0.68rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>English Translation</label>
+                      <input value={editSpecialEnglish} onChange={e => setEditSpecialEnglish(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
+                    </div>
+                    <div>
                       <label style={{ fontSize: '0.68rem', color: C.gold, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pronunciation</label>
                       <input value={editSpecialPronunciation} onChange={e => setEditSpecialPronunciation(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
                     </div>
@@ -2830,6 +2855,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                   <>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.dbExample}</div>
+                      <div style={{ fontSize: '0.78rem', color: C.teal, fontWeight: 500 }}>{sc.dbEnglish}</div>
                       <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.dbPronunciation || '—'}</div>
                     </div>
                     {sc.added ? (
