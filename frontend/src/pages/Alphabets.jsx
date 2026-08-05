@@ -54,6 +54,12 @@ export default function Alphabets() {
   const addFileRef = useRef(null);
   const [subTab, setSubTab] = useState('letters');
   const [addingSpecialId, setAddingSpecialId] = useState(null);
+  const [editSpecialId, setEditSpecialId] = useState(null);
+  const [editSpecialExample, setEditSpecialExample] = useState('');
+  const [editSpecialPronunciation, setEditSpecialPronunciation] = useState('');
+  const [uploadingSpecialId, setUploadingSpecialId] = useState(null);
+  const [pendingSpecialUploadId, setPendingSpecialUploadId] = useState(null);
+  const specialFileRef = useRef(null);
 
   useEffect(() => { fetchGermanData(); }, []);
 
@@ -70,12 +76,27 @@ export default function Alphabets() {
     return new Set(alphabets.map(a => a.letter));
   }, [alphabets]);
 
+  const alphabetByLetter = useMemo(() => {
+    const map = {};
+    for (const a of alphabets) {
+      map[a.letter] = a;
+    }
+    return map;
+  }, [alphabets]);
+
   const specialChars = useMemo(() => {
-    return SPECIAL_CHARS.map(sc => ({
-      ...sc,
-      added: addedLetters.has(sc.letter),
-    }));
-  }, [addedLetters]);
+    return SPECIAL_CHARS.map(sc => {
+      const record = alphabetByLetter[sc.letter];
+      return {
+        ...sc,
+        added: !!record,
+        recordId: record?.recordId || null,
+        photoUrl: record?.photoUrl || '',
+        dbExample: record?.example || sc.example,
+        dbPronunciation: record?.pronunciation || sc.pronunciation,
+      };
+    });
+  }, [alphabetByLetter]);
 
   const handleAdd = async () => {
     if (letter.trim().length !== 1 || !example.trim()) return;
@@ -114,6 +135,28 @@ export default function Alphabets() {
     for (const sc of toAdd) {
       await handleAddSpecial(sc);
     }
+  };
+
+  const startEditSpecial = (sc) => {
+    setEditSpecialId(sc.recordId);
+    setEditSpecialExample(sc.dbExample);
+    setEditSpecialPronunciation(sc.dbPronunciation);
+  };
+
+  const saveEditSpecial = async (recordId) => {
+    if (!editSpecialExample.trim()) return;
+    await updateGermanAlphabet(recordId, {
+      example: editSpecialExample.trim(),
+      pronunciation: editSpecialPronunciation.trim(),
+    });
+    setEditSpecialId(null);
+  };
+
+  const handleSpecialPhotoUpload = async (recordId, file) => {
+    if (!file) return;
+    setUploadingSpecialId(recordId);
+    try { await uploadGermanAlphabetPhoto(recordId, file); } catch (e) { console.error(e); }
+    finally { setUploadingSpecialId(null); }
   };
 
   const startEdit = (a) => {
@@ -396,49 +439,145 @@ export default function Alphabets() {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.85rem' }}>
             {specialChars.map((sc) => (
               <div key={sc.letter} style={{
                 background: 'var(--bg-card)', border: `1px solid ${sc.added ? C.green + '40' : 'var(--border)'}`,
                 borderRadius: '14px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem',
                 transition: 'all 0.2s',
-                opacity: sc.added ? 0.7 : 1,
               }}>
-                <span style={{
-                  fontSize: '2.5rem', fontWeight: 900,
-                  color: sc.added ? C.green : C.gold,
-                  lineHeight: 1,
-                }}>{sc.letter}</span>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.example}</div>
-                  <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.pronunciation}</div>
-                </div>
-                <button
-                  onClick={() => !sc.added && handleAddSpecial(sc)}
-                  disabled={sc.added || addingSpecialId === sc.letter}
+                {/* Photo area */}
+                <div
                   style={{
-                    padding: '0.4rem 1rem', borderRadius: '8px', border: 'none',
-                    background: sc.added ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, #d97706)`,
-                    color: sc.added ? C.green : '#fff',
-                    fontWeight: 700, fontSize: '0.78rem', cursor: sc.added ? 'default' : 'pointer',
-                    opacity: sc.added ? 0.7 : 1,
-                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                    position: 'relative', width: 72, height: 72, borderRadius: '12px',
+                    overflow: 'hidden', border: `2px dashed ${sc.photoUrl ? 'transparent' : C.gold + '40'}`,
+                    background: sc.photoUrl ? 'none' : `${C.gold}10`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: sc.added ? 'pointer' : 'default', flexShrink: 0,
                   }}
-                >
-                  {sc.added ? '✓ Added' : addingSpecialId === sc.letter ? 'Adding...' : 'Add'}
-                </button>
+                  onClick={() => {
+                    if (sc.added && sc.recordId) {
+                      setPendingSpecialUploadId(sc.recordId);
+                      specialFileRef.current?.click();
+                    }
+                  }}
+                  title={sc.added ? 'Click to upload photo' : ''}>
+                  {sc.photoUrl ? (
+                    <img src={sc.photoUrl} alt={sc.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: '2.2rem', fontWeight: 900, color: sc.added ? C.green : C.gold, lineHeight: 1 }}>{sc.letter}</span>
+                  )}
+                  {sc.photoUrl && (
+                    <span style={{
+                      position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
+                      fontSize: '1.8rem', fontWeight: 900, color: '#fff',
+                      textShadow: '0 2px 8px rgba(0,0,0,0.6)', lineHeight: 1,
+                    }}>{sc.letter}</span>
+                  )}
+                  {uploadingSpecialId === sc.recordId && (
+                    <div style={{
+                      position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        border: '2px solid #fff', borderTopColor: 'transparent',
+                        animation: 'evolvio-spin 0.8s linear infinite',
+                      }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info / Edit mode */}
+                {editSpecialId === sc.recordId ? (
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.68rem', color: C.green, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Example Word</label>
+                      <input value={editSpecialExample} onChange={e => setEditSpecialExample(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.68rem', color: C.gold, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pronunciation</label>
+                      <input value={editSpecialPronunciation} onChange={e => setEditSpecialPronunciation(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <button onClick={() => setEditSpecialId(null)} style={{
+                        flex: 1, padding: '0.35rem', borderRadius: '6px',
+                        border: `1px solid ${C.border}`, background: 'var(--bg)',
+                        color: 'var(--text-secondary)', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600,
+                      }}>Cancel</button>
+                      <button onClick={() => saveEditSpecial(sc.recordId)} disabled={!editSpecialExample.trim()} style={{
+                        flex: 1, padding: '0.35rem', borderRadius: '6px', border: 'none',
+                        background: !editSpecialExample.trim() ? 'var(--bg)' : C.green,
+                        color: !editSpecialExample.trim() ? 'var(--text-muted)' : '#fff',
+                        fontSize: '0.72rem', cursor: !editSpecialExample.trim() ? 'not-allowed' : 'pointer',
+                        fontWeight: 700, opacity: !editSpecialExample.trim() ? 0.5 : 1,
+                      }}>Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.dbExample}</div>
+                      <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.dbPronunciation || '—'}</div>
+                    </div>
+                    {sc.added ? (
+                      <div style={{ display: 'flex', gap: '0.3rem', width: '100%' }}>
+                        <button onClick={() => startEditSpecial(sc)} style={{
+                          flex: 1, padding: '0.35rem', borderRadius: '6px', border: 'none',
+                          background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          gap: '0.25rem', color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600,
+                        }} title="Edit"><Edit3 size={12} /> Edit</button>
+                        <button onClick={() => { setPendingSpecialUploadId(sc.recordId); specialFileRef.current?.click(); }} style={{
+                          flex: 1, padding: '0.35rem', borderRadius: '6px', border: 'none',
+                          background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          gap: '0.25rem', color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600,
+                        }} title="Upload photo"><Camera size={12} /> Photo</button>
+                        <button onClick={async () => {
+                          if (confirm(`Delete "${sc.letter}" from your alphabet?`)) {
+                            await deleteGermanRecord(sc.recordId);
+                          }
+                        }} style={{
+                          padding: '0.35rem 0.5rem', borderRadius: '6px', border: 'none',
+                          background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                          color: C.red, fontSize: '0.72rem', fontWeight: 600,
+                        }} title="Delete"><Trash2 size={12} /></button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleAddSpecial(sc)}
+                        disabled={addingSpecialId === sc.letter}
+                        style={{
+                          padding: '0.4rem 1rem', borderRadius: '8px', border: 'none',
+                          background: `linear-gradient(135deg, ${C.gold}, #d97706)`,
+                          color: '#fff', fontWeight: 700, fontSize: '0.78rem',
+                          cursor: addingSpecialId === sc.letter ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '0.3rem', width: '100%', justifyContent: 'center',
+                        }}
+                      >
+                        {addingSpecialId === sc.letter ? 'Adding...' : 'Add'}
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Hidden file input for photo upload */}
+      {/* Hidden file input for regular photo upload */}
       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
         const file = e.target.files?.[0];
         if (file && pendingUploadId) await handlePhotoUpload(pendingUploadId, file);
         e.target.value = '';
         setPendingUploadId(null);
+      }} />
+      {/* Hidden file input for special character photo upload */}
+      <input ref={specialFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+        const file = e.target.files?.[0];
+        if (file && pendingSpecialUploadId) await handleSpecialPhotoUpload(pendingSpecialUploadId, file);
+        e.target.value = '';
+        setPendingSpecialUploadId(null);
       }} />
     </div>
   );
