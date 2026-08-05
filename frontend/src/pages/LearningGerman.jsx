@@ -2958,7 +2958,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
-    germanProgress, fetchGermanProgress, advanceGermanLevel,
+    germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
   } = useHabits();
 
@@ -4973,9 +4973,39 @@ export default function LearningGerman() {
             background: 'var(--bg-card)', border: '1px solid var(--border)',
             borderRadius: '16px', padding: '1.25rem',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Level Progression</h3>
-              <LevelBadge level={currentLevel} size="md" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {(() => {
+                  const prevLevel = ALL_LEVELS[ALL_LEVELS.indexOf(currentLevel) - 1];
+                  return ALL_LEVELS.indexOf(currentLevel) > 0 && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await setGermanLevel(prevLevel);
+                          changeWorkspace(prevLevel);
+                          setError(null);
+                        } catch (err) {
+                          setError(err.message);
+                        }
+                      }}
+                      title={`Return to previous level (${prevLevel})`}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '5px 12px', borderRadius: '20px', border: '1px solid var(--border)',
+                        background: 'var(--bg)', color: 'var(--text-muted)',
+                        fontWeight: 600, fontSize: '0.72rem', cursor: 'pointer',
+                        transition: 'all 0.18s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = `${LEVEL_COLORS[currentLevel] || '#6b7280'}50`; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                    >
+                      <ArrowUp size={13} style={{ transform: 'rotate(180deg)' }} /> Previous Level
+                    </button>
+                  );
+                })()}
+                <LevelBadge level={currentLevel} size="md" />
+              </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
               {ALL_LEVELS.map((level, idx) => {
