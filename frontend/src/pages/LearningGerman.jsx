@@ -250,6 +250,84 @@ function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onTakeNote
   );
 }
 
+function LevelDetailsModal({ level, progress, itemCount, chapterCount, onClose, onManageChapters }) {
+  const color = LEVEL_COLORS[level] || '#6b7280';
+  const startedAt = progress?.startedAt?.[level];
+  const completedAt = progress?.completedAt?.[level];
+  const isCurrent = progress?.currentLevel === level;
+  const isCompleted = !!completedAt;
+  const fmt = (v) => {
+    try { return format(new Date(v), 'MMM d, yyyy'); } catch { return '—'; }
+  };
+  const status = isCurrent && !isCompleted ? 'In Progress' : isCompleted ? 'Completed' : 'Not Started';
+  const statusColor = isCurrent && !isCompleted ? color : isCompleted ? C.green : '#6b7280';
+  const chip = () => ({
+    display: 'inline-flex', alignItems: 'center',
+    padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700,
+    background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)',
+  });
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: '16px', padding: '1.25rem', width: '90%', maxWidth: 400,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color }}>{level}</h3>
+            <span style={{
+              fontSize: '0.66rem', fontWeight: 700, color: statusColor, background: `${statusColor}18`,
+              padding: '3px 10px', borderRadius: 20, border: `1px solid ${statusColor}35`,
+              textTransform: 'uppercase', letterSpacing: '0.4px',
+            }}>{status}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}><X size={18} /></button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '0.7rem 0.9rem', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Play size={13} /> Start Date
+            </span>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>{startedAt ? fmt(startedAt) : 'Not started yet'}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '0.7rem 0.9rem', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Check size={13} /> End Date
+            </span>
+            {isCompleted ? (
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: C.green }}>{fmt(completedAt)}</span>
+            ) : (
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: C.red }}>Not finished yet</span>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <span style={chip()}>{itemCount} items</span>
+          {chapterCount > 0 && <span style={chip()}>{chapterCount} chapters</span>}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Close</button>
+          <button onClick={() => onManageChapters(level)} style={{
+            padding: '0.55rem 1rem', borderRadius: '10px', border: 'none',
+            background: `linear-gradient(135deg, ${color}, ${color}cc)`, color: '#fff',
+            fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <BookOpen size={14} /> Manage Chapters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ErrorToast({ message, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
   return (
@@ -2982,6 +3060,7 @@ export default function LearningGerman() {
   const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [chapterModalLevel, setChapterModalLevel] = useState(null);
+  const [levelDetailsLevel, setLevelDetailsLevel] = useState(null);
   const [selectedChapterId, setSelectedChapterId] = useState(null);
   const [selectedChapterTitle, setSelectedChapterTitle] = useState('');
   const [loading, setLoading] = useState(true);
@@ -5020,14 +5099,14 @@ export default function LearningGerman() {
                 const color = LEVEL_COLORS[level] || '#6b7280';
                 return (
                   <div key={level}
-                    onDoubleClick={isLocked ? undefined : () => setChapterModalLevel(level)}
-                    title={isLocked ? undefined : 'Double-click to manage chapters'}
+                    onClick={() => setLevelDetailsLevel(level)}
+                    title="Click to see start & end dates"
                     style={{
                     padding: '0.75rem 0.85rem', borderRadius: '12px',
                     background: isCurrent ? `${color}15` : isCompleted ? `${color}10` : 'var(--bg)',
                     border: `1.5px solid ${isCurrent ? color + '50' : isCompleted ? color + '25' : 'var(--border)'}`,
                     opacity: isLocked ? 0.4 : 1,
-                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -5132,6 +5211,16 @@ export default function LearningGerman() {
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
       {chapterModalLevel && (
         <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onClose={() => setChapterModalLevel(null)} modal />
+      )}
+      {levelDetailsLevel && (
+        <LevelDetailsModal
+          level={levelDetailsLevel}
+          progress={germanProgress}
+          itemCount={germanData.filter(r => (r.type === 'vocab' || r.type === 'grammar' || r.type === 'note') && levelOf(r) === levelDetailsLevel).length}
+          chapterCount={chapters.filter(c => normalizeLevel(c.level) === levelDetailsLevel).length}
+          onClose={() => setLevelDetailsLevel(null)}
+          onManageChapters={(l) => { setLevelDetailsLevel(null); setChapterModalLevel(l); }}
+        />
       )}
 
       {showResetTotalConfirm && (
