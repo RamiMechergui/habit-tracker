@@ -55,8 +55,6 @@ const {
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const { getOrInitProgress } = require('../db/germanProgress');
-const { exportToPdf } = require('../services/pdfExporter');
-const { exportReportToPdf } = require('../services/reportPdfExporter');
 
 router.use(protect);
 
@@ -944,57 +942,6 @@ router.put('/documents/:recordId', async (req, res) => {
   } catch (err) {
     console.error('Update document error:', err);
     res.status(500).json({ message: 'Server error updating document' });
-  }
-});
-
-router.post('/documents/:recordId/export-pdf', async (req, res) => {
-  try {
-    // Fetch the document from the DB
-    const allRecords = await getAllGermanRecords(req.user.id);
-    const doc = allRecords.find(r => r.recordId === req.params.recordId);
-    if (!doc) return res.status(404).json({ message: 'Document not found' });
-
-    const pdfBuffer = await exportToPdf({
-      title: doc.title || 'Untitled',
-      author: req.user.name || req.user.email || 'Evolvio User',
-      content: doc.content || {},
-      docType: doc.docType || 'textbook',
-      createdAt: doc.createdAt,
-    });
-
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.title || 'document')}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-    });
-    res.end(pdfBuffer);
-  } catch (err) {
-    console.error('PDF export error:', err);
-    res.status(500).json({ message: 'Failed to generate PDF' });
-  }
-});
-
-// ── Full Report PDF Export ─────────────────────────────────────────────────
-// Fetches all German records for the user and renders the complete
-// "My German Learning Journey" report as a PDF using Puppeteer.
-
-router.post('/report/export-pdf', async (req, res) => {
-  try {
-    const records = await getAllGermanRecords(req.user.userId);
-    const pdfBuffer = await exportReportToPdf(records, {
-      baseUrl: `${req.protocol}://${req.get('host')}`,
-    });
-
-    const filename = `German_Learning_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Content-Length': pdfBuffer.length,
-    });
-    res.end(pdfBuffer);
-  } catch (err) {
-    console.error('Report PDF export error:', err);
-    res.status(500).json({ message: 'Failed to generate report PDF' });
   }
 });
 

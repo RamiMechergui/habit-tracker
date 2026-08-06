@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "🚀 --- Evolvio NATIVE STARTUP ---"
+echo "🚀 --- EVOLVIO NATIVE STARTUP ---"
 echo "🔍 --- DATABASE ENVIRONMENT DIAGNOSTICS ---"
 echo "MONGOHOST: $MONGOHOST"
 echo "MONGOPORT: $MONGOPORT"
@@ -8,6 +8,7 @@ if [ -n "$MONGO_URI" ]; then echo "MONGO_URI: SET"; else echo "MONGO_URI: NOT SE
 if [ -n "$MONGO_URL" ]; then echo "MONGO_URL: SET"; else echo "MONGO_URL: NOT SET"; fi
 if [ -n "$MONGODB_URL" ]; then echo "MONGODB_URL: SET"; else echo "MONGO_URL: NOT SET"; fi
 echo "PORT: $PORT"
+echo "BACKEND_PORT: ${BACKEND_PORT:-5001}"
 echo "-------------------------------------------"
 
 # 1. Prepare Nginx Environment
@@ -15,9 +16,12 @@ echo "📂 Preparing Nginx directories..."
 mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp
 chmod -R 777 /var/log/nginx /var/lib/nginx/tmp || true
 
-# 3. Generate Nginx Config Dynamically
+# 2. Generate Nginx Config Dynamically
+# The frontend (static) and the backend (single monolith on BACKEND_PORT)
+# run inside the same container. nginx is the single entry point.
 TARGET_PORT=${PORT:-8080}
-echo "📡 Generating Nginx config for port: $TARGET_PORT (IPv4 & IPv6)"
+BACKEND_PORT=${BACKEND_PORT:-5001}
+echo "📡 Generating Nginx config for port: $TARGET_PORT (IPv4 & IPv6), API upstream: 127.0.0.1:$BACKEND_PORT"
 
 cat <<EOF > /etc/nginx/http.d/default.conf
 server {
@@ -26,7 +30,7 @@ server {
     listen $TARGET_PORT;
     # Listen on IPv6 (this is often required in modern container clusters)
     listen [::]:$TARGET_PORT;
-    
+
     root /var/www/html;
     index index.html;
 
@@ -34,64 +38,65 @@ server {
     access_log /dev/stdout;
     error_log /dev/stderr;
 
-    location / {
-        try_files \$uri \$uri/ /index.html;
+    # PWA files must never be cached so users always get a fresh service worker
+    location ~* (sw\.js|manifest\.json|registerSW\.js|workbox-.+\.js)$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+        try_files \$uri =404;
     }
 
-    # Proxy settings
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_cache_bypass \$http_upgrade;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
+    # Hashed static assets — safe to cache forever (filenames change on deploy)
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files \$uri =404;
+    }
 
-    # Fast cold-start timeouts
-    proxy_connect_timeout 60s;
-    proxy_send_timeout 60s;
-    proxy_read_timeout 60s;
+    # SPA fallback — all non-asset routes serve index.html
+    location / {
+        try_files \$uri \$uri/ /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
 
-    # Service mappings
-    location /api/login { proxy_pass http://127.0.0.1:5101; }
-    location /api/register { proxy_pass http://127.0.0.1:5102; }
-    location /api/logout { proxy_pass http://127.0.0.1:5103; }
-    location /api/verify { proxy_pass http://127.0.0.1:5104; }
-    location /api/daily { proxy_pass http://127.0.0.1:5105; }
-    location /api/scoring { proxy_pass http://127.0.0.1:5106; }
-    location /api/currentbook { proxy_pass http://127.0.0.1:5107; }
-    location /api/archives { proxy_pass http://127.0.0.1:5108; }
-    location /api/settings { proxy_pass http://127.0.0.1:5109; }
-    location /api/user { proxy_pass http://127.0.0.1:5109; }
-    location /api/categories { proxy_pass http://127.0.0.1:5110; }
-    location /api/avatar { proxy_pass http://127.0.0.1:5111; }
-    location /api/profile { proxy_pass http://127.0.0.1:5112; }
-    location /api/analytics { proxy_pass http://127.0.0.1:5113; }
+    # ── Backend monolith proxy ─────────────────────────────────────
+    # ^~ keeps /api/* ahead of the asset regex.
+    location ^~ /api/ {
+        proxy_pass http://127.0.0.1:$BACKEND_PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_cache_bypass \$http_upgrade;
 
-    # Essentials microservices
-    location /api/essentials { proxy_pass http://127.0.0.1:5127; }
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
 
-    location /api/user-prefs { proxy_pass http://127.0.0.1:5130; }
-    location /api/tasks { proxy_pass http://127.0.0.1:5131; }
-    location /api/notes { proxy_pass http://127.0.0.1:5132; }
+        client_max_body_size 10M;
+    }
 
-    # Enable large uploads
-    client_max_body_size 10M;
+    # Legacy uploaded files (new uploads go to MinIO/S3)
+    location ^~ /uploads/ {
+        proxy_pass http://127.0.0.1:$BACKEND_PORT/uploads/;
+    }
 }
 EOF
 
-# 4. Verify Nginx Config
+# 3. Verify Nginx Config
 nginx -t
 
-# 5. Fix permissions for Nginx User
+# 4. Fix permissions for Nginx User
 chown -R nginx:nginx /var/www/html || chown -R root:root /var/www/html
 chmod -R 755 /var/www/html
 
-# 6. Start Nginx in the background
+# 5. Start Nginx in the background
 nginx
 
-# 7. Start PM2 services and tail logs in the foreground
-echo "🚀 Evolvio is live on port $PORT!"
+# 6. Start the monolith via PM2 and tail logs in the foreground
+echo "🚀 EVOLVIO is live on port $PORT! (backend on $BACKEND_PORT)"
 pm2 start pm2.config.js
 exec pm2 logs

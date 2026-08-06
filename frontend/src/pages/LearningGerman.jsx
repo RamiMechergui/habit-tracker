@@ -3992,18 +3992,6 @@ export default function LearningGerman() {
     } catch (e) { setError(e.message); }
   };
 
-  const handleExport = async () => {
-    try {
-      const { exportGermanPDF } = await import('../utils/exportGermanPDF');
-      await exportGermanPDF(germanData);
-    } catch (e) { setError(`PDF error: ${e.message}`); console.error(e); }
-    setShowExportMenu(false);
-  };
-
-  const exportMenuItemStyle = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' };
-  const exportMenuHoverGreen = (e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.07)'; };
-  const exportMenuLeave = (e) => { e.currentTarget.style.background = 'transparent'; };
-
   // ── Dialogue handlers ─────────────────────────────────────────────────────
   const handleAddDialogue = async (payload) => {
     setDialogueSaving(true);
@@ -4296,26 +4284,7 @@ export default function LearningGerman() {
               <List size={15} /> Search
             </button>
             <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <button onClick={() => { setShowExportMenu(p => !p); }} disabled={germanData.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer', background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1, boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
-                <Download size={15} /> Export PDF
-                <ChevronDown size={13} style={{ transform: showExportMenu ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-              </button>
-              {showExportMenu && (
-                <div style={{
-                  position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 30,
-                  background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: '10px', padding: '0.35rem', minWidth: 200,
-                  boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-                }}>
-                  <button onClick={handleExport} style={exportMenuItemStyle} onMouseEnter={exportMenuHoverGreen} onMouseLeave={exportMenuLeave}>
-                    <FileText size={15} style={{ color: C.green }} />
-                    <div><div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Export Full Report</div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>All vocab, grammar, notes</div></div>
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
         ) : (
           <>
         <TabBtn active={tab === 'notes'}   onClick={() => setTab('notes')}   icon={NotebookPen}   label="Daily Notes" />

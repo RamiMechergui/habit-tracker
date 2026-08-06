@@ -109,7 +109,7 @@ const TBtn = ({ onClick, isActive, title, children, disabled }) => (
 const Sep = () => <div style={{ width: 1, background: 'var(--border)', margin: '0 3px', alignSelf: 'stretch' }} />;
 
 // ── Main Editor ────────────────────────────────────────────────────────────────
-export default function DocumentEditor({ document: doc, onChange, onExportPdf, isSaving }) {
+export default function DocumentEditor({ document: doc, onChange, isSaving }) {
   const [slashMenu, setSlashMenu] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -203,14 +203,6 @@ export default function DocumentEditor({ document: doc, onChange, onExportPdf, i
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <Save size={13} /> Saving...
           </span>
-        )}
-        {onExportPdf && (
-          <button
-            onClick={onExportPdf}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: '8px', background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: `0 2px 8px ${C.blue}40` }}
-          >
-            <Download size={14} /> Export PDF
-          </button>
         )}
       </div>
 
