@@ -198,7 +198,7 @@ function dialogueBlocks(rows) {
   return rows.map(d => {
     const parts = d.participants || [];
     const members = parts.map((p, i) => {
-      const img = p.photoBase64 || p.photoUrl;
+      const img = PDF_SAFE_DATA_URL.test(p.photoBase64 || "") ? p.photoBase64 : null;
       const pn = p.name || "?";
       return {
         stack: [
@@ -211,7 +211,7 @@ function dialogueBlocks(rows) {
     });
     const body = (d.exchanges || []).map((x, i) => {
       const p = parts[x.speakerIndex] || { name: "?" };
-      const img = p.photoBase64 || p.photoUrl;
+      const img = PDF_SAFE_DATA_URL.test(p.photoBase64 || "") ? p.photoBase64 : null;
       return [
         img ? { image: img, fit: [18, 18], alignment: "center", margin: [0, 2, 6, 2] } : cell(""),
         cell((p.name || "?"), { bold: true, fontSize: 8, color: i % 2 ? C.blue : C.red, alignment: "right", margin: [0, 4, 8, 4] }),
@@ -319,7 +319,7 @@ function alphabetBlock(rows) {
   const body = [];
   for (let i = 0; i < sorted.length; i += perRow) {
     const row = sorted.slice(i, i + perRow).map(a => {
-      const img = a.photoBase64 || a.photoUrl;
+      const img = PDF_SAFE_DATA_URL.test(a.photoBase64 || "") ? a.photoBase64 : null;
       const stack = [];
       if (img) stack.push({ image: img, fit: [34, 34], alignment: "center", margin: [0, 2, 0, 4] });
       stack.push({ text: a.letter || "", fontSize: 22, bold: true, color: C.red, alignment: "center" });
@@ -459,20 +459,53 @@ async function getPdfMake() {
   return pdfMake;
 }
 
+const PDF_SAFE_DATA_URL = /^data:image\/(png|jpe?g);/i;
+
+function dataUrlToBlob(dataUrl) {
+  const [head, b64] = dataUrl.split(",");
+  const mime = (head.match(/^data:([^;]+)/) || [])[1] || "image/png";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+async function blobToPngDataUrl(blob) {
+  try {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = url;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      if (!canvas.width || !canvas.height) return null;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL("image/png");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch (e) {
+    return null;
+  }
+}
+
 async function resolveImageUrl(url) {
   if (!url) return null;
-  if (url.startsWith("data:")) return url;
+  if (PDF_SAFE_DATA_URL.test(url)) return url;
+  if (url.startsWith("data:image/")) {
+    return blobToPngDataUrl(dataUrlToBlob(url));
+  }
   try {
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) return null;
-    const blob = await res.blob();
-    if (!blob.type || !blob.type.startsWith("image/")) return null;
-    return await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
+    return await blobToPngDataUrl(await res.blob());
   } catch (e) {
     return null;
   }
