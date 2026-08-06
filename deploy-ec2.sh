@@ -78,7 +78,7 @@ success "Code updated to $(git rev-parse --short HEAD)"
 # ── Step 2: Backend dependencies ─────────────────────────────────────────────
 info "Step 2/5 — Installing backend dependencies..."
 cd "$APP_DIR/backend"
-npm ci --omit=dev --prefer-offline 2>&1 | tail -5
+npm install --omit=dev 2>&1 | tail -5
 success "Backend dependencies installed"
 
 # ── Step 3: Frontend build ────────────────────────────────────────────────────
