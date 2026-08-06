@@ -19,8 +19,26 @@ import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategi
 import { ExpirationPlugin } from 'workbox-expiration';
 
 // ─── Core Setup ─────────────────────────────────────────────────────────────
+// Force-activate new SW immediately and purge all old caches
 self.skipWaiting();
 clientsClaim();
+
+// Purge stale caches from old builds but keep active ones
+self.addEventListener('activate', (event) => {
+  const KEEP = [
+    'evolvio-german-images-v1',
+    'evolvio-api-v1',
+    'evolvio-uploads-v1',
+    'evolvio-fonts-v1',
+    'evolvio-navigation-v1',
+    'workbox-precache-v2',
+  ];
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => !KEEP.includes(k)).map((k) => caches.delete(k)))
+    )
+  );
+});
 
 // Precache all Vite-built assets (injected by vite-plugin-pwa at build time)
 precacheAndRoute(self.__WB_MANIFEST || []);
@@ -35,20 +53,18 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// ─── Navigation — SPA fallback to index.html ────────────────────────────────
-// For any navigation request, serve the cached index.html (SPA shell),
-// falling back to offline.html if the shell is missing from cache.
+// ─── Navigation — Network-first for HTML (SPA shell) ────────────────────────
+// Network-first ensures the latest HTML (with new bundle hashes) is always
+// loaded when online. Cache-first was causing stale GermanReport renders.
 registerRoute(
   new NavigationRoute(
-    async ({ event, request }) => {
-      try {
-        return await createHandlerBoundToURL('/index.html')({ event, request });
-      } catch {
-        const offline = await caches.match('/offline.html');
-        if (offline) return offline;
-        return new Response('App is offline', { status: 503, statusText: 'Offline' });
-      }
-    },
+    new NetworkFirst({
+      cacheName: 'evolvio-navigation-v1',
+      plugins: [
+        new ExpirationPlugin({ maxEntries: 5, maxAgeSeconds: 3600 }),
+      ],
+      networkTimeoutSeconds: 3,
+    }),
     { denylist: [/^\/api\//, /^\/uploads\//] },
   )
 );

@@ -1205,11 +1205,11 @@ const SEED = {
 };
 
 const ALPHABET = [
-  ['A', 'Apfel'], ['B', 'Brot'], ['C', 'Computer'], ['D', 'Danke'], ['E', 'Essen'],
-  ['F', 'Familie'], ['G', 'Guten Tag'], ['H', 'Hallo'], ['I', 'Information'], ['J', 'Jahr'],
-  ['K', 'Kaffee'], ['L', 'Liebe'], ['M', 'Mutter'], ['N', 'Nacht'], ['O', 'Obst'],
-  ['P', 'Papier'], ['Q', 'Quelle'], ['R', 'Regen'], ['S', 'Schule'], ['T', 'Tag'],
-  ['U', 'Uhr'], ['V', 'Vater'], ['W', 'Wasser'], ['X', 'Xylophon'], ['Y', 'Yoga'], ['Z', 'Zeit'],
+  ['A', 'Apfel', 'Apple', 'ah-pfull'], ['B', 'Brot', 'Bread', 'broht'], ['C', 'Computer', 'Computer', 'kohm-pyoo-tah'], ['D', 'Danke', 'Thank you', 'dahn-keh'], ['E', 'Essen', 'Food / eating', 'eh-sen'],
+  ['F', 'Familie', 'Family', 'fah-mee-lee-eh'], ['G', 'Guten Tag', 'Good day', 'goo-ten tahk'], ['H', 'Hallo', 'Hello', 'hah-loh'], ['I', 'Information', 'Information', 'in-for-mah-tsee-ohn'], ['J', 'Jahr', 'Year', 'yahr'],
+  ['K', 'Kaffee', 'Coffee', 'kah-fay'], ['L', 'Liebe', 'Love', 'lee-beh'], ['M', 'Mutter', 'Mother', 'moot-tah'], ['N', 'Nacht', 'Night', 'nahn-cht'], ['O', 'Obst', 'Fruit', 'ohpst'],
+  ['P', 'Papier', 'Paper', 'pah-peer'], ['Q', 'Quelle', 'Source', 'kvehl-leh'], ['R', 'Regen', 'Rain', 'ray-gen'], ['S', 'Schule', 'School', 'shoo-leh'], ['T', 'Tag', 'Day', 'tahk'],
+  ['U', 'Uhr', 'Clock', 'oor'], ['V', 'Vater', 'Father', 'fah-tah'], ['W', 'Wasser', 'Water', 'vahs-sah'], ['X', 'Xylophon', 'Xylophone', 'xü-loh-fohn'], ['Y', 'Yoga', 'Yoga', 'yoh-gah'], ['Z', 'Zeit', 'Time', 'tsayt'],
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -1303,8 +1303,8 @@ async function seed(userId) {
 
   // A1.1 alphabet (only level that has it).
   for (let i = 0; i < ALPHABET.length; i++) {
-    const [letter, example] = ALPHABET[i];
-    await german.addAlphabet(userId, { letter, example, pronunciation: '', sortOrder: i, level: 'A1.1' });
+    const [letter, example, english, pronunciation] = ALPHABET[i];
+    await german.addAlphabet(userId, { letter, example, english, pronunciation, sortOrder: i, level: 'A1.1' });
     total++;
   }
   console.log(`✔ Alphabet (A1.1): 26 letters`);

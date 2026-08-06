@@ -1,0 +1,125 @@
+/**
+ * exportGermanReport.js
+ *
+ * Client-side PDF export utility for the German Learning Report.
+ * Uses the GermanReport template's buildPdfDefinition + pdfmake for generation.
+ * 100% client-side — no server dependency.
+ */
+
+import { buildPdfDefinition } from './germanPdfBuilder';
+
+let pdfMakeInstance = null;
+
+async function getPdfMake() {
+  if (pdfMakeInstance) return pdfMakeInstance;
+  const { default: pdfMake } = await import('pdfmake/build/pdfmake');
+  const fontModule = await import('pdfmake/build/vfs_fonts');
+  const fonts = fontModule.default || fontModule;
+  const vfs = (fonts && fonts.pdfMake && fonts.pdfMake.vfs) || fonts || {};
+  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(vfs);
+  else pdfMake.vfs = vfs;
+  pdfMake.fonts = {
+    Roboto: {
+      normal: 'Roboto-Regular.ttf',
+      bold: 'Roboto-Medium.ttf',
+      italics: 'Roboto-Italic.ttf',
+      bolditalics: 'Roboto-MediumItalic.ttf',
+    },
+  };
+  pdfMakeInstance = pdfMake;
+  return pdfMake;
+}
+
+/**
+ * Transform the app's germanData + study + progress into the flat record
+ * array that GermanReport.buildPdfDefinition expects.
+ *
+ * @param {Array} germanData  - Records from the Store (vocab, grammar, verb, note, etc.)
+ * @param {Object} germanStudy - Study statistics ({ totalMs, days, updatedAt })
+ * @param {Object} germanProgress - Progress ({ currentLevel, levelsCompleted })
+ * @returns {Array} Combined record array for the report template
+ */
+export function buildReportData(germanData, germanStudy, germanProgress) {
+  const records = Array.isArray(germanData) ? [...germanData] : [];
+
+  // Inject study record if available
+  if (germanStudy) {
+    records.push({
+      type: 'study',
+      totalMs: germanStudy.totalMs || 0,
+      days: germanStudy.days || {},
+      updatedAt: germanStudy.updatedAt || new Date().toISOString(),
+    });
+  }
+
+  // Inject progress record if available
+  if (germanProgress) {
+    records.push({
+      type: 'progress',
+      currentLevel: germanProgress.currentLevel || '',
+      levelsCompleted: germanProgress.levelsCompleted || [],
+    });
+  }
+
+  return records;
+}
+
+/**
+ * Generate and download the German Learning Report PDF.
+ *
+ * @param {Object} options
+ * @param {Array}  options.germanData      - Records from the Store
+ * @param {Object} options.germanStudy     - Study statistics
+ * @param {Object} options.germanProgress  - Progress data
+ * @param {string} [options.fileName]      - Download file name
+ * @param {string} [options.title]         - Report title
+ * @param {string} [options.subtitle]      - Report subtitle
+ * @returns {Promise<void>}
+ */
+export async function exportGermanReportPDF({
+  germanData,
+  germanStudy,
+  germanProgress,
+  fileName = 'german_report.pdf',
+  title = 'DEUTSCH LERNEN',
+  subtitle = 'My German Learning Journey',
+}) {
+  const data = buildReportData(germanData, germanStudy, germanProgress);
+
+  if (!data.length) {
+    throw new Error('No data available to generate the report.');
+  }
+
+  const doc = buildPdfDefinition(data, { title, subtitle });
+  const pdfMake = await getPdfMake();
+  pdfMake.createPdf(doc).download(fileName);
+}
+
+/**
+ * Generate the PDF and return it as a Blob (for preview or custom handling).
+ *
+ * @param {Object} options - Same as exportGermanReportPDF
+ * @returns {Promise<Blob>} PDF blob
+ */
+export async function generateGermanReportBlob({
+  germanData,
+  germanStudy,
+  germanProgress,
+  title = 'DEUTSCH LERNEN',
+  subtitle = 'My German Learning Journey',
+}) {
+  const data = buildReportData(germanData, germanStudy, germanProgress);
+
+  if (!data.length) {
+    throw new Error('No data available to generate the report.');
+  }
+
+  const doc = buildPdfDefinition(data, { title, subtitle });
+  const pdfMake = await getPdfMake();
+
+  return new Promise((resolve) => {
+    pdfMake.createPdf(doc).getBlob((blob) => {
+      resolve(blob);
+    });
+  });
+}

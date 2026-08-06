@@ -19,8 +19,8 @@ export default defineConfig({
       // Let plugin handle SW registration
       injectRegister: 'auto',
 
-      // Reload prompt behaviour (handled by our UpdateToast component)
-      registerType: 'prompt',
+      // Auto-activate new SW immediately — no prompt needed
+      registerType: 'autoUpdate',
 
       // The manifest is already in public/manifest.json — tell plugin not to generate one
       manifest: false,

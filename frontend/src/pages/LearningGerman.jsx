@@ -4,6 +4,8 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
+import { buildReportData } from '../utils/exportGermanReport';
+import GermanReport from '../components/GermanReport';
 
 import { format } from 'date-fns';
 import {
@@ -3359,7 +3361,7 @@ export default function LearningGerman() {
   const [selectedBoxId, setSelectedBoxId] = useState(null);
   const [draggedBoxId, setDraggedBoxId] = useState(null);
   const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [chapterModalLevel, setChapterModalLevel] = useState(null);
   const [levelDetailsLevel, setLevelDetailsLevel] = useState(null);
   const [selectedChapterId, setSelectedChapterId] = useState(null);
@@ -4061,6 +4063,19 @@ export default function LearningGerman() {
     try { await deleteGermanRecord(recordId); } catch (e) { setError(e.message); }
   };
 
+  // ── PDF Report handler ─────────────────────────────────────────────────────
+  // Flatten app data into the report record array and open the GermanReport
+  // preview. The report (with its Download PDF button) is only triggered here.
+  const reportData = useMemo(
+    () => buildReportData(germanData, germanStudy, germanProgress),
+    [germanData, germanStudy, germanProgress]
+  );
+
+  const handleExportPDF = () => {
+    if (!germanData.length) return;
+    setShowReport(true);
+  };
+
 
   const cellStyle = {
     padding: '0.65rem 0.8rem', fontSize: '0.85rem',
@@ -4284,6 +4299,9 @@ export default function LearningGerman() {
               <List size={15} /> Search
             </button>
             <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
+            <button onClick={handleExportPDF} disabled={germanData.length === 0} title="Export PDF Report" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer', background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: germanData.length === 0 ? '1px solid var(--border)' : 'none', color: germanData.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1, boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
+              <FileText size={15} /> Export PDF Report
+            </button>
             </div>
         ) : (
           <>
@@ -4362,33 +4380,18 @@ export default function LearningGerman() {
             <List size={15} /> Search
           </button>
           <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => { setShowExportMenu(p => !p); }} disabled={germanData.length === 0} style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer',
-              background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
-              border: germanData.length === 0 ? '1px solid var(--border)' : 'none',
-              color: germanData.length === 0 ? 'var(--text-muted)' : '#fff',
-              fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1,
-              boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none',
-            }}>
-              <Download size={15} /> Export PDF
-              <ChevronDown size={13} style={{ transform: showExportMenu ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-            </button>
-            {showExportMenu && (
-              <div style={{
-                position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 30,
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: '10px', padding: '0.35rem', minWidth: 200,
-                boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-              }}>
-                <button onClick={handleExport} style={exportMenuItemStyle} onMouseEnter={exportMenuHoverGreen} onMouseLeave={exportMenuLeave}>
-                  <FileText size={15} style={{ color: C.green }} />
-                  <div><div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)' }}>Export Full Report</div><div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>All vocab, grammar, notes</div></div>
-                </button>
-              </div>
-            )}
-          </div>
+          <button onClick={handleExportPDF} disabled={germanData.length === 0} title="Open German report preview and export as PDF" style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer',
+            background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
+            border: germanData.length === 0 ? '1px solid var(--border)' : 'none',
+            color: germanData.length === 0 ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1,
+            boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none',
+            flexShrink: 0,
+          }}>
+            <FileText size={15} /> Export PDF Report
+          </button>
         </div>
           </>
         )}
@@ -5552,6 +5555,54 @@ export default function LearningGerman() {
             <button onClick={() => setPreviewImage(null)} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', color: '#fff', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {showReport && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          display: 'flex', flexDirection: 'column',
+          background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)',
+          padding: isMobile ? 0 : '1.5rem',
+        }} onClick={() => setShowReport(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            width: '100%', maxWidth: 1100, margin: '0 auto',
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: isMobile ? 0 : '16px', overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem',
+              padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)',
+              background: 'var(--bg)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                <FileText size={18} style={{ color: C.green, flexShrink: 0 }} />
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  German Report Preview
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {reportData.length} records
+                </span>
+              </div>
+              <button onClick={() => setShowReport(false)} title="Close" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                cursor: 'pointer', padding: 6, borderRadius: 8, flexShrink: 0,
+              }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="evolvio-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
+              <GermanReport
+                data={reportData}
+                fileName={`german_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`}
+                title="DEUTSCH LERNEN"
+                subtitle="My German Learning Journey"
+              />
+            </div>
           </div>
         </div>
       )}
