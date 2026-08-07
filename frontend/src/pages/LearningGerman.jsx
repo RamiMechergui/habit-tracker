@@ -5,6 +5,7 @@ import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
 import { buildReportData } from '../utils/exportGermanReport';
+import { germanImageUrl } from '../utils/germanImageUrl';
 import GermanReport from '../components/GermanReport';
 
 import { format } from 'date-fns';
@@ -541,7 +542,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Photo</label>
             <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {editRecord && photoUrl ? (
-                <img src={photoUrl} alt={editRecord.word} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                <img src={germanImageUrl(photoUrl)} alt={editRecord.word} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
               ) : newPhotoFile ? (
                 <img src={URL.createObjectURL(newPhotoFile)} alt="preview" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
               ) : null}
@@ -2739,7 +2740,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                         onClick={() => { setPendingUploadId(a.recordId); fileRef.current?.click(); }}
                         title="Click to upload photo">
                         {a.photoUrl ? (
-                          <img src={a.photoUrl} alt={a.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={germanImageUrl(a.photoUrl)} alt={a.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                           <Camera size={20} style={{ color: `${C.blue}60` }} />
                         )}
@@ -2860,7 +2861,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                   }}
                   title={sc.added ? 'Click to upload photo' : ''}>
                   {sc.photoUrl ? (
-                    <img src={sc.photoUrl} alt={sc.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={germanImageUrl(sc.photoUrl)} alt={sc.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <span style={{ fontSize: '2.2rem', fontWeight: 900, color: sc.added ? C.green : C.gold, lineHeight: 1 }}>{sc.letter}</span>
                   )}
@@ -4859,8 +4860,8 @@ export default function LearningGerman() {
                     >
                       <td data-label="Photo" style={{ ...cellStyle, width: 60, textAlign: 'center' }}>
                         {v.photoUrl ? (
-                          <img src={v.photoUrl} alt={v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
-                            onClick={() => setPreviewImage(v.photoUrl)} />
+                          <img src={germanImageUrl(v.photoUrl)} alt={v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
+                            onClick={() => setPreviewImage(germanImageUrl(v.photoUrl))} />
                         ) : (
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>—</span>
                         )}
@@ -5197,7 +5198,7 @@ export default function LearningGerman() {
                           <span key={pi} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             {p.photoUrl ? (
                               <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', display: 'inline-block', verticalAlign: 'middle', border: `1px solid ${PERSON_COLORS[p.gender] || C.purple}`, flexShrink: 0 }}>
-                                <img src={p.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={germanImageUrl(p.photoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </span>
                             ) : (
                               <span style={{
@@ -5227,7 +5228,7 @@ export default function LearningGerman() {
                     <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < Math.min(d.exchanges.length, 4) - 1 ? '1px solid var(--border)' : 'none' }}>
                       {p.photoUrl ? (
                         <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${pColor}` }}>
-                          <img src={p.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={germanImageUrl(p.photoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       ) : (
                         <div style={{

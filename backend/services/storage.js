@@ -240,6 +240,20 @@ function getKeyFromUrl(url) {
       }
     }
   }
+
+  // Fallback: match a direct MinIO/S3 URL shape ({host}/{bucket}/{key}) on any
+  // host. This keeps URLs resolvable even if PUBLIC_STORAGE_ENDPOINT changed
+  // after the image was uploaded.
+  if (/^https?:\/\//i.test(url)) {
+    const match = url.match(/^https?:\/\/[^/]+(?::\d+)?\/([^/?#]+)\/(.+)$/i);
+    if (match && decodeURIComponent(match[1]) === BUCKET) {
+      try {
+        return match[2].split('?')[0].split('/').map(decodeURIComponent).join('/');
+      } catch (_) {
+        return null;
+      }
+    }
+  }
   return null;
 }
 

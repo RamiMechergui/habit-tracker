@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, Languages, Save, X, ChevronDown, ChevronUp, MessageSquare, Volume2, AlertTriangle, Camera, Image, HelpCircle, FileText } from 'lucide-react';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
+import { germanImageUrl } from '../utils/germanImageUrl';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', orange: '#f97316' };
 
@@ -42,7 +43,7 @@ function AvatarSVG({ gender, name, size = 40, onClick, photoUrl }) {
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.2s ease',
       }}>
-        <img src={photoUrl} alt={name || 'participant'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={germanImageUrl(photoUrl)} alt={name || 'participant'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
     );
   }
