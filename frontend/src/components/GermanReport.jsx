@@ -37,6 +37,7 @@
 
 "use client";
 import React, { useMemo, useState, useCallback } from "react";
+import { germanImageUrl } from "../utils/germanImageUrl";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
 /* Pure builder: JSON → pdfmake document definition. No pdfmake import needed. */
@@ -165,7 +166,7 @@ function noteBlocks(notes) {
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
     const stack = [];
     if (n.title) stack.push({ text: n.title, bold: true, fontSize: 9, margin: [0, 0, 0, 1] });
-    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, stripHtml(n.content) || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
     stack.push(...boxBlocks(n.boxes));
     return { stack, margin: [0, 0, 0, 6] };
   });
@@ -189,8 +190,8 @@ function grammarBlocks(rows) {
   return rows.map(g => ({
     stack: [
       { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
-      { text: g.explanation || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
-      ...(g.examples || []).map(e => ({ text: "•  " + e, fontSize: 8.5, margin: [8, 0, 0, 1] })),
+      { text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
+      ...(g.examples || []).map(e => ({ text: "•  " + stripHtml(e), fontSize: 8.5, margin: [8, 0, 0, 1] })),
       ...boxBlocks(g.boxes),
     ],
     margin: [0, 0, 0, 8],
@@ -215,8 +216,8 @@ function memoBlocks(rows) {
   return rows.map(m => ({
     stack: [
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
-      { table: { widths: ["*"], body: [[cell(m.germanContent || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
-      { text: m.englishContent || "", fontSize: 8.5, color: C.muted },
+      { table: { widths: ["*"], body: [[cell(stripHtml(m.germanContent) || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
+      { text: stripHtml(m.englishContent) || "", fontSize: 8.5, color: C.muted },
       ...boxBlocks(m.boxes),
     ],
     margin: [0, 0, 0, 9],
@@ -388,6 +389,27 @@ export function buildPdfDefinition(data, opts = {}) {
     memo: byType("memo"), dialogue: byType("dialogue"), expression: byType("expression"),
     idiom: byType("idiom"), mistake: byType("mistake"),
   })));
+
+  // Standalone sections for records that are NOT attached to any chapter, so
+  // dialogues, daily notes and memorization always make it into the PDF even
+  // when the user never assigned them to a chapter.
+  const unchaptered = t => byType(t).filter(r => !r.chapterId);
+  const dailyNotes = unchaptered("note");
+  if (dailyNotes.length) {
+    content.push({ text: "Daily Notes", style: "h2", pageBreak: "before" });
+    content.push(...noteBlocks(dailyNotes));
+  }
+  const memoRows = unchaptered("memo");
+  if (memoRows.length) {
+    content.push({ text: "Memorization", style: "h2", pageBreak: "before" });
+    content.push(...memoBlocks(memoRows));
+  }
+  const dialogueRows = unchaptered("dialogue");
+  if (dialogueRows.length) {
+    content.push({ text: "Dialogues", style: "h2", pageBreak: "before" });
+    content.push(...dialogueBlocks(dialogueRows));
+  }
+
   content.push({ text: "Grammar Index", style: "h2", pageBreak: "before" });
   content.push(grammarIndex(byType("grammar")));
   content.push({ text: "Verb Index", style: "h2", pageBreak: "before" });
@@ -490,6 +512,20 @@ const byType = data => t => data.filter(r => r.type === t);
 const NOTE_COLOR = { writing: "#1f4e79", daily: "#dd0000", listening: "#8a6b1f", speaking: "#3b7d5d", list: "#8f4c9c", vocab: "#0f7d6a" };
 const splitWordR = v => { const a = (v.article || "").trim(); let w = (v.word || "").trim(); if (a) w = w.replace(new RegExp("^" + a + "\\s*", "i"), ""); return { a, w }; };
 const fmtDateR = iso => { if (!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); };
+const stripHtml = html => String(html || "")
+  .replace(/<br\s*\/?>/gi, "\n")
+  .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+  .replace(/<li[^>]*>/gi, "\n• ")
+  .replace(/<[^>]+>/g, "")
+  .replace(/&nbsp;/g, " ")
+  .replace(/&amp;/g, "&")
+  .replace(/&lt;/g, "<")
+  .replace(/&gt;/g, ">")
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/[ \t]+\n/g, "\n")
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
 
 async function getPdfMake() {
   const { default: pdfMake } = await import("pdfmake/build/pdfmake");
@@ -563,7 +599,7 @@ async function resolveImageUrl(url) {
     return blob ? blobToPngDataUrl(blob) : null;
   }
   try {
-    const res = await fetch(url, { credentials: "include" });
+    const res = await fetch(germanImageUrl(url), { credentials: "include" });
     if (!res.ok) return null;
     return await blobToPngDataUrl(await res.blob());
   } catch (e) {
@@ -624,7 +660,7 @@ function Alphabet({ data }) {
     <section className="gr-section" id="alphabet">
       <div className="gr-sec-head"><div className="gr-tag">A</div><h2>German Alphabet <small>{al.length} items</small></h2></div>
       <div className="gr-card gr-alpha">{al.map(a => (
-        <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={a.photoUrl} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}</div>
+        <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={germanImageUrl(a.photoUrl)} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}</div>
       ))}</div>
     </section>
   );
@@ -657,16 +693,16 @@ function Chapter({ ch }) {
     <div className="gr-ch">
       <div className="gr-ch-head"><h4>{ch.title}</h4>{ch.level && <span className="gr-lvl">{ch.level}</span>}{firstDate && <span className="gr-date">{fmtDateR(firstDate)}</span>}</div>
       <div className="gr-ch-body">
-        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}{n.content}<Boxes boxes={n.boxes} /></div>)}</>}
+        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}{stripHtml(n.content)}<Boxes boxes={n.boxes} /></div>)}</>}
         <div className="gr-2col">
           {has("vocab") && (
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
               <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural</th><th>English</th><th>Category</th></tr></thead>
-              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={v.photoUrl} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a} {s.w}</b><Boxes boxes={v.boxes} /></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a} {s.w}</b><Boxes boxes={v.boxes} /></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
             </div>)}
           {has("grammar") && (
             <div><div className="gr-blk-title">Grammar</div>
-              {ch.grammar.map(g => <div className="gr-g" key={g.recordId}><span className="c">{g.category}</span><div className="t">{g.rule}</div><div className="x">{g.explanation}</div>{(g.examples || []).map((e, i) => <div className="x" key={i}>• {e}</div>)}<Boxes boxes={g.boxes} /></div>)}
+              {ch.grammar.map(g => <div className="gr-g" key={g.recordId}><span className="c">{g.category}</span><div className="t">{g.rule}</div><div className="x">{stripHtml(g.explanation)}</div>{(g.examples || []).map((e, i) => <div className="x" key={i}>• {stripHtml(e)}</div>)}<Boxes boxes={g.boxes} /></div>)}
             </div>)}
           {has("verb") && (
             <div><div className="gr-blk-title">Verbs</div>
@@ -678,7 +714,7 @@ function Chapter({ ch }) {
             </div>)}
           {has("memo") && (
             <div><div className="gr-blk-title">Memorization</div>
-              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{m.germanContent}</div>}{m.englishContent && <div className="en">{m.englishContent}</div>}<Boxes boxes={m.boxes} /></div>)}
+              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{stripHtml(m.germanContent)}</div>}{m.englishContent && <div className="en">{stripHtml(m.englishContent)}</div>}<Boxes boxes={m.boxes} /></div>)}
             </div>)}
         </div>
         <div className="gr-2col">
@@ -688,11 +724,11 @@ function Chapter({ ch }) {
                 const parts = d.participants || [];
                 return (<div className="gr-dlg" key={d.recordId}><div className="d-tit">{d.title}</div>
                   {parts.length > 0 && <div className="gr-mem">{parts.map((p, i) => (
-                    <div className="gr-mem-it" key={i}><div className={"gr-av" + (i % 2 ? " alt" : "")}>{p.photoUrl ? <img src={p.photoUrl} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div><span className="gr-mem-n">{p.name || "?"}</span></div>
+                    <div className="gr-mem-it" key={i}><div className={"gr-av" + (i % 2 ? " alt" : "")}>{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div><span className="gr-mem-n">{p.name || "?"}</span></div>
                   ))}</div>}
                   <div className="chat">
                     {(d.exchanges || []).map((x, i) => { const p = parts[x.speakerIndex] || { name: "?" }; return (
-                      <div className={"gr-msg" + (i % 2 ? " alt" : "")} key={i}><div className="gr-av">{p.photoUrl ? <img src={p.photoUrl} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
+                      <div className={"gr-msg" + (i % 2 ? " alt" : "")} key={i}><div className="gr-av">{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
                         <div><span className="who">{p.name}</span><span className="bubble">{x.text}</span></div></div>); })}
                   </div><Boxes boxes={d.boxes} /></div>);
               })}
@@ -729,6 +765,52 @@ function ChaptersView({ data }) {
     </section>
   );
 }
+function Standalone({ data }) {
+  const unchaptered = t => byType(data)(t).filter(r => !r.chapterId);
+  const notes = unchaptered("note");
+  const memos = unchaptered("memo");
+  const dialogues = unchaptered("dialogue");
+  if (!notes.length && !memos.length && !dialogues.length) return null;
+  return (
+    <>
+      {notes.length > 0 && (
+        <section className="gr-section" id="daily-notes">
+          <div className="gr-sec-head"><div className="gr-tag">N</div><h2>Daily Notes <small>{notes.length} notes</small></h2></div>
+          <div className="gr-card">
+            {notes.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}{stripHtml(n.content)}<Boxes boxes={n.boxes} /></div>)}
+          </div>
+        </section>
+      )}
+      {memos.length > 0 && (
+        <section className="gr-section" id="memorization">
+          <div className="gr-sec-head"><div className="gr-tag">M</div><h2>Memorization <small>{memos.length} paragraphs</small></h2></div>
+          <div className="gr-card">
+            {memos.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{stripHtml(m.germanContent)}</div>}{m.englishContent && <div className="en">{stripHtml(m.englishContent)}</div>}<Boxes boxes={m.boxes} /></div>)}
+          </div>
+        </section>
+      )}
+      {dialogues.length > 0 && (
+        <section className="gr-section" id="dialogues">
+          <div className="gr-sec-head"><div className="gr-tag">D</div><h2>Dialogues <small>{dialogues.length} conversations</small></h2></div>
+          <div className="gr-card">
+            {dialogues.map(d => {
+              const parts = d.participants || [];
+              return (<div className="gr-dlg" key={d.recordId}><div className="d-tit">{d.title}</div>
+                {parts.length > 0 && <div className="gr-mem">{parts.map((p, i) => (
+                  <div className="gr-mem-it" key={i}><div className={"gr-av" + (i % 2 ? " alt" : "")}>{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div><span className="gr-mem-n">{p.name || "?"}</span></div>
+                ))}</div>}
+                <div className="chat">
+                  {(d.exchanges || []).map((x, i) => { const p = parts[x.speakerIndex] || { name: "?" }; return (
+                    <div className={"gr-msg" + (i % 2 ? " alt" : "")} key={i}><div className="gr-av">{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
+                      <div><span className="who">{p.name}</span><span className="bubble">{x.text}</span></div></div>); })}
+                </div><Boxes boxes={d.boxes} /></div>);
+            })}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
 function IndexSection({ id, tag, title, count, children }) {
   return (
     <section className="gr-section" id={id}>
@@ -749,7 +831,7 @@ function Indexes({ data }) {
       </IndexSection>
       <IndexSection id="vocab-index" tag="W" title="Vocabulary Index" count={vocab.length + " words"}>
         <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural</th><th>English</th><th>Category</th></tr></thead>
-        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); return (<tr key={i}><td>{v.photoUrl ? <img src={v.photoUrl} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a} {s.w}</b></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); return (<tr key={i}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a} {s.w}</b></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
       </IndexSection>
       <IndexSection id="expression-index" tag="E" title="Expressions Index" count={expressions.length + " expressions"}>
         <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>German</th><th>English</th><th>Category</th></tr></thead>
@@ -809,6 +891,9 @@ export default function GermanReport({
           <div className="gr-toc">
             <a href="#alphabet">Alphabet</a>
             <a href="#chapters">Chapters</a>
+            <a href="#daily-notes">Daily Notes</a>
+            <a href="#memorization">Memorization</a>
+            <a href="#dialogues">Dialogues</a>
             <a href="#grammar-index">Grammar</a>
             <a href="#verb-index">Verbs</a>
             <a href="#vocab-index">Vocabulary</a>
@@ -818,6 +903,7 @@ export default function GermanReport({
           <Cover stats={stats} title={title} subtitle={subtitle} />
           <Alphabet data={data} stats={stats} />
           <ChaptersView data={data} />
+          <Standalone data={data} />
           <Indexes data={data} />
         </>
       )}

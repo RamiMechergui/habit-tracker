@@ -46,6 +46,20 @@ const fmtDate = iso => {
   const d = new Date(iso);
   return isNaN(d) ? "" : d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 };
+const stripHtml = html => String(html || "")
+  .replace(/<br\s*\/?>/gi, "\n")
+  .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+  .replace(/<li[^>]*>/gi, "\n• ")
+  .replace(/<[^>]+>/g, "")
+  .replace(/&nbsp;/g, " ")
+  .replace(/&amp;/g, "&")
+  .replace(/&lt;/g, "<")
+  .replace(/&gt;/g, ">")
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/[ \t]+\n/g, "\n")
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
 const T = (t, o = {}) => Object.assign({ text: t }, o);
 const sectionLabel = t => T(t.toUpperCase(), { fontSize: 9, bold: true, color: C.red, margin: [0, 14, 0, 6] });
 const cell = (content, opts = {}) => {
@@ -133,7 +147,7 @@ function noteBlocks(notes) {
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
     const stack = [];
     if (n.title) stack.push({ text: n.title, bold: true, fontSize: 9, margin: [0, 0, 0, 1] });
-    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, stripHtml(n.content) || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
     stack.push(...boxBlocks(n.boxes));
     return { stack, margin: [0, 0, 0, 6] };
   });
@@ -159,8 +173,8 @@ function grammarBlocks(rows) {
   return rows.map(g => ({
     stack: [
       { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
-      { text: g.explanation || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
-      ...(g.examples || []).map(e => ({ text: "•  " + e, fontSize: 8.5, margin: [8, 0, 0, 1] })),
+      { text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
+      ...(g.examples || []).map(e => ({ text: "•  " + stripHtml(e), fontSize: 8.5, margin: [8, 0, 0, 1] })),
       ...boxBlocks(g.boxes),
     ],
     margin: [0, 0, 0, 8],
@@ -187,8 +201,8 @@ function memoBlocks(rows) {
   return rows.map(m => ({
     stack: [
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
-      { table: { widths: ["*"], body: [[cell(m.germanContent || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
-      { text: m.englishContent || "", fontSize: 8.5, color: C.muted },
+      { table: { widths: ["*"], body: [[cell(stripHtml(m.germanContent) || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
+      { text: stripHtml(m.englishContent) || "", fontSize: 8.5, color: C.muted },
       ...boxBlocks(m.boxes),
     ],
     margin: [0, 0, 0, 9],
@@ -354,6 +368,27 @@ export function buildPdfDefinition(data, opts = {}) {
     memo: byType("memo"), dialogue: byType("dialogue"), expression: byType("expression"),
     idiom: byType("idiom"), mistake: byType("mistake"),
   })));
+
+  // Standalone sections for records that are NOT attached to any chapter, so
+  // dialogues, daily notes and memorization always make it into the PDF even
+  // when the user never assigned them to a chapter.
+  const unchaptered = t => byType(t).filter(r => !r.chapterId);
+  const dailyNotes = unchaptered("note");
+  if (dailyNotes.length) {
+    content.push({ text: "Daily Notes", style: "h2", pageBreak: "before" });
+    content.push(...noteBlocks(dailyNotes));
+  }
+  const memoRows = unchaptered("memo");
+  if (memoRows.length) {
+    content.push({ text: "Memorization", style: "h2", pageBreak: "before" });
+    content.push(...memoBlocks(memoRows));
+  }
+  const dialogueRows = unchaptered("dialogue");
+  if (dialogueRows.length) {
+    content.push({ text: "Dialogues", style: "h2", pageBreak: "before" });
+    content.push(...dialogueBlocks(dialogueRows));
+  }
+
   content.push({ text: "Grammar Index", style: "h2", pageBreak: "before" });
   content.push(grammarIndex(byType("grammar")));
   content.push({ text: "Verb Index", style: "h2", pageBreak: "before" });
