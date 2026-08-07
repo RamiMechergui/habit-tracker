@@ -1895,6 +1895,52 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
     return map;
   }, [expressions]);
 
+  const [dragId, setDragId] = useState(null);
+  const [dragCat, setDragCat] = useState(null);
+  const [overId, setOverId] = useState(null);
+
+  const reorderExpression = async (catValue, fromId, toId) => {
+    const list = grouped[catValue] || [];
+    const fromIdx = list.findIndex(e => e.recordId === fromId);
+    const toIdx = list.findIndex(e => e.recordId === toId);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+    const next = [...list];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    try {
+      await Promise.all(next.map((e, i) => onUpdate(e.recordId, { sortOrder: i })));
+    } catch (_) { /* store already reverts optimistically */ }
+  };
+
+  const onExprDragStart = (e, catValue, recordId) => {
+    setDragCat(catValue);
+    setDragId(recordId);
+    setOverId(recordId);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', recordId); } catch (_) {}
+  };
+
+  const onExprDragOver = (e, recordId) => {
+    e.preventDefault();
+    if (dragId && dragId !== recordId) setOverId(recordId);
+  };
+
+  const onExprDrop = async (e, catValue, targetId) => {
+    e.preventDefault();
+    if (dragId && dragCat === catValue && targetId !== dragId) {
+      await reorderExpression(catValue, dragId, targetId);
+    }
+    setDragId(null);
+    setDragCat(null);
+    setOverId(null);
+  };
+
+  const onExprDragEnd = () => {
+    setDragId(null);
+    setDragCat(null);
+    setOverId(null);
+  };
+
   const inputStyle = {
     padding: '0.6rem 0.75rem',
     borderRadius: '8px',
@@ -1948,7 +1994,20 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {grouped[cat.value].map(expr => (
-              <div key={expr.recordId} style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: 'var(--card)', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div key={expr.recordId} draggable
+                onDragStart={e => onExprDragStart(e, cat.value, expr.recordId)}
+                onDragOver={e => onExprDragOver(e, expr.recordId)}
+                onDrop={e => onExprDrop(e, cat.value, expr.recordId)}
+                onDragEnd={onExprDragEnd}
+                style={{
+                  padding: '0.75rem 1rem', borderRadius: '10px',
+                  background: dragId === expr.recordId ? 'var(--bg)' : 'var(--card)',
+                  border: `1px solid ${C.border}`,
+                  borderTop: `3px solid ${overId === expr.recordId && dragId && dragId !== expr.recordId ? cat.color : 'var(--border)'}`,
+                  display: 'flex', flexDirection: 'column', gap: '0.4rem',
+                  opacity: dragId === expr.recordId ? 0.5 : 1,
+                  cursor: 'grab', transition: 'border-color 0.15s ease, opacity 0.15s ease',
+                }}>
                 {editingId === expr.recordId ? (
                   <>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1966,6 +2025,9 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
                   </>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.68rem', opacity: 0.75 }}>
+                      <GripVertical size={13} /> Drag to reorder
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                       <div style={{ flex: 2, minWidth: 120 }}>
                         <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{expr.phrase}</div>
@@ -3353,6 +3415,7 @@ export default function LearningGerman() {
   const [sortGrammar, setSortGrammar] = useState('date');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [noteContent, setNoteContent] = useState('');
+  const [noteTitle, setNoteTitle] = useState('');
   const [selectedNoteId, setSelectedNoteId] = useState(null);
   const [confirmDeleteNoteId, setConfirmDeleteNoteId] = useState(null);
   const [noteFont, setNoteFont] = useState('');
@@ -3535,6 +3598,7 @@ export default function LearningGerman() {
       const lastNote = dateNotes[dateNotes.length - 1];
       setSelectedNoteId(lastNote.recordId);
       setNoteContent(lastNote.content || '');
+      setNoteTitle(lastNote.title || '');
       const savedBoxes = lastNote.boxes || [];
       if (savedBoxes.length > 0) {
         setNoteBoxes(savedBoxes.map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
@@ -3548,6 +3612,7 @@ export default function LearningGerman() {
     } else {
       setSelectedNoteId(null);
       setNoteContent('');
+      setNoteTitle('');
       setNoteBoxes([]);
     }
     setSelectedBoxId(null);
@@ -3776,6 +3841,7 @@ export default function LearningGerman() {
       const payload = {
         date: selectedDate,
         noteCategory,
+        title: noteTitle.trim(),
         content: contentToSave.trim(),
         boxes: boxesToSave.map(({ id: _id, ...rest }) => rest),
         level: workspaceLevel,
@@ -3815,6 +3881,7 @@ export default function LearningGerman() {
       if (selectedNoteId === recordId) {
         setSelectedNoteId(null);
         setNoteContent('');
+        setNoteTitle('');
         setNoteBoxes([]);
       }
       setConfirmDeleteNoteId(null);
@@ -4405,14 +4472,14 @@ export default function LearningGerman() {
                 <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
                   Study Sessions
                 </h3>
-                <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); setSelectedBoxId(null); }} style={{
+                <button onClick={() => { setSelectedNoteId(null); setNoteContent(''); setNoteTitle(''); setNoteBoxes([]); setSelectedBoxId(null); }} style={{
                   padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
                   background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, border: 'none', color: '#fff', cursor: 'pointer',
                 }}>+ New Note</button>
               </div>
               <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                 {NOTE_CATEGORIES.map(cat => (
-                  <button key={cat.value} onClick={() => { setNoteCategory(cat.value); setSelectedNoteId(null); setNoteContent(''); setNoteBoxes([]); }}
+                  <button key={cat.value} onClick={() => { setNoteCategory(cat.value); setSelectedNoteId(null); setNoteContent(''); setNoteTitle(''); setNoteBoxes([]); }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
                       padding: '0.3rem 0.6rem', borderRadius: '6px', cursor: 'pointer',
@@ -4489,7 +4556,7 @@ export default function LearningGerman() {
                 const meta = noteCategoryMeta(n.noteCategory);
                 return (
                 <div key={n.recordId} onClick={() => {
-                  setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || '');
+                  setSelectedDate(n.date); setSelectedNoteId(n.recordId); setNoteContent(n.content || ''); setNoteTitle(n.title || '');
                   const savedBoxes = n.boxes || [];
                   if (savedBoxes.length > 0) {
                     setNoteBoxes(savedBoxes.map((b, i) => ({ ...b, id: b.id || `box-${Date.now()}-${i}` })));
@@ -4538,6 +4605,7 @@ export default function LearningGerman() {
                     </div>
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    {n.title && <span style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'block', fontSize: '0.78rem' }}>{n.title}</span>}
                     {n.content?.replace(/<[^>]+>/g, '').slice(0, 50)}...
                   </div>
                 </div>
@@ -4587,6 +4655,13 @@ export default function LearningGerman() {
                 <option value='"Trebuchet MS", sans-serif'>Trebuchet MS</option>
                 <option value='"Palatino Linotype", serif'>Palatino</option>
               </select>
+            </div>
+            <div style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                Note Title <span style={{ fontWeight: 400, opacity: 0.7 }}>— optional</span>
+              </label>
+              <input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder="e.g. My first day with German articles"
+                style={{ ...inputBase, background: 'var(--bg-card)', fontWeight: 600, fontSize: '0.9rem' }} />
             </div>
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>

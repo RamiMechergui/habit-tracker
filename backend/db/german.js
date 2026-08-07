@@ -167,13 +167,14 @@ async function updateGrammar(userId, recordId, updates) {
 // Supports multiple notes per day. recordId: NOTE#YYYY-MM-DD#<uuid>
 // Notes can be attached to a chapter (chapterId + denormalized chapterTitle) so
 // they are organized under a selected study chapter while keeping their date.
-async function saveNote(userId, date, { noteId, content, boxes, noteCategory, studyMinutes, level = 'A1.1', chapterId = null, chapterTitle = '', createdAt }) {
+async function saveNote(userId, date, { noteId, title, content, boxes, noteCategory, studyMinutes, level = 'A1.1', chapterId = null, chapterTitle = '', createdAt }) {
   const recordId = noteId || `NOTE#${date}#${uuidv4()}`;
   const item = {
     userId,
     recordId,
     type: 'note',
     date,
+    title: title || '',
     content,
     boxes: boxes || [],
     noteCategory: noteCategory || 'daily',

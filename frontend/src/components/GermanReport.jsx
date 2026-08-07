@@ -139,26 +139,51 @@ function coverContent(stats, opts) {
     { text: meta.join("   ·   "), alignment: "center", fontSize: 8.5, color: C.muted, margin: [0, 6, 0, 0] },
   ];
 }
+const BOX_STYLES = {
+  info:    { label: "INFO",    color: "#0f7d6a", bg: "#e8f5f1" },
+  warning: { label: "WARNING", color: "#b33700", bg: "#fdeee4" },
+  quote:   { label: "QUOTE",   color: "#6d28d9", bg: "#f1eafc" },
+};
+function boxBlocks(boxes) {
+  if (!Array.isArray(boxes) || boxes.length === 0) return [];
+  return boxes
+    .filter(b => b && typeof b === "object" && (b.content || "").trim())
+    .map(b => {
+      const type = b.type === "warning" ? "warning" : b.type === "quote" ? "quote" : "info";
+      const cfg = BOX_STYLES[type];
+      const body = [
+        { text: cfg.label, bold: true, fontSize: 6.5, color: cfg.color, margin: [0, 0, 0, 2] },
+        { text: b.content || "", fontSize: 8.5 },
+      ];
+      if (type === "quote" && b.author) body.push({ text: "— " + b.author, italics: true, fontSize: 7.5, color: C.muted, alignment: "right", margin: [0, 3, 0, 0] });
+      return { table: { widths: ["*"], body: [[{ stack: body, fillColor: cfg.bg, margin: [7, 5, 7, 5] }]] }, layout: "noBorders", margin: [0, 0, 0, 5] };
+    });
+}
 function noteBlocks(notes) {
   return notes.map(n => {
     const cat = (n.noteCategory || "note").toUpperCase();
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
-    return { stack: [{ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] }], margin: [0, 0, 0, 5] };
+    const stack = [];
+    if (n.title) stack.push({ text: n.title, bold: true, fontSize: 9, margin: [0, 0, 0, 1] });
+    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    stack.push(...boxBlocks(n.boxes));
+    return { stack, margin: [0, 0, 0, 6] };
   });
 }
 function vocabTable(rows) {
   const body = [
-    headRow(["German", "Plural", "English", "Example", "Category"]),
+    headRow(["Photo", "German", "Plural", "English", "Example", "Category"]),
     ...rows.map(v => {
       const s = splitWord(v);
       return [
-        cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
+        v.photoBase64 ? { image: v.photoBase64, fit: [30, 30], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
+        cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }, ...boxBlocks(v.boxes)]),
         cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }),
         cell(v.example || "", { color: C.muted }), cell(v.category || ""),
       ];
     }),
   ];
-  return { table: { ...TABLE, widths: ["*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
+  return { table: { ...TABLE, widths: [44, "*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 function grammarBlocks(rows) {
   return rows.map(g => ({
@@ -166,6 +191,7 @@ function grammarBlocks(rows) {
       { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
       { text: g.explanation || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
       ...(g.examples || []).map(e => ({ text: "•  " + e, fontSize: 8.5, margin: [8, 0, 0, 1] })),
+      ...boxBlocks(g.boxes),
     ],
     margin: [0, 0, 0, 8],
   }));
@@ -180,6 +206,7 @@ function verbBlocks(rows) {
         ["wir", "ihr", "sie/Sie"].map(p => cell(p, { bold: true, fontSize: 7, color: C.muted, fillColor: C.light, alignment: "center" })),
         [v.wir, v.ihr, v.Sie].map(x => cell(x || "", { alignment: "center", fontSize: 8.5 })),
       ] }, layout: tableLayout() },
+      ...boxBlocks(v.boxes),
     ],
     margin: [0, 0, 0, 9],
   }));
@@ -190,6 +217,7 @@ function memoBlocks(rows) {
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
       { table: { widths: ["*"], body: [[cell(m.germanContent || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
       { text: m.englishContent || "", fontSize: 8.5, color: C.muted },
+      ...boxBlocks(m.boxes),
     ],
     margin: [0, 0, 0, 9],
   }));
@@ -223,14 +251,18 @@ function dialogueBlocks(rows) {
         { text: d.title || "", bold: true, fontSize: 9.5, margin: [0, 0, 0, 3] },
         ...(members.length ? [{ columns: members, margin: [0, 0, 0, 6] }] : []),
         { table: { widths: [24, "auto", "*"], body }, layout: "noBorders" },
+        ...boxBlocks(d.boxes),
       ],
       margin: [0, 0, 0, 9],
     };
   });
 }
 const expressionList = rows => rows.map(e => ({
-  text: [{ text: e.phrase || "", bold: true, fontSize: 8.5 }, { text: "   —   " + (e.translation || ""), fontSize: 8.5, color: C.muted }],
-  margin: [0, 0, 0, 3],
+  stack: [
+    { text: [{ text: e.phrase || "", bold: true, fontSize: 8.5 }, { text: "   —   " + (e.translation || ""), fontSize: 8.5, color: C.muted }], margin: [0, 0, 0, 2] },
+    ...boxBlocks(e.boxes),
+  ],
+  margin: [0, 0, 0, 5],
 }));
 function idiomBlocks(rows) {
   return rows.map(im => ({
@@ -296,14 +328,15 @@ function verbIndex(rows) {
   return { table: { ...TABLE, widths: ["*", "*", "*", "*"], body }, layout: tableLayout() };
 }
 function vocabIndex(rows) {
-  const body = [headRow(["German", "Article", "Plural", "English", "Category"]), ...rows.map(v => {
+  const body = [headRow(["Photo", "German", "Article", "Plural", "English", "Category"]), ...rows.map(v => {
     const s = splitWord(v);
     return [
+      v.photoBase64 ? { image: v.photoBase64, fit: [22, 22], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
       cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
       cell(s.a || "—"), cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
     ];
   })];
-  return { table: { ...TABLE, widths: ["*", 40, "*", "*", "*"], body }, layout: tableLayout() };
+  return { table: { ...TABLE, widths: [34, "*", 40, "*", "*", "*"], body }, layout: tableLayout() };
 }
 function expressionIndex(rows) {
   const body = [headRow(["Expression", "English", "Category"]), ...rows.map(e => [cell(e.phrase || "", { bold: true }), cell(e.translation || "", { color: C.muted }), cell(e.category || "")])];
@@ -425,6 +458,18 @@ const STYLES = `
 .gr-ch-body{padding:16px 18px}.gr-2col{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .gr-blk-title{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--red);font-weight:700;margin:14px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
 .gr-note{background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:.86rem}
+.gr-note .nt{font-weight:700;display:block;margin-bottom:2px}
+.gr-box{border-radius:7px;padding:6px 10px;margin:4px 0;font-size:.78rem;line-height:1.4;border:1px solid transparent}
+.gr-box .bl{display:block;font-size:.6rem;font-weight:800;letter-spacing:.08em;margin-bottom:2px}
+.gr-box-info{background:#e8f5f1;border-color:#9fd0c3;color:#0f7d6a}
+.gr-box-info .bl{color:#0f7d6a}
+.gr-box-warning{background:#fdeee4;border-color:#f2c3a8;color:#b33700}
+.gr-box-warning .bl{color:#b33700}
+.gr-box-quote{background:#f1eafc;border-color:#d5c5f2;color:#6d28d9}
+.gr-box-quote .bl{color:#6d28d9}
+.gr-box .auth{display:block;text-align:right;font-style:italic;margin-top:2px;font-size:.7rem;opacity:.8}
+.gr-vph{width:30px;height:30px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+.gr-vph-lg{width:40px;height:40px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
 .gr-chip{display:inline-block;font-size:.64rem;font-weight:700;text-transform:uppercase;padding:1px 7px;border-radius:6px;color:#fff;margin-right:6px}
 table.gr-t{border-collapse:collapse;width:100%;font-size:.84rem}.gr-t th,.gr-t td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}.gr-t th{color:var(--muted);text-transform:uppercase;font-size:.64rem;background:#fafaf8}
 .gr-g{border-left:4px solid var(--gold);background:var(--canvas);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:.86rem}.gr-g .t{font-weight:700}.gr-g .c{color:var(--muted);font-size:.72rem;float:right}.gr-g .x{color:var(--muted);font-size:.82rem;margin-top:4px}
@@ -462,12 +507,26 @@ async function getPdfMake() {
 const PDF_SAFE_DATA_URL = /^data:image\/(png|jpe?g);/i;
 
 function dataUrlToBlob(dataUrl) {
-  const [head, b64] = dataUrl.split(",");
-  const mime = (head.match(/^data:([^;]+)/) || [])[1] || "image/png";
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
+  const idx = dataUrl.indexOf(",");
+  if (idx === -1) return null;
+  const head = dataUrl.slice(0, idx);
+  const payload = dataUrl.slice(idx + 1);
+  const mime = (head.match(/^data:([^;]+)/) || [])[1] || "text/plain";
+  try {
+    let bytes;
+    if (/;base64\b/i.test(head)) {
+      const bin = atob(payload);
+      bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } else {
+      // Percent-encoded payloads (e.g. data:image/svg+xml;charset=utf-8,...) must
+      // be decoded as text, not base64 — otherwise atob() throws.
+      bytes = new TextEncoder().encode(decodeURIComponent(payload));
+    }
+    return new Blob([bytes], { type: mime });
+  } catch (e) {
+    return null;
+  }
 }
 
 async function blobToPngDataUrl(blob) {
@@ -500,7 +559,8 @@ async function resolveImageUrl(url) {
   if (!url) return null;
   if (PDF_SAFE_DATA_URL.test(url)) return url;
   if (url.startsWith("data:image/")) {
-    return blobToPngDataUrl(dataUrlToBlob(url));
+    const blob = dataUrlToBlob(url);
+    return blob ? blobToPngDataUrl(blob) : null;
   }
   try {
     const res = await fetch(url, { credentials: "include" });
@@ -514,6 +574,10 @@ async function resolveImageUrl(url) {
 async function enrichWithPhotos(data) {
   const withAlphabet = await Promise.all(data.map(async r => {
     if (r.type === "alphabet" && r.photoUrl) {
+      const photoBase64 = await resolveImageUrl(r.photoUrl);
+      return photoBase64 ? { ...r, photoBase64 } : r;
+    }
+    if (r.type === "vocab" && r.photoUrl) {
       const photoBase64 = await resolveImageUrl(r.photoUrl);
       return photoBase64 ? { ...r, photoBase64 } : r;
     }
@@ -566,6 +630,26 @@ function Alphabet({ data }) {
   );
 }
 const noteChip = cat => <span className="gr-chip" style={NOTE_COLOR[cat] ? { background: NOTE_COLOR[cat] } : undefined}>{cat || "note"}</span>;
+function Boxes({ boxes }) {
+  if (!Array.isArray(boxes) || boxes.length === 0) return null;
+  const list = boxes.filter(b => b && b.content && b.content.trim());
+  if (!list.length) return null;
+  return (
+    <div>
+      {list.map((b, i) => {
+        const type = b.type === "warning" ? "warning" : b.type === "quote" ? "quote" : "info";
+        const label = type === "warning" ? "WARNING" : type === "quote" ? "QUOTE" : "INFO";
+        return (
+          <div className={`gr-box gr-box-${type}`} key={b.id || i}>
+            <span className="bl">{label}</span>
+            {b.content}
+            {type === "quote" && b.author && <span className="auth">— {b.author}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function Chapter({ ch }) {
   const has = k => (ch[k] || []).length;
   const firstDate = has("note") && ch.note[0] && ch.note[0].date ? ch.note[0].date : "";
@@ -573,16 +657,16 @@ function Chapter({ ch }) {
     <div className="gr-ch">
       <div className="gr-ch-head"><h4>{ch.title}</h4>{ch.level && <span className="gr-lvl">{ch.level}</span>}{firstDate && <span className="gr-date">{fmtDateR(firstDate)}</span>}</div>
       <div className="gr-ch-body">
-        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.content}</div>)}</>}
+        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}{n.content}<Boxes boxes={n.boxes} /></div>)}</>}
         <div className="gr-2col">
           {has("vocab") && (
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
-              <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>German</th><th>Plural</th><th>English</th><th>Category</th></tr></thead>
-              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); return (<tr key={v.recordId}><td><b>{s.a} {s.w}</b></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+              <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural</th><th>English</th><th>Category</th></tr></thead>
+              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={v.photoUrl} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a} {s.w}</b><Boxes boxes={v.boxes} /></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
             </div>)}
           {has("grammar") && (
             <div><div className="gr-blk-title">Grammar</div>
-              {ch.grammar.map(g => <div className="gr-g" key={g.recordId}><span className="c">{g.category}</span><div className="t">{g.rule}</div><div className="x">{g.explanation}</div>{(g.examples || []).map((e, i) => <div className="x" key={i}>• {e}</div>)}</div>)}
+              {ch.grammar.map(g => <div className="gr-g" key={g.recordId}><span className="c">{g.category}</span><div className="t">{g.rule}</div><div className="x">{g.explanation}</div>{(g.examples || []).map((e, i) => <div className="x" key={i}>• {e}</div>)}<Boxes boxes={g.boxes} /></div>)}
             </div>)}
           {has("verb") && (
             <div><div className="gr-blk-title">Verbs</div>
@@ -590,11 +674,11 @@ function Chapter({ ch }) {
                 <div className="gr-conj">
                   <p><span className="pn">ich</span>{v.ich}</p><p><span className="pn">du</span>{v.du}</p><p><span className="pn">er/sie/es</span>{v.erSieEs}</p>
                   <p><span className="pn">wir</span>{v.wir}</p><p><span className="pn">ihr</span>{v.ihr}</p><p><span className="pn">sie/Sie</span>{v.Sie}</p>
-                </div></div>)}
+                </div><Boxes boxes={v.boxes} /></div>)}
             </div>)}
           {has("memo") && (
             <div><div className="gr-blk-title">Memorization</div>
-              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{m.germanContent}</div>}{m.englishContent && <div className="en">{m.englishContent}</div>}</div>)}
+              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{m.germanContent}</div>}{m.englishContent && <div className="en">{m.englishContent}</div>}<Boxes boxes={m.boxes} /></div>)}
             </div>)}
         </div>
         <div className="gr-2col">
@@ -610,12 +694,12 @@ function Chapter({ ch }) {
                     {(d.exchanges || []).map((x, i) => { const p = parts[x.speakerIndex] || { name: "?" }; return (
                       <div className={"gr-msg" + (i % 2 ? " alt" : "")} key={i}><div className="gr-av">{p.photoUrl ? <img src={p.photoUrl} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
                         <div><span className="who">{p.name}</span><span className="bubble">{x.text}</span></div></div>); })}
-                  </div></div>);
+                  </div><Boxes boxes={d.boxes} /></div>);
               })}
             </div>)}
           {has("expression") && (
             <div><div className="gr-blk-title">Expressions</div>
-              {ch.expression.map((e, i) => <div className="gr-g" key={i}><div className="t">{e.phrase}</div><div className="x">{e.translation}</div></div>)}
+              {ch.expression.map((e, i) => <div className="gr-g" key={i}><div className="t">{e.phrase}</div><div className="x">{e.translation}</div><Boxes boxes={e.boxes} /></div>)}
             </div>)}
           {has("idiom") && (
             <div><div className="gr-blk-title">Idioms</div>
@@ -664,8 +748,8 @@ function Indexes({ data }) {
         <div className="gr-idx">{verbs.map((v, i) => <div className="gr-idx-card" key={i}><div className="t">{v.infinitive}</div><div className="s"><b>{v.meaning}</b></div><div className="s">ich {v.ich} · du {v.du} · er/sie/es {v.erSieEs}</div></div>)}</div>
       </IndexSection>
       <IndexSection id="vocab-index" tag="W" title="Vocabulary Index" count={vocab.length + " words"}>
-        <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>German</th><th>Plural</th><th>English</th><th>Category</th></tr></thead>
-        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); return (<tr key={i}><td><b>{s.a} {s.w}</b></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+        <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural</th><th>English</th><th>Category</th></tr></thead>
+        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); return (<tr key={i}><td>{v.photoUrl ? <img src={v.photoUrl} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a} {s.w}</b></td><td>{v.plural || "—"}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
       </IndexSection>
       <IndexSection id="expression-index" tag="E" title="Expressions Index" count={expressions.length + " expressions"}>
         <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>German</th><th>English</th><th>Category</th></tr></thead>

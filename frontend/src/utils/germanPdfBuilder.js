@@ -107,27 +107,52 @@ function coverContent(stats, opts) {
   ];
 }
 
+const BOX_STYLES = {
+  info:    { label: "INFO",    color: "#0f7d6a", bg: "#e8f5f1" },
+  warning: { label: "WARNING", color: "#b33700", bg: "#fdeee4" },
+  quote:   { label: "QUOTE",   color: "#6d28d9", bg: "#f1eafc" },
+};
+function boxBlocks(boxes) {
+  if (!Array.isArray(boxes) || boxes.length === 0) return [];
+  return boxes
+    .filter(b => b && typeof b === "object" && (b.content || "").trim())
+    .map(b => {
+      const type = b.type === "warning" ? "warning" : b.type === "quote" ? "quote" : "info";
+      const cfg = BOX_STYLES[type];
+      const body = [
+        { text: cfg.label, bold: true, fontSize: 6.5, color: cfg.color, margin: [0, 0, 0, 2] },
+        { text: b.content || "", fontSize: 8.5 },
+      ];
+      if (type === "quote" && b.author) body.push({ text: "— " + b.author, italics: true, fontSize: 7.5, color: C.muted, alignment: "right", margin: [0, 3, 0, 0] });
+      return { table: { widths: ["*"], body: [[{ stack: body, fillColor: cfg.bg, margin: [7, 5, 7, 5] }]] }, layout: "noBorders", margin: [0, 0, 0, 5] };
+    });
+}
 function noteBlocks(notes) {
   return notes.map(n => {
     const cat = (n.noteCategory || "note").toUpperCase();
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
-    return { stack: [{ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] }], margin: [0, 0, 0, 5] };
+    const stack = [];
+    if (n.title) stack.push({ text: n.title, bold: true, fontSize: 9, margin: [0, 0, 0, 1] });
+    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    stack.push(...boxBlocks(n.boxes));
+    return { stack, margin: [0, 0, 0, 6] };
   });
 }
 
 function vocabTable(rows) {
   const body = [
-    headRow(["German", "Plural", "English", "Example", "Category"]),
+    headRow(["Photo", "German", "Plural", "English", "Example", "Category"]),
     ...rows.map(v => {
       const s = splitWord(v);
       return [
-        cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
+        v.photoBase64 ? { image: v.photoBase64, fit: [30, 30], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
+        cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }, ...boxBlocks(v.boxes)]),
         cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }),
         cell(v.example || "", { color: C.muted }), cell(v.category || ""),
       ];
     }),
   ];
-  return { table: { ...TABLE, widths: ["*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
+  return { table: { ...TABLE, widths: [44, "*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 
 function grammarBlocks(rows) {
@@ -136,6 +161,7 @@ function grammarBlocks(rows) {
       { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
       { text: g.explanation || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
       ...(g.examples || []).map(e => ({ text: "•  " + e, fontSize: 8.5, margin: [8, 0, 0, 1] })),
+      ...boxBlocks(g.boxes),
     ],
     margin: [0, 0, 0, 8],
   }));
@@ -151,6 +177,7 @@ function verbBlocks(rows) {
         ["wir", "ihr", "sie/Sie"].map(p => cell(p, { bold: true, fontSize: 7, color: C.muted, fillColor: C.light, alignment: "center" })),
         [v.wir, v.ihr, v.Sie].map(x => cell(x || "", { alignment: "center", fontSize: 8.5 })),
       ] }, layout: tableLayout() },
+      ...boxBlocks(v.boxes),
     ],
     margin: [0, 0, 0, 9],
   }));
@@ -162,6 +189,7 @@ function memoBlocks(rows) {
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
       { table: { widths: ["*"], body: [[cell(m.germanContent || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
       { text: m.englishContent || "", fontSize: 8.5, color: C.muted },
+      ...boxBlocks(m.boxes),
     ],
     margin: [0, 0, 0, 9],
   }));
@@ -181,6 +209,7 @@ function dialogueBlocks(rows) {
       stack: [
         { text: d.title || "", bold: true, fontSize: 9.5, margin: [0, 0, 0, 3] },
         { table: { widths: ["auto", "*"], body }, layout: "noBorders" },
+        ...boxBlocks(d.boxes),
       ],
       margin: [0, 0, 0, 9],
     };
@@ -188,8 +217,11 @@ function dialogueBlocks(rows) {
 }
 
 const expressionList = rows => rows.map(e => ({
-  text: [{ text: e.phrase || "", bold: true, fontSize: 8.5 }, { text: "   —   " + (e.translation || ""), fontSize: 8.5, color: C.muted }],
-  margin: [0, 0, 0, 3],
+  stack: [
+    { text: [{ text: e.phrase || "", bold: true, fontSize: 8.5 }, { text: "   —   " + (e.translation || ""), fontSize: 8.5, color: C.muted }], margin: [0, 0, 0, 2] },
+    ...boxBlocks(e.boxes),
+  ],
+  margin: [0, 0, 0, 5],
 }));
 
 function idiomBlocks(rows) {
@@ -261,14 +293,15 @@ function verbIndex(rows) {
 }
 
 function vocabIndex(rows) {
-  const body = [headRow(["German", "Article", "Plural", "English", "Category"]), ...rows.map(v => {
+  const body = [headRow(["Photo", "German", "Article", "Plural", "English", "Category"]), ...rows.map(v => {
     const s = splitWord(v);
     return [
+      v.photoBase64 ? { image: v.photoBase64, fit: [22, 22], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
       cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
       cell(s.a || "—"), cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
     ];
   })];
-  return { table: { ...TABLE, widths: ["*", 40, "*", "*", "*"], body }, layout: tableLayout() };
+  return { table: { ...TABLE, widths: [34, "*", 40, "*", "*", "*"], body }, layout: tableLayout() };
 }
 
 function expressionIndex(rows) {
