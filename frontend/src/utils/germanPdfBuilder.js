@@ -353,12 +353,12 @@ function alphabetBlock(rows) {
   }, margin: [0, 4, 0, 6] };
 }
 
-function alphabetNoteBlock(note) {
+function alphabetNoteBlock({ title = '', note = '' }) {
+  const body = [];
+  if (title) body.push({ text: title, bold: true, fontSize: 9.5, color: C.teal, margin: [4, 4, 4, 2] });
+  body.push({ text: stripHtml(note) || '', fontSize: 9, italics: true, color: C.teal, margin: [4, title ? 0 : 4, 4, 4] });
   return {
-    table: {
-      widths: ["*"],
-      body: [[{ text: stripHtml(note), fontSize: 9, italics: true, color: C.teal, margin: [4, 4, 4, 4] }]],
-    },
+    table: { widths: ["*"], body: [[{ stack: body }]] },
     layout: {
       hLineColor: () => "#14b8a655", vLineColor: () => "#14b8a655",
       hLineWidth: () => 0.5, vLineWidth: () => 0.5,
@@ -384,7 +384,7 @@ export function buildPdfDefinition(data, opts = {}) {
   content.push(alphabetBlock(byType("alphabet")));
   const alphabetNote = data.find(r => r.type === "alphabetNote" && r.note);
   if (alphabetNote?.note) {
-    content.push(alphabetNoteBlock(alphabetNote.note));
+    content.push(alphabetNoteBlock({ title: alphabetNote.title || '', note: alphabetNote.note }));
   }
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),

@@ -764,12 +764,13 @@ async function updateAlphabet(userId, recordId, updates) {
 }
 
 // One section-level note for the whole Alphabets section (single record, fixed id)
-async function saveAlphabetNote(userId, note) {
+// note is rich HTML (title + content) produced by the RichTextEditor.
+async function saveAlphabetNote(userId, { note = '', title = '' }) {
   const recordId = 'ALPHABET-NOTE';
   const ts = new Date().toISOString();
   const item = {
     userId, recordId, type: 'alphabetNote',
-    note: note || '', level: 'A1.1',
+    note: note || '', title: title || '', level: 'A1.1',
     createdAt: ts, updatedAt: ts,
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));

@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, BookA, Camera, Edit3, Trash2, ArrowLeft, Sparkles } from 'lucide-react';
+import { Plus, X, BookA, Camera, Edit3, Trash2, ArrowLeft, Sparkles, NotebookPen } from 'lucide-react';
 import { useHabits } from '../Store';
+import RichTextEditor from '../components/RichTextEditor';
 
 const SPECIAL_CHARS = [
   { letter: 'ä', example: 'Apfel', english: 'Apple', pronunciation: 'ah' },
@@ -34,9 +35,10 @@ export default function Alphabets() {
   const {
     germanData, addGermanAlphabet, updateGermanAlphabet,
     uploadGermanAlphabetPhoto, deleteGermanRecord, saveGermanAlphabetNote,
-    fetchGermanData,
+    uploadGermanNotePhoto, fetchGermanData,
   } = useHabits();
 
+  const [sectionTitle, setSectionTitle] = useState('');
   const [sectionNote, setSectionNote] = useState('');
   const [sectionSaving, setSectionSaving] = useState(false);
   const [sectionSaved, setSectionSaved] = useState(false);
@@ -72,17 +74,31 @@ export default function Alphabets() {
   const alphabetNote = useMemo(() => (germanData || []).find(r => r.type === 'alphabetNote'), [germanData]);
 
   useEffect(() => {
-    if (alphabetNote) setSectionNote(alphabetNote.note || '');
+    if (alphabetNote) {
+      setSectionTitle(alphabetNote.title || '');
+      setSectionNote(alphabetNote.note || '');
+    }
   }, [alphabetNote]);
 
   const handleSaveSectionNote = async () => {
     setSectionSaving(true);
     setSectionSaved(false);
     try {
-      await saveGermanAlphabetNote(sectionNote.trim());
+      await saveGermanAlphabetNote({ note: sectionNote, title: sectionTitle.trim() });
       setSectionSaved(true);
     } catch (e) { console.error(e); }
     finally { setSectionSaving(false); }
+  };
+
+  const handleUploadNotePhoto = async (file) => {
+    if (!file) return null;
+    try {
+      const result = await uploadGermanNotePhoto(file);
+      return result.url;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   };
 
   const alphabets = useMemo(() => {
@@ -231,36 +247,6 @@ export default function Alphabets() {
           <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             Learn the German alphabet — {alphabets.length} letter{alphabets.length !== 1 ? 's' : ''}
           </p>
-        </div>
-      </div>
-
-      {/* Section-level note for the whole Alphabets section */}
-      <div style={{
-        padding: '1rem', borderRadius: '12px', border: `1px solid ${C.teal}40`,
-        background: `${C.teal}08`, marginBottom: '1.25rem',
-        display: 'flex', flexDirection: 'column', gap: '0.5rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alphabets Note</label>
-          {sectionSaved && <span style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700 }}>Saved ✓</span>}
-        </div>
-        <textarea
-          value={sectionNote}
-          onChange={e => { setSectionNote(e.target.value); setSectionSaved(false); }}
-          placeholder="Add a note about the whole Alphabets section. It will be exported to your PDF report."
-          rows={2}
-          style={{ ...inputStyle, resize: 'vertical', width: '100%', boxSizing: 'border-box', fontStyle: sectionNote ? 'normal' : 'italic' }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={handleSaveSectionNote} disabled={sectionSaving} style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
-            background: sectionSaving ? 'var(--bg)' : `linear-gradient(135deg, ${C.teal}, #0d9488)`,
-            color: sectionSaving ? 'var(--text-muted)' : '#fff',
-            fontWeight: 700, fontSize: '0.82rem', cursor: sectionSaving ? 'wait' : 'pointer',
-          }}>
-            {sectionSaving ? 'Saving...' : 'Save Note'}
-          </button>
         </div>
       </div>
 
@@ -658,6 +644,55 @@ export default function Alphabets() {
         e.target.value = '';
         setPendingSpecialUploadId(null);
       }} />
+
+      {/* Section-level note for the whole Alphabets section (below the alphabets list) */}
+      <div style={{
+        padding: '1.1rem', borderRadius: '14px', border: `1px solid ${C.teal}40`,
+        background: `${C.teal}08`, marginTop: '1.5rem',
+        display: 'flex', flexDirection: 'column', gap: '0.75rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <NotebookPen size={15} /> Alphabets Note
+          </label>
+          {sectionSaved && <span style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700 }}>Saved ✓</span>}
+        </div>
+        <div>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Note Title <span style={{ fontWeight: 400, opacity: 0.7 }}>— optional</span>
+          </label>
+          <input
+            value={sectionTitle}
+            onChange={e => { setSectionTitle(e.target.value); setSectionSaved(false); }}
+            placeholder="e.g. Why German letters are easy for me"
+            style={{ ...inputStyle, background: 'var(--bg-card)', fontWeight: 600, fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Study Notes &amp; Reflections
+            <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.7 }}>— paste or drag images directly into the editor, click any image to resize &amp; position it</span>
+          </label>
+          <RichTextEditor
+            value={sectionNote}
+            onChange={v => { setSectionNote(v); setSectionSaved(false); }}
+            placeholder={`Add notes about the whole Alphabets section.\n\nThis note is exported to your PDF report.`}
+            minHeight={220}
+            onUploadImage={handleUploadNotePhoto}
+          />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={handleSaveSectionNote} disabled={sectionSaving} style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.5rem 1.1rem', borderRadius: '8px', border: 'none',
+            background: sectionSaving ? 'var(--bg)' : `linear-gradient(135deg, ${C.teal}, #0d9488)`,
+            color: sectionSaving ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.82rem', cursor: sectionSaving ? 'wait' : 'pointer',
+          }}>
+            {sectionSaving ? 'Saving...' : 'Save Note'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

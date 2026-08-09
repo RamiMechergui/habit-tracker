@@ -2591,12 +2591,12 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
-  const saveGermanAlphabetNote = useCallback(async (note) => {
+  const saveGermanAlphabetNote = useCallback(async (payload) => {
     const res = await fetch(`${API_URL}/api/german/alphabet-note`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ note: payload?.note || '', title: payload?.title || '' }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to save alphabet note');

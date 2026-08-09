@@ -38,6 +38,7 @@
 "use client";
 import React, { useMemo, useState, useCallback } from "react";
 import { germanImageUrl } from "../utils/germanImageUrl";
+import { EDITOR_IMAGE_BASE } from "../config";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
 /* Pure builder: JSON → pdfmake document definition. No pdfmake import needed. */
@@ -374,12 +375,12 @@ function alphabetBlock(rows) {
     paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3, paddingBottom: () => 3,
   }, margin: [0, 4, 0, 6] };
 }
-function alphabetNoteBlock(note) {
+function alphabetNoteBlock({ title = '', note = '' }) {
+  const body = [];
+  if (title) body.push({ text: title, bold: true, fontSize: 9.5, color: "#0f7d6a", margin: [4, 4, 4, 2] });
+  body.push({ text: stripHtml(note) || '', fontSize: 9, italics: true, color: "#0f7d6a", margin: [4, title ? 0 : 4, 4, 4] });
   return {
-    table: {
-      widths: ["*"],
-      body: [[{ text: stripHtml(note), fontSize: 9, italics: true, color: "#0f7d6a", margin: [4, 4, 4, 4] }]],
-    },
+    table: { widths: ["*"], body: [[{ stack: body }]] },
     layout: {
       hLineColor: () => "#0f7d6a55", vLineColor: () => "#0f7d6a55",
       hLineWidth: () => 0.5, vLineWidth: () => 0.5,
@@ -404,7 +405,7 @@ export function buildPdfDefinition(data, opts = {}) {
   content.push(alphabetBlock(byType("alphabet")));
   const alphabetNote = data.find(r => r.type === "alphabetNote" && r.note);
   if (alphabetNote?.note) {
-    content.push(alphabetNoteBlock(alphabetNote.note));
+    content.push(alphabetNoteBlock({ title: alphabetNote.title || '', note: alphabetNote.note }));
   }
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
@@ -490,7 +491,7 @@ const STYLES = `
 .gr-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
 .gr-alpha{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
 .gr-a{background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.gr-a .L{font-size:1.9rem;font-weight:800;color:var(--red)}.gr-a .w{font-size:.85rem;margin-top:4px;font-weight:600}
-.gr-al-note{margin-top:12px;padding:10px 14px;border:1px dashed #0f7d6a66;border-radius:10px;font-size:.88rem;font-style:italic;color:#0f7d6a;line-height:1.45}
+.gr-al-note{margin-top:12px;padding:10px 14px;border:1px dashed #0f7d6a66;border-radius:10px;font-size:.88rem;color:#0f7d6a;line-height:1.5}.gr-al-title{display:block;margin-bottom:4px;font-weight:800;font-size:.95rem}.gr-al-body p{margin:0 0 6px}.gr-al-body p:last-child{margin-bottom:0}.gr-al-body ul,.gr-al-body ol{margin:0 0 6px;padding-left:18px}.gr-al-body img{max-width:100%;border-radius:8px;margin:4px 0}.gr-al-body h1,.gr-al-body h2,.gr-al-body h3,.gr-al-body h4{font-size:1rem;margin:6px 0 4px}.gr-al-body blockquote{border-left:3px solid #0f7d6a66;margin:4px 0;padding-left:8px;color:var(--muted)}
 .gr-a-ph{width:100%;height:66px;object-fit:cover;border-radius:7px;margin-bottom:6px;border:1px solid var(--line);display:block;background:var(--canvas)}
 .gr-mem{display:flex;gap:12px;flex-wrap:wrap;padding:8px 11px;border-bottom:1px solid var(--line);background:#fcfcfb}
 .gr-mem-it{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
@@ -679,14 +680,22 @@ function Cover({ stats, title, subtitle }) {
 }
 function Alphabet({ data }) {
   const al = byType(data)("alphabet").slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  const note = (data.find(r => r.type === "alphabetNote") || {}).note;
+  const noteRec = (data.find(r => r.type === "alphabetNote") || {});
+  const note = noteRec.note || '';
+  const noteTitle = noteRec.title || '';
+  const noteHtml = (EDITOR_IMAGE_BASE && note) ? note.replace(/src="\/(api\/[^"]+)"/g, (m, p) => `src="${EDITOR_IMAGE_BASE}/${p}"`) : note;
   return (
     <section className="gr-section" id="alphabet">
       <div className="gr-sec-head"><div className="gr-tag">A</div><h2>German Alphabet <small>{al.length} items</small></h2></div>
       <div className="gr-card gr-alpha">{al.map(a => (
         <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={germanImageUrl(a.photoUrl)} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}</div>
       ))}</div>
-      {note && <div className="gr-al-note">{note}</div>}
+      {note && (
+        <div className="gr-al-note">
+          {noteTitle && <b className="gr-al-title">{noteTitle}</b>}
+          <div className="gr-al-body" dangerouslySetInnerHTML={{ __html: noteHtml }} />
+        </div>
+      )}
     </section>
   );
 }

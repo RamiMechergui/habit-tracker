@@ -664,8 +664,9 @@ router.post('/alphabet', async (req, res) => {
 // Section-level note for the whole Alphabets section (single record).
 router.post('/alphabet-note', async (req, res) => {
   try {
-    const note = typeof req.body?.note === 'string' ? req.body.note : '';
-    const record = await saveAlphabetNote(req.user.userId, note);
+    const note  = typeof req.body?.note  === 'string' ? req.body.note  : '';
+    const title = typeof req.body?.title === 'string' ? req.body.title : '';
+    const record = await saveAlphabetNote(req.user.userId, { note, title });
     res.json(record);
   } catch (err) {
     console.error('[German] POST alphabet-note error:', err);

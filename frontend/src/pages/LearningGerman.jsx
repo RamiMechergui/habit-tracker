@@ -2465,12 +2465,13 @@ const SPECIAL_CHARS = [
   { letter: 'Ü', example: 'Übung', english: 'Exercise', pronunciation: 'oo-boong' },
 ];
 
-function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets, sectionNote = '', onSaveSectionNote }) {
+function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets, sectionNote = '', sectionTitle = '', onSaveSectionNote, onUploadNotePhoto }) {
   const [letter, setLetter] = useState('');
   const [example, setExample] = useState('');
   const [english, setEnglish] = useState('');
   const [pronunciation, setPronunciation] = useState('');
   const [sectionDraft, setSectionDraft] = useState(sectionNote);
+  const [sectionTitleDraft, setSectionTitleDraft] = useState(sectionTitle);
   const [sectionSaving, setSectionSaving] = useState(false);
   const [sectionSaved, setSectionSaved] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -2496,14 +2497,14 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [pendingSpecialUploadId, setPendingSpecialUploadId] = useState(null);
   const specialFileRef = useRef(null);
 
-  useEffect(() => { setSectionDraft(sectionNote || ''); setSectionSaved(false); }, [sectionNote]);
+  useEffect(() => { setSectionDraft(sectionNote || ''); setSectionTitleDraft(sectionTitle || ''); setSectionSaved(false); }, [sectionNote, sectionTitle]);
 
   const handleSaveSectionNote = async () => {
     if (!onSaveSectionNote) return;
     setSectionSaving(true);
     setSectionSaved(false);
     try {
-      await onSaveSectionNote(sectionDraft.trim());
+      await onSaveSectionNote({ note: sectionDraft, title: sectionTitleDraft.trim() });
       setSectionSaved(true);
     } catch (e) { console.error(e); }
     finally { setSectionSaving(false); }
@@ -2658,35 +2659,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
           <BookA size={20} style={{ color: C.blue }} /> German Alphabets ({alphabets.length})
         </h3>
-      </div>
-
-      {/* Section-level note for the whole Alphabets section */}
-      <div style={{
-        padding: '1rem', borderRadius: '12px', border: `1px solid ${C.teal}40`,
-        background: `${C.teal}08`, display: 'flex', flexDirection: 'column', gap: '0.5rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alphabets Note</label>
-          {sectionSaved && <span style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700 }}>Saved ✓</span>}
-        </div>
-        <textarea
-          value={sectionDraft}
-          onChange={e => { setSectionDraft(e.target.value); setSectionSaved(false); }}
-          placeholder="Add a note about the whole Alphabets section. It will be exported to your PDF report."
-          rows={2}
-          style={{ ...inputStyle, resize: 'vertical', width: '100%', boxSizing: 'border-box', fontStyle: sectionDraft ? 'normal' : 'italic' }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={handleSaveSectionNote} disabled={sectionSaving} style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
-            background: sectionSaving ? 'var(--bg)' : `linear-gradient(135deg, ${C.teal}, #0d9488)`,
-            color: sectionSaving ? 'var(--text-muted)' : '#fff',
-            fontWeight: 700, fontSize: '0.82rem', cursor: sectionSaving ? 'wait' : 'pointer',
-          }}>
-            {sectionSaving ? 'Saving...' : 'Save Note'}
-          </button>
-        </div>
       </div>
 
       {/* Sub-tab selector */}
@@ -3028,6 +3000,54 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         e.target.value = '';
         setPendingSpecialUploadId(null);
       }} />
+
+      {/* Section-level note for the whole Alphabets section (below the alphabets list) */}
+      <div style={{
+        padding: '1.1rem', borderRadius: '14px', border: `1px solid ${C.teal}40`,
+        background: `${C.teal}08`, display: 'flex', flexDirection: 'column', gap: '0.75rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <NotebookPen size={15} /> Alphabets Note
+          </label>
+          {sectionSaved && <span style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700 }}>Saved ✓</span>}
+        </div>
+        <div>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Note Title <span style={{ fontWeight: 400, opacity: 0.7 }}>— optional</span>
+          </label>
+          <input
+            value={sectionTitleDraft}
+            onChange={e => { setSectionTitleDraft(e.target.value); setSectionSaved(false); }}
+            placeholder="e.g. Why German letters are easy for me"
+            style={{ ...inputStyle, background: 'var(--bg-card)', fontWeight: 600, fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Study Notes &amp; Reflections
+            <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.7 }}>— paste or drag images directly into the editor, click any image to resize &amp; position it</span>
+          </label>
+          <RichTextEditor
+            value={sectionDraft}
+            onChange={v => { setSectionDraft(v); setSectionSaved(false); }}
+            placeholder={`Add notes about the whole Alphabets section.\n\nThis note is exported to your PDF report.`}
+            minHeight={220}
+            onUploadImage={onUploadNotePhoto}
+          />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={handleSaveSectionNote} disabled={sectionSaving} style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.5rem 1.1rem', borderRadius: '8px', border: 'none',
+            background: sectionSaving ? 'var(--bg)' : `linear-gradient(135deg, ${C.teal}, #0d9488)`,
+            color: sectionSaving ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.82rem', cursor: sectionSaving ? 'wait' : 'pointer',
+          }}>
+            {sectionSaving ? 'Saving...' : 'Save Note'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -5426,7 +5446,7 @@ export default function LearningGerman() {
 
       {tab === 'alphabets' && currentLevel === 'A1.1' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <AlphabetForm onAdd={(p) => addGermanAlphabet({ ...p, level: workspaceLevel })} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} sectionNote={alphabetNote.note || ''} onSaveSectionNote={saveGermanAlphabetNote} />
+          <AlphabetForm onAdd={(p) => addGermanAlphabet({ ...p, level: workspaceLevel })} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} sectionNote={alphabetNote.note || ''} sectionTitle={alphabetNote.title || ''} onSaveSectionNote={saveGermanAlphabetNote} onUploadNotePhoto={handleUploadNotePhoto} />
         </div>
       )}
 
