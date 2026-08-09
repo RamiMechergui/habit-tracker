@@ -42,6 +42,7 @@ const {
   updateMistake,
   addAlphabet,
   updateAlphabet,
+  saveAlphabetNote,
   addResource,
   updateResource,
   addBook,
@@ -656,6 +657,19 @@ router.post('/alphabet', async (req, res) => {
   } catch (err) {
     console.error('[German] POST alphabet error:', err);
     res.status(500).json({ message: 'Failed to add alphabet' });
+  }
+});
+
+// ── POST /api/german/alphabet-note ───────────────────────────────────────────
+// Section-level note for the whole Alphabets section (single record).
+router.post('/alphabet-note', async (req, res) => {
+  try {
+    const note = typeof req.body?.note === 'string' ? req.body.note : '';
+    const record = await saveAlphabetNote(req.user.userId, note);
+    res.json(record);
+  } catch (err) {
+    console.error('[German] POST alphabet-note error:', err);
+    res.status(500).json({ message: 'Failed to save alphabet note' });
   }
 });
 

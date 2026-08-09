@@ -2591,6 +2591,20 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const saveGermanAlphabetNote = useCallback(async (note) => {
+    const res = await fetch(`${API_URL}/api/german/alphabet-note`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ note }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save alphabet note');
+    setGermanData(prev => prev.filter(r => r.type !== 'alphabetNote').concat([data]));
+    logHistory('german_alphabet_note', `Saved Alphabets section note`);
+    return data;
+  }, [API_URL]);
+
   const fetchResourceInfo = useCallback(async (url) => {
     const res = await fetch(`${API_URL}/api/german/resource/info?url=${encodeURIComponent(url)}`, {
       credentials: 'include',
@@ -3211,7 +3225,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
       // German Progress

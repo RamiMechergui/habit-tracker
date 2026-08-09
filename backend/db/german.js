@@ -711,6 +711,7 @@ module.exports = {
   updateMistake,
   addAlphabet,
   updateAlphabet,
+  saveAlphabetNote,
   addResource,
   updateResource,
   addBook,
@@ -760,6 +761,19 @@ async function updateAlphabet(userId, recordId, updates) {
     ReturnValues: 'ALL_NEW',
   }));
   return res.Attributes;
+}
+
+// One section-level note for the whole Alphabets section (single record, fixed id)
+async function saveAlphabetNote(userId, note) {
+  const recordId = 'ALPHABET-NOTE';
+  const ts = new Date().toISOString();
+  const item = {
+    userId, recordId, type: 'alphabetNote',
+    note: note || '', level: 'A1.1',
+    createdAt: ts, updatedAt: ts,
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
 }
 
 // ── Resources (YouTube videos / channels) ─────────────────────────────────────

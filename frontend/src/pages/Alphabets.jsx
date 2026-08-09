@@ -33,21 +33,22 @@ export default function Alphabets() {
   const nav = useNavigate();
   const {
     germanData, addGermanAlphabet, updateGermanAlphabet,
-    uploadGermanAlphabetPhoto, deleteGermanRecord,
+    uploadGermanAlphabetPhoto, deleteGermanRecord, saveGermanAlphabetNote,
     fetchGermanData,
   } = useHabits();
 
+  const [sectionNote, setSectionNote] = useState('');
+  const [sectionSaving, setSectionSaving] = useState(false);
+  const [sectionSaved, setSectionSaved] = useState(false);
   const [letter, setLetter] = useState('');
   const [example, setExample] = useState('');
   const [english, setEnglish] = useState('');
   const [pronunciation, setPronunciation] = useState('');
-  const [note, setNote] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editLetter, setEditLetter] = useState('');
   const [editExample, setEditExample] = useState('');
   const [editEnglish, setEditEnglish] = useState('');
   const [editPronunciation, setEditPronunciation] = useState('');
-  const [editNote, setEditNote] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [uploadingId, setUploadingId] = useState(null);
   const [pendingUploadId, setPendingUploadId] = useState(null);
@@ -62,12 +63,27 @@ export default function Alphabets() {
   const [editSpecialExample, setEditSpecialExample] = useState('');
   const [editSpecialEnglish, setEditSpecialEnglish] = useState('');
   const [editSpecialPronunciation, setEditSpecialPronunciation] = useState('');
-  const [editSpecialNote, setEditSpecialNote] = useState('');
   const [uploadingSpecialId, setUploadingSpecialId] = useState(null);
   const [pendingSpecialUploadId, setPendingSpecialUploadId] = useState(null);
   const specialFileRef = useRef(null);
 
   useEffect(() => { fetchGermanData(); }, []);
+
+  const alphabetNote = useMemo(() => (germanData || []).find(r => r.type === 'alphabetNote'), [germanData]);
+
+  useEffect(() => {
+    if (alphabetNote) setSectionNote(alphabetNote.note || '');
+  }, [alphabetNote]);
+
+  const handleSaveSectionNote = async () => {
+    setSectionSaving(true);
+    setSectionSaved(false);
+    try {
+      await saveGermanAlphabetNote(sectionNote.trim());
+      setSectionSaved(true);
+    } catch (e) { console.error(e); }
+    finally { setSectionSaving(false); }
+  };
 
   const alphabets = useMemo(() => {
     const filtered = (germanData || []).filter(r => r.type === 'alphabet');
@@ -101,7 +117,6 @@ export default function Alphabets() {
         dbExample: record?.example || sc.example,
         dbEnglish: record?.english || sc.english,
         dbPronunciation: record?.pronunciation || sc.pronunciation,
-        dbNote: record?.note || '',
       };
     });
   }, [alphabetByLetter]);
@@ -114,14 +129,13 @@ export default function Alphabets() {
       example: example.trim(),
       english: english.trim(),
       pronunciation: pronunciation.trim(),
-      note: note.trim(),
       photoUrl: '',
       sortOrder: alphabets.length,
     });
     if (created?.recordId && newPhoto) {
       try { await uploadGermanAlphabetPhoto(created.recordId, newPhoto); } catch (e) { console.error(e); }
     }
-    setLetter(''); setExample(''); setEnglish(''); setPronunciation(''); setNote(''); setNewPhoto(null); setNewPhotoPreview(''); setShowAdd(false);
+    setLetter(''); setExample(''); setEnglish(''); setPronunciation(''); setNewPhoto(null); setNewPhotoPreview(''); setShowAdd(false);
   };
 
   const handleAddSpecial = async (sc) => {
@@ -153,7 +167,6 @@ export default function Alphabets() {
     setEditSpecialExample(sc.dbExample);
     setEditSpecialEnglish(sc.dbEnglish);
     setEditSpecialPronunciation(sc.dbPronunciation);
-    setEditSpecialNote(sc.dbNote);
   };
 
   const saveEditSpecial = async (recordId) => {
@@ -162,7 +175,6 @@ export default function Alphabets() {
       example: editSpecialExample.trim(),
       english: editSpecialEnglish.trim(),
       pronunciation: editSpecialPronunciation.trim(),
-      note: editSpecialNote.trim(),
     });
     setEditSpecialId(null);
   };
@@ -181,7 +193,6 @@ export default function Alphabets() {
     setEditExample(a.example);
     setEditEnglish(a.english || '');
     setEditPronunciation(a.pronunciation || '');
-    setEditNote(a.note || '');
   };
 
   const saveEdit = async (recordId) => {
@@ -191,7 +202,6 @@ export default function Alphabets() {
       example: editExample.trim(),
       english: editEnglish.trim(),
       pronunciation: editPronunciation.trim(),
-      note: editNote.trim(),
     });
     setEditingId(null);
     setConfirmDeleteId(null);
@@ -221,6 +231,36 @@ export default function Alphabets() {
           <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             Learn the German alphabet — {alphabets.length} letter{alphabets.length !== 1 ? 's' : ''}
           </p>
+        </div>
+      </div>
+
+      {/* Section-level note for the whole Alphabets section */}
+      <div style={{
+        padding: '1rem', borderRadius: '12px', border: `1px solid ${C.teal}40`,
+        background: `${C.teal}08`, marginBottom: '1.25rem',
+        display: 'flex', flexDirection: 'column', gap: '0.5rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alphabets Note</label>
+          {sectionSaved && <span style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700 }}>Saved ✓</span>}
+        </div>
+        <textarea
+          value={sectionNote}
+          onChange={e => { setSectionNote(e.target.value); setSectionSaved(false); }}
+          placeholder="Add a note about the whole Alphabets section. It will be exported to your PDF report."
+          rows={2}
+          style={{ ...inputStyle, resize: 'vertical', width: '100%', boxSizing: 'border-box', fontStyle: sectionNote ? 'normal' : 'italic' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={handleSaveSectionNote} disabled={sectionSaving} style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
+            background: sectionSaving ? 'var(--bg)' : `linear-gradient(135deg, ${C.teal}, #0d9488)`,
+            color: sectionSaving ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.82rem', cursor: sectionSaving ? 'wait' : 'pointer',
+          }}>
+            {sectionSaving ? 'Saving...' : 'Save Note'}
+          </button>
         </div>
       </div>
 
@@ -300,10 +340,6 @@ export default function Alphabets() {
               <label style={{ fontSize: '0.72rem', color: C.gold, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Pronunciation</label>
               <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
             </div>
-          </div>
-          <div>
-            <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Daily Note</label>
-            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Your note about this letter (e.g. sounds like...)" rows={2} style={{ ...inputStyle, resize: 'vertical', width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && e.ctrlKey && handleAdd()} />
           </div>
           <button onClick={handleAdd} disabled={letter.trim().length !== 1 || !example.trim()} style={{
             padding: '0.55rem', borderRadius: '8px', border: 'none',
@@ -385,12 +421,10 @@ export default function Alphabets() {
                       {editingId === a.recordId ? (
                         <>
                           <input value={editExample} onChange={e => setEditExample(e.target.value)} style={{ ...inputStyle }} />
-                          <input value={editNote} onChange={e => setEditNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, marginTop: 6 }} />
                         </>
                       ) : (
                         <>
                           <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{a.example}</span>
-                          {a.note && <div style={{ fontSize: '0.75rem', color: C.teal, fontStyle: 'italic', marginTop: 4 }}>{a.note}</div>}
                         </>
                       )}
                     </td>
@@ -543,10 +577,6 @@ export default function Alphabets() {
                       <label style={{ fontSize: '0.68rem', color: C.gold, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pronunciation</label>
                       <input value={editSpecialPronunciation} onChange={e => setEditSpecialPronunciation(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
                     </div>
-                    <div>
-                      <label style={{ fontSize: '0.68rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Daily Note</label>
-                      <input value={editSpecialNote} onChange={e => setEditSpecialNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
-                    </div>
                     <div style={{ display: 'flex', gap: '0.3rem' }}>
                       <button onClick={() => setEditSpecialId(null)} style={{
                         flex: 1, padding: '0.35rem', borderRadius: '6px',
@@ -568,7 +598,6 @@ export default function Alphabets() {
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.dbExample}</div>
                       <div style={{ fontSize: '0.78rem', color: C.teal, fontWeight: 500 }}>{sc.dbEnglish}</div>
                       <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.dbPronunciation || '—'}</div>
-                      {sc.dbNote && <div style={{ fontSize: '0.72rem', color: C.teal, fontStyle: 'italic', marginTop: 4 }}>{sc.dbNote}</div>}
                     </div>
                     {sc.added ? (
                       <div style={{ display: 'flex', gap: '0.3rem', width: '100%' }}>

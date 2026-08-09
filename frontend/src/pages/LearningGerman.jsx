@@ -2465,18 +2465,19 @@ const SPECIAL_CHARS = [
   { letter: 'Ü', example: 'Übung', english: 'Exercise', pronunciation: 'oo-boong' },
 ];
 
-function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets }) {
+function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto, _isMobile, alphabets, sectionNote = '', onSaveSectionNote }) {
   const [letter, setLetter] = useState('');
   const [example, setExample] = useState('');
   const [english, setEnglish] = useState('');
   const [pronunciation, setPronunciation] = useState('');
-  const [note, setNote] = useState('');
+  const [sectionDraft, setSectionDraft] = useState(sectionNote);
+  const [sectionSaving, setSectionSaving] = useState(false);
+  const [sectionSaved, setSectionSaved] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editLetter, setEditLetter] = useState('');
   const [editExample, setEditExample] = useState('');
   const [editEnglish, setEditEnglish] = useState('');
   const [editPronunciation, setEditPronunciation] = useState('');
-  const [editNote, setEditNote] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [uploadingId, setUploadingId] = useState(null);
   const fileRef = useRef(null);
@@ -2491,10 +2492,22 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [editSpecialExample, setEditSpecialExample] = useState('');
   const [editSpecialEnglish, setEditSpecialEnglish] = useState('');
   const [editSpecialPronunciation, setEditSpecialPronunciation] = useState('');
-  const [editSpecialNote, setEditSpecialNote] = useState('');
   const [uploadingSpecialId, setUploadingSpecialId] = useState(null);
   const [pendingSpecialUploadId, setPendingSpecialUploadId] = useState(null);
   const specialFileRef = useRef(null);
+
+  useEffect(() => { setSectionDraft(sectionNote || ''); setSectionSaved(false); }, [sectionNote]);
+
+  const handleSaveSectionNote = async () => {
+    if (!onSaveSectionNote) return;
+    setSectionSaving(true);
+    setSectionSaved(false);
+    try {
+      await onSaveSectionNote(sectionDraft.trim());
+      setSectionSaved(true);
+    } catch (e) { console.error(e); }
+    finally { setSectionSaving(false); }
+  };
 
   const handleAdd = async () => {
     if (letter.trim().length !== 1 || !example.trim()) return;
@@ -2504,7 +2517,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       example: example.trim(),
       english: english.trim(),
       pronunciation: pronunciation.trim(),
-      note: note.trim(),
       photoUrl: '',
       sortOrder: alphabets.length,
     });
@@ -2515,7 +2527,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setExample('');
     setEnglish('');
     setPronunciation('');
-    setNote('');
     setNewPhoto(null);
     setNewPhotoPreview('');
     setShowAdd(false);
@@ -2527,7 +2538,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setEditExample(a.example);
     setEditEnglish(a.english || '');
     setEditPronunciation(a.pronunciation || '');
-    setEditNote(a.note || '');
   };
 
   const saveEdit = async (recordId) => {
@@ -2537,7 +2547,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       example: editExample.trim(),
       english: editEnglish.trim(),
       pronunciation: editPronunciation.trim(),
-      note: editNote.trim(),
     });
     setEditingId(null);
   };
@@ -2580,7 +2589,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         dbExample: record?.example || sc.example,
         dbEnglish: record?.english || sc.english,
         dbPronunciation: record?.pronunciation || sc.pronunciation,
-        dbNote: record?.note || '',
       };
     });
   }, [alphabetByLetter]);
@@ -2595,7 +2603,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         example: sc.example,
         english: sc.english,
         pronunciation: sc.pronunciation,
-        note: '',
         photoUrl: '',
         sortOrder: alphabets.length + SPECIAL_CHARS.findIndex(s => s.letter === sc.letter),
       });
@@ -2615,7 +2622,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setEditSpecialExample(sc.dbExample);
     setEditSpecialEnglish(sc.dbEnglish);
     setEditSpecialPronunciation(sc.dbPronunciation);
-    setEditSpecialNote(sc.dbNote);
   };
 
   const saveEditSpecial = async (recordId) => {
@@ -2624,7 +2630,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       example: editSpecialExample.trim(),
       english: editSpecialEnglish.trim(),
       pronunciation: editSpecialPronunciation.trim(),
-      note: editSpecialNote.trim(),
     });
     setEditSpecialId(null);
   };
@@ -2653,6 +2658,35 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
           <BookA size={20} style={{ color: C.blue }} /> German Alphabets ({alphabets.length})
         </h3>
+      </div>
+
+      {/* Section-level note for the whole Alphabets section */}
+      <div style={{
+        padding: '1rem', borderRadius: '12px', border: `1px solid ${C.teal}40`,
+        background: `${C.teal}08`, display: 'flex', flexDirection: 'column', gap: '0.5rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.72rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alphabets Note</label>
+          {sectionSaved && <span style={{ fontSize: '0.72rem', color: C.green, fontWeight: 700 }}>Saved ✓</span>}
+        </div>
+        <textarea
+          value={sectionDraft}
+          onChange={e => { setSectionDraft(e.target.value); setSectionSaved(false); }}
+          placeholder="Add a note about the whole Alphabets section. It will be exported to your PDF report."
+          rows={2}
+          style={{ ...inputStyle, resize: 'vertical', width: '100%', boxSizing: 'border-box', fontStyle: sectionDraft ? 'normal' : 'italic' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={handleSaveSectionNote} disabled={sectionSaving} style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
+            background: sectionSaving ? 'var(--bg)' : `linear-gradient(135deg, ${C.teal}, #0d9488)`,
+            color: sectionSaving ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.82rem', cursor: sectionSaving ? 'wait' : 'pointer',
+          }}>
+            {sectionSaving ? 'Saving...' : 'Save Note'}
+          </button>
+        </div>
       </div>
 
       {/* Sub-tab selector */}
@@ -2739,7 +2773,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
                       <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-                      <input value={note} onChange={e => setNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, marginTop: 6 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -2784,12 +2817,10 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       {editingId === a.recordId ? (
                         <>
                           <input value={editExample} onChange={e => setEditExample(e.target.value)} style={{ ...inputStyle }} />
-                          <input value={editNote} onChange={e => setEditNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, marginTop: 6 }} />
                         </>
                       ) : (
                         <>
                           <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{a.example}</span>
-                          {a.note && <div style={{ fontSize: '0.75rem', color: C.teal, fontStyle: 'italic', marginTop: 4 }}>{a.note}</div>}
                         </>
                       )}
                     </td>
@@ -2923,10 +2954,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       <label style={{ fontSize: '0.68rem', color: C.gold, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pronunciation</label>
                       <input value={editSpecialPronunciation} onChange={e => setEditSpecialPronunciation(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
                     </div>
-                    <div>
-                      <label style={{ fontSize: '0.68rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Daily Note</label>
-                      <input value={editSpecialNote} onChange={e => setEditSpecialNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
-                    </div>
                     <div style={{ display: 'flex', gap: '0.3rem' }}>
                       <button onClick={() => setEditSpecialId(null)} style={{
                         flex: 1, padding: '0.35rem', borderRadius: '6px',
@@ -2948,7 +2975,6 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.dbExample}</div>
                       <div style={{ fontSize: '0.78rem', color: C.teal, fontWeight: 500 }}>{sc.dbEnglish}</div>
                       <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.dbPronunciation || '—'}</div>
-                      {sc.dbNote && <div style={{ fontSize: '0.72rem', color: C.teal, fontStyle: 'italic', marginTop: 4 }}>{sc.dbNote}</div>}
                     </div>
                     {sc.added ? (
                       <div style={{ display: 'flex', gap: '0.3rem', width: '100%' }}>
@@ -3425,7 +3451,7 @@ export default function LearningGerman() {
     addGermanExpression, updateGermanExpression,
     addGermanIdiom, updateGermanIdiom,
     addGermanMistake, updateGermanMistake,
-    addGermanAlphabet, updateGermanAlphabet, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
+    addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
@@ -3605,6 +3631,7 @@ export default function LearningGerman() {
     const filtered = germanData.filter(r => r.type === 'alphabet' && matchesLevel(r));
     return [...filtered].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [germanData, matchesLevel]);
+  const alphabetNote = useMemo(() => (germanData.find(r => r.type === 'alphabetNote') || {}), [germanData]);
   const resources = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'resource' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
@@ -5399,7 +5426,7 @@ export default function LearningGerman() {
 
       {tab === 'alphabets' && currentLevel === 'A1.1' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <AlphabetForm onAdd={(p) => addGermanAlphabet({ ...p, level: workspaceLevel })} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} />
+          <AlphabetForm onAdd={(p) => addGermanAlphabet({ ...p, level: workspaceLevel })} onUpdate={updateGermanAlphabet} onDelete={deleteGermanRecord} onUploadPhoto={uploadGermanAlphabetPhoto} onDeletePhoto={deleteGermanAlphabetPhoto} isMobile={isMobile} alphabets={alphabets} sectionNote={alphabetNote.note || ''} onSaveSectionNote={saveGermanAlphabetNote} />
         </div>
       )}
 

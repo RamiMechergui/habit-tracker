@@ -341,7 +341,6 @@ function alphabetBlock(rows) {
       stack: [
         { text: a.letter || "", fontSize: 22, bold: true, color: C.red, alignment: "center" },
         { text: a.example || "", fontSize: 8.5, alignment: "center", margin: [0, 3, 0, 0] },
-        ...(a.note ? [{ text: stripHtml(a.note), fontSize: 7, italics: true, color: C.teal, alignment: "center", margin: [4, 4, 4, 0] }] : []),
       ],
       margin: [4, 8, 4, 8], fillColor: "#fdfcf9",
     }));
@@ -352,6 +351,21 @@ function alphabetBlock(rows) {
     hLineColor: () => C.line, vLineColor: () => C.line, hLineWidth: () => 0.5, vLineWidth: () => 0.5,
     paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3, paddingBottom: () => 3,
   }, margin: [0, 4, 0, 6] };
+}
+
+function alphabetNoteBlock(note) {
+  return {
+    table: {
+      widths: ["*"],
+      body: [[{ text: stripHtml(note), fontSize: 9, italics: true, color: C.teal, margin: [4, 4, 4, 4] }]],
+    },
+    layout: {
+      hLineColor: () => "#14b8a655", vLineColor: () => "#14b8a655",
+      hLineWidth: () => 0.5, vLineWidth: () => 0.5,
+      paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 4, paddingBottom: () => 4,
+    },
+    margin: [0, 0, 0, 10],
+  };
 }
 
 export function buildPdfDefinition(data, opts = {}) {
@@ -368,6 +382,10 @@ export function buildPdfDefinition(data, opts = {}) {
   content.push({ text: "German Alphabet", style: "h2", pageBreak: "before" });
   content.push({ text: "German uses the 26 letters of the Latin alphabet together with the umlauts Ä, Ö, Ü and the letter ß.", color: C.muted, fontSize: 8.5, margin: [0, 2, 0, 8] });
   content.push(alphabetBlock(byType("alphabet")));
+  const alphabetNote = data.find(r => r.type === "alphabetNote" && r.note);
+  if (alphabetNote?.note) {
+    content.push(alphabetNoteBlock(alphabetNote.note));
+  }
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
     memo: byType("memo"), dialogue: byType("dialogue"), expression: byType("expression"),

@@ -364,7 +364,6 @@ function alphabetBlock(rows) {
       if (a.example) stack.push({ text: a.example || "", fontSize: 8.5, alignment: "center", margin: [0, 3, 0, 0] });
       if (a.pronunciation) stack.push({ text: a.pronunciation || "", fontSize: 7.5, color: C.muted, italics: true, alignment: "center", margin: [0, 2, 0, 0] });
       if (a.english) stack.push({ text: a.english || "", fontSize: 7.5, color: C.muted, alignment: "center", margin: [0, 1, 0, 0] });
-      if (a.note) stack.push({ text: stripHtml(a.note) || "", fontSize: 7, italics: true, color: "#0f7d6a", alignment: "center", margin: [4, 4, 4, 0] });
       return { stack, margin: [4, 8, 4, 8], fillColor: "#fdfcf9" };
     });
     while (row.length < perRow) row.push(cell(""));
@@ -374,6 +373,20 @@ function alphabetBlock(rows) {
     hLineColor: () => C.line, vLineColor: () => C.line, hLineWidth: () => 0.5, vLineWidth: () => 0.5,
     paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3, paddingBottom: () => 3,
   }, margin: [0, 4, 0, 6] };
+}
+function alphabetNoteBlock(note) {
+  return {
+    table: {
+      widths: ["*"],
+      body: [[{ text: stripHtml(note), fontSize: 9, italics: true, color: "#0f7d6a", margin: [4, 4, 4, 4] }]],
+    },
+    layout: {
+      hLineColor: () => "#0f7d6a55", vLineColor: () => "#0f7d6a55",
+      hLineWidth: () => 0.5, vLineWidth: () => 0.5,
+      paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 4, paddingBottom: () => 4,
+    },
+    margin: [0, 0, 0, 10],
+  };
 }
 export function buildPdfDefinition(data, opts = {}) {
   const byType = t => data.filter(r => r.type === t);
@@ -389,6 +402,10 @@ export function buildPdfDefinition(data, opts = {}) {
   content.push({ text: "German Alphabet", style: "h2", pageBreak: "before" });
   content.push({ text: "German uses the 26 letters of the Latin alphabet together with the umlauts Ä, Ö, Ü and the letter ß.", color: C.muted, fontSize: 8.5, margin: [0, 2, 0, 8] });
   content.push(alphabetBlock(byType("alphabet")));
+  const alphabetNote = data.find(r => r.type === "alphabetNote" && r.note);
+  if (alphabetNote?.note) {
+    content.push(alphabetNoteBlock(alphabetNote.note));
+  }
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
     memo: byType("memo"), dialogue: byType("dialogue"), expression: byType("expression"),
@@ -472,7 +489,8 @@ const STYLES = `
 .gr-tag{background:var(--red);color:#fff;font-weight:800;border-radius:10px;min-width:38px;height:38px;display:flex;align-items:center;justify-content:center}.gr-sec-head h2{font-size:1.4rem;margin:0}.gr-sec-head small{color:var(--muted);font-weight:600}
 .gr-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
 .gr-alpha{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
-.gr-a{background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.gr-a .L{font-size:1.9rem;font-weight:800;color:var(--red)}.gr-a .w{font-size:.85rem;margin-top:4px;font-weight:600}.gr-a .note{font-size:.72rem;font-style:italic;color:#0f7d6a;margin-top:5px;line-height:1.35}
+.gr-a{background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.gr-a .L{font-size:1.9rem;font-weight:800;color:var(--red)}.gr-a .w{font-size:.85rem;margin-top:4px;font-weight:600}
+.gr-al-note{margin-top:12px;padding:10px 14px;border:1px dashed #0f7d6a66;border-radius:10px;font-size:.88rem;font-style:italic;color:#0f7d6a;line-height:1.45}
 .gr-a-ph{width:100%;height:66px;object-fit:cover;border-radius:7px;margin-bottom:6px;border:1px solid var(--line);display:block;background:var(--canvas)}
 .gr-mem{display:flex;gap:12px;flex-wrap:wrap;padding:8px 11px;border-bottom:1px solid var(--line);background:#fcfcfb}
 .gr-mem-it{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
@@ -661,12 +679,14 @@ function Cover({ stats, title, subtitle }) {
 }
 function Alphabet({ data }) {
   const al = byType(data)("alphabet").slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const note = (data.find(r => r.type === "alphabetNote") || {}).note;
   return (
     <section className="gr-section" id="alphabet">
       <div className="gr-sec-head"><div className="gr-tag">A</div><h2>German Alphabet <small>{al.length} items</small></h2></div>
       <div className="gr-card gr-alpha">{al.map(a => (
-        <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={germanImageUrl(a.photoUrl)} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}{a.note && <div className="note">{a.note}</div>}</div>
+        <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={germanImageUrl(a.photoUrl)} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}</div>
       ))}</div>
+      {note && <div className="gr-al-note">{note}</div>}
     </section>
   );
 }
