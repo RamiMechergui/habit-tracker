@@ -360,6 +360,7 @@ function alphabetBlock(rows) {
       if (a.example) stack.push({ text: a.example || "", fontSize: 8.5, alignment: "center", margin: [0, 3, 0, 0] });
       if (a.pronunciation) stack.push({ text: a.pronunciation || "", fontSize: 7.5, color: C.muted, italics: true, alignment: "center", margin: [0, 2, 0, 0] });
       if (a.english) stack.push({ text: a.english || "", fontSize: 7.5, color: C.muted, alignment: "center", margin: [0, 1, 0, 0] });
+      if (a.note) stack.push({ text: stripHtml(a.note) || "", fontSize: 7, italics: true, color: "#0f7d6a", alignment: "center", margin: [4, 4, 4, 0] });
       return { stack, margin: [4, 8, 4, 8], fillColor: "#fdfcf9" };
     });
     while (row.length < perRow) row.push(cell(""));
@@ -467,7 +468,7 @@ const STYLES = `
 .gr-tag{background:var(--red);color:#fff;font-weight:800;border-radius:10px;min-width:38px;height:38px;display:flex;align-items:center;justify-content:center}.gr-sec-head h2{font-size:1.4rem;margin:0}.gr-sec-head small{color:var(--muted);font-weight:600}
 .gr-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
 .gr-alpha{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
-.gr-a{background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.gr-a .L{font-size:1.9rem;font-weight:800;color:var(--red)}.gr-a .w{font-size:.85rem;margin-top:4px;font-weight:600}
+.gr-a{background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.gr-a .L{font-size:1.9rem;font-weight:800;color:var(--red)}.gr-a .w{font-size:.85rem;margin-top:4px;font-weight:600}.gr-a .note{font-size:.72rem;font-style:italic;color:#0f7d6a;margin-top:5px;line-height:1.35}
 .gr-a-ph{width:100%;height:66px;object-fit:cover;border-radius:7px;margin-bottom:6px;border:1px solid var(--line);display:block;background:var(--canvas)}
 .gr-mem{display:flex;gap:12px;flex-wrap:wrap;padding:8px 11px;border-bottom:1px solid var(--line);background:#fcfcfb}
 .gr-mem-it{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
@@ -660,7 +661,7 @@ function Alphabet({ data }) {
     <section className="gr-section" id="alphabet">
       <div className="gr-sec-head"><div className="gr-tag">A</div><h2>German Alphabet <small>{al.length} items</small></h2></div>
       <div className="gr-card gr-alpha">{al.map(a => (
-        <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={germanImageUrl(a.photoUrl)} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}</div>
+        <div className="gr-a" key={a.recordId}>{a.photoUrl && <img src={germanImageUrl(a.photoUrl)} alt={a.letter} className="gr-a-ph" />}<div className="L">{a.letter}</div>{a.example && <div className="w">{a.example}</div>}{a.note && <div className="note">{a.note}</div>}</div>
       ))}</div>
     </section>
   );

@@ -337,6 +337,7 @@ function alphabetBlock(rows) {
       stack: [
         { text: a.letter || "", fontSize: 22, bold: true, color: C.red, alignment: "center" },
         { text: a.example || "", fontSize: 8.5, alignment: "center", margin: [0, 3, 0, 0] },
+        ...(a.note ? [{ text: stripHtml(a.note), fontSize: 7, italics: true, color: C.teal, alignment: "center", margin: [4, 4, 4, 0] }] : []),
       ],
       margin: [4, 8, 4, 8], fillColor: "#fdfcf9",
     }));

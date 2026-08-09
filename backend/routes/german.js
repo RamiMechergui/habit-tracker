@@ -647,11 +647,11 @@ router.put('/mistake/:recordId', async (req, res) => {
 // ── POST /api/german/alphabet ────────────────────────────────────────────────
 router.post('/alphabet', async (req, res) => {
   try {
-    const { letter, example, pronunciation, photoUrl, level } = req.body;
+    const { letter, example, english, pronunciation, photoUrl, note, level } = req.body;
     if (!letter?.trim() || !example?.trim()) {
       return res.status(400).json({ message: 'letter and example are required' });
     }
-    const record = await addAlphabet(req.user.userId, { letter: letter.trim(), example: example.trim(), pronunciation, photoUrl, level: level || 'A1.1' });
+    const record = await addAlphabet(req.user.userId, { letter: letter.trim(), example: example.trim(), english, pronunciation, photoUrl, note, level: level || 'A1.1' });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST alphabet error:', err);

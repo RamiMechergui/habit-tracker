@@ -724,11 +724,11 @@ module.exports = {
 };
 
 // ── Alphabets ────────────────────────────────────────────────────────────────
-async function addAlphabet(userId, { letter, example, english = '', pronunciation = '', photoUrl = '', sortOrder = Date.now(), level = 'A1.1' }) {
+async function addAlphabet(userId, { letter, example, english = '', pronunciation = '', photoUrl = '', note = '', sortOrder = Date.now(), level = 'A1.1' }) {
   const recordId = `ALPHABET#${uuidv4()}`;
   const item = {
     userId, recordId, type: 'alphabet',
-    letter, example, english, pronunciation, photoUrl, sortOrder, level,
+    letter, example, english, pronunciation, photoUrl, note, sortOrder, level,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -736,7 +736,7 @@ async function addAlphabet(userId, { letter, example, english = '', pronunciatio
 }
 
 async function updateAlphabet(userId, recordId, updates) {
-  const allowed = ['letter', 'example', 'english', 'pronunciation', 'photoUrl', 'sortOrder', 'level'];
+  const allowed = ['letter', 'example', 'english', 'pronunciation', 'photoUrl', 'note', 'sortOrder', 'level'];
   const sets = [];
   const names = {};
   const values = {};

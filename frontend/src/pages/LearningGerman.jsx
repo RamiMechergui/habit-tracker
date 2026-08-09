@@ -501,6 +501,10 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
             <input value={form.translation} onChange={e => set('translation', e.target.value)} placeholder="e.g. Dog" style={inputBase} />
           </div>
           <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Plural</label>
+            <input value={form.plural} onChange={e => set('plural', e.target.value)} placeholder="e.g. Hunde" style={inputBase} />
+          </div>
+          <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Example Sentence</label>
             <input value={form.example} onChange={e => set('example', e.target.value)} placeholder="e.g. Der Hund bellt." style={inputBase} />
           </div>
@@ -2466,11 +2470,13 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [example, setExample] = useState('');
   const [english, setEnglish] = useState('');
   const [pronunciation, setPronunciation] = useState('');
+  const [note, setNote] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editLetter, setEditLetter] = useState('');
   const [editExample, setEditExample] = useState('');
   const [editEnglish, setEditEnglish] = useState('');
   const [editPronunciation, setEditPronunciation] = useState('');
+  const [editNote, setEditNote] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [uploadingId, setUploadingId] = useState(null);
   const fileRef = useRef(null);
@@ -2485,6 +2491,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
   const [editSpecialExample, setEditSpecialExample] = useState('');
   const [editSpecialEnglish, setEditSpecialEnglish] = useState('');
   const [editSpecialPronunciation, setEditSpecialPronunciation] = useState('');
+  const [editSpecialNote, setEditSpecialNote] = useState('');
   const [uploadingSpecialId, setUploadingSpecialId] = useState(null);
   const [pendingSpecialUploadId, setPendingSpecialUploadId] = useState(null);
   const specialFileRef = useRef(null);
@@ -2497,6 +2504,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       example: example.trim(),
       english: english.trim(),
       pronunciation: pronunciation.trim(),
+      note: note.trim(),
       photoUrl: '',
       sortOrder: alphabets.length,
     });
@@ -2507,6 +2515,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setExample('');
     setEnglish('');
     setPronunciation('');
+    setNote('');
     setNewPhoto(null);
     setNewPhotoPreview('');
     setShowAdd(false);
@@ -2518,6 +2527,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setEditExample(a.example);
     setEditEnglish(a.english || '');
     setEditPronunciation(a.pronunciation || '');
+    setEditNote(a.note || '');
   };
 
   const saveEdit = async (recordId) => {
@@ -2527,6 +2537,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       example: editExample.trim(),
       english: editEnglish.trim(),
       pronunciation: editPronunciation.trim(),
+      note: editNote.trim(),
     });
     setEditingId(null);
   };
@@ -2569,6 +2580,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         dbExample: record?.example || sc.example,
         dbEnglish: record?.english || sc.english,
         dbPronunciation: record?.pronunciation || sc.pronunciation,
+        dbNote: record?.note || '',
       };
     });
   }, [alphabetByLetter]);
@@ -2583,6 +2595,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
         example: sc.example,
         english: sc.english,
         pronunciation: sc.pronunciation,
+        note: '',
         photoUrl: '',
         sortOrder: alphabets.length + SPECIAL_CHARS.findIndex(s => s.letter === sc.letter),
       });
@@ -2602,6 +2615,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
     setEditSpecialExample(sc.dbExample);
     setEditSpecialEnglish(sc.dbEnglish);
     setEditSpecialPronunciation(sc.dbPronunciation);
+    setEditSpecialNote(sc.dbNote);
   };
 
   const saveEditSpecial = async (recordId) => {
@@ -2610,6 +2624,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
       example: editSpecialExample.trim(),
       english: editSpecialEnglish.trim(),
       pronunciation: editSpecialPronunciation.trim(),
+      note: editSpecialNote.trim(),
     });
     setEditSpecialId(null);
   };
@@ -2724,6 +2739,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
                       <input value={pronunciation} onChange={e => setPronunciation(e.target.value)} placeholder="ah-pel" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                      <input value={note} onChange={e => setNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, marginTop: 6 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -2766,9 +2782,15 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
                       {editingId === a.recordId ? (
-                        <input value={editExample} onChange={e => setEditExample(e.target.value)} style={{ ...inputStyle }} />
+                        <>
+                          <input value={editExample} onChange={e => setEditExample(e.target.value)} style={{ ...inputStyle }} />
+                          <input value={editNote} onChange={e => setEditNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, marginTop: 6 }} />
+                        </>
                       ) : (
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{a.example}</span>
+                        <>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{a.example}</span>
+                          {a.note && <div style={{ fontSize: '0.75rem', color: C.teal, fontStyle: 'italic', marginTop: 4 }}>{a.note}</div>}
+                        </>
                       )}
                     </td>
                     <td style={{ padding: '0.65rem 1rem', verticalAlign: 'middle' }}>
@@ -2901,6 +2923,10 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       <label style={{ fontSize: '0.68rem', color: C.gold, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pronunciation</label>
                       <input value={editSpecialPronunciation} onChange={e => setEditSpecialPronunciation(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
                     </div>
+                    <div>
+                      <label style={{ fontSize: '0.68rem', color: C.teal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Daily Note</label>
+                      <input value={editSpecialNote} onChange={e => setEditSpecialNote(e.target.value)} placeholder="Daily note..." style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && saveEditSpecial(sc.recordId)} />
+                    </div>
                     <div style={{ display: 'flex', gap: '0.3rem' }}>
                       <button onClick={() => setEditSpecialId(null)} style={{
                         flex: 1, padding: '0.35rem', borderRadius: '6px',
@@ -2922,6 +2948,7 @@ function AlphabetForm({ onAdd, onUpdate, onDelete, onUploadPhoto, onDeletePhoto,
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sc.dbExample}</div>
                       <div style={{ fontSize: '0.78rem', color: C.teal, fontWeight: 500 }}>{sc.dbEnglish}</div>
                       <div style={{ fontSize: '0.75rem', color: C.gold, fontStyle: 'italic' }}>{sc.dbPronunciation || '—'}</div>
+                      {sc.dbNote && <div style={{ fontSize: '0.72rem', color: C.teal, fontStyle: 'italic', marginTop: 4 }}>{sc.dbNote}</div>}
                     </div>
                     {sc.added ? (
                       <div style={{ display: 'flex', gap: '0.3rem', width: '100%' }}>
