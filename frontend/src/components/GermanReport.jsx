@@ -241,10 +241,14 @@ function dialogueBlocks(rows) {
     const body = (d.exchanges || []).map((x, i) => {
       const p = parts[x.speakerIndex] || { name: "?" };
       const img = PDF_SAFE_DATA_URL.test(p.photoBase64 || "") ? p.photoBase64 : null;
+      const bubble = [];
+      if (x.german) bubble.push({ text: x.german || "", fontSize: 9, margin: [0, 0, 0, 1] });
+      if (x.original) bubble.push({ text: x.original || "", fontSize: 8, color: C.muted, italics: true });
+      if (!bubble.length) bubble.push("");
       return [
         img ? { image: img, fit: [18, 18], alignment: "center", margin: [0, 2, 6, 2] } : cell(""),
         cell((p.name || "?"), { bold: true, fontSize: 8, color: i % 2 ? C.blue : C.red, alignment: "right", margin: [0, 4, 8, 4] }),
-        cell(x.text || "", { fontSize: 9, margin: [8, 4, 0, 4] }),
+        cell(bubble, { fontSize: 9, margin: [8, 4, 0, 4] }),
       ];
     });
     return {
@@ -500,7 +504,7 @@ table.gr-t{border-collapse:collapse;width:100%;font-size:.84rem}.gr-t th,.gr-t t
 .gr-conj{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px;font-size:.8rem}.gr-conj p{background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 7px;margin:0}.gr-conj .pn{color:var(--muted);font-size:.7rem;display:block}
 .gr-memo{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;font-size:.86rem}.gr-memo .title{background:#fafaf8;border-bottom:1px solid var(--line);font-weight:700;padding:8px 11px}.gr-memo .de{background:#fff8e1;padding:9px 11px;border-bottom:1px solid var(--line)}.gr-memo .en{color:var(--muted);padding:9px 11px;font-size:.82rem}
 .gr-dlg{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:8px}.gr-dlg .d-tit{background:#fafaf8;padding:8px 11px;font-weight:700;font-size:.88rem}.gr-dlg .chat{padding:4px 11px}
-.gr-msg{display:flex;gap:8px;align-items:flex-start;margin:8px 0}.gr-av{width:28px;height:28px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;background:var(--red);flex:none}.gr-msg.alt .gr-av{background:var(--blue)}.gr-msg .who{font-size:.66rem;color:var(--muted);display:block}.gr-msg .bubble{background:#f1f1ef;border-radius:11px;padding:8px 11px;font-size:.86rem}.gr-msg.alt .bubble{background:#e8f0fb}
+.gr-msg{display:flex;gap:8px;align-items:flex-start;margin:8px 0}.gr-av{width:28px;height:28px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;background:var(--red);flex:none}.gr-msg.alt .gr-av{background:var(--blue)}.gr-msg .who{font-size:.66rem;color:var(--muted);display:block}.gr-msg .bubble{background:#f1f1ef;border-radius:11px;padding:8px 11px;font-size:.86rem;display:block}.gr-msg .bubble .orig{display:block;color:var(--muted);font-style:italic;font-size:.78rem;margin-top:2px}.gr-msg.alt .bubble{background:#e8f0fb}
 .gr-idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}.gr-idx-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px}.gr-idx-card .t{font-weight:700;font-size:.88rem}.gr-idx-card .s{color:var(--muted);font-size:.8rem;margin-top:3px}
 .gr-tablewrap{overflow-x:auto}
 @media(max-width:760px){.gr-2col{grid-template-columns:1fr}.gr-conj{grid-template-columns:1fr 1fr}}
@@ -730,7 +734,7 @@ function Chapter({ ch }) {
                   <div className="chat">
                     {(d.exchanges || []).map((x, i) => { const p = parts[x.speakerIndex] || { name: "?" }; return (
                       <div className={"gr-msg" + (i % 2 ? " alt" : "")} key={i}><div className="gr-av">{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
-                        <div><span className="who">{p.name}</span><span className="bubble">{x.text}</span></div></div>); })}
+                        <div><span className="who">{p.name}</span><span className="bubble">{x.german && <span>{x.german}</span>}{x.original && <span className="orig">{x.original}</span>}</span></div></div>); })}
                   </div><Boxes boxes={d.boxes} /></div>);
               })}
             </div>)}
@@ -803,7 +807,7 @@ function Standalone({ data }) {
                 <div className="chat">
                   {(d.exchanges || []).map((x, i) => { const p = parts[x.speakerIndex] || { name: "?" }; return (
                     <div className={"gr-msg" + (i % 2 ? " alt" : "")} key={i}><div className="gr-av">{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
-                      <div><span className="who">{p.name}</span><span className="bubble">{x.text}</span></div></div>); })}
+                      <div><span className="who">{p.name}</span><span className="bubble">{x.german && <span>{x.german}</span>}{x.original && <span className="orig">{x.original}</span>}</span></div></div>); })}
                 </div><Boxes boxes={d.boxes} /></div>);
             })}
           </div>

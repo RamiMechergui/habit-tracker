@@ -214,9 +214,13 @@ function dialogueBlocks(rows) {
     const parts = d.participants || [];
     const body = (d.exchanges || []).map((x, i) => {
       const p = parts[x.speakerIndex] || { name: "?" };
+      const bubble = [];
+      if (x.german) bubble.push({ text: x.german || "", fontSize: 9, margin: [0, 0, 0, 1] });
+      if (x.original) bubble.push({ text: x.original || "", fontSize: 8, color: C.muted, italics: true });
+      if (!bubble.length) bubble.push("");
       return [
         cell((p.name || "?"), { bold: true, fontSize: 8, color: i % 2 ? C.blue : C.red, alignment: "right", margin: [0, 4, 8, 4] }),
-        cell(x.text || "", { fontSize: 9, margin: [8, 4, 0, 4] }),
+        cell(bubble, { margin: [8, 4, 0, 4] }),
       ];
     });
     return {
