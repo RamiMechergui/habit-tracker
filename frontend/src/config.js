@@ -4,16 +4,18 @@ import { Preferences } from '@capacitor/preferences';
  * Resolve the correct API base URL depending on the runtime context:
  *
  * - **Native (Android / iOS)**: window.Capacitor.isNativePlatform() === true
- *   at runtime inside the WebView. Use the hardcoded EC2 backend URL.
+ *   at runtime inside the WebView. Use the production HTTPS backend URL.
  *
  * - **Web (browser)**: Use empty string so fetch uses same-origin / nginx proxy.
  *
  * IMPORTANT: We detect native at RUNTIME (not build time) using window.Capacitor
- * so that Vite does NOT tree-shake away the EC2 URL during the production build.
+ * so that Vite does NOT tree-shake away the backend URL during the production build.
  */
 
-// The deployed EC2 backend (proxied through Nginx on port 80).
-const NATIVE_BACKEND_URL = 'http://54.91.207.131';
+// The deployed production backend. Must be the HTTPS domain (NOT the raw EC2 IP):
+// the IP redirects HTTP→HTTPS and serves a certificate for evolvio.ink, so native
+// clients that validate TLS fail the handshake against the IP host.
+const NATIVE_BACKEND_URL = 'https://evolvio.ink';
 
 // Optional build-time override for web deployments (Render/docker-compose).
 // Render sets VITE_API_URL to the API service host; docker-compose sets
@@ -21,25 +23,11 @@ const NATIVE_BACKEND_URL = 'http://54.91.207.131';
 // instead of assuming the frontend host proxies /api.
 const WEB_API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_TARGET || '';
 
-export const API_URL = (() => {
-  // During build-time (Node.js), window is undefined. We return the EC2 URL
-  // to force Vite to keep it in the built bundle instead of tree-shaking it.
-  if (typeof window === 'undefined') {
-    return NATIVE_BACKEND_URL;
-  }
-  
-  // If running inside the Android app WebView (configured hostname in capacitor.config.json)
-  if (window.location.hostname === 'app.evolvio.app') {
-    return NATIVE_BACKEND_URL;
-  }
-  
-  // Fallback for browser / local dev proxy
-  return WEB_API_URL;
-})();
-
 // True only inside a native Capacitor WebView (Android/iOS app), where the
-// page origin (app.evolvio.app) has no backend behind it, so relative
-// `/api/...` image URLs would never resolve.
+// local page origin has no backend behind it, so relative `/api/...` image
+// URLs would never resolve. Detected via the runtime bridge so it works no
+// matter which hostname Capacitor serves the shell from (app.evolvio.app or
+// localhost).
 export const isNativePlatform = () => {
   try {
     return typeof window !== 'undefined' && !!window.Capacitor &&
@@ -49,6 +37,23 @@ export const isNativePlatform = () => {
     return false;
   }
 };
+
+export const API_URL = (() => {
+  // During build-time (Node.js), window is undefined. We return the backend URL
+  // to force Vite to keep it in the built bundle instead of tree-shaking it.
+  if (typeof window === 'undefined') {
+    return NATIVE_BACKEND_URL;
+  }
+
+  // Native Capacitor WebView (Android/iOS app) — regardless of the local
+  // origin (app.evolvio.app or localhost), always call the HTTPS backend.
+  if (isNativePlatform() || window.location.hostname === 'app.evolvio.app') {
+    return NATIVE_BACKEND_URL;
+  }
+
+  // Fallback for browser / local dev proxy
+  return WEB_API_URL;
+})();
 
 // Base used to absolutize relative image URLs for DISPLAY inside the editor.
 // Empty on the web when using the same-origin nginx proxy, otherwise the

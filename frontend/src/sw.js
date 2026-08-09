@@ -86,9 +86,15 @@ registerRoute(
 );
 
 // ─── API Routes — NetworkFirst with cache fallback ──────────────────────────
-// Exclude image proxy URLs (handled above with CacheFirst).
+// Exclude image proxy URLs (handled above with CacheFirst). Only same-origin
+// requests are intercepted — cross-origin calls (e.g. the native app talking to
+// the HTTPS backend) go straight to the network and can never be answered with
+// a cached page like index.html.
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/german/images/'),
+  ({ url }) =>
+    url.origin === self.location.origin &&
+    url.pathname.startsWith('/api/') &&
+    !url.pathname.startsWith('/api/german/images/'),
   new NetworkFirst({
     cacheName: 'evolvio-api-v1',
     networkTimeoutSeconds: 5,
