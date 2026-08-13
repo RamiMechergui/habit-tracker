@@ -3322,7 +3322,8 @@ function BooksForm({ onAdd, onUpdate, onDelete, isMobile, books }) {
 
   const photoUrlFor = (b) => {
     if (!b.photoUrl) return '';
-    return b.photoUrl.startsWith('http') ? b.photoUrl : (b.photoUrl.startsWith('/') ? b.photoUrl : `/uploads/${b.photoUrl}`);
+    if (b.photoUrl.startsWith('http') || b.photoUrl.startsWith('/api/')) return germanImageUrl(b.photoUrl);
+    return b.photoUrl.startsWith('/') ? b.photoUrl : `/uploads/${b.photoUrl}`;
   };
 
   return (

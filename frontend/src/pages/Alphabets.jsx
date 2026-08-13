@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X, BookA, Camera, Edit3, Trash2, ArrowLeft, Sparkles, NotebookPen } from 'lucide-react';
 import { useHabits } from '../Store';
+import { germanImageUrl } from '../utils/germanImageUrl';
 import RichTextEditor from '../components/RichTextEditor';
 
 const SPECIAL_CHARS = [
@@ -378,7 +379,7 @@ export default function Alphabets() {
                         onClick={() => { setPendingUploadId(a.recordId); fileRef.current?.click(); }}
                         title="Click to upload photo">
                         {a.photoUrl ? (
-                          <img src={a.photoUrl} alt={a.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={germanImageUrl(a.photoUrl)} alt={a.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                           <Camera size={20} style={{ color: `${C.blue}60` }} />
                         )}
@@ -523,7 +524,7 @@ export default function Alphabets() {
                   }}
                   title={sc.added ? 'Click to upload photo' : ''}>
                   {sc.photoUrl ? (
-                    <img src={sc.photoUrl} alt={sc.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={germanImageUrl(sc.photoUrl)} alt={sc.letter} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <span style={{ fontSize: '2.2rem', fontWeight: 900, color: sc.added ? C.green : C.gold, lineHeight: 1 }}>{sc.letter}</span>
                   )}
