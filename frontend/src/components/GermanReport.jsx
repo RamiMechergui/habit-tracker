@@ -38,6 +38,7 @@
 "use client";
 import React, { useMemo, useState, useCallback } from "react";
 import { germanImageUrl } from "../utils/germanImageUrl";
+import { htmlToPdfContent } from "../utils/htmlToPdf";
 import { EDITOR_IMAGE_BASE } from "../config";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
@@ -167,7 +168,13 @@ function noteBlocks(notes) {
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
     const stack = [];
     if (n.title) stack.push({ text: n.title, bold: true, fontSize: 9, margin: [0, 0, 0, 1] });
-    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, stripHtml(n.content) || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    const body = htmlToPdfContent(n.content);
+    if (body.length) {
+      stack.push({ text: `${cat}  ·`, bold: true, fontSize: 7, color, margin: [0, 0, 0, 2] });
+      stack.push(...body);
+    } else {
+      stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, { text: stripHtml(n.content) || "" }], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    }
     stack.push(...boxBlocks(n.boxes));
     return { stack, margin: [0, 0, 0, 6] };
   });
@@ -217,8 +224,8 @@ function memoBlocks(rows) {
   return rows.map(m => ({
     stack: [
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
-      { table: { widths: ["*"], body: [[cell(stripHtml(m.germanContent) || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
-      { text: stripHtml(m.englishContent) || "", fontSize: 8.5, color: C.muted },
+      { table: { widths: ["*"], body: [[cell(htmlToPdfContent(m.germanContent), { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
+      { stack: htmlToPdfContent(m.englishContent) || { text: "" }, margin: [0, 0, 0, 0] },
       ...boxBlocks(m.boxes),
     ],
     margin: [0, 0, 0, 9],
@@ -378,7 +385,9 @@ function alphabetBlock(rows) {
 function alphabetNoteBlock({ title = '', note = '' }) {
   const body = [];
   if (title) body.push({ text: title, bold: true, fontSize: 9.5, color: "#0f7d6a", margin: [4, 4, 4, 2] });
-  body.push({ text: stripHtml(note) || '', fontSize: 9, italics: true, color: "#0f7d6a", margin: [4, title ? 0 : 4, 4, 4] });
+  const noteContent = htmlToPdfContent(note);
+  if (noteContent.length) body.push(...noteContent);
+  else body.push({ text: stripHtml(note) || '', fontSize: 9, italics: true, color: "#0f7d6a", margin: [4, title ? 0 : 4, 4, 4] });
   return {
     table: { widths: ["*"], body: [[{ stack: body }]] },
     layout: {
@@ -491,7 +500,7 @@ const STYLES = `
 .gr-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
 .gr-alpha{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
 .gr-a{background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.gr-a .L{font-size:1.9rem;font-weight:800;color:var(--red)}.gr-a .w{font-size:.85rem;margin-top:4px;font-weight:600}
-.gr-al-note{margin-top:12px;padding:10px 14px;border:1px dashed #0f7d6a66;border-radius:10px;font-size:.88rem;color:#0f7d6a;line-height:1.5}.gr-al-title{display:block;margin-bottom:4px;font-weight:800;font-size:.95rem}.gr-al-body p{margin:0 0 6px}.gr-al-body p:last-child{margin-bottom:0}.gr-al-body ul,.gr-al-body ol{margin:0 0 6px;padding-left:18px}.gr-al-body img{max-width:100%;border-radius:8px;margin:4px 0}.gr-al-body h1,.gr-al-body h2,.gr-al-body h3,.gr-al-body h4{font-size:1rem;margin:6px 0 4px}.gr-al-body blockquote{border-left:3px solid #0f7d6a66;margin:4px 0;padding-left:8px;color:var(--muted)}
+.gr-al-note{margin-top:12px;padding:10px 14px;border:1px dashed #0f7d6a66;border-radius:10px;font-size:.88rem;color:#0f7d6a;line-height:1.5}.gr-al-title{display:block;margin-bottom:4px;font-weight:800;font-size:.95rem}.gr-al-body p{margin:0 0 6px}.gr-al-body p:last-child{margin-bottom:0}.gr-al-body ul,.gr-al-body ol{margin:0 0 6px;padding-left:18px}.gr-al-body img{max-width:100%;border-radius:8px;margin:4px 0}.gr-al-body h1,.gr-al-body h2,.gr-al-body h3,.gr-al-body h4{font-size:1rem;margin:6px 0 4px}.gr-al-body blockquote{border-left:3px solid #0f7d6a66;margin:4px 0;padding-left:8px;color:var(--muted)}.gr-al-body table,.gr-richtext table{width:100%;border-collapse:collapse;margin:6px 0;font-size:.82rem;line-height:1.45}.gr-al-body table th,.gr-al-body table td,.gr-richtext table th,.gr-richtext table td{border:1px solid var(--line);padding:6px 9px;vertical-align:top;text-align:left}.gr-al-body table th,.gr-richtext table th{font-weight:700;background:#fafaf8;color:var(--ink)}.gr-richtext{display:block;font-size:.88rem;line-height:1.55}.gr-richtext p{margin:0 0 6px}.gr-richtext p:last-child{margin-bottom:0}.gr-richtext ul,.gr-richtext ol{margin:0 0 6px;padding-left:18px}.gr-richtext img{max-width:100%;border-radius:8px;margin:4px 0}.gr-richtext h1,.gr-richtext h2,.gr-richtext h3,.gr-richtext h4{font-size:1rem;margin:6px 0 4px}.gr-richtext blockquote{border-left:3px solid var(--line);margin:4px 0;padding-left:8px;color:var(--muted)}
 .gr-a-ph{width:100%;height:66px;object-fit:cover;border-radius:7px;margin-bottom:6px;border:1px solid var(--line);display:block;background:var(--canvas)}
 .gr-mem{display:flex;gap:12px;flex-wrap:wrap;padding:8px 11px;border-bottom:1px solid var(--line);background:#fcfcfb}
 .gr-mem-it{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
@@ -556,10 +565,15 @@ async function getPdfMake() {
   const fontModule = await import("pdfmake/build/vfs_fonts");
   const fonts = fontModule.default || fontModule;
   const vfs = (fonts && fonts.pdfMake && fonts.pdfMake.vfs) || fonts || {};
-  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(vfs);
-  else pdfMake.vfs = vfs;
+  const { PDF_FONTS } = await import("../pdf/fonts");
+  const mergedVfs = Object.assign({}, vfs, PDF_FONTS);
+  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(mergedVfs);
+  else pdfMake.vfs = mergedVfs;
   pdfMake.fonts = {
     Roboto: { normal: "Roboto-Regular.ttf", bold: "Roboto-Medium.ttf", italics: "Roboto-Italic.ttf", bolditalics: "Roboto-MediumItalic.ttf" },
+    "Liberation Sans": { normal: "LiberationSans-Regular.ttf", bold: "LiberationSans-Bold.ttf", italics: "LiberationSans-Italic.ttf", bolditalics: "LiberationSans-BoldItalic.ttf" },
+    "Liberation Serif": { normal: "LiberationSerif-Regular.ttf", bold: "LiberationSerif-Bold.ttf", italics: "LiberationSerif-Italic.ttf", bolditalics: "LiberationSerif-BoldItalic.ttf" },
+    "Liberation Mono": { normal: "LiberationMono-Regular.ttf", bold: "LiberationMono-Bold.ttf", italics: "LiberationMono-Italic.ttf", bolditalics: "LiberationMono-BoldItalic.ttf" },
   };
   return pdfMake;
 }
@@ -700,6 +714,12 @@ function Alphabet({ data }) {
   );
 }
 const noteChip = cat => <span className="gr-chip" style={NOTE_COLOR[cat] ? { background: NOTE_COLOR[cat] } : undefined}>{cat || "note"}</span>;
+const absolutizeNoteHtml = html => (EDITOR_IMAGE_BASE && html) ? String(html).replace(/src="\/(api\/[^"]+)"/g, (m, p) => `src="${EDITOR_IMAGE_BASE}/${p}"`) : html;
+function NoteRich({ html }) {
+  const h = absolutizeNoteHtml(html);
+  if (!h || !h.trim()) return null;
+  return <span className="gr-richtext" dangerouslySetInnerHTML={{ __html: h }} />;
+}
 function Boxes({ boxes }) {
   if (!Array.isArray(boxes) || boxes.length === 0) return null;
   const list = boxes.filter(b => b && b.content && b.content.trim());
@@ -727,7 +747,7 @@ function Chapter({ ch }) {
     <div className="gr-ch">
       <div className="gr-ch-head"><h4>{ch.title}</h4>{ch.level && <span className="gr-lvl">{ch.level}</span>}{firstDate && <span className="gr-date">{fmtDateR(firstDate)}</span>}</div>
       <div className="gr-ch-body">
-        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}{stripHtml(n.content)}<Boxes boxes={n.boxes} /></div>)}</>}
+        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}<NoteRich html={n.content} /><Boxes boxes={n.boxes} /></div>)}</>}
         <div className="gr-2col">
           {has("vocab") && (
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
@@ -748,7 +768,7 @@ function Chapter({ ch }) {
             </div>)}
           {has("memo") && (
             <div><div className="gr-blk-title">Memorization</div>
-              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{stripHtml(m.germanContent)}</div>}{m.englishContent && <div className="en">{stripHtml(m.englishContent)}</div>}<Boxes boxes={m.boxes} /></div>)}
+              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de"><NoteRich html={m.germanContent} /></div>}{m.englishContent && <div className="en"><NoteRich html={m.englishContent} /></div>}<Boxes boxes={m.boxes} /></div>)}
             </div>)}
         </div>
         <div className="gr-2col">
@@ -811,7 +831,7 @@ function Standalone({ data }) {
         <section className="gr-section" id="daily-notes">
           <div className="gr-sec-head"><div className="gr-tag">N</div><h2>Daily Notes <small>{notes.length} notes</small></h2></div>
           <div className="gr-card">
-            {notes.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}{stripHtml(n.content)}<Boxes boxes={n.boxes} /></div>)}
+            {notes.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.title && <span className="nt">{n.title}</span>}<NoteRich html={n.content} /><Boxes boxes={n.boxes} /></div>)}
           </div>
         </section>
       )}
@@ -819,7 +839,7 @@ function Standalone({ data }) {
         <section className="gr-section" id="memorization">
           <div className="gr-sec-head"><div className="gr-tag">M</div><h2>Memorization <small>{memos.length} paragraphs</small></h2></div>
           <div className="gr-card">
-            {memos.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{stripHtml(m.germanContent)}</div>}{m.englishContent && <div className="en">{stripHtml(m.englishContent)}</div>}<Boxes boxes={m.boxes} /></div>)}
+            {memos.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de"><NoteRich html={m.germanContent} /></div>}{m.englishContent && <div className="en"><NoteRich html={m.englishContent} /></div>}<Boxes boxes={m.boxes} /></div>)}
           </div>
         </section>
       )}

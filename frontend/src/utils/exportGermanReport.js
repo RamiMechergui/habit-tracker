@@ -16,14 +16,34 @@ async function getPdfMake() {
   const fontModule = await import('pdfmake/build/vfs_fonts');
   const fonts = fontModule.default || fontModule;
   const vfs = (fonts && fonts.pdfMake && fonts.pdfMake.vfs) || fonts || {};
-  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(vfs);
-  else pdfMake.vfs = vfs;
+  const { PDF_FONTS } = await import('../pdf/fonts');
+  const mergedVfs = Object.assign({}, vfs, PDF_FONTS);
+  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(mergedVfs);
+  else pdfMake.vfs = mergedVfs;
   pdfMake.fonts = {
     Roboto: {
       normal: 'Roboto-Regular.ttf',
       bold: 'Roboto-Medium.ttf',
       italics: 'Roboto-Italic.ttf',
       bolditalics: 'Roboto-MediumItalic.ttf',
+    },
+    'Liberation Sans': {
+      normal: 'LiberationSans-Regular.ttf',
+      bold: 'LiberationSans-Bold.ttf',
+      italics: 'LiberationSans-Italic.ttf',
+      bolditalics: 'LiberationSans-BoldItalic.ttf',
+    },
+    'Liberation Serif': {
+      normal: 'LiberationSerif-Regular.ttf',
+      bold: 'LiberationSerif-Bold.ttf',
+      italics: 'LiberationSerif-Italic.ttf',
+      bolditalics: 'LiberationSerif-BoldItalic.ttf',
+    },
+    'Liberation Mono': {
+      normal: 'LiberationMono-Regular.ttf',
+      bold: 'LiberationMono-Bold.ttf',
+      italics: 'LiberationMono-Italic.ttf',
+      bolditalics: 'LiberationMono-BoldItalic.ttf',
     },
   };
   pdfMakeInstance = pdfMake;

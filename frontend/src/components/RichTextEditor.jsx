@@ -6,6 +6,10 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extension-placeholder';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
 import { Node } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { EDITOR_IMAGE_BASE } from '../config';
@@ -392,12 +396,16 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   const [colorOpen,      setColorOpen]      = useState(false);
   const [highlightOpen,  setHighlightOpen]  = useState(false);
   const [fontOpen,       setFontOpen]       = useState(false);
+  const [tableOpen,      setTableOpen]      = useState(false);
+  const [tblPick,        setTblPick]        = useState({ rows: 3, cols: 3 });
+  const [tblHover,       setTblHover]       = useState({ rows: 0, cols: 0 });
   const containerRef   = useRef(null);
   const fileRef        = useRef(null);
   const headingRef     = useRef(null);
   const colorRef       = useRef(null);
   const highlightRef   = useRef(null);
   const fontRef        = useRef(null);
+  const tableRef       = useRef(null);
   const isInternalChange = useRef(false); // ← prevents reset loop
 
   const editor = useEditor({
@@ -405,6 +413,10 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, history: { depth: 50 } }),
       TextStyle, FontFamily, Color,
       Highlight.configure({ multicolor: true }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       ResizableImage,
       Placeholder.configure({ placeholder: placeholder || 'Type here…' }),
     ],
@@ -480,18 +492,37 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
 
   /* ── Close dropdowns on outside click ───────────────────────────────── */
   useEffect(() => {
-    if (!headingOpen && !colorOpen && !highlightOpen && !fontOpen) return;
+    if (!headingOpen && !colorOpen && !highlightOpen && !fontOpen && !tableOpen) return;
     const cb = (e) => {
       if (headingOpen   && headingRef.current   && !headingRef.current.contains(e.target))   setHeadingOpen(false);
       if (colorOpen     && colorRef.current     && !colorRef.current.contains(e.target))     setColorOpen(false);
       if (highlightOpen && highlightRef.current && !highlightRef.current.contains(e.target)) setHighlightOpen(false);
       if (fontOpen      && fontRef.current      && !fontRef.current.contains(e.target))      setFontOpen(false);
+      if (tableOpen     && tableRef.current     && !tableRef.current.contains(e.target))      setTableOpen(false);
     };
     document.addEventListener('mousedown', cb);
     return () => document.removeEventListener('mousedown', cb);
-  }, [headingOpen, colorOpen, highlightOpen, fontOpen]);
+  }, [headingOpen, colorOpen, highlightOpen, fontOpen, tableOpen]);
 
   const isAct = (name, attrs) => editor?.isActive(name, attrs) || false;
+
+  /* ── Table insertion & management ────────────────────────────────────── */
+  const handleInsertTable = (rows, cols) => {
+    const r = Math.min(20, Math.max(1, rows));
+    const c = Math.min(20, Math.max(1, cols));
+    editor.chain().focus().insertTable({ rows: r, cols: c, withHeaderRow: true }).run();
+    setTableOpen(false);
+  };
+  const inTable = () => editor?.isActive('table') || false;
+  const tblCmds = [
+    { label: 'Add row above',  icon: '⬆',    fn: () => editor.chain().focus().addRowBefore().run() },
+    { label: 'Add row below',  icon: '⬇',    fn: () => editor.chain().focus().addRowAfter().run() },
+    { label: 'Add column left',  icon: '⬅',  fn: () => editor.chain().focus().addColumnBefore().run() },
+    { label: 'Add column right', icon: '➡',  fn: () => editor.chain().focus().addColumnAfter().run() },
+    { label: 'Delete row',     icon: '⊟',    fn: () => editor.chain().focus().deleteRow().run() },
+    { label: 'Delete column',  icon: '⊞',    fn: () => editor.chain().focus().deleteColumn().run() },
+    { label: 'Toggle header row', icon: 'H', fn: () => editor.chain().focus().toggleHeaderRow().run() },
+  ];
 
   /* ── Image insertion ─────────────────────────────────────────────────── */
   const insertImageFile = useCallback(async (file) => {
@@ -547,6 +578,14 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         .rte-cgrid button:hover { transform:scale(1.15); }
         .rte-cgrid button.on { outline:2px solid #3b82f6; outline-offset:2px; }
 
+        /* Table size picker grid */
+        .rte-tblgrid { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; padding:8px 8px 4px; }
+        .rte-tblgrid button { width:16px; height:16px; border-radius:3px; border:1px solid var(--border); cursor:pointer; padding:0; background:var(--bg); }
+        .rte-tblgrid button.hover { background:#3b82f6; border-color:#3b82f6; }
+        .rte-tblnum { display:flex; gap:6px; align-items:center; padding:4px 8px 8px; }
+        .rte-tblnum input { width:44px; padding:3px 5px; font-size:0.75rem; border-radius:5px; border:1px solid var(--border); background:var(--bg); color:var(--text-primary); outline:none; text-align:center; }
+        .rte-tblnum button { flex:1; padding:4px 0; font-size:0.72rem; font-weight:700; border:none; border-radius:6px; background:#3b82f6; color:#fff; cursor:pointer; }
+
         /* ProseMirror body */
         .rte-body .ProseMirror { outline:none; overflow:auto; }
         .rte-body .ProseMirror::after { content:''; display:table; clear:both; }
@@ -560,6 +599,17 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         .rte-body .ProseMirror code { background:rgba(128,128,128,0.1); border-radius:3px; padding:1px 4px; font-size:0.88em; font-family:monospace; }
         .rte-body .ProseMirror hr { border:none; border-top:1px solid var(--border); margin:1rem 0; }
         .rte-body .ProseMirror mark { border-radius:3px; padding:1px 2px; }
+        .rte-body .ProseMirror mark mark { background:transparent; padding:0; }
+        .rte-body .ProseMirror s { text-decoration:line-through; }
+        .rte-body .ProseMirror u { text-decoration:underline; }
+        /* Table styling */
+        .rte-body .ProseMirror table { border-collapse:collapse; width:100%; margin:0.75rem 0; table-layout:fixed; }
+        .rte-body .ProseMirror table, .rte-body .ProseMirror th, .rte-body .ProseMirror td { border:1px solid var(--border); }
+        .rte-body .ProseMirror th, .rte-body .ProseMirror td { padding:7px 10px; vertical-align:top; min-width:40px; position:relative; }
+        .rte-body .ProseMirror th { font-weight:700; background:rgba(128,128,128,0.08); text-align:left; }
+        .rte-body .ProseMirror .selectedCell:after { z-index:2; position:absolute; content:''; left:0; right:0; top:0; bottom:0; background:rgba(59,130,246,0.15); pointer-events:none; }
+        .rte-body .ProseMirror .column-resize-handle { position:absolute; right:-2px; top:0; bottom:-2px; width:4px; background-color:#adf; pointer-events:none; }
+        .rte-body .ProseMirror .resize-cursor { cursor:col-resize; }
         /* clearfix so floated images don't overflow the editor */
         .rte-body .ProseMirror > *:last-child { clear:both; }
       `}</style>
@@ -670,6 +720,73 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
           title="Insert image — or paste / drag & drop into editor"
           style={{ ...TB, fontSize:'1rem' }}>🖼</button>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" style={{ display:'none' }} onChange={handleFileSelected} />
+
+        <div className="rte-sep" />
+
+        {/* Table */}
+        <div className="rte-dd" ref={tableRef}>
+          <button type="button" onClick={() => setTableOpen(p => !p)} title="Table"
+            style={{ ...TB, fontSize:'0.95rem', ...(inTable() ? TB_ACT : {}) }}>▦</button>
+          {tableOpen && (
+            <div className="rte-menu" style={{ minWidth:230, padding:0 }}>
+              {inTable() ? (
+                /* ── Manage existing table ── */
+                <div style={{ padding:8, display:'flex', flexDirection:'column', gap:3 }}>
+                  <div style={{ fontSize:'0.66rem', fontWeight:800, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', padding:'2px 6px 4px' }}>
+                    Table actions
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4 }}>
+                    {tblCmds.map(c => (
+                      <button key={c.label} type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { c.fn(); setTableOpen(false); }}
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 8px', borderRadius:7, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text-primary)', cursor:'pointer', fontSize:'0.74rem', fontWeight:600, textAlign:'left', fontFamily:'var(--font-sans)' }}>
+                        <span style={{ color:'#3b82f6', flexShrink:0, width:12, textAlign:'center', fontSize:'0.8rem' }}>{c.icon}</span>
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => { editor.chain().focus().deleteTable().run(); setTableOpen(false); }}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 8px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#ef4444', cursor:'pointer', fontSize:'0.74rem', fontWeight:700, marginTop:4, fontFamily:'var(--font-sans)' }}>
+                    <span style={{ flexShrink:0 }}>🗑</span> Delete table
+                  </button>
+                </div>
+              ) : (
+                /* ── Insert table size picker ── */
+                <div>
+                  <div style={{ fontSize:'0.66rem', fontWeight:800, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', padding:'8px 8px 0', display:'flex', justifyContent:'space-between' }}>
+                    Insert table
+                    <span style={{ color:'#3b82f6', fontWeight:700 }}>{tblHover.rows || tblPick.rows} × {tblHover.cols || tblPick.cols}</span>
+                  </div>
+                  <div className="rte-tblgrid"
+                    onMouseLeave={() => setTblHover({ rows: 0, cols: 0 })}>
+                    {Array.from({ length: 8 }).map((_, r) =>
+                      Array.from({ length: 8 }).map((_, c) => (
+                        <button key={`${r}-${c}`} type="button"
+                          title={`${r + 1} rows × ${c + 1} columns`}
+                          className={(tblHover.rows >= r + 1 && tblHover.cols >= c + 1) ? 'hover' : ''}
+                          onMouseEnter={() => setTblHover({ rows: r + 1, cols: c + 1 })}
+                          onClick={() => { setTblPick({ rows: r + 1, cols: c + 1 }); handleInsertTable(r + 1, c + 1); }}
+                        />
+                      ))
+                    )}
+                  </div>
+                  <div className="rte-tblnum">
+                    <label style={{ fontSize:'0.68rem', color:'var(--text-muted)' }}>Rows</label>
+                    <input type="number" min={1} max={20} value={tblPick.rows}
+                      onChange={e => setTblPick(p => ({ ...p, rows: Math.max(1, parseInt(e.target.value) || 1) }))} />
+                    <label style={{ fontSize:'0.68rem', color:'var(--text-muted)' }}>Cols</label>
+                    <input type="number" min={1} max={20} value={tblPick.cols}
+                      onChange={e => setTblPick(p => ({ ...p, cols: Math.max(1, parseInt(e.target.value) || 1) }))} />
+                    <button type="button" onClick={() => handleInsertTable(tblPick.rows, tblPick.cols)}>Insert</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="rte-sep" />
 

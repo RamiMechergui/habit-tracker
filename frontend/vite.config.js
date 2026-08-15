@@ -30,8 +30,8 @@ export default defineConfig({
         // Precache all Vite build output assets (incl. manifest.json so the
         // PWA install manifest is available offline)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,webp,json}'],
-        // Don't precache huge files
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        // Don't precache huge files (fonts chunk for PDF export is ~6MB)
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8MB
       },
 
       // Dev options — enable SW in development for testing

@@ -99,6 +99,242 @@ const splitWord = v => {
   return { a, w };
 };
 
+/* ── Rich HTML → pdfmake (self-contained) ────────────────────────────────────
+   The editor stores Daily Notes / Memorization content as HTML. This compact
+   converter turns that HTML into pdfmake content nodes so tables, lists,
+   headings and inline styles reach the exported PDF. It only ever references
+   the bundled Roboto font. */
+const DATA_IMG = /^data:image\/(png|jpe?g|gif|webp);/i;
+const BLOCK_TAGS = { p: 1, div: 1, h1: 1, h2: 1, h3: 1, h4: 1, h5: 1, h6: 1, blockquote: 1, pre: 1 };
+
+function cleanTextR(str) {
+  return String(str || '').replace(/\u00a0/g, ' ').replace(/[ \t\r]+/g, ' ').replace(/\n+/g, ' ').trim();
+}
+function parseStyleR(el) {
+  const out = {};
+  const st = (el.getAttribute && el.getAttribute('style')) || '';
+  if (!st) return out;
+  const get = (name) => {
+    const re = new RegExp(name + '\\s*:\\s*([^;]+)', 'i');
+    const m = st.match(re);
+    return m ? m[1].trim() : null;
+  };
+  const fw = get('font-weight');
+  if (fw && (fw === 'bold' || parseInt(fw, 10) >= 600)) out.bold = true;
+  const fs = get('font-style');
+  if (fs && /italic/i.test(fs)) out.italics = true;
+  const deco = get('text-decoration');
+  if (deco && /underline/i.test(deco)) out.underline = true;
+  if (deco && /line-through/i.test(deco)) out.strike = true;
+  const color = get('color');
+  if (color && color !== '#000000' && !/currentcolor/i.test(color)) out.color = color;
+  const bg = get('background-color');
+  if (bg && bg !== 'transparent' && !/^rgba\(0,\s*0,\s*0,\s*0\)$/i.test(bg)) out.highlight = bg;
+  const sz = get('font-size');
+  if (sz) {
+    const m = sz.match(/([\d.]+)\s*(px|rem|em|pt)/i);
+    if (m) {
+      const v = parseFloat(m[1]);
+      const u = m[2].toLowerCase();
+      let pt = v;
+      if (u === 'px') pt = v * 0.75;
+      else if (u === 'rem') pt = v * 12;
+      else if (u === 'em') pt = v * 9;
+      out.fontSize = Math.round(pt * 10) / 10;
+    }
+  }
+  const ta = get('text-align');
+  if (ta && /left|center|right|justify/.test(ta)) out.alignment = ta;
+  return out;
+}
+function inlineRunsR(root, base = {}) {
+  const out = [];
+  const pushBreak = () => { if (out.length && out[out.length - 1].text !== '\n') out.push({ text: '\n' }); };
+  const walkChildren = (node, nf) => { Array.from(node.childNodes).forEach((c) => walk(c, nf)); };
+  const walk = (node, fmt) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = cleanTextR(node.nodeValue);
+      if (!t) return;
+      const run = { text: t };
+      if (fmt.bold) run.bold = true;
+      if (fmt.italics) run.italics = true;
+      if (fmt.underline && !fmt.strike) run.decoration = 'underline';
+      if (fmt.strike) run.decoration = 'lineThrough';
+      if (fmt.color) run.color = fmt.color;
+      if (fmt.highlight) run.background = fmt.highlight;
+      if (fmt.fontSize) run.fontSize = fmt.fontSize;
+      out.push(run);
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') { out.push({ text: '\n' }); return; }
+    if (tag === 'img') {
+      const src = node.getAttribute('src') || '';
+      if (DATA_IMG.test(src)) {
+        const w = node.getAttribute('width');
+        const h = node.getAttribute('height');
+        const numW = w ? parseInt(w, 10) : 0;
+        const numH = h ? parseInt(h, 10) : 0;
+        out.push({ image: src, fit: [numW > 0 ? Math.min(numW, 460) : 200, numH > 0 ? Math.min(numH, 300) : 150], alignment: 'center', margin: [0, 2, 0, 2] });
+      }
+      return;
+    }
+    if (tag === 'table') { pushBreak(); out.push({ text: '[table]' }); pushBreak(); return; }
+    const nf = Object.assign({}, fmt, parseStyleR(node));
+    if (tag === 'strong' || tag === 'b') nf.bold = true;
+    if (tag === 'em' || tag === 'i') nf.italics = true;
+    if (tag === 'u') nf.underline = true;
+    if (tag === 's' || tag === 'strike' || tag === 'del') nf.strike = true;
+    if (tag === 'mark') nf.highlight = nf.highlight || '#fef08a';
+    if (tag === 'a') { nf.underline = nf.underline !== undefined ? nf.underline : true; nf.color = nf.color || '#1f4e79'; }
+    if (tag === 'font') {
+      const fc = node.getAttribute('color');
+      if (fc) nf.color = fc;
+    }
+    if (tag === 'ul' || tag === 'ol') {
+      const ordered = tag === 'ol';
+      Array.from(node.children).forEach((li, idx) => {
+        if (li.tagName.toLowerCase() !== 'li') return;
+        pushBreak();
+        out.push({ text: ordered ? `${idx + 1}. ` : '• ', bold: nf.bold, color: nf.color });
+        walk(li, nf);
+        pushBreak();
+      });
+      return;
+    }
+    if (BLOCK_TAGS[tag]) { pushBreak(); walkChildren(node, nf); pushBreak(); return; }
+    walkChildren(node, nf);
+  };
+  walkChildren(root, base);
+  const collapsed = [];
+  for (let i = 0; i < out.length; i++) {
+    const isBreak = out[i].text === '\n';
+    if (isBreak && (collapsed.length === 0 || collapsed[collapsed.length - 1].text === '\n')) continue;
+    collapsed.push(out[i]);
+  }
+  while (collapsed.length && collapsed[collapsed.length - 1].text === '\n') collapsed.pop();
+  return collapsed;
+}
+function paragraphNodeR(children) {
+  const runs = inlineRunsR(children);
+  if (!runs.length) return { text: '' };
+  if (runs.length === 1) return { text: runs[0] };
+  const first = runs[0];
+  const node = { text: runs, margin: [0, 0, 0, 4] };
+  if (first.alignment && runs.every(r => !r.alignment)) node.alignment = first.alignment;
+  return node;
+}
+function cellToPdfR(cellEl) {
+  const tag = cellEl.tagName.toLowerCase();
+  const runs = inlineRunsR(cellEl);
+  const style = parseStyleR(cellEl);
+  const node = {};
+  if (runs.length === 1 && runs[0].image) {
+    node.image = runs[0].image;
+    node.fit = runs[0].fit;
+    node.alignment = 'center';
+  } else {
+    node.text = runs.length ? runs : '';
+    if (runs.length) {
+      const first = runs[0];
+      if (first.alignment && runs.every(r => !r.alignment)) node.alignment = first.alignment;
+    }
+  }
+  const align = style.alignment || (tag === 'th' ? 'left' : null);
+  if (align) node.alignment = align;
+  if (tag === 'th') {
+    node.bold = style.bold !== undefined ? style.bold : true;
+    node.fillColor = style.highlight || '#f4f4f2';
+    if (style.fontSize) node.fontSize = style.fontSize;
+  }
+  node.margin = [4, 3, 4, 3];
+  if (!node.fontSize) node.fontSize = 8.5;
+  return node;
+}
+function tableToPdfR(tableEl) {
+  const trs = Array.from(tableEl.querySelectorAll('tr')).filter(tr => tr.closest('table') === tableEl);
+  const body = [];
+  let colCount = 0;
+  let headerRows = 0;
+  trs.forEach((tr, rowIdx) => {
+    const cells = Array.from(tr.children).filter(c => {
+      const t = c.tagName.toLowerCase();
+      return t === 'td' || t === 'th';
+    });
+    if (!cells.length) return;
+    colCount = Math.max(colCount, cells.length);
+    if (rowIdx === 0 && cells.some(c => c.tagName.toLowerCase() === 'th')) headerRows = 1;
+    body.push(cells.map(c => cellToPdfR(c)));
+  });
+  if (!colCount) return { text: '' };
+  body.forEach(row => { while (row.length < colCount) row.push({ text: '' }); });
+  return {
+    table: {
+      headerRows,
+      keepWithHeaderRows: headerRows > 0 ? 1 : 0,
+      widths: new Array(colCount).fill('*'),
+      body,
+    },
+    layout: {
+      hLineColor: () => '#c9c8c4', vLineColor: () => '#c9c8c4',
+      hLineWidth: () => 0.5, vLineWidth: () => 0.5,
+      fillColor: rowIndex => (rowIndex === 0 && headerRows ? '#f4f4f2' : null),
+      paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3.5, paddingBottom: () => 3.5,
+    },
+    margin: [0, 2, 0, 6],
+  };
+}
+function blockNodeFromR(node) {
+  const tag = node.nodeType === 1 ? node.tagName.toLowerCase() : '';
+  if (tag === 'table') return tableToPdfR(node);
+  if (tag === 'hr') {
+    return { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 500, y2: 0, lineWidth: 0.6, lineColor: '#c9c8c4' }], margin: [0, 6, 0, 6] };
+  }
+  if (tag === 'blockquote') {
+    return { text: inlineRunsR(node), italics: true, color: '#6b6f78', margin: [0, 0, 0, 5] };
+  }
+  if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4') {
+    const level = parseInt(tag.slice(1), 10);
+    return { text: inlineRunsR(node), bold: true, fontSize: { 1: 15, 2: 12.5, 3: 11, 4: 10 }[level] || 10, margin: [0, 6, 0, 3] };
+  }
+  if (tag === 'ul' || tag === 'ol') {
+    const ordered = tag === 'ol';
+    const items = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() === 'li');
+    return {
+      stack: items.map((li, i) => ({
+        text: [{ text: ordered ? `${i + 1}. ` : '•  ', bold: true }, ...inlineRunsR(li)],
+        margin: [4, 0, 0, 2],
+        fontSize: 8.5,
+      })),
+      margin: [0, 0, 0, 5],
+    };
+  }
+  return paragraphNodeR(node);
+}
+function htmlToPdfContentR(html) {
+  const src = String(html || '').trim();
+  if (!src) return [];
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(src, 'text/html');
+  } catch (e) {
+    return [{ text: src }];
+  }
+  const body = doc.body || doc;
+  if (!body) return [{ text: src }];
+  const content = [];
+  Array.from(body.childNodes).forEach(node => {
+    if (node.nodeType !== 1) {
+      const t = cleanTextR(node.nodeValue);
+      if (t) content.push({ text: t, margin: [0, 0, 0, 4] });
+      return;
+    }
+    content.push(blockNodeFromR(node));
+  });
+  return content.filter(n => n && (n.text || n.stack || n.table || n.image || n.canvas));
+}
+
 function coverContent(stats, opts) {
   const flag = {
     table: { widths: [80, 80, 80], body: [[
@@ -143,7 +379,15 @@ function noteBlocks(notes) {
   return notes.map(n => {
     const cat = (n.noteCategory || "note").toUpperCase();
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
-    return { stack: [{ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] }], margin: [0, 0, 0, 5] };
+    const stack = [];
+    const body = htmlToPdfContentR(n.content);
+    if (body.length) {
+      stack.push({ text: `${cat}  ·`, bold: true, fontSize: 7, color, margin: [0, 0, 0, 2] });
+      stack.push(...body);
+    } else {
+      stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, n.content || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    }
+    return { stack, margin: [0, 0, 0, 5] };
   });
 }
 function vocabTable(rows) {
@@ -188,8 +432,8 @@ function memoBlocks(rows) {
   return rows.map(m => ({
     stack: [
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
-      { table: { widths: ["*"], body: [[cell(m.germanContent || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
-      { text: m.englishContent || "", fontSize: 8.5, color: C.muted },
+      { table: { widths: ["*"], body: [[cell(htmlToPdfContentR(m.germanContent), { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
+      { stack: htmlToPdfContentR(m.englishContent) || { text: "" } },
     ],
     margin: [0, 0, 0, 9],
   }));
@@ -400,7 +644,7 @@ const STYLES = `
 .gr-date{color:var(--muted);font-size:.82rem}.gr-lvl{font-size:.68rem;background:#191a1a;color:#fff;padding:2px 9px;border-radius:20px;font-weight:700}
 .gr-ch-body{padding:16px 18px}.gr-2col{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .gr-blk-title{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--red);font-weight:700;margin:14px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
-.gr-note{background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:.86rem}
+.gr-note{background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:.86rem}.gr-richtext{display:block;font-size:.86rem;line-height:1.55}.gr-richtext p{margin:0 0 6px}.gr-richtext p:last-child{margin-bottom:0}.gr-richtext ul,.gr-richtext ol{margin:0 0 6px;padding-left:18px}.gr-richtext img{max-width:100%;border-radius:8px;margin:4px 0}.gr-richtext h1,.gr-richtext h2,.gr-richtext h3,.gr-richtext h4{font-size:1rem;margin:6px 0 4px}.gr-richtext blockquote{border-left:3px solid var(--line);margin:4px 0;padding-left:8px;color:var(--muted)}.gr-richtext table{width:100%;border-collapse:collapse;margin:6px 0;font-size:.82rem;line-height:1.45}.gr-richtext table th,.gr-richtext table td{border:1px solid var(--line);padding:6px 9px;vertical-align:top;text-align:left}.gr-richtext table th{font-weight:700;background:#fafaf8;color:var(--ink)}
 .gr-chip{display:inline-block;font-size:.64rem;font-weight:700;text-transform:uppercase;padding:1px 7px;border-radius:6px;color:#fff;margin-right:6px}
 table.gr-t{border-collapse:collapse;width:100%;font-size:.84rem}.gr-t th,.gr-t td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}.gr-t th{color:var(--muted);text-transform:uppercase;font-size:.64rem;background:#fafaf8}
 .gr-g{border-left:4px solid var(--gold);background:var(--canvas);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:.86rem}.gr-g .t{font-weight:700}.gr-g .c{color:var(--muted);font-size:.72rem;float:right}.gr-g .x{color:var(--muted);font-size:.82rem;margin-top:4px}
@@ -469,6 +713,11 @@ function Alphabet({ data }) {
   );
 }
 const noteChip = cat => <span className="gr-chip" style={NOTE_COLOR[cat] ? { background: NOTE_COLOR[cat] } : undefined}>{cat || "note"}</span>;
+function NoteRich({ html }) {
+  const h = String(html || "").trim();
+  if (!h) return null;
+  return <span className="gr-richtext" dangerouslySetInnerHTML={{ __html: h }} />;
+}
 function Chapter({ ch }) {
   const has = k => (ch[k] || []).length;
   const firstDate = has("note") && ch.note[0] && ch.note[0].date ? ch.note[0].date : "";
@@ -476,7 +725,7 @@ function Chapter({ ch }) {
     <div className="gr-ch">
       <div className="gr-ch-head"><h4>{ch.title}</h4>{ch.level && <span className="gr-lvl">{ch.level}</span>}{firstDate && <span className="gr-date">{fmtDateR(firstDate)}</span>}</div>
       <div className="gr-ch-body">
-        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}{n.content}</div>)}</>}
+        {has("note") && <><div className="gr-blk-title">Daily Notes</div>{ch.note.map(n => <div className="gr-note" key={n.recordId}>{noteChip(n.noteCategory)}<NoteRich html={n.content} /></div>)}</>}
         <div className="gr-2col">
           {has("vocab") && (
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
@@ -497,7 +746,7 @@ function Chapter({ ch }) {
             </div>)}
           {has("memo") && (
             <div><div className="gr-blk-title">Memorization</div>
-              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de">{m.germanContent}</div>}{m.englishContent && <div className="en">{m.englishContent}</div>}</div>)}
+              {ch.memo.map(m => <div className="gr-memo" key={m.recordId}><div className="title">{m.title}</div>{m.germanContent && <div className="de"><NoteRich html={m.germanContent} /></div>}{m.englishContent && <div className="en"><NoteRich html={m.englishContent} /></div>}</div>)}
             </div>)}
         </div>
         <div className="gr-2col">

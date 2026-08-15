@@ -5,6 +5,8 @@
  * Converts a flat array of German-learning records into a pdfmake document definition.
  */
 
+import { htmlToPdfContent } from "./htmlToPdf";
+
 const C = {
   black: "#191a1a", ink: "#2c2b33", muted: "#6b6f78", red: "#dd0000",
   gold: "#ffce00", goldDk: "#b89300", blue: "#1f4e79", teal: "#0f7d6a",
@@ -147,7 +149,13 @@ function noteBlocks(notes) {
     const color = NOTE_COLORS[n.noteCategory] || C.muted;
     const stack = [];
     if (n.title) stack.push({ text: n.title, bold: true, fontSize: 9, margin: [0, 0, 0, 1] });
-    stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, stripHtml(n.content) || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    const body = htmlToPdfContent(n.content);
+    if (body.length) {
+      stack.push({ text: `${cat}  ·`, bold: true, fontSize: 7, color, margin: [0, 0, 0, 2] });
+      stack.push(...body);
+    } else {
+      stack.push({ text: [{ text: `${cat}  ·  `, bold: true, fontSize: 7, color }, stripHtml(n.content) || ""], fontSize: 8.5, margin: [0, 0, 0, 4] });
+    }
     stack.push(...boxBlocks(n.boxes));
     return { stack, margin: [0, 0, 0, 6] };
   });
@@ -201,8 +209,8 @@ function memoBlocks(rows) {
   return rows.map(m => ({
     stack: [
       { text: m.title || "Memorization", bold: true, fontSize: 9, margin: [0, 0, 0, 3] },
-      { table: { widths: ["*"], body: [[cell(stripHtml(m.germanContent) || "", { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
-      { text: stripHtml(m.englishContent) || "", fontSize: 8.5, color: C.muted },
+      { table: { widths: ["*"], body: [[cell(htmlToPdfContent(m.germanContent), { fillColor: C.cream, fontSize: 9, margin: [7, 6, 7, 6] })]] }, layout: "noBorders", margin: [0, 0, 0, 3] },
+      { stack: htmlToPdfContent(m.englishContent) || { text: "" }, margin: [0, 0, 0, 0] },
       ...boxBlocks(m.boxes),
     ],
     margin: [0, 0, 0, 9],
@@ -356,7 +364,9 @@ function alphabetBlock(rows) {
 function alphabetNoteBlock({ title = '', note = '' }) {
   const body = [];
   if (title) body.push({ text: title, bold: true, fontSize: 9.5, color: C.teal, margin: [4, 4, 4, 2] });
-  body.push({ text: stripHtml(note) || '', fontSize: 9, italics: true, color: C.teal, margin: [4, title ? 0 : 4, 4, 4] });
+  const noteContent = htmlToPdfContent(note);
+  if (noteContent.length) body.push(...noteContent);
+  else body.push({ text: stripHtml(note) || '', fontSize: 9, italics: true, color: C.teal, margin: [4, title ? 0 : 4, 4, 4] });
   return {
     table: { widths: ["*"], body: [[{ stack: body }]] },
     layout: {
