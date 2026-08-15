@@ -13,7 +13,7 @@ const stripEmoji = (str) => {
 };
 
 export default function ExpenseTracker() {
-  const { logs, expenseCategories, getCategoryName, getCategoryIcon, saveLog, saveIncome, deleteIncomeEntry } = useHabits();
+  const { logs, expenseCategories, getCategoryName, getCategoryIcon, saveLog, saveIncome, deleteIncomeEntry, getLog } = useHabits();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [viewMode, setViewMode] = useState('monthly');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -426,7 +426,8 @@ export default function ExpenseTracker() {
           }
         }
         const filtered = log.expenses.filter((_, i) => i !== reconEditTarget.index);
-        await saveLog(reconEditTarget.logKey, { ...log, expenses: filtered.length ? filtered : [{ desc: '', category: 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] });
+        const baseLog = getLog(reconEditTarget.logKey);
+        await saveLog(reconEditTarget.logKey, { ...baseLog, expenses: filtered.length ? filtered : [{ desc: '', category: 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] });
       } else if (reconEditTarget.type === 'extra' && Array.isArray(log?.income)) {
         const oldInc = log.income[reconEditTarget.index];
         if (oldInc) {
@@ -457,7 +458,10 @@ export default function ExpenseTracker() {
     };
 
     if (reconMissing) {
-      const expenses = existing && Array.isArray(existing.expenses) ? [...existing.expenses] : [];
+      const baseLog = getLog(targetDate);
+      const expenses = baseLog.expenses && baseLog.expenses.length > 0 && !(baseLog.expenses.length === 1 && !baseLog.expenses[0].desc && !baseLog.expenses[0].amount)
+        ? [...baseLog.expenses]
+        : [];
       expenses.push({
         desc: reconNote || 'Unrecorded Expense (Reconciliation)',
         category: 'Reconciliation',
@@ -466,7 +470,7 @@ export default function ExpenseTracker() {
         cigarettesCount: 0,
         reconMeta,
       });
-      await saveLog(targetDate, { ...(existing || {}), expenses });
+      await saveLog(targetDate, { ...baseLog, expenses });
     } else {
       const income = existing && Array.isArray(existing.income) ? [...existing.income] : [];
       income.push({
@@ -485,12 +489,13 @@ export default function ExpenseTracker() {
   };
 
   const handleDeleteRecon = async (entry) => {
-    const log = logs[entry.logKey];
-    if (entry.type === 'missing' && Array.isArray(log?.expenses)) {
-      const filtered = log.expenses.filter((_, i) => i !== entry.index);
-      await saveLog(entry.logKey, { ...log, expenses: filtered.length ? filtered : [{ desc: '', category: 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] });
-    } else if (entry.type === 'extra' && Array.isArray(log?.income)) {
-      await saveIncome(entry.logKey, log.income.filter((_, i) => i !== entry.index));
+    const baseLog = getLog(entry.logKey);
+    const rawLog = logs[entry.logKey];
+    if (entry.type === 'missing' && Array.isArray(rawLog?.expenses)) {
+      const filtered = rawLog.expenses.filter((_, i) => i !== entry.index);
+      await saveLog(entry.logKey, { ...baseLog, expenses: filtered.length ? filtered : [{ desc: '', category: 'Other', amount: 0, time: format(new Date(), 'HH:mm'), cigarettesCount: 0 }] });
+    } else if (entry.type === 'extra' && Array.isArray(rawLog?.income)) {
+      await saveIncome(entry.logKey, rawLog.income.filter((_, i) => i !== entry.index));
     }
     setReconDeleteTarget(null);
   };

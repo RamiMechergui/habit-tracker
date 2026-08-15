@@ -18,6 +18,7 @@ const DEFAULTS = {
   theme:          'dark',
   recurringTasks: {},
   timelinePrefs:  { defaultDuration: 30, intervalGranularity: 30 },
+  noteSections:   ['General', 'App Development'],
 };
 
 /**
@@ -36,6 +37,7 @@ async function getSettings(userId) {
     theme:          item.theme          || DEFAULTS.theme,
     recurringTasks: item.recurringTasks || DEFAULTS.recurringTasks,
     timelinePrefs:  item.timelinePrefs  || DEFAULTS.timelinePrefs,
+    noteSections:   item.noteSections   || DEFAULTS.noteSections,
   };
 }
 
@@ -47,7 +49,7 @@ async function getSettings(userId) {
  * @returns {Promise<object>}
  */
 async function upsertSettings(userId, fields) {
-  const validFields = ['theme', 'recurringTasks', 'timelinePrefs'];
+  const validFields = ['theme', 'recurringTasks', 'timelinePrefs', 'noteSections'];
   const updates     = {};
   validFields.forEach(k => { if (fields[k] !== undefined) updates[k] = fields[k]; });
 

@@ -1205,23 +1205,24 @@ export const HabitProvider = ({ children }) => {
     // Scoring Logic Calculation
     let mScore = 0;
     
-    // Morning (30 pts)
-    if(data.morning.wakeTime) {
-      const time = parseInt(data.morning.wakeTime.replace(':', ''));
+    // Morning (30 pts) — guard against missing morning field
+    const morning = data.morning || {};
+    if(morning.wakeTime) {
+      const time = parseInt(morning.wakeTime.replace(':', ''));
       if(time <= 500) mScore += 14; 
       else if(time <= 600) mScore += 10;
       else if(time <= 700) mScore += 5;
     }
-    if(data.morning.meditate) mScore += 1;
-    if(data.morning.bed) mScore += 2;
-    if(data.morning.teeth) mScore += 2;
-    if(data.morning.shower) mScore += 8;
-    if(data.morning.gel) mScore += 1;
-    if(data.morning.perfume) mScore += 2;
+    if(morning.meditate) mScore += 1;
+    if(morning.bed) mScore += 2;
+    if(morning.teeth) mScore += 2;
+    if(morning.shower) mScore += 8;
+    if(morning.gel) mScore += 1;
+    if(morning.perfume) mScore += 2;
 
     // Night (30 pts)
     let nScore = 0;
-    const n = data.night;
+    const n = data.night || {};
     if(n.gym) nScore += 10;
     if(n.cleanTable) nScore += 1;
     if(n.orgTable) nScore += 1;
@@ -1253,13 +1254,13 @@ export const HabitProvider = ({ children }) => {
     let vScore = 0;
     let sysScore = 0;
     
-    if(data.books.read) bkScore += 10;
+    if((data.books || {}).read) bkScore += 10;
     if(data.system?.todo) sysScore += 1;
     if(data.system?.money) sysScore += 1;
 
     // Hustle and Video are bonus — not counted in the 100 base
-    if(data.hustle.achieved) hScore += 5;
-    if(data.video.achieved) vScore += 5;
+    if((data.hustle || {}).achieved) hScore += 5;
+    if((data.video || {}).achieved) vScore += 5;
 
     let score = mScore + nScore + bScore + bkScore + sysScore;
     score = Math.max(0, Math.min(100, score));
