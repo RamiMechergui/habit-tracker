@@ -39,6 +39,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { germanImageUrl } from "../utils/germanImageUrl";
 import { htmlToPdfContent } from "../utils/htmlToPdf";
+import { withCircularAvatars } from "../utils/circularAvatar";
 import { EDITOR_IMAGE_BASE } from "../config";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
@@ -915,7 +916,8 @@ export default function GermanReport({
     setBusy(true); setError("");
     try {
       const enriched = await enrichWithPhotos(data);
-      const doc = buildPdfDefinition(enriched, { title, subtitle });
+      const ready = await withCircularAvatars(enriched);
+      const doc = buildPdfDefinition(ready, { title, subtitle });
       const pdfMake = await getPdfMake();
       pdfMake.createPdf(doc).download(fileName);
     } catch (e) {

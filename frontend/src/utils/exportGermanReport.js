@@ -7,6 +7,7 @@
  */
 
 import { buildPdfDefinition } from './germanPdfBuilder';
+import { withCircularAvatars } from './circularAvatar';
 
 let pdfMakeInstance = null;
 
@@ -104,7 +105,7 @@ export async function exportGermanReportPDF({
   title = 'DEUTSCH LERNEN',
   subtitle = 'My German Learning Journey',
 }) {
-  const data = buildReportData(germanData, germanStudy, germanProgress);
+  const data = await withCircularAvatars(buildReportData(germanData, germanStudy, germanProgress));
 
   if (!data.length) {
     throw new Error('No data available to generate the report.');
@@ -128,7 +129,7 @@ export async function generateGermanReportBlob({
   title = 'DEUTSCH LERNEN',
   subtitle = 'My German Learning Journey',
 }) {
-  const data = buildReportData(germanData, germanStudy, germanProgress);
+  const data = await withCircularAvatars(buildReportData(germanData, germanStudy, germanProgress));
 
   if (!data.length) {
     throw new Error('No data available to generate the report.');
