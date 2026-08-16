@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useHabits } from '../Store';
+import { getAvatarUrl } from '../config';
 import { format } from 'date-fns';
 import { User, Mail, Save, Check, AlertCircle, Clock, Timer, Layers, History, Globe, Monitor, Smartphone, ChevronDown, ChevronUp, Camera, Trash2, RotateCcw, Upload, Lock } from 'lucide-react';
 
@@ -198,7 +199,7 @@ export default function Settings() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {user?.profilePicture ? (
-                <img src={user.profilePicture} alt="Avatar"
+                <img src={getAvatarUrl(user.profilePicture)} alt="Avatar"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={e => { e.target.style.display = 'none'; }}
                 />

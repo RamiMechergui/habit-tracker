@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import { Camera, X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 import { useHabits } from '../Store';
-import { API_URL } from '../config';
+import { API_URL, getAvatarUrl } from '../config';
 
 // Helper: draw the cropped area on a canvas and return a Blob
 async function getCroppedBlob(imageSrc, croppedAreaPixels) {
@@ -36,12 +36,10 @@ export default function AvatarUploader() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [cacheBuster, setCacheBuster] = useState(Date.now());
+  const [imgError, setImgError] = useState(false);
 
-  const avatarUrl = user?.profilePicture
-    ? (user.profilePicture.startsWith('data:')
-        ? user.profilePicture
-        : `${API_URL}${user.profilePicture}?t=${cacheBuster}`)
-    : null;
+  const rawAvatarUrl = getAvatarUrl(user?.profilePicture, cacheBuster);
+  const avatarUrl = !imgError ? rawAvatarUrl : null;
 
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -107,6 +105,7 @@ export default function AvatarUploader() {
           <img
             src={avatarUrl}
             alt="Profile"
+            onError={() => setImgError(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (

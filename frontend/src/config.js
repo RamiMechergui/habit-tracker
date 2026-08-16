@@ -58,7 +58,31 @@ export const API_URL = (() => {
 // Base used to absolutize relative image URLs for DISPLAY inside the editor.
 // Empty on the web when using the same-origin nginx proxy, otherwise the
 // configured API base; absolute on native so the WebView can reach the backend.
-export const EDITOR_IMAGE_BASE = isNativePlatform() ? NATIVE_BACKEND_URL : (WEB_API_URL || '');
+export const EDITOR_IMAGE_BASE = isNativePlatform() ? 'http://54.91.207.131' : (WEB_API_URL || '');
+
+/**
+ * Helper to construct an absolute URL for user avatars/photos.
+ * On native Android, it uses the permitted cleartext HTTP endpoint to prevent SSL trust anchor issues.
+ */
+export const getAvatarUrl = (profilePicture, cacheBuster = '') => {
+  if (!profilePicture) return null;
+  if (profilePicture.startsWith('data:')) return profilePicture;
+  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
+    if (isNativePlatform() && profilePicture.includes('evolvio.ink')) {
+      return profilePicture.replace(/^https:\/\/evolvio\.ink/i, 'http://54.91.207.131');
+    }
+    return profilePicture;
+  }
+  
+  const cleanPath = profilePicture.startsWith('/') ? profilePicture : `/${profilePicture}`;
+  const cb = cacheBuster ? `?t=${cacheBuster}` : '';
+  
+  if (isNativePlatform()) {
+    return `http://54.91.207.131${cleanPath}${cb}`;
+  }
+  
+  return `${API_URL}${cleanPath}${cb}`;
+};
 
 
 
