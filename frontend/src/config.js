@@ -15,7 +15,7 @@ import { Preferences } from '@capacitor/preferences';
 // The deployed production backend. Must be the HTTPS domain (NOT the raw EC2 IP):
 // the IP redirects HTTP→HTTPS and serves a certificate for evolvio.ink, so native
 // clients that validate TLS fail the handshake against the IP host.
-const NATIVE_BACKEND_URL = 'https://evolvio.ink';
+const NATIVE_BACKEND_URL = import.meta.env.VITE_API_URL_NATIVE || import.meta.env.VITE_API_URL || 'https://evolvio.ink';
 
 // Optional build-time override for web deployments (Render/docker-compose).
 // Render sets VITE_API_URL to the API service host; docker-compose sets
@@ -115,37 +115,36 @@ export const nativeFetch = async (url, options = {}) => {
   try {
     res = await fetch(url, opts);
   } catch (err) {
-    // If network error and this was an API call, try same-origin fallback
-    try {
-      if (typeof window !== 'undefined' && String(url).includes('/api/')) {
+    // On web (not native platform), try same-origin fallback if relative path works
+    if (!isNativePlatform() && typeof window !== 'undefined' && String(url).includes('/api/')) {
+      try {
         const u = new URL(url, window.location.origin);
         const path = `${u.pathname}${u.search}`;
         return await fetch(path, opts);
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
     throw err;
   }
 
-  // If the backend returned HTML (likely the SPA) for an API endpoint,
-  // retry the same-origin /api path. This handles misconfigured API_URL
-  // that points to the frontend host instead of the API host.
+  // If the backend returned HTML (likely the SPA) for an API endpoint:
   try {
     const ct = (res.headers.get('content-type') || '').toLowerCase();
     if (ct.includes('text/html') && String(url).includes('/api/')) {
-      if (typeof window !== 'undefined') {
+      if (!isNativePlatform() && typeof window !== 'undefined' && window.location.hostname !== 'app.evolvio.app') {
         const u = new URL(url, window.location.origin);
         const path = `${u.pathname}${u.search}`;
         try {
           const fb = await fetch(path, opts);
           return fb;
         } catch (_) {
-          // fallback failed — return original response
           return res;
         }
+      } else if (isNativePlatform()) {
+        throw new Error(`API server returned HTML instead of JSON. Check backend server URL (${NATIVE_BACKEND_URL}).`);
       }
     }
   } catch (e) {
-    // ignore parsing errors and return original response
+    if (isNativePlatform()) throw e;
   }
 
   return res;
