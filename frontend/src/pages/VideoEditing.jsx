@@ -17,6 +17,11 @@ function parseTimeToMinutes(timeStr) {
   if (minMatch) {
     return parseInt(minMatch[1], 10);
   }
+  const secMatch = s.match(/(\d+)\s*s(?:ec)?s?/);
+  if (secMatch) {
+    const sec = parseInt(secMatch[1], 10);
+    return sec > 0 ? Math.max(1, Math.round(sec / 60)) : 0;
+  }
   const num = parseFloat(s);
   if (!isNaN(num)) {
     if (num <= 24) return Math.round(num * 60);

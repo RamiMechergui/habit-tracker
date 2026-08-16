@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download, RefreshCw, ChevronLeft, ChevronRight, Play, Pause, RotateCcw } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { UsageStats } from '../utils/usageStats';
@@ -98,6 +98,149 @@ function MeditateTimer({ onComplete, disabled, done }) {
         </button>
       )}
     </span>
+  );
+}
+
+/* ─── Time Parser & Formatter Helpers for Incremental Timer ─────── */
+function parseTimeToSeconds(timeStr) {
+  if (!timeStr) return 0;
+  const s = String(timeStr).trim().toLowerCase();
+
+  const hMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?/);
+  const mMatch = s.match(/(\d+)\s*m(?:in)?s?/);
+  const sMatch = s.match(/(\d+)\s*s(?:ec)?s?/);
+
+  if (hMatch || mMatch || sMatch) {
+    let totalSec = 0;
+    if (hMatch) totalSec += Math.round(parseFloat(hMatch[1]) * 3600);
+    if (mMatch) totalSec += parseInt(mMatch[1], 10) * 60;
+    if (sMatch) totalSec += parseInt(sMatch[1], 10);
+    return totalSec;
+  }
+
+  if (s.includes(':')) {
+    const parts = s.split(':').map(p => parseInt(p, 10) || 0);
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+  }
+
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num <= 24) return Math.round(num * 3600);
+    return Math.round(num * 60);
+  }
+
+  return 0;
+}
+
+function formatSecondsToTime(totalSec) {
+  if (totalSec <= 0) return '';
+  const hrs = Math.floor(totalSec / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+
+  if (hrs > 0) {
+    return `${hrs}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+  }
+  if (mins > 0) {
+    return `${mins}m ${String(secs).padStart(2, '0')}s`;
+  }
+  return `${secs}s`;
+}
+
+function TimeSpentTimerInput({ value, onChange, placeholder, disabled, icon, accentColor = '#3b82f6' }) {
+  const [isRunning, setIsRunning] = useState(false);
+  const intervalRef = useRef(null);
+  const secondsRef = useRef(0);
+
+  useEffect(() => {
+    if (!isRunning) {
+      secondsRef.current = parseTimeToSeconds(value);
+    }
+  }, [value, isRunning]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const toggleTimer = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (disabled) return;
+
+    if (isRunning) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setIsRunning(false);
+    } else {
+      const initialSec = parseTimeToSeconds(value);
+      secondsRef.current = initialSec;
+      setIsRunning(true);
+
+      intervalRef.current = setInterval(() => {
+        secondsRef.current += 1;
+        const newStr = formatSecondsToTime(secondsRef.current);
+        onChange(newStr);
+      }, 1000);
+    }
+  };
+
+  const handleReset = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (disabled) return;
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setIsRunning(false);
+    secondsRef.current = 0;
+    onChange('');
+  };
+
+  return (
+    <div className="dl-input-icon dl-input-timer-wrapper">
+      <span className="dl-input-icon-prefix">{icon}</span>
+      <input
+        className={`dl-input ${isRunning ? 'dl-input-timer-running' : ''}`}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => {
+          onChange(e.target.value);
+          if (!isRunning) {
+            secondsRef.current = parseTimeToSeconds(e.target.value);
+          }
+        }}
+        disabled={disabled}
+        style={{
+          paddingRight: value || isRunning ? '74px' : '44px',
+        }}
+      />
+      <div className="dl-input-timer-controls">
+        {value && !disabled && (
+          <button
+            type="button"
+            className="dl-timer-btn dl-timer-reset-btn"
+            onClick={handleReset}
+            title="Reset timer"
+          >
+            <RotateCcw size={12} />
+          </button>
+        )}
+        <button
+          type="button"
+          className={`dl-timer-btn ${isRunning ? 'dl-timer-pause-btn' : 'dl-timer-play-btn'}`}
+          onClick={toggleTimer}
+          disabled={disabled}
+          title={isRunning ? 'Pause Timer' : 'Start Timer'}
+          style={{
+            borderColor: isRunning ? accentColor : undefined,
+            color: isRunning ? '#ffffff' : undefined,
+            background: isRunning ? accentColor : undefined
+          }}
+        >
+          {isRunning ? <Pause size={12} /> : <Play size={12} />}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -608,10 +751,14 @@ export default function DailyLog() {
                 <span className="dl-input-icon-prefix"><Target size={14} /></span>
                 <input className="dl-input" placeholder="Planned Task" value={log.hustle.task} onChange={e => updateSection('hustle', 'task', e.target.value)} disabled={isFuture} />
               </div>
-              <div className="dl-input-icon">
-                <span className="dl-input-icon-prefix"><Clock size={14} /></span>
-                <input className="dl-input" placeholder="Time Spent (e.g. 2h 30m)" value={log.hustle.time} onChange={e => updateSection('hustle', 'time', e.target.value)} disabled={isFuture} />
-              </div>
+              <TimeSpentTimerInput
+                value={log.hustle.time}
+                onChange={val => updateSection('hustle', 'time', val)}
+                placeholder="Time Spent (e.g. 2h 30m)"
+                disabled={isFuture}
+                icon={<Clock size={14} />}
+                accentColor="var(--accent-blue)"
+              />
               {hustleWarning && <span className="dl-animate-shake" style={{ color: 'var(--accent-rose)', fontSize: '0.75rem' }}>⚠️ Fill Task & Time to check this box.</span>}
               <div className="dl-task-achieved" style={{ background: log.hustle.achieved ? 'var(--dl-color-hustle-bg)' : undefined, borderColor: log.hustle.achieved ? 'rgba(37, 99, 235, 0.15)' : undefined }}>
                 <input type="checkbox" className="dl-checkbox dl-checkbox--blue" checked={log.hustle.achieved} onChange={e => { if (e.target.checked && (!log.hustle.task.trim() || !log.hustle.time.trim())) { setHustleWarning(true); return; } setHustleWarning(false); updateSection('hustle', 'achieved', e.target.checked); }} disabled={isFuture} />
@@ -668,10 +815,14 @@ export default function DailyLog() {
                 <span className="dl-input-icon-prefix"><Edit2 size={14} /></span>
                 <input className="dl-input" placeholder="Planned Task" value={log.video.task} onChange={e => updateSection('video', 'task', e.target.value)} disabled={isFuture} />
               </div>
-              <div className="dl-input-icon">
-                <span className="dl-input-icon-prefix"><Clock size={14} /></span>
-                <input className="dl-input" placeholder="Time Spent" value={log.video.time} onChange={e => updateSection('video', 'time', e.target.value)} disabled={isFuture} />
-              </div>
+              <TimeSpentTimerInput
+                value={log.video.time}
+                onChange={val => updateSection('video', 'time', val)}
+                placeholder="Time Spent"
+                disabled={isFuture}
+                icon={<Clock size={14} />}
+                accentColor="var(--dl-color-video)"
+              />
               {videoWarning && <span className="dl-animate-shake" style={{ color: 'var(--accent-rose)', fontSize: '0.75rem' }}>⚠️ Fill Task & Time to check this box.</span>}
               <div className="dl-task-achieved" style={{ background: log.video.achieved ? 'var(--dl-color-video-bg)' : undefined, borderColor: log.video.achieved ? 'rgba(99, 102, 241, 0.15)' : undefined }}>
                 <input type="checkbox" className="dl-checkbox dl-checkbox--blue" checked={log.video.achieved} onChange={e => { if (e.target.checked && (!log.video.task.trim() || !log.video.time.trim())) { setVideoWarning(true); return; } setVideoWarning(false); updateSection('video', 'achieved', e.target.checked); }} disabled={isFuture} />

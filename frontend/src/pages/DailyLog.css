@@ -491,24 +491,87 @@
 /* Input with icon prefix */
 .dl-input-icon {
   position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 .dl-input-icon .dl-input {
-  padding-left: 40px;
+  padding-left: 42px !important;
 }
 
 .dl-input-icon-prefix {
   position: absolute;
-  left: 0;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px;
+  width: 20px;
+  height: 20px;
   color: var(--text-muted, #71717a);
   pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
+  z-index: 2;
+}
+
+/* Incremental Timer Controls inside Input */
+.dl-input-timer-controls {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+}
+
+.dl-timer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary, #a1a1aa);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.dl-timer-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text-primary, #ffffff);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.dl-timer-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dl-timer-pause-btn {
+  animation: dl-pulse-glow 1.8s infinite ease-in-out;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes dl-pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.96); }
+}
+
+.dl-timer-reset-btn:hover:not(:disabled) {
+  color: var(--accent-rose, #f43f5e);
+  border-color: rgba(244, 63, 94, 0.3);
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.dl-input-timer-running {
+  border-color: var(--accent-blue, #3b82f6) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
 }
 
 /* Compact variant */
