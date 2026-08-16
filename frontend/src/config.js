@@ -115,6 +115,22 @@ export const nativeFetch = async (url, options = {}) => {
   try {
     res = await fetch(url, opts);
   } catch (err) {
+    // If native platform encounters an SSL error (CertPathValidatorException) or connection error on HTTPS:
+    if (isNativePlatform() && String(url).startsWith('https://')) {
+      // Fallback 1: Try HTTP direct IP endpoint (bypasses SSL validation issues)
+      const httpIpUrl = String(url).replace(/^https:\/\/[^/]+/i, 'http://54.91.207.131');
+      try {
+        const fallbackRes = await fetch(httpIpUrl, opts);
+        return fallbackRes;
+      } catch (_) {
+        // Fallback 2: Try HTTP domain endpoint
+        try {
+          const httpDomainUrl = String(url).replace(/^https:/i, 'http:');
+          return await fetch(httpDomainUrl, opts);
+        } catch (_) {}
+      }
+    }
+
     // On web (not native platform), try same-origin fallback if relative path works
     if (!isNativePlatform() && typeof window !== 'undefined' && String(url).includes('/api/')) {
       try {
@@ -140,6 +156,15 @@ export const nativeFetch = async (url, options = {}) => {
           return res;
         }
       } else if (isNativePlatform()) {
+        // Try cleartext HTTP IP fallback if HTTPS returned HTML/redirect page
+        const httpIpUrl = String(url).replace(/^https:\/\/[^/]+/i, 'http://54.91.207.131');
+        if (httpIpUrl !== url) {
+          try {
+            const fbRes = await fetch(httpIpUrl, opts);
+            const fbCt = (fbRes.headers.get('content-type') || '').toLowerCase();
+            if (!fbCt.includes('text/html')) return fbRes;
+          } catch (_) {}
+        }
         throw new Error(`API server returned HTML instead of JSON. Check backend server URL (${NATIVE_BACKEND_URL}).`);
       }
     }
