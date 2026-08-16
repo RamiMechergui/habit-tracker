@@ -110,27 +110,83 @@ const BLOCK_TAGS = { p: 1, div: 1, h1: 1, h2: 1, h3: 1, h4: 1, h5: 1, h6: 1, blo
 function cleanTextR(str) {
   return String(str || '').replace(/\u00a0/g, ' ').replace(/[ \t\r]+/g, ' ').replace(/\n+/g, ' ').trim();
 }
+function hslToRgb(h, s, l) {
+  h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return [f(0) * 255, f(8) * 255, f(4) * 255].map(n => Math.round(n));
+}
+function normalizeColorR(value) {
+  if (!value) return null;
+  const v = String(value).trim();
+  if (!v) return null;
+  if (/^currentcolor$/i.test(v)) return null;
+  if (/^transparent$/i.test(v) || /^rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)$/i.test(v)) return null;
+
+  const clamp = n => Math.max(0, Math.min(255, Math.round(n)));
+  const toHex = (r, g, b) => '#' + [r, g, b].map(n => clamp(n).toString(16).padStart(2, '0')).join('');
+
+  if (v[0] === '#') {
+    let hex = v.slice(1);
+    if (/^[0-9a-f]{3}$/i.test(hex)) hex = hex.split('').map(c => c + c).join('');
+    if (/^[0-9a-f]{6}$/i.test(hex)) return '#' + hex.toLowerCase();
+    if (/^[0-9a-f]{8}$/i.test(hex)) return '#' + hex.slice(0, 6).toLowerCase();
+    return null;
+  }
+
+  const fn = v.match(/^rgba?\(([^)]+)\)$/i);
+  if (fn) {
+    const parts = fn[1].split(/[\s,]+/).map(s => s.trim()).filter(s => s && s !== '/');
+    if (parts.length < 3) return null;
+    const channel = s => s.endsWith('%') ? clamp(parseFloat(s) / 100 * 255) : clamp(parseFloat(s));
+    const [r, g, b] = parts.slice(0, 3).map(channel);
+    if ([r, g, b].some(Number.isNaN)) return null;
+    return toHex(r, g, b);
+  }
+
+  const hs = v.match(/^hsla?\(([^)]+)\)$/i);
+  if (hs) {
+    const parts = hs[1].split(/[\s,]+/).map(s => s.trim()).filter(s => s && s !== '/');
+    if (parts.length < 3) return null;
+    const h = parseFloat(parts[0]);
+    const sPct = parseFloat(parts[1]);
+    const lPct = parseFloat(parts[2]);
+    if ([h, sPct, lPct].some(Number.isNaN)) return null;
+    return toHex(...hslToRgb(h, sPct, lPct));
+  }
+
+  return v;
+}
 function parseStyleR(el) {
   const out = {};
   const st = (el.getAttribute && el.getAttribute('style')) || '';
-  if (!st) return out;
-  const get = (name) => {
-    const re = new RegExp(name + '\\s*:\\s*([^;]+)', 'i');
-    const m = st.match(re);
-    return m ? m[1].trim() : null;
-  };
-  const fw = get('font-weight');
+  const props = {};
+  if (st) {
+    String(st).split(';').forEach(decl => {
+      const i = decl.indexOf(':');
+      if (i === -1) return;
+      const name = decl.slice(0, i).trim().toLowerCase();
+      const value = decl.slice(i + 1).trim();
+      if (name && value) props[name] = value;
+    });
+  }
+  const fw = props['font-weight'];
   if (fw && (fw === 'bold' || parseInt(fw, 10) >= 600)) out.bold = true;
-  const fs = get('font-style');
+  const fs = props['font-style'];
   if (fs && /italic/i.test(fs)) out.italics = true;
-  const deco = get('text-decoration');
-  if (deco && /underline/i.test(deco)) out.underline = true;
-  if (deco && /line-through/i.test(deco)) out.strike = true;
-  const color = get('color');
-  if (color && color !== '#000000' && !/currentcolor/i.test(color)) out.color = color;
-  const bg = get('background-color');
-  if (bg && bg !== 'transparent' && !/^rgba\(0,\s*0,\s*0,\s*0\)$/i.test(bg)) out.highlight = bg;
-  const sz = get('font-size');
+  const deco = props['text-decoration'];
+  if (deco) {
+    if (/underline/i.test(deco)) out.underline = true;
+    if (/line-through/i.test(deco)) out.strike = true;
+  }
+  const color = normalizeColorR(props['color']);
+  if (color && color !== '#000000') out.color = color;
+  const bg = normalizeColorR(props['background-color'] || props['background']);
+  if (bg) out.highlight = bg;
+  const sz = props['font-size'];
   if (sz) {
     const m = sz.match(/([\d.]+)\s*(px|rem|em|pt)/i);
     if (m) {
@@ -143,7 +199,7 @@ function parseStyleR(el) {
       out.fontSize = Math.round(pt * 10) / 10;
     }
   }
-  const ta = get('text-align');
+  const ta = props['text-align'];
   if (ta && /left|center|right|justify/.test(ta)) out.alignment = ta;
   return out;
 }
@@ -189,7 +245,7 @@ function inlineRunsR(root, base = {}) {
     if (tag === 'mark') nf.highlight = nf.highlight || '#fef08a';
     if (tag === 'a') { nf.underline = nf.underline !== undefined ? nf.underline : true; nf.color = nf.color || '#1f4e79'; }
     if (tag === 'font') {
-      const fc = node.getAttribute('color');
+      const fc = normalizeColorR(node.getAttribute('color'));
       if (fc) nf.color = fc;
     }
     if (tag === 'ul' || tag === 'ol') {
