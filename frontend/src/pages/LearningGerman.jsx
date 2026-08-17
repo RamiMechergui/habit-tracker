@@ -4,7 +4,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
-import { buildReportData } from '../utils/exportGermanReport';
+import { buildReportData, buildChapterReportData } from '../utils/exportGermanReport';
 import { germanImageUrl } from '../utils/germanImageUrl';
 import GermanReport from '../components/GermanReport';
 
@@ -101,7 +101,7 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
       background: active ? `linear-gradient(135deg, ${C.gold}18 0%, ${C.gold}08 100%)` : 'transparent',
       color: active ? C.gold : 'var(--text-muted)',
       fontWeight: active ? 700 : 500, fontSize: '0.88rem',
-      transition: 'all 0.25s ease', whiteSpace: 'nowrap',
+      transition: 'all 0.25s ease', whiteSpace: 'nowrap', flexShrink: 0,
     }}>
       <Icon size={16} /><span>{label}</span>
     </button>
@@ -3459,6 +3459,98 @@ function BooksForm({ onAdd, onUpdate, onDelete, isMobile, books }) {
   );
 }
 
+function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
+  const [open, setOpen] = useState(false);
+  const [showChapters, setShowChapters] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) { setShowChapters(false); return; }
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setShowChapters(false); } };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const hasChapters = chapters.length > 0;
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => { if (!disabled) setOpen((v) => !v); }}
+        disabled={disabled}
+        title="Export PDF options"
+        style={{
+          display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          background: disabled ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
+          border: disabled ? '1px solid var(--border)' : 'none',
+          color: disabled ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem',
+          opacity: disabled ? 0.5 : 1,
+          boxShadow: !disabled ? `0 4px 12px ${C.green}40` : 'none',
+        }}
+      >
+        <FileText size={15} /> Export PDF <ChevronDown size={14} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, marginTop: 6, zIndex: 300, minWidth: 210,
+          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
+          boxShadow: '0 12px 36px rgba(0,0,0,0.25)', overflow: 'hidden',
+        }}>
+          <button
+            onClick={() => { onExportFull(); setOpen(false); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.65rem 0.9rem',
+              background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)',
+              fontSize: '0.85rem', fontWeight: 600, textAlign: 'left', transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <FileText size={14} /> Export Full PDF
+          </button>
+          <div style={{ height: 1, background: 'var(--border)' }} />
+          <button
+            onClick={() => { if (hasChapters) setShowChapters((v) => !v); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.65rem 0.9rem',
+              background: 'transparent', border: 'none', cursor: hasChapters ? 'pointer' : 'not-allowed',
+              color: hasChapters ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontSize: '0.85rem', fontWeight: 600, textAlign: 'left',
+              opacity: hasChapters ? 1 : 0.5, transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => { if (hasChapters) e.currentTarget.style.background = 'var(--bg)'; }}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            title={hasChapters ? 'Export a specific chapter' : 'No chapters available'}
+          >
+            <BookMarked size={14} /> Export a specific chapter
+            <ChevronDown size={13} style={{ marginLeft: 'auto', transform: showChapters ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+          </button>
+          {showChapters && hasChapters && (
+            <div style={{ borderTop: '1px solid var(--border)', maxHeight: 240, overflowY: 'auto' }}>
+              {chapters.map((c) => (
+                <button
+                  key={c.recordId}
+                  onClick={() => { onExportChapter(c); setOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.5rem 0.9rem 0.5rem 1.5rem',
+                    background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+                    fontSize: '0.82rem', fontWeight: 500, textAlign: 'left', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <BookMarked size={12} /> {c.title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
@@ -3500,6 +3592,9 @@ export default function LearningGerman() {
   const [draggedBoxId, setDraggedBoxId] = useState(null);
   const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
   const [showReport, setShowReport] = useState(false);
+  const [showPdfMenu, setShowPdfMenu] = useState(false);
+  const [chapterReportData, setChapterReportData] = useState(null);
+  const [showChapterPicker, setShowChapterPicker] = useState(false);
   const [chapterModalLevel, setChapterModalLevel] = useState(null);
   const [levelDetailsLevel, setLevelDetailsLevel] = useState(null);
   const [selectedChapterId, setSelectedChapterId] = useState(null);
@@ -4216,6 +4311,16 @@ export default function LearningGerman() {
 
   const handleExportPDF = () => {
     if (!germanData.length) return;
+    setChapterReportData(null);
+    setShowPdfMenu(false);
+    setShowReport(true);
+  };
+
+  const handleExportChapterPDF = (chapter) => {
+    const data = buildChapterReportData(germanData, chapter, germanStudy, germanProgress);
+    setChapterReportData(data);
+    setShowPdfMenu(false);
+    setShowChapterPicker(false);
     setShowReport(true);
   };
 
@@ -4223,6 +4328,7 @@ export default function LearningGerman() {
   const cellStyle = {
     padding: '0.65rem 0.8rem', fontSize: '0.85rem',
     color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', verticalAlign: 'top',
+    wordBreak: 'break-word', overflowWrap: 'anywhere',
   };
   const headerCellStyle = {
     ...cellStyle, fontSize: '0.72rem', fontWeight: 700,
@@ -4343,19 +4449,23 @@ export default function LearningGerman() {
 
       {tab !== 'progress' && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          overflowX: isMobile ? 'auto' : 'visible',
+          paddingBottom: isMobile ? 4 : 0,
+          WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
           padding: '0.6rem 0.8rem', marginBottom: '1.25rem',
           background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}0d`,
           border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}25`,
           borderRadius: '12px',
         }}>
           <BookMarked size={15} style={{ color: LEVEL_COLORS[workspaceLevel] || '#6b7280', flexShrink: 0 }} />
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Chapters</span>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', flexShrink: 0 }}>Chapters</span>
           {selectedChapterId && (
             <button onClick={clearChapterSelection} title="Show all chapters (clear chapter filter)" style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
-              cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit',
               background: 'rgba(0,0,0,0.18)', color: 'var(--text-primary)',
               border: '1px solid var(--border)',
             }}>
@@ -4377,7 +4487,7 @@ export default function LearningGerman() {
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
                     padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
                     background: active ? `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}32` : `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`,
                     color: LEVEL_COLORS[workspaceLevel] || '#6b7280',
                     border: active ? `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}80` : `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`,
@@ -4442,9 +4552,7 @@ export default function LearningGerman() {
               <List size={15} /> Search
             </button>
             <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
-            <button onClick={handleExportPDF} disabled={germanData.length === 0} title="Export PDF Report" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer', background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: germanData.length === 0 ? '1px solid var(--border)' : 'none', color: germanData.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1, boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
-              <FileText size={15} /> Export PDF Report
-            </button>
+            <ExportPdfMenu disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
             </div>
         ) : (
           <>
@@ -4523,18 +4631,7 @@ export default function LearningGerman() {
             <List size={15} /> Search
           </button>
           <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
-          <button onClick={handleExportPDF} disabled={germanData.length === 0} title="Open German report preview and export as PDF" style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: germanData.length === 0 ? 'not-allowed' : 'pointer',
-            background: germanData.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`,
-            border: germanData.length === 0 ? '1px solid var(--border)' : 'none',
-            color: germanData.length === 0 ? 'var(--text-muted)' : '#fff',
-            fontWeight: 700, fontSize: '0.85rem', opacity: germanData.length === 0 ? 0.5 : 1,
-            boxShadow: germanData.length > 0 ? `0 4px 12px ${C.green}40` : 'none',
-            flexShrink: 0,
-          }}>
-            <FileText size={15} /> Export PDF Report
-          </button>
+          <ExportPdfMenu disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
         </div>
           </>
         )}
@@ -5716,7 +5813,7 @@ export default function LearningGerman() {
           display: 'flex', flexDirection: 'column',
           background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)',
           padding: isMobile ? 0 : '1.5rem',
-        }} onClick={() => setShowReport(false)}>
+        }} onClick={() => { setShowReport(false); setChapterReportData(null); }}>
           <div onClick={e => e.stopPropagation()} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             width: '100%', maxWidth: 1100, margin: '0 auto',
@@ -5732,13 +5829,13 @@ export default function LearningGerman() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                 <FileText size={18} style={{ color: C.green, flexShrink: 0 }} />
                 <span style={{ fontWeight: 800, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  German Report Preview
+                  {chapterReportData ? `${workspaceChapters.find(c => c.recordId === (chapterReportData.find(r => r.type === 'chapter') || {}).recordId)?.title || 'Chapter'} Report` : 'German Report Preview'}
                 </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                  {reportData.length} records
+                  {(chapterReportData ?? reportData).length} records
                 </span>
               </div>
-              <button onClick={() => setShowReport(false)} title="Close" style={{
+              <button onClick={() => { setShowReport(false); setChapterReportData(null); }} title="Close" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'transparent', border: 'none', color: 'var(--text-muted)',
                 cursor: 'pointer', padding: 6, borderRadius: 8, flexShrink: 0,
@@ -5748,10 +5845,12 @@ export default function LearningGerman() {
             </div>
             <div className="evolvio-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
               <GermanReport
-                data={reportData}
-                fileName={`german_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`}
+                data={chapterReportData ?? reportData}
+                fileName={chapterReportData
+                  ? `german_chapter_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`
+                  : `german_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`}
                 title="DEUTSCH LERNEN"
-                subtitle="My German Learning Journey"
+                subtitle={chapterReportData ? workspaceChapters.find(c => c.recordId === (chapterReportData.find(r => r.type === 'chapter') || {}).recordId)?.title || 'Chapter Report' : 'My German Learning Journey'}
               />
             </div>
           </div>

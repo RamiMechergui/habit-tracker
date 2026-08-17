@@ -93,6 +93,39 @@ export function buildReportData(germanData, germanStudy, germanProgress) {
 }
 
 /**
+ * Build a report record array scoped to a single chapter.
+ * Includes the chapter record itself plus every item whose chapterId
+ * matches the selected chapter's recordId, plus study & progress.
+ */
+export function buildChapterReportData(germanData, chapter, germanStudy, germanProgress) {
+  const records = Array.isArray(germanData) ? germanData : [];
+  const chapterId = chapter?.recordId;
+
+  const filtered = records.filter(
+    (r) => r.type === 'chapter' ? r.recordId === chapterId : r.chapterId === chapterId
+  );
+
+  if (germanStudy) {
+    filtered.push({
+      type: 'study',
+      totalMs: germanStudy.totalMs || 0,
+      days: germanStudy.days || {},
+      updatedAt: germanStudy.updatedAt || new Date().toISOString(),
+    });
+  }
+
+  if (germanProgress) {
+    filtered.push({
+      type: 'progress',
+      currentLevel: germanProgress.currentLevel || '',
+      levelsCompleted: germanProgress.levelsCompleted || [],
+    });
+  }
+
+  return filtered;
+}
+
+/**
  * Generate and download the German Learning Report PDF.
  *
  * @param {Object} options
