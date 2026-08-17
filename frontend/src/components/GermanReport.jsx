@@ -196,15 +196,24 @@ function vocabTable(rows) {
   return { table: { ...TABLE, widths: [44, "*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 function grammarBlocks(rows) {
-  return rows.map(g => ({
-    stack: [
-      { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
-      { text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
-      ...(g.examples || []).map(e => ({ text: "•  " + stripHtml(e), fontSize: 8.5, margin: [8, 0, 0, 1] })),
-      ...boxBlocks(g.boxes),
-    ],
-    margin: [0, 0, 0, 8],
-  }));
+  return rows.map(g => {
+    const expContent = htmlToPdfContent(g.explanation);
+    const explanationNode = expContent.length
+      ? expContent
+      : [{ text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] }];
+    return {
+      stack: [
+        { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
+        ...explanationNode,
+        ...(g.examples || []).map(e => {
+          const formattedEx = htmlToPdfContent(e);
+          return formattedEx.length ? formattedEx : [{ text: "•  " + stripHtml(e), fontSize: 8.5, margin: [8, 0, 0, 1] }];
+        }).flat(),
+        ...boxBlocks(g.boxes),
+      ],
+      margin: [0, 0, 0, 8],
+    };
+  });
 }
 function verbBlocks(rows) {
   return rows.map(v => ({
@@ -567,7 +576,8 @@ async function getPdfMake() {
   const fonts = fontModule.default || fontModule;
   const vfs = (fonts && fonts.pdfMake && fonts.pdfMake.vfs) || fonts || {};
   const { PDF_FONTS } = await import("../pdf/fonts");
-  const mergedVfs = Object.assign({}, vfs, PDF_FONTS);
+  const { AMIRI_FONT } = await import("../pdf/arabicFont");
+  const mergedVfs = Object.assign({}, vfs, PDF_FONTS, AMIRI_FONT);
   if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(mergedVfs);
   else pdfMake.vfs = mergedVfs;
   pdfMake.fonts = {
@@ -575,6 +585,7 @@ async function getPdfMake() {
     "Liberation Sans": { normal: "LiberationSans-Regular.ttf", bold: "LiberationSans-Bold.ttf", italics: "LiberationSans-Italic.ttf", bolditalics: "LiberationSans-BoldItalic.ttf" },
     "Liberation Serif": { normal: "LiberationSerif-Regular.ttf", bold: "LiberationSerif-Bold.ttf", italics: "LiberationSerif-Italic.ttf", bolditalics: "LiberationSerif-BoldItalic.ttf" },
     "Liberation Mono": { normal: "LiberationMono-Regular.ttf", bold: "LiberationMono-Bold.ttf", italics: "LiberationMono-Italic.ttf", bolditalics: "LiberationMono-BoldItalic.ttf" },
+    Amiri: { normal: "Amiri-Regular.ttf", bold: "Amiri-Regular.ttf", italics: "Amiri-Regular.ttf", bolditalics: "Amiri-Regular.ttf" },
   };
   return pdfMake;
 }
@@ -757,7 +768,7 @@ function Chapter({ ch }) {
             </div>)}
           {has("grammar") && (
             <div><div className="gr-blk-title">Grammar</div>
-              {ch.grammar.map(g => <div className="gr-g" key={g.recordId}><span className="c">{g.category}</span><div className="t">{g.rule}</div><div className="x">{stripHtml(g.explanation)}</div>{(g.examples || []).map((e, i) => <div className="x" key={i}>• {stripHtml(e)}</div>)}<Boxes boxes={g.boxes} /></div>)}
+              {ch.grammar.map(g => <div className="gr-g" key={g.recordId}><span className="c">{g.category}</span><div className="t">{g.rule}</div><div className="x" dangerouslySetInnerHTML={{ __html: g.explanation }} />{(g.examples || []).map((e, i) => <div className="x" key={i}>• {stripHtml(e)}</div>)}<Boxes boxes={g.boxes} /></div>)}
             </div>)}
           {has("verb") && (
             <div><div className="gr-blk-title">Verbs</div>

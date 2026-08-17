@@ -461,14 +461,20 @@ function vocabTable(rows) {
   return { table: { ...TABLE, widths: ["*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 function grammarBlocks(rows) {
-  return rows.map(g => ({
-    stack: [
-      { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
-      { text: g.explanation || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
-      ...(g.examples || []).map(e => ({ text: "•  " + e, fontSize: 8.5, margin: [8, 0, 0, 1] })),
-    ],
-    margin: [0, 0, 0, 8],
-  }));
+  return rows.map(g => {
+    const expContent = htmlToPdfContent(g.explanation);
+    const explanationNode = expContent.length
+      ? expContent
+      : [{ text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] }];
+    return {
+      stack: [
+        { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
+        ...explanationNode,
+        ...(g.examples || []).map(e => ({ text: "•  " + e, fontSize: 8.5, margin: [8, 0, 0, 1] })),
+      ],
+      margin: [0, 0, 0, 8],
+    };
+  });
 }
 function verbBlocks(rows) {
   return rows.map(v => ({
@@ -727,10 +733,19 @@ async function getPdfMake() {
   const fontModule = await import("pdfmake/build/vfs_fonts");
   const fonts = fontModule.default || fontModule;
   const vfs = (fonts && fonts.pdfMake && fonts.pdfMake.vfs) || fonts || {};
-  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(vfs);
-  else pdfMake.vfs = vfs;
+  let extraVfs = {};
+  let amiriVfs = {};
+  try { const m = await import("../src/pdf/fonts"); extraVfs = m.PDF_FONTS || {}; } catch (e) {}
+  try { const m = await import("../src/pdf/arabicFont"); amiriVfs = m.AMIRI_FONT || {}; } catch (e) {}
+  const mergedVfs = Object.assign({}, vfs, extraVfs, amiriVfs);
+  if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(mergedVfs);
+  else pdfMake.vfs = mergedVfs;
   pdfMake.fonts = {
     Roboto: { normal: "Roboto-Regular.ttf", bold: "Roboto-Medium.ttf", italics: "Roboto-Italic.ttf", bolditalics: "Roboto-MediumItalic.ttf" },
+    "Liberation Sans": { normal: "LiberationSans-Regular.ttf", bold: "LiberationSans-Bold.ttf", italics: "LiberationSans-Italic.ttf", bolditalics: "LiberationSans-BoldItalic.ttf" },
+    "Liberation Serif": { normal: "LiberationSerif-Regular.ttf", bold: "LiberationSerif-Bold.ttf", italics: "LiberationSerif-Italic.ttf", bolditalics: "LiberationSerif-BoldItalic.ttf" },
+    "Liberation Mono": { normal: "LiberationMono-Regular.ttf", bold: "LiberationMono-Bold.ttf", italics: "LiberationMono-Italic.ttf", bolditalics: "LiberationMono-BoldItalic.ttf" },
+    Amiri: { normal: "Amiri-Regular.ttf", bold: "Amiri-Regular.ttf", italics: "Amiri-Regular.ttf", bolditalics: "Amiri-Regular.ttf" },
   };
   return pdfMake;
 }

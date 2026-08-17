@@ -14,6 +14,8 @@
  *     existing behaviour where note images do not reach the PDF)
  */
 
+import { hasArabic, formatTextForPdf } from './arabicHandler';
+
 const DATA_IMG = /^data:image\/(png|jpe?g|gif|webp);/i;
 
 /* ── Font mapping ───────────────────────────────────────────────────────
@@ -173,15 +175,16 @@ function inlineRuns(root, base = {}) {
     if (node.nodeType === Node.TEXT_NODE) {
       const t = cleanText(node.nodeValue);
       if (!t) return;
-      const run = { text: t };
-      if (fmt.bold) run.bold = true;
-      if (fmt.italics) run.italics = true;
-      if (fmt.underline && !fmt.strike) run.decoration = 'underline';
-      if (fmt.strike) run.decoration = 'lineThrough';
-      if (fmt.color) run.color = fmt.color;
-      if (fmt.highlight) run.background = fmt.highlight;
-      if (fmt.font) run.font = fmt.font;
-      if (fmt.fontSize) run.fontSize = fmt.fontSize;
+      const baseFmt = {};
+      if (fmt.bold) baseFmt.bold = true;
+      if (fmt.italics) baseFmt.italics = true;
+      if (fmt.underline && !fmt.strike) baseFmt.decoration = 'underline';
+      if (fmt.strike) baseFmt.decoration = 'lineThrough';
+      if (fmt.color) baseFmt.color = fmt.color;
+      if (fmt.highlight) baseFmt.background = fmt.highlight;
+      if (fmt.font) baseFmt.font = fmt.font;
+      if (fmt.fontSize) baseFmt.fontSize = fmt.fontSize;
+      const run = formatTextForPdf(t, baseFmt);
       out.push(run);
       return;
     }
@@ -431,17 +434,17 @@ export function htmlToPdfContent(html) {
   try {
     doc = new DOMParser().parseFromString(src, 'text/html');
   } catch (e) {
-    return [{ text: stripSimple(src) }];
+    return [formatTextForPdf(stripSimple(src))];
   }
 
   const body = doc.body || doc;
-  if (!body) return [{ text: stripSimple(src) }];
+  if (!body) return [formatTextForPdf(stripSimple(src))];
 
   const content = [];
   Array.from(body.childNodes).forEach(node => {
     if (node.nodeType !== 1) {
       const t = cleanText(node.nodeValue);
-      if (t) content.push({ text: t, margin: [0, 0, 0, 4] });
+      if (t) content.push(formatTextForPdf(t, { margin: [0, 0, 0, 4] }));
       return;
     }
     content.push(blockNodeFrom(node));

@@ -6,6 +6,7 @@
  */
 
 import { htmlToPdfContent } from "./htmlToPdf";
+import { hasArabic, reshapeArabic } from "./arabicHandler";
 
 const C = {
   black: "#191a1a", ink: "#2c2b33", muted: "#6b6f78", red: "#dd0000",
@@ -62,11 +63,22 @@ const stripHtml = html => String(html || "")
   .replace(/[ \t]+\n/g, "\n")
   .replace(/\n{3,}/g, "\n\n")
   .trim();
-const T = (t, o = {}) => Object.assign({ text: t }, o);
+const fmtTxt = (txt, opts = {}) => {
+  const s = String(txt || "");
+  if (hasArabic(s)) {
+    return Object.assign({ text: reshapeArabic(s), font: "Amiri" }, opts);
+  }
+  return Object.assign({ text: s }, opts);
+};
+const T = (t, o = {}) => fmtTxt(t, o);
 const sectionLabel = t => T(t.toUpperCase(), { fontSize: 9, bold: true, color: C.red, margin: [0, 14, 0, 6] });
 const cell = (content, opts = {}) => {
   const o = { margin: [4, 4, 4, 4], fontSize: 8.5, ...opts };
-  return Array.isArray(content) ? Object.assign({ stack: content }, o) : Object.assign({ text: content }, o);
+  if (Array.isArray(content)) return Object.assign({ stack: content }, o);
+  if (typeof content === "string" && hasArabic(content)) {
+    return Object.assign({ text: reshapeArabic(content), font: "Amiri" }, o);
+  }
+  return Object.assign({ text: content }, o);
 };
 const TABLE = { headerRows: 1, keepWithHeaderRows: 1 };
 const tableLayout = (headerFill = C.light) => ({
@@ -178,15 +190,24 @@ function vocabTable(rows) {
 }
 
 function grammarBlocks(rows) {
-  return rows.map(g => ({
-    stack: [
-      { text: [{ text: g.rule || "", bold: true, fontSize: 10 }, { text: "   " + (g.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 2] },
-      { text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] },
-      ...(g.examples || []).map(e => ({ text: "•  " + stripHtml(e), fontSize: 8.5, margin: [8, 0, 0, 1] })),
-      ...boxBlocks(g.boxes),
-    ],
-    margin: [0, 0, 0, 8],
-  }));
+  return rows.map(g => {
+    const expContent = htmlToPdfContent(g.explanation);
+    const explanationNode = expContent.length
+      ? expContent
+      : [fmtTxt(stripHtml(g.explanation) || "", { fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] })];
+    return {
+      stack: [
+        { text: [fmtTxt(g.rule || "", { bold: true, fontSize: 10 }), fmtTxt("   " + (g.category || ""), { fontSize: 7, color: C.muted })], margin: [0, 0, 0, 2] },
+        ...explanationNode,
+        ...(g.examples || []).map(e => {
+          const formattedEx = htmlToPdfContent(e);
+          return formattedEx.length ? formattedEx : [fmtTxt("•  " + stripHtml(e), { fontSize: 8.5, margin: [8, 0, 0, 1] })];
+        }).flat(),
+        ...boxBlocks(g.boxes),
+      ],
+      margin: [0, 0, 0, 8],
+    };
+  });
 }
 
 function verbBlocks(rows) {

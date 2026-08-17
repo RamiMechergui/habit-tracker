@@ -18,7 +18,8 @@ async function getPdfMake() {
   const fonts = fontModule.default || fontModule;
   const vfs = (fonts && fonts.pdfMake && fonts.pdfMake.vfs) || fonts || {};
   const { PDF_FONTS } = await import('../pdf/fonts');
-  const mergedVfs = Object.assign({}, vfs, PDF_FONTS);
+  const { AMIRI_FONT } = await import('../pdf/arabicFont');
+  const mergedVfs = Object.assign({}, vfs, PDF_FONTS, AMIRI_FONT);
   if (pdfMake.addVirtualFileSystem) pdfMake.addVirtualFileSystem(mergedVfs);
   else pdfMake.vfs = mergedVfs;
   pdfMake.fonts = {
@@ -45,6 +46,12 @@ async function getPdfMake() {
       bold: 'LiberationMono-Bold.ttf',
       italics: 'LiberationMono-Italic.ttf',
       bolditalics: 'LiberationMono-BoldItalic.ttf',
+    },
+    Amiri: {
+      normal: 'Amiri-Regular.ttf',
+      bold: 'Amiri-Regular.ttf',
+      italics: 'Amiri-Regular.ttf',
+      bolditalics: 'Amiri-Regular.ttf',
     },
   };
   pdfMakeInstance = pdfMake;
