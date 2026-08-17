@@ -149,7 +149,7 @@ function boxBlocks(boxes) {
       const cfg = BOX_STYLES[type];
       const body = [
         { text: cfg.label, bold: true, fontSize: 6.5, color: cfg.color, margin: [0, 0, 0, 2] },
-        { text: b.content || "", fontSize: 8.5 },
+        fmtTxt(b.content || "", { fontSize: 8.5 }),
       ];
       if (type === "quote" && b.author) body.push({ text: "— " + b.author, italics: true, fontSize: 7.5, color: C.muted, alignment: "right", margin: [0, 3, 0, 0] });
       return { table: { widths: ["*"], body: [[{ stack: body, fillColor: cfg.bg, margin: [7, 5, 7, 5] }]] }, layout: "noBorders", margin: [0, 0, 0, 5] };

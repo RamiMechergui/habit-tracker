@@ -41,6 +41,7 @@ import { germanImageUrl } from "../utils/germanImageUrl";
 import { htmlToPdfContent } from "../utils/htmlToPdf";
 import { withCircularAvatars } from "../utils/circularAvatar";
 import { EDITOR_IMAGE_BASE } from "../config";
+import { hasArabic, reshapeArabic } from "../utils/arabicHandler";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
 /* Pure builder: JSON → pdfmake document definition. No pdfmake import needed. */
@@ -83,7 +84,12 @@ const fmtDate = iso => {
   const d = new Date(iso);
   return isNaN(d) ? "" : d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 };
-const T = (t, o = {}) => Object.assign({ text: t }, o);
+const fmtTxt = (txt, opts = {}) => {
+  const s = String(txt || "");
+  if (hasArabic(s)) return Object.assign({ text: reshapeArabic(s), font: "Amiri" }, opts);
+  return Object.assign({ text: s }, opts);
+};
+const T = (t, o = {}) => fmtTxt(t, o);
 const sectionLabel = t => T(t.toUpperCase(), { fontSize: 9, bold: true, color: C.red, margin: [0, 14, 0, 6] });
 const cell = (content, opts = {}) => {
   const o = { margin: [4, 4, 4, 4], fontSize: 8.5, ...opts };
@@ -157,7 +163,7 @@ function boxBlocks(boxes) {
       const cfg = BOX_STYLES[type];
       const body = [
         { text: cfg.label, bold: true, fontSize: 6.5, color: cfg.color, margin: [0, 0, 0, 2] },
-        { text: b.content || "", fontSize: 8.5 },
+        fmtTxt(b.content || "", { fontSize: 8.5 }),
       ];
       if (type === "quote" && b.author) body.push({ text: "— " + b.author, italics: true, fontSize: 7.5, color: C.muted, alignment: "right", margin: [0, 3, 0, 0] });
       return { table: { widths: ["*"], body: [[{ stack: body, fillColor: cfg.bg, margin: [7, 5, 7, 5] }]] }, layout: "noBorders", margin: [0, 0, 0, 5] };
