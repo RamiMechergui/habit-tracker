@@ -4,6 +4,8 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
+import VocabularyInputBar from '../components/VocabularyInputBar';
+import VocabularyCard from '../components/VocabularyCard';
 import { buildReportData, buildChapterReportData } from '../utils/exportGermanReport';
 import { germanImageUrl } from '../utils/germanImageUrl';
 import GermanReport from '../components/GermanReport';
@@ -3568,6 +3570,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
+    processVocab, saveUnifiedVocab,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
   } = useHabits();
@@ -3623,6 +3626,9 @@ export default function LearningGerman() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
   const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
+  const [smartProcessing, setSmartProcessing] = useState(false);
+  const [smartResult, setSmartResult] = useState(null);
+  const [smartError, setSmartError] = useState('');
   const [confirmDeleteVerbId, setConfirmDeleteVerbId] = useState(null);
   const [confirmDeleteDialogue, setConfirmDeleteDialogue] = useState(null);
   const [editMemo, setEditMemo] = useState(null);
@@ -4179,6 +4185,37 @@ export default function LearningGerman() {
     try { await deleteGermanRecord(confirmDeleteVerbId); setConfirmDeleteVerbId(null); } catch (e) { setError(e.message); }
   };
 
+  const handleSmartProcess = async (payload) => {
+    setSmartProcessing(true);
+    setSmartError('');
+    setSmartResult(null);
+    try {
+      const result = await processVocab({
+        ...payload,
+        level: workspaceLevel,
+      });
+      setSmartResult(result);
+    } catch (e) {
+      setSmartError(e.message || 'Processing failed');
+    } finally {
+      setSmartProcessing(false);
+    }
+  };
+
+  const handleSmartSave = async (cardData) => {
+    try {
+      await saveUnifiedVocab({
+        ...cardData,
+        level: workspaceLevel,
+        chapterId: selectedChapterId || null,
+        chapterTitle: selectedChapterTitle || '',
+      });
+      setSmartResult(null);
+    } catch (e) {
+      setError(e.message || 'Failed to save');
+    }
+  };
+
   const handleUploadPhoto = async (recordId, file) => {
     if (!file) return;
     setPhotoUploading(true);
@@ -4532,6 +4569,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
             <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
+            <TabBtn active={tab === 'smart'} onClick={() => setTab('smart')} icon={Sparkles} label="Smart Entry" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -4566,6 +4604,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
         <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
+        <TabBtn active={tab === 'smart'} onClick={() => setTab('smart')} icon={Sparkles} label="Smart Entry" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -5556,6 +5595,51 @@ export default function LearningGerman() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <BooksForm onAdd={(p, photoFile) => addGermanBook({ ...withChapter(p), level: workspaceLevel }, photoFile)} onUpdate={updateGermanBook} onDelete={deleteGermanRecord} isMobile={isMobile} books={books} />
           <ResourcesForm onAdd={(p) => addGermanResource({ ...withChapter(p), level: workspaceLevel })} onUpdate={updateGermanResource} onDelete={deleteGermanRecord} onFetchInfo={fetchResourceInfo} isMobile={isMobile} resources={resources} />
+        </div>
+      )}
+
+      {tab === 'smart' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <VocabularyInputBar onProcess={handleSmartProcess} isProcessing={smartProcessing} />
+          {smartError && (
+            <div style={{
+              padding: '0.8rem 1rem', borderRadius: 12,
+              background: `${C.red}12`, border: `1px solid ${C.red}30`,
+              color: C.red, fontSize: '0.85rem', fontWeight: 600,
+            }}>
+              {smartError}
+            </div>
+          )}
+          {smartProcessing && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '2rem', color: 'var(--text-muted)', gap: 8,
+            }}>
+              <Loader2 size={20} className="spin" /> Analyzing vocabulary...
+            </div>
+          )}
+          {smartResult && (
+            <VocabularyCard
+              entryMetadata={smartResult.entryMetadata}
+              linguisticData={smartResult.linguisticData}
+              uiConfig={smartResult.uiConfig}
+              onSave={handleSmartSave}
+            />
+          )}
+          {!smartProcessing && !smartResult && !smartError && (
+            <div style={{
+              textAlign: 'center', padding: '3rem 1rem',
+              color: 'var(--text-muted)',
+            }}>
+              <Sparkles size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 4 }}>
+                AI-Powered Vocabulary Entry
+              </p>
+              <p style={{ fontSize: '0.8rem', maxWidth: 360, margin: '0 auto' }}>
+                Type any German word or phrase above. The AI will auto-detect the category, gender, conjugation, and more — then render a rich vocabulary card.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

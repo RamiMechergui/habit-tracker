@@ -2728,6 +2728,32 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const processVocab = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/vocab/process`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to process vocabulary');
+    return data;
+  }, [API_URL]);
+
+  const saveUnifiedVocab = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/vocab/save`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save vocabulary');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_vocab_add', `Added smart vocab: ${payload?.entryMetadata?.word || ''}`);
+    return data;
+  }, [API_URL]);
+
   const uploadGermanAlphabetPhoto = useCallback(async (recordId, file) => {
     const formData = new FormData();
     formData.append('photo', file);
@@ -3229,6 +3255,7 @@ export const HabitProvider = ({ children }) => {
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
+      processVocab, saveUnifiedVocab,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
       germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
