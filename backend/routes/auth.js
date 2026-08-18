@@ -89,8 +89,10 @@ router.post('/register', async (req, res) => {
 // POST /login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  console.log('[Auth] Login attempt:', email, 'body keys:', Object.keys(req.body || {}));
   try {
     const user = await getUserByEmail(email);
+    console.log('[Auth] getUserByEmail result:', user ? 'FOUND userId=' + user.userId : 'NOT FOUND');
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
 
     const match = await bcrypt.compare(password, user.passwordHash);
