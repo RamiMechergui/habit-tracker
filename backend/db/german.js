@@ -718,6 +718,8 @@ module.exports = {
   updateBook,
   addChapter,
   updateChapter,
+  addUnifiedVocab,
+  updateUnifiedVocab,
   getOrInitStudy,
   addStudyMs,
   resetStudyTotal,
@@ -775,6 +777,67 @@ async function saveAlphabetNote(userId, { note = '', title = '' }) {
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return item;
+}
+
+// ── Unified Vocabulary (LLM-processed structured entries) ─────────────────────
+async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig, leitnerBox = 0, mastery = 0, favorite = false, boxes = [], level = null, chapterId = null, chapterTitle = '' }) {
+  const recordId = `VOCAB#${uuidv4()}`;
+  const item = {
+    userId,
+    recordId,
+    type: 'unified-vocab',
+    entryCategory: entryMetadata.category,
+    word: entryMetadata.word,
+    translation: entryMetadata.translation,
+    phonetic: linguisticData.phonetic || '',
+    example: linguisticData.example || '',
+    exampleTranslation: linguisticData.exampleTranslation || '',
+    tags: linguisticData.tags || [],
+    partOfSpeech: linguisticData.partOfSpeech || '',
+    noun: linguisticData.noun || null,
+    verb: linguisticData.verb || null,
+    adjective: linguisticData.adjective || null,
+    phrase: linguisticData.phrase || null,
+    uiConfig: uiConfig || null,
+    leitnerBox,
+    mastery,
+    favorite,
+    boxes,
+    level: level || entryMetadata.level || 'A1.1',
+    chapterId: chapterId || null,
+    chapterTitle: chapterTitle || '',
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateUnifiedVocab(userId, recordId, updates) {
+  const allowed = ['entryCategory', 'word', 'translation', 'phonetic', 'example', 'exampleTranslation', 'tags', 'partOfSpeech', 'noun', 'verb', 'adjective', 'phrase', 'uiConfig', 'leitnerBox', 'mastery', 'favorite', 'boxes', 'level', 'chapterId', 'chapterTitle', 'photoUrl'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
 }
 
 // ── Resources (YouTube videos / channels) ─────────────────────────────────────

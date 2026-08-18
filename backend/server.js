@@ -58,6 +58,7 @@ app.use('/api/books',       require('./routes/books'));
 app.use('/api/profile',     require('./routes/profile'));
 app.use('/api/login/admin', require('./routes/admin'));
 app.use('/api/german',      require('./routes/german'));
+app.use('/api/vocab',      require('./routes/vocabProcess'));
 app.use('/api/aws',         require('./routes/aws'));
 app.use('/api/wishlist',    require('./routes/wishlist'));
 app.use('/api/milestones',  require('./routes/milestones'));
