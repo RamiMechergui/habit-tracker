@@ -2,23 +2,25 @@
  * services/vocabProcessor.js
  * ─────────────────────────────────────────────────────────────────────────────
  * LLM Processing Engine — converts raw user input into the unified
- * VocabularyCard schema via OpenAI structured output.
+ * VocabularyCard schema via Google Gemini structured output.
  *
  * Pipeline:
  *   1. Pre-classify category (if not Auto)
  *   2. Build system prompt with JSON-schema enforcement
- *   3. Call LLM (temperature 0.2, json_object response)
+ *   3. Call Gemini (temperature 0.2, JSON response)
  *   4. Parse + validate response
  *   5. Merge user-provided hints
  *   6. Return VocabProcessResponse
  */
 
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { EntryCategory, buildUiConfig } = require('../types/vocabulary');
 
-let openai = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let genAI = null;
+let modelName = 'gemini-2.0-flash';
+
+if (process.env.GEMINI_API_KEY) {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 }
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
@@ -34,9 +36,9 @@ RULES:
 5. Generate a natural example sentence in the target language with English translation.
 6. Provide IPA phonetic transcription.
 7. Generate 2-3 semantic tags.
-8. If the input contains a separable verb prefix (e.g., "anfangen"), set separable=true and separatePrefix="an".
+8. If the input contains a separable verb prefix (e.g., "anfangen"), set separable=true and separablePrefix="an".
 
-OUTPUT SCHEMA (strict JSON — no markdown, no explanation):
+OUTPUT SCHEMA (strict JSON — no markdown fences, no explanation, no extra text):
 {
   "category": "Noun" | "Verb" | "Adjective" | "Adverb" | "Phrase" | "Custom",
   "word": "<target-language word>",
@@ -155,7 +157,7 @@ function validateAndNormalize(parsed, userHints) {
 // ── Main Processor ────────────────────────────────────────────────────────────
 
 /**
- * Process a raw vocabulary input through the LLM pipeline.
+ * Process a raw vocabulary input through the Gemini LLM pipeline.
  *
  * @param {Object} request
  * @param {string} request.rawInput
@@ -167,8 +169,8 @@ function validateAndNormalize(parsed, userHints) {
  * @returns {Promise<Object>} VocabProcessResponse
  */
 async function processVocab({ rawInput, category = EntryCategory.AUTO, hints = {}, targetLang = 'de', sourceLang = 'en', level }) {
-  if (!openai) {
-    throw new Error('OpenAI API key is not configured on the server.');
+  if (!genAI) {
+    throw new Error('Gemini API key is not configured on the server. Set GEMINI_API_KEY in your .env file.');
   }
 
   if (!rawInput || !rawInput.trim()) {
@@ -208,33 +210,35 @@ Input: "${rawInput}"
 
 Return ONLY valid JSON matching the schema. No markdown fences, no explanation.`;
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    temperature: 0.2,
-    response_format: { type: 'json_object' },
-    max_tokens: 800,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userMessage },
-    ],
+  const model = genAI.getGenerativeModel({
+    model: modelName,
+    systemInstruction: SYSTEM_PROMPT,
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 800,
+      responseMimeType: 'application/json',
+    },
   });
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) throw new Error('LLM returned empty response.');
+  const result = await model.generateContent(userMessage);
+  const response = result.response;
+  const text = response.text();
+
+  if (!text) throw new Error('Gemini returned empty response.');
 
   let parsed;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(text);
   } catch (parseErr) {
     throw new Error(`LLM response was not valid JSON: ${parseErr.message}`);
   }
 
-  const result = validateAndNormalize(parsed, hints);
-  result.entryMetadata.targetLang = targetLang;
-  result.entryMetadata.sourceLang = sourceLang;
-  if (level) result.entryMetadata.level = level;
+  const normalized = validateAndNormalize(parsed, hints);
+  normalized.entryMetadata.targetLang = targetLang;
+  normalized.entryMetadata.sourceLang = sourceLang;
+  if (level) normalized.entryMetadata.level = level;
 
-  return result;
+  return normalized;
 }
 
 module.exports = { processVocab };
