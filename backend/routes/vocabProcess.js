@@ -45,7 +45,7 @@ router.post('/process', async (req, res) => {
   } catch (err) {
     console.error('[VocabProcess] Error:', err.message);
 
-    if (err.message.includes('API key is not configured')) {
+    if (err.message.includes('API key is not configured') || err.message.includes('GEMINI_API_KEY')) {
       return res.status(503).json({ message: err.message });
     }
     if (err.message.includes('LLM returned empty response') || err.message.includes('not valid JSON')) {

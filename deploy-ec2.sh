@@ -101,9 +101,11 @@ sudo chown -R www-data:www-data "$WEB_ROOT" 2>/dev/null || \
 
 # Copy Nginx config (ensures timeout changes are applied)
 info "Updating Nginx config..."
-sudo cp "$APP_DIR/nginx.ec2.conf" /etc/nginx/sites-available/EVOLVIO
-sudo ln -sf /etc/nginx/sites-available/EVOLVIO /etc/nginx/sites-enabled/EVOLVIO
+sudo cp "$APP_DIR/nginx.ec2.conf" /etc/nginx/sites-available/evolvia
+sudo ln -sf /etc/nginx/sites-available/evolvia /etc/nginx/sites-enabled/evolvia
 sudo rm -f /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/EVOLVIO
+sudo rm -f /etc/nginx/sites-available/EVOLVIO
 
 # Reload Nginx (zero-downtime — tests config first)
 if sudo nginx -t 2>/dev/null; then
