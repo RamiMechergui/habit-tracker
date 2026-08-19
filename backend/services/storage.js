@@ -49,26 +49,32 @@ const EXT_MAP = {
 
 /**
  * Get (or lazily create) the S3 client.
+ * Supports both MinIO (with explicit endpoint & credentials) and AWS S3
+ * (using EC2 IAM Role or standard AWS SDK credential provider chain).
  */
 function getClient() {
   if (client) return client;
-  if (!ENDPOINT || !ACCESS_KEY || !SECRET_KEY) {
-    console.warn('[Storage] Missing STORAGE_ENDPOINT, STORAGE_ACCESS_KEY, or STORAGE_SECRET_KEY — storage service disabled');
-    return null;
+
+  const s3Config = {
+    region: REGION,
+  };
+
+  if (ENDPOINT) {
+    s3Config.endpoint = ENDPOINT;
   }
-  client = new S3Client({
-    endpoint: ENDPOINT,
-    credentials: {
+
+  if (ACCESS_KEY && SECRET_KEY) {
+    s3Config.credentials = {
       accessKeyId: ACCESS_KEY,
       secretAccessKey: SECRET_KEY,
-    },
-    region: REGION,
-    forcePathStyle: USE_PATH_STYLE,
-    requestHandler: {
-      requestTimeout: 15000,
-      connectionTimeout: 10000,
-    },
-  });
+    };
+  }
+
+  if (USE_PATH_STYLE) {
+    s3Config.forcePathStyle = true;
+  }
+
+  client = new S3Client(s3Config);
   return client;
 }
 
@@ -118,14 +124,14 @@ async function initBucket() {
         console.error(`[Storage] Failed to apply public-read policy to "${BUCKET}":`, err.message);
       }
     }
+    bucketReady = true;
     return true;
   } catch (err) {
-    console.error(`[Storage] Failed to initialise bucket "${BUCKET}":`, err.message);
-    if (err.$metadata) {
-      console.error(`[Storage] Request ID: ${err.$metadata.requestId}, HTTP status: ${err.$metadata.httpStatusCode}`);
-    }
-    bucketReady = false;
-    return false;
+    console.warn(`[Storage] Bucket initialisation check notice for "${BUCKET}":`, err.message);
+    // On AWS S3, IAM roles often have object-level permissions (s3:GetObject, s3:PutObject)
+    // without s3:CreateBucket or s3:HeadBucket. Keep bucketReady true so requests can proceed.
+    bucketReady = true;
+    return true;
   }
 }
 

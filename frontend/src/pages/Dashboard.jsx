@@ -245,44 +245,28 @@ export default function Dashboard() {
   const monthlyTotals = React.useMemo(() => {
     let totalIncome = 0;
     let totalExpenses = 0;
-    let openingBalance = 0;
-    const monthStart = startOfMonth(calendarDate);
     Object.entries(logs).forEach(([dateStr, log]) => {
       if (!log) return;
       const logDate = new Date(dateStr + 'T00:00:00');
-      // Carry over cumulative Remaining from all months BEFORE the current one
-      // as the Opening Balance (Rollover).
-      if (logDate < monthStart) {
+      // Only include logs within the actual selected month
+      if (isSameMonth(logDate, calendarDate)) {
         if (Array.isArray(log.income)) {
           log.income.forEach(i => {
-            openingBalance += parseFloat(i.amount) || 0;
+            totalIncome += parseFloat(i.amount) || 0;
           });
         }
         if (Array.isArray(log.expenses)) {
           log.expenses.forEach(e => {
-            openingBalance -= parseFloat(e.amount) || 0;
+            totalExpenses += parseFloat(e.amount) || 0;
           });
         }
-        return;
-      }
-      if (Array.isArray(log.income)) {
-        log.income.forEach(i => {
-          totalIncome += parseFloat(i.amount) || 0;
-        });
-      }
-      if (Array.isArray(log.expenses)) {
-        log.expenses.forEach(e => {
-          totalExpenses += parseFloat(e.amount) || 0;
-        });
       }
     });
-    const totalAvailable = openingBalance + totalIncome;
     return {
       totalIncome,
       totalExpenses,
-      openingBalance,
-      totalAvailable,
-      remaining: totalAvailable - totalExpenses
+      totalAvailable: totalIncome,
+      remaining: totalIncome - totalExpenses
     };
   }, [logs, calendarDate]);
 
@@ -516,21 +500,9 @@ export default function Dashboard() {
           <h3 className="mb-6" style={{ opacity: 0.8 }}>Quick Metrics</h3>
           <div className="flex-col gap-4">
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
-              <span className="text-muted">📥 Opening Balance (Rollover)</span>
-              <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
-                {monthlyTotals.openingBalance.toFixed(3)} TND
-              </strong>
-            </div>
-            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(16,185,129,0.06)' }}>
               <span className="text-muted">Total Income</span>
               <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>
                 {monthlyTotals.totalIncome.toFixed(3)} TND
-              </strong>
-            </div>
-            <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-              <span className="text-muted">Total Available</span>
-              <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>
-                {monthlyTotals.totalAvailable.toFixed(3)} TND
               </strong>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>

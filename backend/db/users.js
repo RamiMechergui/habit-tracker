@@ -134,14 +134,29 @@ async function getUserById(userId) {
  * @returns {Promise<object|null>}
  */
 async function getUserByEmail(email) {
-  const res = await docClient.send(new QueryCommand({
-    TableName:              TABLE,
-    IndexName:              'EmailIndex',
-    KeyConditionExpression: 'email = :email',
-    ExpressionAttributeValues: { ':email': email.toLowerCase().trim() },
+  const cleanEmail = (email || '').toLowerCase().trim();
+  try {
+    const res = await docClient.send(new QueryCommand({
+      TableName:              TABLE,
+      IndexName:              'EmailIndex',
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: { ':email': cleanEmail },
+      Limit: 1,
+    }));
+    const item = (res.Items || [])[0];
+    if (item) return toUserShape(item);
+  } catch (err) {
+    console.warn('[Users] EmailIndex query failed, falling back to Scan:', err.message);
+  }
+
+  // Fallback to Scan
+  const scanRes = await docClient.send(new ScanCommand({
+    TableName: TABLE,
+    FilterExpression: 'email = :email',
+    ExpressionAttributeValues: { ':email': cleanEmail },
     Limit: 1,
   }));
-  return toUserShape((res.Items || [])[0] || null);
+  return toUserShape((scanRes.Items || [])[0] || null);
 }
 
 /**
