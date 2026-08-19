@@ -378,7 +378,7 @@ function GenderBadge({ article }) {
 }
 
 function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading, defaultLevel = 'A1.1' }) {
-  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel });
+  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', contrary: '' });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -393,6 +393,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
   useEffect(() => {
     if (editRecord) {
       const detected = detectArticle(editRecord.word || '');
+      const wt = editRecord.wordType || 'noun';
       setForm({
         word: detected ? detected.word : (editRecord.word || ''),
         translation: editRecord.translation || '',
@@ -401,8 +402,10 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         category: editRecord.category || 'General',
         plural: editRecord.plural || '',
         mastery: editRecord.mastery || 0,
-        article: detected ? detected.article : (editRecord.article || ''),
+        article: (wt === 'noun' && detected) ? detected.article : (editRecord.article || ''),
         level: editRecord.level || defaultLevel,
+        wordType: wt,
+        contrary: editRecord.contrary || '',
       });
       setBoxes(editRecord.boxes || []);
       setOpen(true);
@@ -413,7 +416,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     e.preventDefault();
     if (!form.word.trim() || !form.translation.trim()) return;
     const cat = customCat.trim() || form.category;
-    const wordStr = form.article ? `${form.article} ${form.word.trim()}` : form.word.trim();
+    const wordStr = (form.wordType === 'noun' && form.article) ? `${form.article} ${form.word.trim()}` : form.word.trim();
     const payload = { ...form, word: wordStr, category: cat, boxes };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
@@ -428,7 +431,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         setNewPhotoFile(null);
       }
     }
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', contrary: '' });
     setCustomCat('');
     setNewPhotoFile(null);
     setDirty(false);
@@ -452,7 +455,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', contrary: '' });
     setBoxes([]);
     setCustomCat('');
     setNewPhotoFile(null);
@@ -485,26 +488,52 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
           border: `1px solid ${editRecord ? C.blue + '40' : C.gold + '30'}`, borderRadius: '14px', padding: '1.25rem',
           display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem',
         }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Word Type</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {['noun', 'adjective', 'adverb'].map(t => (
+                <button key={t} type="button" onClick={() => set('wordType', t)} style={{
+                  padding: '0.4rem 1rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', border: 'none',
+                  background: form.wordType === t ? `linear-gradient(135deg, ${C.gold}, ${C.red})` : 'var(--bg)',
+                  color: form.wordType === t ? '#fff' : 'var(--text-muted)',
+                  boxShadow: form.wordType === t ? `0 2px 8px ${C.gold}40` : 'none',
+                  transition: 'all 0.2s',
+                }}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>German Word *</label>
             <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-              <select value={form.article} onChange={e => set('article', e.target.value)} style={{ ...inputBase, width: 80, padding: '0.5rem 0.5rem', fontSize: '0.82rem', flexShrink: 0 }}>
-                <option value="">—</option>
-                <option value="der" style={{ color: '#3b82f6', fontWeight: 700 }}>der</option>
-                <option value="die" style={{ color: '#dc2626', fontWeight: 700 }}>die</option>
-                <option value="das" style={{ color: '#10b981', fontWeight: 700 }}>das</option>
-              </select>
-              <input value={form.word} onChange={e => set('word', e.target.value)} placeholder="e.g. Hund" style={{ ...inputBase, flex: 1 }} />
+              {form.wordType === 'noun' && (
+                <select value={form.article} onChange={e => set('article', e.target.value)} style={{ ...inputBase, width: 80, padding: '0.5rem 0.5rem', fontSize: '0.82rem', flexShrink: 0 }}>
+                  <option value="">—</option>
+                  <option value="der" style={{ color: '#3b82f6', fontWeight: 700 }}>der</option>
+                  <option value="die" style={{ color: '#dc2626', fontWeight: 700 }}>die</option>
+                  <option value="das" style={{ color: '#10b981', fontWeight: 700 }}>das</option>
+                </select>
+              )}
+              <input value={form.word} onChange={e => set('word', e.target.value)} placeholder={form.wordType === 'noun' ? 'e.g. Hund' : form.wordType === 'adjective' ? 'e.g. groß' : 'e.g. schnell'} style={{ ...inputBase, flex: 1 }} />
             </div>
           </div>
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Translation *</label>
             <input value={form.translation} onChange={e => set('translation', e.target.value)} placeholder="e.g. Dog" style={inputBase} />
           </div>
+          {form.wordType === 'noun' && (
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Plural</label>
             <input value={form.plural} onChange={e => set('plural', e.target.value)} placeholder="e.g. Hunde" style={inputBase} />
           </div>
+          )}
+          {form.wordType === 'adjective' && (
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Contrary / Opposite <span style={{ color: C.red }}>*</span></label>
+            <input value={form.contrary} onChange={e => set('contrary', e.target.value)} placeholder="e.g. klein (opposite of groß)" style={{ ...inputBase, borderColor: !form.contrary.trim() ? `${C.red}60` : undefined }} />
+          </div>
+          )}
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Example Sentence</label>
             <input value={form.example} onChange={e => set('example', e.target.value)} placeholder="e.g. Der Hund bellt." style={inputBase} />
@@ -3552,7 +3581,7 @@ function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
   );
 }
 
-function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories, chapters, workspaceLevel }) {
+function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto, isMobile, stories, chapters, workspaceLevel }) {
   const [editingId, setEditingId] = useState(null);
   const [title, setTitle] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -3560,10 +3589,12 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
   const [dialogue, setDialogue] = useState('');
   const [newWords, setNewWords] = useState([]);
   const [syncToVocab, setSyncToVocab] = useState(true);
-  const [wordForm, setWordForm] = useState({ word: '', article: 'der', translation: '', notes: '' });
+  const [wordForm, setWordForm] = useState({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [playingStoryId, setPlayingStoryId] = useState(null);
+  const wordPhotoRef = useRef(null);
 
   const resetForm = () => {
     setEditingId(null);
@@ -3572,7 +3603,7 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
     setChapterId('');
     setDialogue('');
     setNewWords([]);
-    setWordForm({ word: '', article: 'der', translation: '', notes: '' });
+    setWordForm({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
   };
 
   const handleEdit = (story) => {
@@ -3586,12 +3617,25 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
 
   const handleAddWord = () => {
     if (!wordForm.word.trim()) return;
-    setNewWords(prev => [...prev, { id: `w-${Date.now()}`, ...wordForm }]);
-    setWordForm({ word: '', article: 'der', translation: '', notes: '' });
+    const preview = wordForm.photoFile ? URL.createObjectURL(wordForm.photoFile) : null;
+    setNewWords(prev => [...prev, { id: `w-${Date.now()}`, ...wordForm, photoPreview: preview }]);
+    setWordForm({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
   };
 
   const handleRemoveWord = (id) => {
-    setNewWords(prev => prev.filter(w => w.id !== id));
+    setNewWords(prev => {
+      const w = prev.find(x => x.id === id);
+      if (w?.photoPreview) URL.revokeObjectURL(w.photoPreview);
+      return prev.filter(x => x.id !== id);
+    });
+  };
+
+  const handleWordPhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    setWordForm(f => ({ ...f, photoFile: file, photoPreview: preview }));
+    e.target.value = '';
   };
 
   const handleSubmit = async (e) => {
@@ -3619,9 +3663,8 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
       if (syncToVocab && newWords.length > 0 && onAddVocab) {
         for (const w of newWords) {
           try {
-            await onAddVocab({
-              word: w.word,
-              gender: w.article,
+            const created = await onAddVocab({
+              word: w.article && w.article !== 'none' ? `${w.article} ${w.word}` : w.word,
               translation: w.translation,
               example: w.notes,
               notes: `Learned from story: ${title.trim()}`,
@@ -3630,6 +3673,9 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
               chapterId: chapterId || null,
               chapterTitle: selectedChapter?.title || null,
             });
+            if (w.photoFile && created?.recordId && onUploadVocabPhoto) {
+              try { await onUploadVocabPhoto(created.recordId, w.photoFile); } catch (pe) { console.error('Photo upload failed', pe); }
+            }
           } catch (e) {
             console.error('Failed to sync word to vocab:', e);
           }
@@ -3644,11 +3690,21 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
     }
   };
 
-  const getYouTubeEmbedUrl = (url) => {
+  const getYouTubeVideoId = (url) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const getYouTubeEmbedUrl = (url) => {
+    const id = getYouTubeVideoId(url);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+  };
+
+  const getYouTubeThumbnail = (url) => {
+    const id = getYouTubeVideoId(url);
+    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
   };
 
   const inputStyle = {
@@ -3716,7 +3772,7 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
             <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.88rem', fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 6 }}>
               <BookOpen size={16} /> New Words Learned from this Dialogue
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 100px 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 100px 1fr 1fr auto auto', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'end' }}>
               <div>
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>German Word</label>
                 <input value={wordForm.word} onChange={e => setWordForm(f => ({ ...f, word: e.target.value }))} placeholder="e.g. Brötchen" style={inputStyle} />
@@ -3738,6 +3794,20 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Notes / Context</label>
                 <input value={wordForm.notes} onChange={e => setWordForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Bakery phrase" style={inputStyle} />
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Photo</label>
+                <input ref={wordPhotoRef} type="file" accept="image/*" onChange={handleWordPhotoSelect} style={{ display: 'none' }} />
+                {wordForm.photoPreview ? (
+                  <div style={{ position: 'relative' }}>
+                    <img src={wordForm.photoPreview} alt="preview" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', border: `2px solid ${C.teal}` }} />
+                    <button type="button" onClick={() => { URL.revokeObjectURL(wordForm.photoPreview); setWordForm(f => ({ ...f, photoFile: null, photoPreview: null })); }} style={{ position: 'absolute', top: -6, right: -6, background: C.red, border: 'none', borderRadius: '50%', width: 16, height: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}><X size={10} color="#fff" /></button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => wordPhotoRef.current?.click()} style={{ padding: '0.4rem 0.6rem', borderRadius: '8px', background: `${C.teal}18`, border: `1px solid ${C.teal}40`, color: C.teal, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', fontWeight: 600 }}>
+                    <Camera size={13} /> Add
+                  </button>
+                )}
+              </div>
               <button type="button" onClick={handleAddWord} style={{ padding: '0.6rem 1rem', borderRadius: '8px', background: C.teal, color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', height: 'fit-content' }}>
                 + Add Word
               </button>
@@ -3747,9 +3817,13 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: '0.5rem' }}>
                 {newWords.map((w, idx) => (
                   <div key={w.id || idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.4rem 0.75rem', borderRadius: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                    {w.photoPreview && (
+                      <img src={w.photoPreview} alt={w.word} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', border: `1px solid ${C.teal}40`, flexShrink: 0 }} />
+                    )}
                     <span style={{ fontWeight: 700, color: C.teal }}>{w.article !== 'none' ? w.article : ''} {w.word}</span>
                     <span style={{ color: 'var(--text-muted)' }}>— {w.translation}</span>
                     {w.notes && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>({w.notes})</span>}
+                    {w.photoPreview && <span style={{ fontSize: '0.7rem', color: C.teal, display: 'flex', alignItems: 'center', gap: 3 }}><Camera size={11} /> Photo</span>}
                     <button type="button" onClick={() => handleRemoveWord(w.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.red, cursor: 'pointer', display: 'flex' }}>
                       <X size={14} />
                     </button>
@@ -3787,8 +3861,10 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
           </p>
         ) : (
           stories.map(s => {
+            const thumbnailUrl = getYouTubeThumbnail(s.youtubeUrl);
             const embedUrl = getYouTubeEmbedUrl(s.youtubeUrl);
             const isExpanded = expandedId === s.recordId;
+            const isPlaying = playingStoryId === s.recordId;
             return (
               <div key={s.recordId} className="glass-card" style={{ padding: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -3821,9 +3897,22 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories,
 
                 {s.youtubeUrl && (
                   <div style={{ marginBottom: '1rem' }}>
-                    {embedUrl ? (
+                    {thumbnailUrl && !isPlaying ? (
+                      <div
+                        onClick={() => setPlayingStoryId(s.recordId)}
+                        style={{ position: 'relative', cursor: 'pointer', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}
+                      >
+                        <img src={thumbnailUrl} alt={s.title} style={{ width: '100%', display: 'block', aspectRatio: '16/9', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}>
+                          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ff0000ee', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(255,0,0,0.5)' }}>
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><polygon points="5,3 19,12 5,21" /></svg>
+                          </div>
+                        </div>
+                        <div style={{ position: 'absolute', bottom: 8, left: 12, right: 12, color: '#fff', fontSize: '0.85rem', fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{s.title}</div>
+                      </div>
+                    ) : embedUrl && isPlaying ? (
                       <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                        <iframe src={embedUrl} title={s.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+                        <iframe src={`${embedUrl}?autoplay=1`} title={s.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
                       </div>
                     ) : (
                       <a href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: C.blue, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'underline' }}>
@@ -5454,7 +5543,20 @@ export default function LearningGerman() {
                         </div>
                       </td>
                       <td data-label="Translation" style={cellStyle}>{v.translation}</td>
-                      <td data-label="Plural" style={{ ...cellStyle, color: 'var(--text-muted)', fontSize: '0.8rem' }}>{v.plural || '—'}</td>
+                      <td data-label="Plural / Contrary" style={{ ...cellStyle, fontSize: '0.8rem' }}>
+                        {v.wordType === 'adjective' && v.contrary ? (
+                          <span style={{ color: C.purple, fontWeight: 600 }}>⇔ {v.contrary}</span>
+                        ) : v.wordType === 'adverb' ? (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>{v.plural || '—'}</span>
+                        )}
+                      </td>
+                      <td data-label="Type" style={cellStyle}>
+                        <span style={{ background: v.wordType === 'adjective' ? `${C.purple}20` : v.wordType === 'adverb' ? `${C.teal}20` : `${C.blue}20`, color: v.wordType === 'adjective' ? C.purple : v.wordType === 'adverb' ? C.teal : C.blue, padding: '2px 8px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700 }}>
+                          {v.wordType ? v.wordType.charAt(0).toUpperCase() + v.wordType.slice(1) : 'Noun'}
+                        </span>
+                      </td>
                       <td data-label="Category" style={cellStyle}>
                         <span style={{ background: `${C.gold}20`, color: C.gold, padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600 }}>{v.category || 'General'}</span>
                       </td>
@@ -5970,6 +6072,7 @@ export default function LearningGerman() {
           onUpdate={updateGermanStory}
           onDelete={deleteGermanRecord}
           onAddVocab={addGermanVocab}
+          onUploadVocabPhoto={uploadGermanVocabPhoto}
           isMobile={isMobile}
           stories={stories}
           chapters={workspaceChapters}

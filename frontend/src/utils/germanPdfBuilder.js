@@ -175,18 +175,20 @@ function noteBlocks(notes) {
 
 function vocabTable(rows) {
   const body = [
-    headRow(["Photo", "German", "Plural", "English", "Example", "Category"]),
+    headRow(["Photo", "German", "Plural / Contrary", "English", "Example", "Category"]),
     ...rows.map(v => {
       const s = splitWord(v);
+      const thirdCol = v.wordType === 'adjective' && v.contrary ? `⇔ ${v.contrary}` : (v.wordType === 'adverb' ? '—' : v.plural || '—');
       return [
         v.photoBase64 ? { image: v.photoBase64, fit: [30, 30], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
-        cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }, ...boxBlocks(v.boxes)]),
-        cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }),
+        cell([s.a ? { text: s.a + " ", fontSize: 8, color: C.muted } : "", { text: s.w, bold: true, fontSize: 8.5 }, ...boxBlocks(v.boxes)]),
+        cell(thirdCol, { color: v.wordType === 'adjective' ? C.teal : undefined }),
+        cell(v.translation || "", { color: C.muted }),
         cell(v.example || "", { color: C.muted }), cell(v.category || ""),
       ];
     }),
   ];
-  return { table: { ...TABLE, widths: [44, "*", 40, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
+  return { table: { ...TABLE, widths: [44, "*", 50, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 
 function grammarBlocks(rows) {
