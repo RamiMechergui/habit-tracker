@@ -3552,8 +3552,6 @@ function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
   );
 }
 
-}
-
 function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories, chapters, workspaceLevel }) {
   const [editingId, setEditingId] = useState(null);
   const [title, setTitle] = useState('');
