@@ -960,7 +960,7 @@ function Indexes({ data }) {
   return (
     <>
       <IndexSection id="grammar-index" tag="G" title="Grammar Index" count={grammar.length + " rules"}>
-        <div className="gr-idx">{grammar.map((g, i) => <div className="gr-idx-card" key={i}><div className="t">{g.rule}</div><div className="s">{g.explanation}</div></div>)}</div>
+        <div className="gr-idx">{grammar.map((g, i) => <div className="gr-idx-card" key={i}>{g.category && <span className="c">{g.category}</span>}<div className="t">{g.rule}</div><div className="s"><NoteRich html={g.explanation} /></div>{(g.examples || []).map((e, exI) => <div className="x" key={exI}>• {stripHtml(e)}</div>)}<Boxes boxes={g.boxes} /></div>)}</div>
       </IndexSection>
       <IndexSection id="verb-index" tag="V" title="Verb Index" count={verbs.length + " verbs"}>
         <div className="gr-idx">{verbs.map((v, i) => <div className="gr-idx-card" key={i}><div className="t">{v.infinitive}</div><div className="s"><b>{v.meaning}</b></div><div className="s">ich {v.ich} · du {v.du} · er/sie/es {v.erSieEs}</div></div>)}</div>
