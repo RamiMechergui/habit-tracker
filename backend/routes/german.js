@@ -49,6 +49,8 @@ const {
   updateBook,
   addChapter,
   updateChapter,
+  addStory,
+  updateStory,
   getOrInitStudy,
   addStudyMs,
   resetStudyTotal,
@@ -902,6 +904,41 @@ router.put('/chapter/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT chapter error:', err);
     res.status(500).json({ message: 'Failed to update chapter' });
+  }
+});
+
+// ── POST /api/german/story → add a story (youtubeUrl, dialogue, newWords) ───
+router.post('/story', async (req, res) => {
+  try {
+    const { title, youtubeUrl, dialogue, newWords, level, chapterId, chapterTitle, sortOrder } = req.body;
+    if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
+    const record = await addStory(req.user.userId, {
+      title: title.trim(),
+      youtubeUrl,
+      dialogue,
+      newWords,
+      level: level || 'A1.1',
+      chapterId,
+      chapterTitle,
+      sortOrder,
+    });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST story error:', err);
+    res.status(500).json({ message: 'Failed to add story' });
+  }
+});
+
+// ── PUT /api/german/story/:recordId → update a story ───────────────────────
+router.put('/story/:recordId', async (req, res) => {
+  try {
+    const recordId = decodeURIComponent(req.params.recordId);
+    const updated = await updateStory(req.user.userId, recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Story not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT story error:', err);
+    res.status(500).json({ message: 'Failed to update story' });
   }
 });
 

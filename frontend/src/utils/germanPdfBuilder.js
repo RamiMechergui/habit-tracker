@@ -295,10 +295,54 @@ function mistakeTable(rows) {
   return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 
+function storyBlocks(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  return rows.map(s => {
+    const stack = [];
+    if (s.title) {
+      stack.push({ text: s.title, bold: true, fontSize: 10.5, color: C.ink, margin: [0, 4, 0, 3] });
+    }
+    if (s.youtubeUrl) {
+      stack.push({
+        text: [
+          { text: "YouTube Resource: ", bold: true, fontSize: 8, color: C.muted },
+          { text: s.youtubeUrl, fontSize: 8, color: C.blue, link: s.youtubeUrl, decoration: "underline" },
+        ],
+        margin: [0, 0, 0, 4],
+      });
+    }
+    if (s.dialogue) {
+      const parsedDialogue = htmlToPdfContent(s.dialogue);
+      const dialogueStack = parsedDialogue.length ? parsedDialogue : [{ text: stripHtml(s.dialogue) || '', fontSize: 8.5 }];
+      stack.push({
+        table: { widths: ["*"], body: [[{ stack: dialogueStack, fillColor: C.light, margin: [8, 6, 8, 6] }]] },
+        layout: "noBorders",
+        margin: [0, 2, 0, 6],
+      });
+    }
+    if (Array.isArray(s.newWords) && s.newWords.length > 0) {
+      const body = [
+        headRow(["German Word", "Article", "Translation", "Notes / Context"]),
+        ...s.newWords.map(w => [
+          cell(w.word || "", { bold: true }),
+          cell(w.article || "—"),
+          cell(w.translation || "", { color: C.muted }),
+          cell(w.notes || w.example || "—", { fontSize: 8 }),
+        ]),
+      ];
+      stack.push(
+        { text: "New Words Learned from Story", bold: true, fontSize: 8, color: C.teal, margin: [0, 4, 0, 3] },
+        { table: { ...TABLE, widths: ["*", "auto", "*", "*"], body }, layout: tableLayout(), margin: [0, 0, 0, 6] }
+      );
+    }
+    return { stack, margin: [0, 0, 0, 10] };
+  });
+}
+
 function chapterBlock(ch, buckets) {
   const key = ch.recordId;
   const rel = {};
-  ["note","vocab","grammar","verb","memo","dialogue","expression","idiom","mistake"].forEach(t => {
+  ["note","vocab","grammar","verb","memo","dialogue","story","expression","idiom","mistake"].forEach(t => {
     rel[t] = (buckets[t] || []).filter(r => r.chapterId === key).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   });
   const has = t => rel[t].length;
@@ -318,6 +362,7 @@ function chapterBlock(ch, buckets) {
   if (has("memo")) stack.push(sectionLabel("Memorization"), ...memoBlocks(rel.memo));
   if (has("verb")) stack.push(sectionLabel("Verbs"), ...verbBlocks(rel.verb));
   if (has("dialogue")) stack.push(sectionLabel("Dialogues"), ...dialogueBlocks(rel.dialogue));
+  if (has("story")) stack.push(sectionLabel("Stories"), ...storyBlocks(rel.story));
   if (has("expression")) stack.push(sectionLabel("Expressions"), ...expressionList(rel.expression));
   if (has("idiom")) stack.push(sectionLabel("Idioms"), ...idiomBlocks(rel.idiom));
   if (has("mistake")) stack.push(sectionLabel("Common Mistakes"), mistakeTable(rel.mistake));
@@ -419,12 +464,12 @@ export function buildPdfDefinition(data, opts = {}) {
   }
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
-    memo: byType("memo"), dialogue: byType("dialogue"), expression: byType("expression"),
+    memo: byType("memo"), dialogue: byType("dialogue"), story: byType("story"), expression: byType("expression"),
     idiom: byType("idiom"), mistake: byType("mistake"),
   })));
 
   // Standalone sections for records that are NOT attached to any chapter, so
-  // dialogues, daily notes and memorization always make it into the PDF even
+  // dialogues, daily notes, stories and memorization always make it into the PDF even
   // when the user never assigned them to a chapter.
   const unchaptered = t => byType(t).filter(r => !r.chapterId);
   const dailyNotes = unchaptered("note");
@@ -441,6 +486,11 @@ export function buildPdfDefinition(data, opts = {}) {
   if (dialogueRows.length) {
     content.push({ text: "Dialogues", style: "h2", pageBreak: "before" });
     content.push(...dialogueBlocks(dialogueRows));
+  }
+  const storyRows = unchaptered("story");
+  if (storyRows.length) {
+    content.push({ text: "Stories", style: "h2", pageBreak: "before" });
+    content.push(...storyBlocks(storyRows));
   }
 
   content.push({ text: "Grammar Index", style: "h2", pageBreak: "before" });

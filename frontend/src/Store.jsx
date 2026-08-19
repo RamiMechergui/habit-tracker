@@ -2728,6 +2728,34 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const addGermanStory = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/story`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add story');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_story_add', `Added German story: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
+  const updateGermanStory = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/german/story/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update story');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_story_update', `Updated German story: ${payload?.title || ''}`);
+    return data;
+  }, [API_URL]);
+
   const processVocab = useCallback(async (payload) => {
     const res = await fetch(`${API_URL}/api/vocab/process`, {
       method: 'POST',
@@ -3255,6 +3283,7 @@ export const HabitProvider = ({ children }) => {
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
+      addGermanStory, updateGermanStory,
       processVocab, saveUnifiedVocab,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,

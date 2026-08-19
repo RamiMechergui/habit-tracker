@@ -573,6 +573,55 @@ async function updateChapter(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Stories (youtube link, dialogue, new words learned) ───────────────────────
+async function addStory(userId, { title, youtubeUrl = '', dialogue = '', newWords = [], level = 'A1.1', chapterId = null, chapterTitle = null, sortOrder = Date.now() }) {
+  const recordId = `STORY#${uuidv4()}`;
+  const item = {
+    userId,
+    recordId,
+    type: 'story',
+    title,
+    youtubeUrl,
+    dialogue,
+    newWords,
+    level,
+    chapterId,
+    chapterTitle,
+    sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateStory(userId, recordId, updates) {
+  const allowed = ['title', 'youtubeUrl', 'dialogue', 'newWords', 'level', 'chapterId', 'chapterTitle', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 // ── Study time tracking ───────────────────────────────────────────────────────
 const STUDY_RECORD = 'STUDY#v1';
 async function getStudy(userId) {
@@ -718,6 +767,8 @@ module.exports = {
   updateBook,
   addChapter,
   updateChapter,
+  addStory,
+  updateStory,
   addUnifiedVocab,
   updateUnifiedVocab,
   getOrInitStudy,

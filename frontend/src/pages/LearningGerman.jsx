@@ -4,7 +4,6 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
 import DialogueBuilder from '../components/DialogueBuilder';
 import RichTextEditor from '../components/RichTextEditor';
-import VocabularyInputBar from '../components/VocabularyInputBar';
 import VocabularyCard from '../components/VocabularyCard';
 import { buildReportData, buildChapterReportData } from '../utils/exportGermanReport';
 import { germanImageUrl } from '../utils/germanImageUrl';
@@ -3553,6 +3552,335 @@ function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
   );
 }
 
+}
+
+function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, isMobile, stories, chapters, workspaceLevel }) {
+  const [editingId, setEditingId] = useState(null);
+  const [title, setTitle] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [chapterId, setChapterId] = useState('');
+  const [dialogue, setDialogue] = useState('');
+  const [newWords, setNewWords] = useState([]);
+  const [syncToVocab, setSyncToVocab] = useState(true);
+  const [wordForm, setWordForm] = useState({ word: '', article: 'der', translation: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setYoutubeUrl('');
+    setChapterId('');
+    setDialogue('');
+    setNewWords([]);
+    setWordForm({ word: '', article: 'der', translation: '', notes: '' });
+  };
+
+  const handleEdit = (story) => {
+    setEditingId(story.recordId);
+    setTitle(story.title || '');
+    setYoutubeUrl(story.youtubeUrl || '');
+    setChapterId(story.chapterId || '');
+    setDialogue(story.dialogue || '');
+    setNewWords(story.newWords || []);
+  };
+
+  const handleAddWord = () => {
+    if (!wordForm.word.trim()) return;
+    setNewWords(prev => [...prev, { id: `w-${Date.now()}`, ...wordForm }]);
+    setWordForm({ word: '', article: 'der', translation: '', notes: '' });
+  };
+
+  const handleRemoveWord = (id) => {
+    setNewWords(prev => prev.filter(w => w.id !== id));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const selectedChapter = chapters.find(c => c.recordId === chapterId);
+      const payload = {
+        title: title.trim(),
+        youtubeUrl: youtubeUrl.trim(),
+        dialogue,
+        newWords: newWords.map(({ id, ...w }) => w),
+        chapterId: chapterId || null,
+        chapterTitle: selectedChapter?.title || null,
+        level: workspaceLevel,
+      };
+
+      if (editingId) {
+        await onUpdate(editingId, payload);
+      } else {
+        await onAdd(payload);
+      }
+
+      if (syncToVocab && newWords.length > 0 && onAddVocab) {
+        for (const w of newWords) {
+          try {
+            await onAddVocab({
+              word: w.word,
+              gender: w.article,
+              translation: w.translation,
+              example: w.notes,
+              notes: `Learned from story: ${title.trim()}`,
+              category: 'Story',
+              level: workspaceLevel,
+              chapterId: chapterId || null,
+              chapterTitle: selectedChapter?.title || null,
+            });
+          } catch (e) {
+            console.error('Failed to sync word to vocab:', e);
+          }
+        }
+      }
+
+      resetForm();
+    } catch (e) {
+      alert(e.message || 'Failed to save story');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getYouTubeEmbedUrl = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '0.6rem 0.85rem',
+    borderRadius: '10px',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div className="glass-card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.purple, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Clapperboard size={18} /> {editingId ? 'Edit Story' : 'Add New Story'}
+          </h3>
+          {editingId && (
+            <button type="button" onClick={resetForm} style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.78rem', background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              Cancel Edit
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '0.85rem' }}>
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                Story Title <span style={{ color: C.red }}>*</span>
+              </label>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Dialogue in a German Bakery" required style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                Assigned Chapter
+              </label>
+              <select value={chapterId} onChange={e => setChapterId(e.target.value)} style={inputStyle}>
+                <option value="">-- No Specific Chapter --</option>
+                {chapters.map(c => (
+                  <option key={c.recordId} value={c.recordId}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              YouTube Resource Link
+            </label>
+            <input value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." style={inputStyle} />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              Full Dialogue / Story Transcript
+            </label>
+            <RichTextEditor value={dialogue} onChange={setDialogue} placeholder="Paste or type the full story dialogue here..." minHeight={200} />
+          </div>
+
+          <div style={{ background: 'var(--bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.88rem', fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <BookOpen size={16} /> New Words Learned from this Dialogue
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 100px 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'end' }}>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>German Word</label>
+                <input value={wordForm.word} onChange={e => setWordForm(f => ({ ...f, word: e.target.value }))} placeholder="e.g. Brötchen" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Article</label>
+                <select value={wordForm.article} onChange={e => setWordForm(f => ({ ...f, article: e.target.value }))} style={inputStyle}>
+                  <option value="der">der</option>
+                  <option value="die">die</option>
+                  <option value="das">das</option>
+                  <option value="none">none</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Translation</label>
+                <input value={wordForm.translation} onChange={e => setWordForm(f => ({ ...f, translation: e.target.value }))} placeholder="e.g. bread roll" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Notes / Context</label>
+                <input value={wordForm.notes} onChange={e => setWordForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Bakery phrase" style={inputStyle} />
+              </div>
+              <button type="button" onClick={handleAddWord} style={{ padding: '0.6rem 1rem', borderRadius: '8px', background: C.teal, color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', height: 'fit-content' }}>
+                + Add Word
+              </button>
+            </div>
+
+            {newWords.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: '0.5rem' }}>
+                {newWords.map((w, idx) => (
+                  <div key={w.id || idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.4rem 0.75rem', borderRadius: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                    <span style={{ fontWeight: 700, color: C.teal }}>{w.article !== 'none' ? w.article : ''} {w.word}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>— {w.translation}</span>
+                    {w.notes && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>({w.notes})</span>}
+                    <button type="button" onClick={() => handleRemoveWord(w.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.red, cursor: 'pointer', display: 'flex' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={syncToVocab} onChange={e => setSyncToVocab(e.target.checked)} />
+              Also classify and save these words into my main Vocabulary collection
+            </label>
+          </div>
+
+          <button type="submit" disabled={saving || !title.trim()} style={{
+            padding: '0.75rem', borderRadius: '10px', border: 'none',
+            background: !title.trim() ? 'var(--bg)' : `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+            color: !title.trim() ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: '0.9rem', cursor: !title.trim() ? 'not-allowed' : 'pointer',
+          }}>
+            {saving ? 'Saving Story...' : editingId ? 'Update Story' : 'Save Story'}
+          </button>
+        </form>
+      </div>
+
+      {/* Saved Stories List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Clapperboard size={16} /> Saved Stories ({stories.length})
+        </h3>
+
+        {stories.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>
+            No stories added for {workspaceLevel} yet. Add your first story above!
+          </p>
+        ) : (
+          stories.map(s => {
+            const embedUrl = getYouTubeEmbedUrl(s.youtubeUrl);
+            const isExpanded = expandedId === s.recordId;
+            return (
+              <div key={s.recordId} className="glass-card" style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {s.title}
+                    </h4>
+                    {s.chapterTitle && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}18`, color: LEVEL_COLORS[workspaceLevel] || '#6b7280', border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}35`, marginTop: 4 }}>
+                        <BookMarked size={10} /> {s.chapterTitle}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <button onClick={() => handleEdit(s)} style={{ padding: '0.35rem 0.65rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Edit3 size={12} /> Edit
+                    </button>
+                    {confirmDeleteId === s.recordId ? (
+                      <>
+                        <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '0.35rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>No</button>
+                        <button onClick={() => { onDelete(s.recordId); setConfirmDeleteId(null); }} style={{ padding: '0.35rem 0.5rem', borderRadius: '6px', border: 'none', background: C.red, color: '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 700 }}>Delete</button>
+                      </>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteId(s.recordId)} style={{ padding: '0.35rem', borderRadius: '6px', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {s.youtubeUrl && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    {embedUrl ? (
+                      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <iframe src={embedUrl} title={s.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+                      </div>
+                    ) : (
+                      <a href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: C.blue, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'underline' }}>
+                        <ExternalLink size={14} /> Watch YouTube Resource
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {s.dialogue && (
+                  <div style={{ marginBottom: '1rem', background: 'var(--bg)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Full Dialogue
+                      </span>
+                      <button onClick={() => setExpandedId(isExpanded ? null : s.recordId)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {isExpanded ? 'Collapse' : 'Expand'}
+                      </button>
+                    </div>
+                    <div style={{ maxHeight: isExpanded ? 'none' : '150px', overflow: 'hidden', position: 'relative', fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                      <div dangerouslySetInnerHTML={{ __html: s.dialogue }} />
+                      {!isExpanded && (
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40px', background: 'linear-gradient(transparent, var(--bg))' }} />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray(s.newWords) && s.newWords.length > 0 && (
+                  <div>
+                    <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.82rem', fontWeight: 700, color: C.teal }}>
+                      Classified New Words ({s.newWords.length})
+                    </h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
+                      {s.newWords.map((w, idx) => (
+                        <div key={idx} style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'var(--bg)', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                          <div style={{ fontWeight: 700, color: C.teal }}>
+                            {w.article && w.article !== 'none' ? `${w.article} ` : ''}{w.word}
+                          </div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{w.translation}</div>
+                          {w.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{w.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LearningGerman() {
   const {
     germanData, fetchGermanData,
@@ -3570,6 +3898,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
+    addGermanStory, updateGermanStory,
     processVocab, saveUnifiedVocab,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
@@ -3626,9 +3955,6 @@ export default function LearningGerman() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
   const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
-  const [smartProcessing, setSmartProcessing] = useState(false);
-  const [smartResult, setSmartResult] = useState(null);
-  const [smartError, setSmartError] = useState('');
   const [confirmDeleteVerbId, setConfirmDeleteVerbId] = useState(null);
   const [confirmDeleteDialogue, setConfirmDeleteDialogue] = useState(null);
   const [editMemo, setEditMemo] = useState(null);
@@ -3706,6 +4032,10 @@ export default function LearningGerman() {
   }, [germanData, matchesLevel, matchesChapter]);
   const memos = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'memo' && matchesLevel(r) && matchesChapter(r));
+    return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [germanData, matchesLevel, matchesChapter]);
+  const stories = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'story' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [germanData, matchesLevel, matchesChapter]);
   const notes   = useMemo(() => {
@@ -4015,6 +4345,14 @@ export default function LearningGerman() {
     if (isNoteEmpty(contentToSave) && boxesToSave.length === 0) return;
     setNoteSaving(true);
     try {
+      let targetChapterId = selectedChapterId;
+      let targetChapterTitle = selectedChapterTitle;
+      if (!targetChapterId && workspaceChapters.length > 0) {
+        targetChapterId = workspaceChapters[0].recordId;
+        targetChapterTitle = workspaceChapters[0].title;
+        setSelectedChapterId(targetChapterId);
+        setSelectedChapterTitle(targetChapterTitle);
+      }
       const payload = {
         date: selectedDate,
         noteCategory,
@@ -4022,8 +4360,8 @@ export default function LearningGerman() {
         content: contentToSave.trim(),
         boxes: boxesToSave.map(({ id: _id, ...rest }) => rest),
         level: workspaceLevel,
-        chapterId: selectedChapterId,
-        chapterTitle: selectedChapterTitle,
+        chapterId: targetChapterId || null,
+        chapterTitle: targetChapterTitle || null,
       };
       if (selectedNoteId) {
         payload.noteId = selectedNoteId;
@@ -4569,7 +4907,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'mistakes'} onClick={() => setTab('mistakes')} icon={AlertTriangle} label="Mistakes" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
             <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
-            <TabBtn active={tab === 'smart'} onClick={() => setTab('smart')} icon={Sparkles} label="Smart Entry" />
+            <TabBtn active={tab === 'stories'} onClick={() => setTab('stories')} icon={Clapperboard} label="Stories" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -4604,7 +4942,7 @@ export default function LearningGerman() {
         <TabBtn active={tab === 'expressions'} onClick={() => setTab('expressions')} icon={Languages} label="Expressions" />
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
         <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
-        <TabBtn active={tab === 'smart'} onClick={() => setTab('smart')} icon={Sparkles} label="Smart Entry" />
+        <TabBtn active={tab === 'stories'} onClick={() => setTab('stories')} icon={Clapperboard} label="Stories" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -4867,6 +5205,36 @@ export default function LearningGerman() {
                 <option value='"Trebuchet MS", sans-serif'>Trebuchet MS</option>
                 <option value='"Palatino Linotype", serif'>Palatino</option>
               </select>
+            </div>
+            <div style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                Assigned Chapter <span style={{ color: C.red, fontWeight: 700 }}>*</span>
+              </label>
+              {workspaceChapters.length === 0 ? (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'var(--bg)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  No chapters for {workspaceLevel} yet.{' '}
+                  <button type="button" onClick={() => setTab('chapters')} style={{ background: 'none', border: 'none', color: C.gold, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>Create a chapter</button> to save notes under it.
+                </div>
+              ) : (
+                <select
+                  value={selectedChapterId || ''}
+                  onChange={e => {
+                    const cid = e.target.value;
+                    if (!cid) {
+                      clearChapterSelection();
+                    } else {
+                      const ch = workspaceChapters.find(c => c.recordId === cid);
+                      if (ch) openChapterNotes(ch);
+                    }
+                  }}
+                  style={{ ...inputBase, background: 'var(--bg-card)', fontWeight: 600, fontSize: '0.85rem' }}
+                >
+                  <option value="">-- Select Chapter (Required) --</option>
+                  {workspaceChapters.map(c => (
+                    <option key={c.recordId} value={c.recordId}>{c.title}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
@@ -5598,49 +5966,17 @@ export default function LearningGerman() {
         </div>
       )}
 
-      {tab === 'smart' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <VocabularyInputBar onProcess={handleSmartProcess} isProcessing={smartProcessing} />
-          {smartError && (
-            <div style={{
-              padding: '0.8rem 1rem', borderRadius: 12,
-              background: `${C.red}12`, border: `1px solid ${C.red}30`,
-              color: C.red, fontSize: '0.85rem', fontWeight: 600,
-            }}>
-              {smartError}
-            </div>
-          )}
-          {smartProcessing && (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '2rem', color: 'var(--text-muted)', gap: 8,
-            }}>
-              <Loader2 size={20} className="spin" /> Analyzing vocabulary...
-            </div>
-          )}
-          {smartResult && (
-            <VocabularyCard
-              entryMetadata={smartResult.entryMetadata}
-              linguisticData={smartResult.linguisticData}
-              uiConfig={smartResult.uiConfig}
-              onSave={handleSmartSave}
-            />
-          )}
-          {!smartProcessing && !smartResult && !smartError && (
-            <div style={{
-              textAlign: 'center', padding: '3rem 1rem',
-              color: 'var(--text-muted)',
-            }}>
-              <Sparkles size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 4 }}>
-                AI-Powered Vocabulary Entry
-              </p>
-              <p style={{ fontSize: '0.8rem', maxWidth: 360, margin: '0 auto' }}>
-                Type any German word or phrase above. The AI will auto-detect the category, gender, conjugation, and more — then render a rich vocabulary card.
-              </p>
-            </div>
-          )}
-        </div>
+      {tab === 'stories' && (
+        <StoriesForm
+          onAdd={addGermanStory}
+          onUpdate={updateGermanStory}
+          onDelete={deleteGermanRecord}
+          onAddVocab={addGermanVocab}
+          isMobile={isMobile}
+          stories={stories}
+          chapters={workspaceChapters}
+          workspaceLevel={workspaceLevel}
+        />
       )}
 
       {tab === 'progress' && (
