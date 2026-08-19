@@ -137,6 +137,28 @@ export function buildChapterReportData(germanData, chapter, germanStudy, germanP
  * @param {string} [options.subtitle]      - Report subtitle
  * @returns {Promise<void>}
  */
+async function getLogoBase64() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = '/logo_circle.png';
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
 export async function exportGermanReportPDF({
   germanData,
   germanStudy,
@@ -144,6 +166,8 @@ export async function exportGermanReportPDF({
   fileName = 'german_report.pdf',
   title = 'DEUTSCH LERNEN',
   subtitle = 'My German Learning Journey',
+  user,
+  userName = '',
 }) {
   const data = await withCircularAvatars(buildReportData(germanData, germanStudy, germanProgress));
 
@@ -151,7 +175,9 @@ export async function exportGermanReportPDF({
     throw new Error('No data available to generate the report.');
   }
 
-  const doc = buildPdfDefinition(data, { title, subtitle });
+  const logoBase64 = await getLogoBase64();
+  const userFullName = userName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || user?.surname || '';
+  const doc = buildPdfDefinition(data, { title, subtitle, logoBase64, userFullName });
   const pdfMake = await getPdfMake();
   pdfMake.createPdf(doc).download(fileName);
 }
@@ -168,6 +194,8 @@ export async function generateGermanReportBlob({
   germanProgress,
   title = 'DEUTSCH LERNEN',
   subtitle = 'My German Learning Journey',
+  user,
+  userName = '',
 }) {
   const data = await withCircularAvatars(buildReportData(germanData, germanStudy, germanProgress));
 
@@ -175,7 +203,9 @@ export async function generateGermanReportBlob({
     throw new Error('No data available to generate the report.');
   }
 
-  const doc = buildPdfDefinition(data, { title, subtitle });
+  const logoBase64 = await getLogoBase64();
+  const userFullName = userName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || user?.surname || '';
+  const doc = buildPdfDefinition(data, { title, subtitle, logoBase64, userFullName });
   const pdfMake = await getPdfMake();
 
   return new Promise((resolve) => {
