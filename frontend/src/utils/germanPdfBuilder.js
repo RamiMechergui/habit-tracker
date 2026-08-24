@@ -297,6 +297,25 @@ function mistakeTable(rows) {
   return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 
+const STORY_GENDER_COLORS = { male: "#1f4e79", female: "#b0307a", other: "#6d3fa0" };
+
+function storyAvatarNode(p) {
+  const color = STORY_GENDER_COLORS[p?.gender] || STORY_GENDER_COLORS.other;
+  if (p?.photoBase64) {
+    return { image: p.photoBase64, fit: [20, 20], alignment: "center" };
+  }
+  return {
+    table: { widths: [20], body: [[T((p?.name || "?").charAt(0).toUpperCase(), { bold: true, fontSize: 9, color: C.white, alignment: "center" })]] },
+    layout: { hLineColor: () => color, vLineColor: () => color, hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 0, paddingTop: () => 4, paddingBottom: () => 4, fillColor: () => color },
+    alignment: "center",
+  };
+}
+
+function hasStoryScriptData(s) {
+  return Array.isArray(s?.participants) && s.participants.length > 0
+    && Array.isArray(s?.exchanges) && s.exchanges.length > 0;
+}
+
 function storyBlocks(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
   return rows.map(s => {
@@ -313,7 +332,35 @@ function storyBlocks(rows) {
         margin: [0, 0, 0, 4],
       });
     }
-    if (s.dialogue) {
+
+    if (hasStoryScriptData(s)) {
+      const parts = s.participants;
+      stack.push({
+        text: [
+          { text: "Members: ", bold: true, fontSize: 8, color: C.muted },
+          ...parts.flatMap((p, i) => ([
+            ...(i ? [{ text: "   ·   ", fontSize: 8, color: C.muted }] : []),
+            { text: p.name || "?", bold: true, fontSize: 8, color: STORY_GENDER_COLORS[p.gender] || STORY_GENDER_COLORS.other },
+          ])),
+        ],
+        margin: [0, 0, 0, 4],
+      });
+
+      const body = (s.exchanges || []).map(x => {
+        const p = parts[x.speakerIndex] || { name: "?" };
+        const pColor = STORY_GENDER_COLORS[p.gender] || STORY_GENDER_COLORS.other;
+        const bubble = [
+          { text: p.name || "?", bold: true, fontSize: 7.5, color: pColor, margin: [0, 0, 0, 2] },
+        ];
+        if (x.german) bubble.push(T(x.german, { fontSize: 9, bold: true, color: C.ink, lineHeight: 1.25 }));
+        if (x.original) bubble.push(T(x.original, { fontSize: 8, italics: true, color: C.muted, margin: [0, 2, 0, 0], lineHeight: 1.2 }));
+        return [
+          storyAvatarNode(p),
+          cell(bubble, { margin: [7, 3, 0, 5] }),
+        ];
+      });
+      stack.push({ table: { widths: ["auto", "*"], body }, layout: "noBorders", margin: [0, 2, 0, 6] });
+    } else if (s.dialogue) {
       const parsedDialogue = htmlToPdfContent(s.dialogue);
       const dialogueStack = parsedDialogue.length ? parsedDialogue : [{ text: stripHtml(s.dialogue) || '', fontSize: 8.5 }];
       stack.push({

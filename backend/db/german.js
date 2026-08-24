@@ -573,8 +573,8 @@ async function updateChapter(userId, recordId, updates) {
   return res.Attributes;
 }
 
-// ── Stories (youtube link, dialogue, new words learned) ───────────────────────
-async function addStory(userId, { title, youtubeUrl = '', dialogue = '', newWords = [], level = 'A1.1', chapterId = null, chapterTitle = null, sortOrder = Date.now() }) {
+// ── Stories (youtube link, dialogue, new words learned, participants & exchanges) ──
+async function addStory(userId, { title, youtubeUrl = '', dialogue = '', participants = [], exchanges = [], newWords = [], boxes = [], level = 'A1.1', chapterId = null, chapterTitle = null, sortOrder = Date.now() }) {
   const recordId = `STORY#${uuidv4()}`;
   const item = {
     userId,
@@ -583,7 +583,10 @@ async function addStory(userId, { title, youtubeUrl = '', dialogue = '', newWord
     title,
     youtubeUrl,
     dialogue,
+    participants,
+    exchanges,
     newWords,
+    boxes,
     level,
     chapterId,
     chapterTitle,
@@ -595,7 +598,7 @@ async function addStory(userId, { title, youtubeUrl = '', dialogue = '', newWord
 }
 
 async function updateStory(userId, recordId, updates) {
-  const allowed = ['title', 'youtubeUrl', 'dialogue', 'newWords', 'level', 'chapterId', 'chapterTitle', 'sortOrder'];
+  const allowed = ['title', 'youtubeUrl', 'dialogue', 'participants', 'exchanges', 'newWords', 'boxes', 'level', 'chapterId', 'chapterTitle', 'sortOrder'];
   const sets = [];
   const names = {};
   const values = {};

@@ -7,6 +7,7 @@ import RichTextEditor from '../components/RichTextEditor';
 import VocabularyCard from '../components/VocabularyCard';
 import { buildReportData, buildChapterReportData } from '../utils/exportGermanReport';
 import { germanImageUrl } from '../utils/germanImageUrl';
+import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
 import GermanReport from '../components/GermanReport';
 
 import { format } from 'date-fns';
@@ -3581,7 +3582,45 @@ function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
   );
 }
 
-function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto, isMobile, stories, chapters, workspaceLevel }) {
+const STORY_MEMBER_CYCLE = ['male', 'female', 'other'];
+function nextStoryGender(current) {
+  const idx = STORY_MEMBER_CYCLE.indexOf(current);
+  return STORY_MEMBER_CYCLE[(idx + 1) % STORY_MEMBER_CYCLE.length];
+}
+
+function StoryMemberAvatar({ gender, name, size = 32, onClick, photoUrl }) {
+  const color = PERSON_COLORS[gender] || PERSON_COLORS.other;
+  const initial = (name || '?').charAt(0).toUpperCase();
+  if (photoUrl) {
+    return (
+      <span onClick={onClick} title={name} style={{
+        width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+        border: `2px solid ${color}`, cursor: onClick ? 'pointer' : 'default',
+        display: 'inline-block', transition: 'all 0.2s ease',
+      }}>
+        <img src={germanImageUrl(photoUrl)} alt={name || 'member'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      </span>
+    );
+  }
+  return (
+    <span onClick={onClick} title={name} style={{
+      width: size, height: size, borderRadius: '50%',
+      background: `${color}20`, border: `2px solid ${color}`,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0, fontSize: Math.round(size * 0.4), fontWeight: 800, color,
+      cursor: onClick ? 'pointer' : 'default', transition: 'all 0.2s ease',
+    }}>
+      {initial}
+    </span>
+  );
+}
+
+function hasStoryScript(s) {
+  return Array.isArray(s?.participants) && s.participants.length > 0
+    && Array.isArray(s?.exchanges) && s.exchanges.length > 0;
+}
+
+function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto, isMobile, stories, chapters, workspaceLevel, onTranslate, onUploadParticipantPhoto, onDeleteParticipantPhoto }) {
   const [editingId, setEditingId] = useState(null);
   const [title, setTitle] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -3596,6 +3635,34 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
   const [playingStoryId, setPlayingStoryId] = useState(null);
   const wordPhotoRef = useRef(null);
 
+  const defaultMembers = () => [
+    { name: '', gender: 'male', photoUrl: '' },
+    { name: '', gender: 'female', photoUrl: '' },
+  ];
+  const [participants, setParticipants] = useState(defaultMembers());
+  const [exchanges, setExchanges] = useState([]);
+  const [pendingPhotos, setPendingPhotos] = useState({});
+  const [uploadingPhotoIdx, setUploadingPhotoIdx] = useState(null);
+  const [avatarPickerFor, setAvatarPickerFor] = useState(null);
+  const [photoError, setPhotoError] = useState(null);
+  const [translatingIdx, setTranslatingIdx] = useState(null);
+  const [bulkTranslating, setBulkTranslating] = useState(false);
+  const autoTranslateTimers = useRef({});
+  const memberPhotoInputRefs = useRef({});
+  const avatarPickerRef = useRef(null);
+  const lastExchangeRef = useRef(null);
+
+  useEffect(() => {
+    if (avatarPickerFor === null || avatarPickerFor === undefined) return undefined;
+    const handleClickOutside = (e) => {
+      if (avatarPickerRef.current && !avatarPickerRef.current.contains(e.target)) {
+        setAvatarPickerFor(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [avatarPickerFor]);
+
   const resetForm = () => {
     setEditingId(null);
     setTitle('');
@@ -3604,6 +3671,14 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
     setDialogue('');
     setNewWords([]);
     setWordForm({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
+    setParticipants(defaultMembers());
+    setExchanges([]);
+    Object.values(autoTranslateTimers.current).forEach(t => clearTimeout(t));
+    autoTranslateTimers.current = {};
+    setPendingPhotos({});
+    setTranslatingIdx(null);
+    setBulkTranslating(false);
+    setPhotoError(null);
   };
 
   const handleEdit = (story) => {
@@ -3613,6 +3688,153 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
     setChapterId(story.chapterId || '');
     setDialogue(story.dialogue || '');
     setNewWords(story.newWords || []);
+    setParticipants(
+      Array.isArray(story.participants) && story.participants.length
+        ? story.participants.map(p => ({ name: p.name || '', gender: p.gender || 'other', photoUrl: p.photoUrl || '' }))
+        : defaultMembers()
+    );
+    setExchanges(
+      Array.isArray(story.exchanges)
+        ? story.exchanges.map(ex => ({ speakerIndex: ex.speakerIndex || 0, german: ex.german || '', original: ex.original || '' }))
+        : []
+    );
+    setPendingPhotos({});
+  };
+
+  const setParticipant = (idx, field, value) => {
+    setParticipants(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
+  const validateMemberPhoto = (file) => {
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      setPhotoError('Only JPEG, PNG, WebP and GIF images are allowed');
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Image must be smaller than 5 MB');
+      return false;
+    }
+    return true;
+  };
+
+  const handleMemberPhotoSelect = (idx, file) => {
+    setPhotoError(null);
+    if (!file) return;
+    if (!validateMemberPhoto(file)) return;
+    if (editingId && onUploadParticipantPhoto) {
+      setUploadingPhotoIdx(idx);
+      onUploadParticipantPhoto(editingId, idx, file)
+        .then(({ photoUrl }) => {
+          setParticipant(idx, 'photoUrl', photoUrl);
+          setAvatarPickerFor(null);
+        })
+        .catch(err => setPhotoError(err.message || 'Failed to upload photo'))
+        .finally(() => setUploadingPhotoIdx(null));
+    } else {
+      setPendingPhotos(prev => ({ ...prev, [idx]: file }));
+      setParticipant(idx, 'photoUrl', URL.createObjectURL(file));
+      setAvatarPickerFor(null);
+    }
+    if (memberPhotoInputRefs.current[idx]) memberPhotoInputRefs.current[idx].value = '';
+  };
+
+  const handleSelectPresetAvatar = (idx, color) => {
+    setParticipant(idx, 'photoUrl', generateAvatarDataUri(participants[idx]?.name || '?', color));
+    setPendingPhotos(prev => { const n = { ...prev }; delete n[idx]; return n; });
+    setAvatarPickerFor(null);
+  };
+
+  const handleRemoveMemberPhoto = async (idx) => {
+    setPhotoError(null);
+    const url = participants[idx]?.photoUrl;
+    if (editingId && url && !url.startsWith('blob:') && !isDataUri(url) && onDeleteParticipantPhoto) {
+      try {
+        await onDeleteParticipantPhoto(editingId, idx);
+      } catch (err) {
+        setPhotoError(err.message || 'Failed to remove photo');
+      }
+    }
+    setParticipant(idx, 'photoUrl', '');
+    setPendingPhotos(prev => { const n = { ...prev }; delete n[idx]; return n; });
+    setAvatarPickerFor(null);
+  };
+
+  const addMember = () => {
+    if (participants.length >= 3) return;
+    setParticipants(prev => [...prev, { name: '', gender: STORY_MEMBER_CYCLE[prev.length % 3], photoUrl: '' }]);
+  };
+
+  const removeMember = (idx) => {
+    if (participants.length <= 2) return;
+    setParticipants(prev => prev.filter((_, i) => i !== idx));
+    setExchanges(prev => prev
+      .filter(ex => ex.speakerIndex !== idx)
+      .map(ex => ({ ...ex, speakerIndex: ex.speakerIndex > idx ? ex.speakerIndex - 1 : ex.speakerIndex })));
+    setPendingPhotos(prev => {
+      const next = {};
+      Object.entries(prev).forEach(([k, v]) => {
+        const ki = parseInt(k, 10);
+        if (ki === idx) { URL.revokeObjectURL(v); return; }
+        next[ki > idx ? ki - 1 : ki] = v;
+      });
+      return next;
+    });
+    setAvatarPickerFor(null);
+  };
+
+  const addExchange = (speakerIndex) => {
+    setExchanges(prev => [...prev, { speakerIndex, german: '', original: '' }]);
+    setTimeout(() => lastExchangeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+  };
+
+  const updateExchange = (idx, field, value) => {
+    setExchanges(prev => prev.map((ex, i) => i === idx ? { ...ex, [field]: value } : ex));
+  };
+
+  const moveExchange = (idx, dir) => {
+    setExchanges(prev => {
+      const next = [...prev];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const removeExchange = (idx) => {
+    if (autoTranslateTimers.current[idx]) { clearTimeout(autoTranslateTimers.current[idx]); delete autoTranslateTimers.current[idx]; }
+    setExchanges(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const doTranslate = onTranslate || (async (text) => text);
+
+  const translateExchange = async (idx) => {
+    const ex = exchanges[idx];
+    if (!ex || !ex.german?.trim()) return;
+    setTranslatingIdx(idx);
+    try {
+      const translated = await doTranslate(ex.german, 'en');
+      updateExchange(idx, 'original', translated);
+    } catch (err) {
+      console.error('Translation error:', err);
+    } finally {
+      setTranslatingIdx(null);
+    }
+  };
+
+  const translateAllExchanges = async () => {
+    const pending = exchanges.map((ex, i) => ({ ex, i })).filter(({ ex }) => ex.german?.trim() && !ex.original);
+    if (!pending.length) return;
+    setBulkTranslating(true);
+    for (const { ex, i } of pending) {
+      try {
+        const translated = await doTranslate(ex.german, 'en');
+        updateExchange(i, 'original', translated);
+      } catch (err) {
+        console.error(`Translation error for exchange ${i}:`, err);
+      }
+    }
+    setBulkTranslating(false);
   };
 
   const handleAddWord = () => {
@@ -3644,20 +3866,47 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
     setSaving(true);
     try {
       const selectedChapter = chapters.find(c => c.recordId === chapterId);
+      const cleanedParticipants = participants.map(p => ({
+        name: p.name.trim(),
+        gender: p.gender || 'other',
+        photoUrl: p.photoUrl?.startsWith('blob:') ? '' : (p.photoUrl || ''),
+      }));
+      const useStructured = cleanedParticipants.length >= 2
+        && cleanedParticipants.every(p => p.name)
+        && exchanges.length > 0;
       const payload = {
         title: title.trim(),
         youtubeUrl: youtubeUrl.trim(),
         dialogue,
+        participants: useStructured ? cleanedParticipants : [],
+        exchanges: useStructured ? exchanges : [],
         newWords: newWords.map(({ id, ...w }) => w),
         chapterId: chapterId || null,
         chapterTitle: selectedChapter?.title || null,
         level: workspaceLevel,
       };
 
+      let recordId = editingId;
       if (editingId) {
         await onUpdate(editingId, payload);
       } else {
-        await onAdd(payload);
+        const created = await onAdd(payload);
+        recordId = created?.recordId;
+      }
+
+      const pending = Object.entries(pendingPhotos);
+      if (recordId && pending.length > 0 && onUploadParticipantPhoto) {
+        const updatedParticipants = [...cleanedParticipants];
+        for (const [idx, file] of pending) {
+          try {
+            const { photoUrl } = await onUploadParticipantPhoto(recordId, parseInt(idx, 10), file);
+            const pi = parseInt(idx, 10);
+            updatedParticipants[pi] = { ...(updatedParticipants[pi] || {}), photoUrl };
+          } catch (pe) {
+            console.error('Participant photo upload failed', pe);
+          }
+        }
+        try { await onUpdate(recordId, { participants: updatedParticipants }); } catch (pe) { console.error('Failed to persist participant photos', pe); }
       }
 
       if (syncToVocab && newWords.length > 0 && onAddVocab) {
@@ -3761,11 +4010,216 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
             <input value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." style={inputStyle} />
           </div>
 
+          <div style={{ background: 'var(--bg)', padding: '1rem', borderRadius: '12px', border: `1px solid ${C.purple}30` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: 8, flexWrap: 'wrap' }}>
+              <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: C.purple, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <MessageSquare size={15} /> Dialogue Members ({participants.length}/3)
+              </h4>
+              {participants.length < 3 && (
+                <button type="button" onClick={addMember} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Plus size={13} /> Add Member
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {participants.map((p, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0.75rem', background: 'var(--bg-card)', borderRadius: '10px', border: '1px solid var(--border)', position: 'relative', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                  <StoryMemberAvatar gender={p.gender} name={p.name} size={34} photoUrl={p.photoUrl} onClick={() => setParticipant(i, 'gender', nextStoryGender(p.gender))} />
+                  <input
+                    ref={el => memberPhotoInputRefs.current[i] = el}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleMemberPhotoSelect(i, f); }}
+                  />
+                  <button type="button" onClick={() => setAvatarPickerFor(avatarPickerFor === i ? null : i)} disabled={uploadingPhotoIdx === i} style={{
+                    background: p.photoUrl ? `${C.green}20` : `${C.blue}15`,
+                    border: `1px solid ${p.photoUrl ? `${C.green}40` : `${C.blue}40`}`,
+                    borderRadius: '8px', cursor: 'pointer', color: p.photoUrl ? C.green : C.blue,
+                    padding: '5px 8px', fontSize: '0.72rem', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                    opacity: uploadingPhotoIdx === i ? 0.5 : 1,
+                  }}>
+                    <Camera size={13} /> {uploadingPhotoIdx === i ? '…' : p.photoUrl ? 'Avatar' : 'Avatar'}
+                  </button>
+
+                  {avatarPickerFor === i && (
+                    <div ref={avatarPickerRef} style={{
+                      position: 'absolute', top: '100%', left: 50, zIndex: 60,
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      borderRadius: '12px', padding: '0.75rem', width: 240,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.2)', marginTop: 4,
+                    }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+                        Choose avatar for {p.name || `Member ${i + 1}`}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 10 }}>
+                        {AVATAR_COLORS.map(color => {
+                          const dataUri = generateAvatarDataUri(p.name || '?', color);
+                          const isActive = p.photoUrl === dataUri;
+                          return (
+                            <button key={color} type="button" onClick={() => handleSelectPresetAvatar(i, color)} style={{
+                              width: 30, height: 30, borderRadius: '50%', cursor: 'pointer',
+                              border: isActive ? '3px solid #fff' : '2px solid transparent',
+                              outline: isActive ? `2px solid ${color}` : 'none',
+                              padding: 0, background: `url(${dataUri}) center/cover`,
+                              transition: 'all 0.15s ease',
+                            }} />
+                          );
+                        })}
+                      </div>
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <button type="button" onClick={() => memberPhotoInputRefs.current[i]?.click()} style={{
+                          background: 'none', border: 'none', cursor: 'pointer', color: C.blue,
+                          padding: '6px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+                        }}>
+                          <Camera size={14} /> Upload photo
+                        </button>
+                        {p.photoUrl && (
+                          <button type="button" onClick={() => handleRemoveMemberPhoto(i)} style={{
+                            background: 'none', border: 'none', cursor: 'pointer', color: C.red,
+                            padding: '6px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600,
+                            display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+                          }}>
+                            <Trash2 size={14} /> Remove avatar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <input value={p.name} onChange={e => setParticipant(i, 'name', e.target.value)} placeholder={`Member ${i + 1} name`} style={{ ...inputStyle, flex: 1, minWidth: 110 }} />
+                  <select value={p.gender} onChange={e => setParticipant(i, 'gender', e.target.value)} style={{ ...inputStyle, width: 92, padding: '0.45rem 0.5rem', fontSize: '0.78rem', flexShrink: 0 }}>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {participants.length > 2 && (
+                    <button type="button" onClick={() => removeMember(i)} title="Remove member" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4, flexShrink: 0 }}><X size={14} /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {photoError && (
+              <div style={{ background: `${C.red}10`, border: `1px solid ${C.red}40`, borderRadius: '10px', padding: '0.55rem 0.85rem', marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={14} color={C.red} />
+                <span style={{ fontSize: '0.8rem', color: C.red, flex: 1 }}>{photoError}</span>
+                <button type="button" onClick={() => setPhotoError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 2, fontSize: '0.8rem', fontWeight: 700 }}>OK</button>
+              </div>
+            )}
+
+            <div style={{ borderTop: '1px solid var(--border)', margin: '0.9rem 0 0.75rem 0' }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', gap: 8, flexWrap: 'wrap' }}>
+              <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: C.blue, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Languages size={15} /> Dialogue Script
+              </h4>
+              {exchanges.some(ex => ex.german?.trim() && !ex.original) && (
+                <button type="button" onClick={translateAllExchanges} disabled={bulkTranslating} style={{
+                  background: `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', borderRadius: '8px',
+                  cursor: 'pointer', color: '#fff', padding: '5px 12px', fontSize: '0.75rem', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 5, opacity: bulkTranslating ? 0.6 : 1,
+                }}>
+                  <Languages size={13} /> {bulkTranslating ? 'Translating…' : 'Translate All'}
+                </button>
+              )}
+            </div>
+
+            {exchanges.length === 0 && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', padding: '0.85rem' }}>
+                Add dialogue lines below — each line has the German sentence and its translation underneath.
+              </p>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {exchanges.map((ex, i) => {
+                const speakerIdx = Math.min(Math.max(ex.speakerIndex || 0, 0), participants.length - 1);
+                const p = participants[speakerIdx] || { name: '?', gender: 'other' };
+                const pColor = PERSON_COLORS[p.gender] || C.purple;
+                const isTranslating = translatingIdx === i;
+                return (
+                  <div key={i} ref={i === exchanges.length - 1 ? lastExchangeRef : null} style={{ padding: '0.65rem 0.75rem', background: 'var(--bg-card)', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: `3px solid ${pColor}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <StoryMemberAvatar gender={p.gender} name={p.name} size={26} photoUrl={p.photoUrl} />
+                      <select value={speakerIdx} onChange={e => updateExchange(i, 'speakerIndex', parseInt(e.target.value, 10))} style={{
+                        ...inputStyle, width: 'auto', minWidth: 130, padding: '0.35rem 0.5rem', fontSize: '0.78rem',
+                        fontWeight: 700, color: pColor, borderColor: `${pColor}55`,
+                      }}>
+                        {participants.map((mp, mi) => (
+                          <option key={mi} value={mi}>{`Member ${mi + 1}${mp.name ? ` — ${mp.name}` : ''}`}</option>
+                        ))}
+                      </select>
+                      <span style={{ flex: 1 }} />
+                      <button type="button" onClick={() => moveExchange(i, -1)} disabled={i === 0} title="Move up" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--border)' : 'var(--text-muted)', padding: 2 }}><ChevronUp size={14} /></button>
+                      <button type="button" onClick={() => moveExchange(i, 1)} disabled={i === exchanges.length - 1} title="Move down" style={{ background: 'none', border: 'none', cursor: i === exchanges.length - 1 ? 'default' : 'pointer', color: i === exchanges.length - 1 ? 'var(--border)' : 'var(--text-muted)', padding: 2 }}><ChevronDown size={14} /></button>
+                      <button type="button" onClick={() => removeExchange(i)} title="Delete line" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 2 }}><X size={14} /></button>
+                    </div>
+                    <label style={{ fontSize: '0.65rem', color: pColor, fontWeight: 700 }}>German</label>
+                    <div style={{ position: 'relative' }}>
+                      <textarea
+                        value={ex.german}
+                        onChange={e => {
+                          updateExchange(i, 'german', e.target.value);
+                          if (autoTranslateTimers.current[i]) clearTimeout(autoTranslateTimers.current[i]);
+                          if (e.target.value.trim()) {
+                            autoTranslateTimers.current[i] = setTimeout(() => translateExchange(i), 900);
+                          }
+                        }}
+                        placeholder="Type in German…"
+                        rows={2}
+                        style={{ ...inputStyle, resize: 'vertical', fontSize: '0.85rem', padding: '0.45rem 4.6rem 0.45rem 0.65rem', borderColor: ex.german ? `${C.blue}66` : 'var(--border)' }}
+                      />
+                      <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4 }}>
+                        {ex.german && (
+                          <button type="button" onClick={() => speakWord(ex.german)} title="Listen (German)" style={{ background: `${C.blue}15`, border: 'none', borderRadius: '5px', cursor: 'pointer', color: C.blue, padding: 4, display: 'flex' }}>
+                            <Volume2 size={13} />
+                          </button>
+                        )}
+                        {ex.german?.trim() && (
+                          <button type="button" onClick={() => translateExchange(i)} disabled={isTranslating} title="Auto-translate to English" style={{
+                            background: `${C.green}20`, border: 'none', borderRadius: '5px', cursor: 'pointer',
+                            color: C.green, padding: '3px 7px', fontSize: '0.65rem', fontWeight: 700, opacity: isTranslating ? 0.5 : 1,
+                          }}>
+                            {isTranslating ? '…' : 'Translate'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <label style={{ fontSize: '0.65rem', color: C.green, fontWeight: 700, display: 'block', marginTop: 6 }}>Translation</label>
+                    <textarea
+                      value={ex.original}
+                      onChange={e => updateExchange(i, 'original', e.target.value)}
+                      placeholder="English translation shown under this line…"
+                      rows={2}
+                      style={{ ...inputStyle, resize: 'vertical', fontSize: '0.8rem', fontStyle: 'italic', padding: '0.4rem 0.65rem', borderColor: ex.original ? `${C.green}66` : 'var(--border)' }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+              {participants.map((p, i) => (
+                <button key={i} type="button" onClick={() => addExchange(i)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0.5rem 0.9rem', borderRadius: '8px', cursor: 'pointer',
+                  background: `${PERSON_COLORS[p.gender] || C.purple}15`, border: `1px solid ${PERSON_COLORS[p.gender] || C.purple}40`,
+                  color: PERSON_COLORS[p.gender] || C.purple, fontWeight: 600, fontSize: '0.78rem',
+                }}>
+                  <Plus size={13} /> Line for {p.name?.trim() || `Member ${i + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-              Full Dialogue / Story Transcript
+              Full Transcript (optional — free text instead of a structured script)
             </label>
-            <RichTextEditor value={dialogue} onChange={setDialogue} placeholder="Paste or type the full story dialogue here..." minHeight={200} />
+            <RichTextEditor value={dialogue} onChange={setDialogue} placeholder="Paste or type the full story transcript here..." minHeight={160} />
           </div>
 
           <div style={{ background: 'var(--bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
@@ -3922,7 +4376,68 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
                   </div>
                 )}
 
-                {s.dialogue && (
+                {hasStoryScript(s) && (
+                  <div style={{ marginBottom: '1rem', background: 'var(--bg)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Story Dialogue
+                      </span>
+                      {s.exchanges.length > 3 && (
+                        <button onClick={() => setExpandedId(isExpanded ? null : s.recordId)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {isExpanded ? 'Collapse' : `Show all ${s.exchanges.length} lines`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: '0.75rem', padding: '0.5rem 0.65rem', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                      {s.participants.map((p, i) => {
+                        const pColor = PERSON_COLORS[p.gender] || C.purple;
+                        return (
+                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <StoryMemberAvatar gender={p.gender} name={p.name} size={26} photoUrl={p.photoUrl} />
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: pColor }}>{p.name}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {(isExpanded ? s.exchanges : s.exchanges.slice(0, 3)).map((ex, i) => {
+                        const p = s.participants[ex.speakerIndex] || { name: '?', gender: 'other' };
+                        const pColor = PERSON_COLORS[p.gender] || C.purple;
+                        return (
+                          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <div style={{ paddingTop: 2 }}>
+                              <StoryMemberAvatar gender={p.gender} name={p.name} size={30} photoUrl={p.photoUrl} />
+                            </div>
+                            <div style={{
+                              flex: 1, minWidth: 0, padding: '0.55rem 0.85rem',
+                              borderRadius: '12px', borderTopLeftRadius: '3px',
+                              background: 'var(--bg-card)', border: '1px solid var(--border)',
+                              borderLeft: `3px solid ${pColor}`,
+                            }}>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: pColor, marginBottom: 3 }}>{p.name}</div>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.45 }}>{ex.german}</div>
+                              {ex.original && (
+                                <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>{ex.original}</div>
+                              )}
+                            </div>
+                            <button onClick={() => speakWord(ex.german)} title="Listen" style={{ background: `${C.blue}12`, border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', color: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 4 }}>
+                              <Volume2 size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {!isExpanded && s.exchanges.length > 3 && (
+                        <button onClick={() => setExpandedId(s.recordId)} style={{ alignSelf: 'center', background: 'none', border: 'none', color: C.blue, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <ChevronDown size={14} /> Show {s.exchanges.length - 3} more lines
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!hasStoryScript(s) && s.dialogue && (
                   <div style={{ marginBottom: '1rem', background: 'var(--bg)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -3986,6 +4501,7 @@ export default function LearningGerman() {
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
     addGermanStory, updateGermanStory,
+    uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto,
     processVocab, saveUnifiedVocab,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
@@ -4720,6 +5236,14 @@ export default function LearningGerman() {
 
   const handleDeleteDialogueParticipantPhoto = async (recordId, participantIndex) => {
     return await deleteGermanDialogueParticipantPhoto(recordId, participantIndex);
+  };
+
+  const handleUploadStoryParticipantPhoto = async (recordId, participantIndex, file) => {
+    return await uploadGermanStoryParticipantPhoto(recordId, participantIndex, file);
+  };
+
+  const handleDeleteStoryParticipantPhoto = async (recordId, participantIndex) => {
+    return await deleteGermanStoryParticipantPhoto(recordId, participantIndex);
   };
 
   const handleTranslateDialogue = async (text, target = 'de') => {
@@ -6077,6 +6601,9 @@ export default function LearningGerman() {
           stories={stories}
           chapters={workspaceChapters}
           workspaceLevel={workspaceLevel}
+          onTranslate={handleTranslateDialogue}
+          onUploadParticipantPhoto={handleUploadStoryParticipantPhoto}
+          onDeleteParticipantPhoto={handleDeleteStoryParticipantPhoto}
         />
       )}
 

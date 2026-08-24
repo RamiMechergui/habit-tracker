@@ -62,18 +62,20 @@ export async function toCircularAvatar(dataUrl, size = 96) {
 }
 
 /**
- * Replace each dialogue participant's photoBase64 with a circular PNG version.
- * Returns a shallow-copied record array — the input is never mutated.
+ * Replace each dialogue/story participant's photoBase64 with a circular PNG
+ * version. Returns a shallow-copied record array — the input is never mutated.
  *
  * @param {Array} data  Flat record array (schema from buildReportData).
  * @returns {Promise<Array>}
  */
 export async function withCircularAvatars(data) {
-  const out = Array.isArray(data) ? data.map(r => (r && r.type === "dialogue") ? { ...r } : r) : data;
+  const out = Array.isArray(data)
+    ? data.map(r => (r && (r.type === "dialogue" || r.type === "story")) ? { ...r } : r)
+    : data;
   if (!Array.isArray(out)) return out;
 
   await Promise.all(out.map(async r => {
-    if (!r || r.type !== "dialogue" || !Array.isArray(r.participants)) return;
+    if (!r || (r.type !== "dialogue" && r.type !== "story") || !Array.isArray(r.participants)) return;
     const participants = await Promise.all(r.participants.map(async p => {
       if (!p || !p.photoBase64) return p;
       const avatar = await toCircularAvatar(p.photoBase64);

@@ -908,15 +908,20 @@ router.put('/chapter/:recordId', async (req, res) => {
 });
 
 // ── POST /api/german/story → add a story (youtubeUrl, dialogue, newWords) ───
+// Structured multi-member dialogues are stored as `participants`
+// ([{ name, gender, photoUrl }]) and `exchanges` ([{ speakerIndex, german, original }]).
 router.post('/story', async (req, res) => {
   try {
-    const { title, youtubeUrl, dialogue, newWords, level, chapterId, chapterTitle, sortOrder } = req.body;
+    const { title, youtubeUrl, dialogue, participants, exchanges, newWords, boxes, level, chapterId, chapterTitle, sortOrder } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
     const record = await addStory(req.user.userId, {
       title: title.trim(),
       youtubeUrl,
       dialogue,
+      participants: Array.isArray(participants) ? participants : [],
+      exchanges: Array.isArray(exchanges) ? exchanges : [],
       newWords,
+      boxes,
       level: level || 'A1.1',
       chapterId,
       chapterTitle,
@@ -942,6 +947,78 @@ router.put('/story/:recordId', async (req, res) => {
   }
 });
 
+// ── POST /api/german/story/:recordId/photo/:participantIndex ────────────────
+// Uploads (or replaces) a story participant photo in MinIO/S3.
+// If the participant already has a MinIO-stored photo, the old object is
+// deleted before uploading the new one. Data-URI presets are not stored.
+router.post('/story/:recordId/photo/:participantIndex', (req, res, next) => {
+  upload.single('photo')(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message || 'Upload error' });
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { recordId, participantIndex } = req.params;
+    const { buffer, mimetype, originalname } = req.file;
+    const ext = path.extname(originalname) || '.jpg';
+    const pIdx = parseInt(participantIndex, 10);
+
+    // Fetch existing record to check for old photo
+    const records = await getAllGermanRecords(userId);
+    const record = records.find(r => r.recordId === recordId && r.type === 'story');
+    if (!record) return res.status(404).json({ message: 'Story not found' });
+    const participants = [...(record.participants || [])];
+    if (!participants[pIdx]) return res.status(400).json({ message: 'Invalid participant index' });
+
+    // Delete old MinIO object if it exists (skip data-URI presets)
+    const oldKey = storage.getKeyFromUrl(participants[pIdx].photoUrl || '');
+    if (oldKey !== null && oldKey !== '') {
+      await storage.deleteImage(oldKey);
+    }
+
+    const objectKey = `german/story/${userId}/${recordId.replace(/[^a-zA-Z0-9_-]/g, '_')}/p${pIdx}${ext}`;
+    const result = await storage.uploadImage(objectKey, buffer, mimetype);
+
+    participants[pIdx] = { ...participants[pIdx], photoUrl: result.url };
+    const updated = await updateStory(userId, recordId, { participants });
+    if (!updated) return res.status(404).json({ message: 'Failed to update story' });
+    res.json({ photoUrl: result.url, record: updated });
+  } catch (err) {
+    console.error('[German] POST story photo error:', err);
+    res.status(500).json({ message: 'Failed to upload participant photo' });
+  }
+});
+
+// ── DELETE /api/german/story/:recordId/photo/:participantIndex ──────────────
+// Removes a story participant photo from MinIO/S3.
+router.delete('/story/:recordId/photo/:participantIndex', async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { recordId, participantIndex } = req.params;
+    const pIdx = parseInt(participantIndex, 10);
+    const records = await getAllGermanRecords(userId);
+    const record = records.find(r => r.recordId === recordId && r.type === 'story');
+    if (!record) return res.status(404).json({ message: 'Story not found' });
+    const participants = [...(record.participants || [])];
+    if (!participants[pIdx]) return res.status(400).json({ message: 'Invalid participant index' });
+    if (participants[pIdx].photoUrl) {
+      const objectKey = storage.getKeyFromUrl(participants[pIdx].photoUrl);
+      if (objectKey !== null && objectKey !== '') {
+        await storage.deleteImage(objectKey);
+      }
+    }
+    participants[pIdx] = { ...participants[pIdx], photoUrl: '' };
+    const updated = await updateStory(userId, recordId, { participants });
+    if (!updated) return res.status(404).json({ message: 'Failed to update story' });
+    res.json({ message: 'Photo removed', record: updated });
+  } catch (err) {
+    console.error('[German] DELETE story photo error:', err);
+    res.status(500).json({ message: 'Failed to remove participant photo' });
+  }
+});
+
 // ── DELETE /api/german/:recordId ──────────────────────────────────────────────
 // Deletes a record and its associated image from MinIO/S3.
 router.delete('/:recordId', async (req, res) => {
@@ -956,8 +1033,8 @@ router.delete('/:recordId', async (req, res) => {
       if (recordKey !== null && recordKey !== '') {
         await storage.deleteImage(recordKey);
       }
-      // Clean up dialogue participant photos
-      if (record.type === 'dialogue' && record.participants) {
+      // Clean up dialogue & story participant photos
+      if ((record.type === 'dialogue' || record.type === 'story') && Array.isArray(record.participants)) {
         for (const p of record.participants) {
           const pKey = storage.getKeyFromUrl(p.photoUrl);
           if (pKey !== null && pKey !== '') {

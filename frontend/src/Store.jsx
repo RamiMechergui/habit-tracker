@@ -2453,6 +2453,33 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const uploadGermanStoryParticipantPhoto = useCallback(async (recordId, participantIndex, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await fetch(`${API_URL}/api/german/story/${encodeURIComponent(recordId)}/photo/${participantIndex}`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to upload participant photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data.record } : r));
+    logHistory('german_story_photo', `Added photo to story participant`);
+    return data;
+  }, [API_URL]);
+
+  const deleteGermanStoryParticipantPhoto = useCallback(async (recordId, participantIndex) => {
+    const res = await fetch(`${API_URL}/api/german/story/${encodeURIComponent(recordId)}/photo/${participantIndex}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete participant photo');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data.record } : r));
+    logHistory('german_story_photo_delete', `Removed photo from story participant`);
+    return data;
+  }, [API_URL]);
+
   const deleteGermanVocabPhoto = useCallback(async (recordId) => {
     const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}/photo`, {
       method: 'DELETE',
@@ -3280,7 +3307,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
       addGermanStory, updateGermanStory,

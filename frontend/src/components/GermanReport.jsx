@@ -318,6 +318,26 @@ function mistakeTable(rows) {
   ];
   return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
+const STORY_GENDER_COLORS = { male: "#1f4e79", female: "#b0307a", other: "#6d3fa0" };
+
+function hasStoryScriptData(s) {
+  return Array.isArray(s?.participants) && s.participants.length > 0
+    && Array.isArray(s?.exchanges) && s.exchanges.length > 0;
+}
+
+function storyAvatarNode(p) {
+  const color = STORY_GENDER_COLORS[p?.gender] || STORY_GENDER_COLORS.other;
+  const img = PDF_SAFE_DATA_URL.test(p?.photoBase64 || "") ? p.photoBase64 : null;
+  if (img) {
+    return { image: img, fit: [20, 20], alignment: "center" };
+  }
+  return {
+    table: { widths: [20], body: [[T((p?.name || "?").charAt(0).toUpperCase(), { bold: true, fontSize: 9, color: C.white, alignment: "center" })]] },
+    layout: { hLineColor: () => color, vLineColor: () => color, hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 0, paddingTop: () => 4, paddingBottom: () => 4, fillColor: () => color },
+    alignment: "center",
+  };
+}
+
 function storyBlocks(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
   return rows.map(s => {
@@ -334,7 +354,35 @@ function storyBlocks(rows) {
         margin: [0, 0, 0, 4],
       });
     }
-    if (s.dialogue) {
+
+    if (hasStoryScriptData(s)) {
+      const parts = s.participants;
+      stack.push({
+        text: [
+          { text: "Members: ", bold: true, fontSize: 8, color: C.muted },
+          ...parts.flatMap((p, i) => ([
+            ...(i ? [{ text: "   ·   ", fontSize: 8, color: C.muted }] : []),
+            { text: p.name || "?", bold: true, fontSize: 8, color: STORY_GENDER_COLORS[p.gender] || STORY_GENDER_COLORS.other },
+          ])),
+        ],
+        margin: [0, 0, 0, 4],
+      });
+
+      const body = (s.exchanges || []).map(x => {
+        const p = parts[x.speakerIndex] || { name: "?" };
+        const pColor = STORY_GENDER_COLORS[p.gender] || STORY_GENDER_COLORS.other;
+        const bubble = [
+          { text: p.name || "?", bold: true, fontSize: 7.5, color: pColor, margin: [0, 0, 0, 2] },
+        ];
+        if (x.german) bubble.push(T(x.german, { fontSize: 9, bold: true, color: C.ink, lineHeight: 1.25 }));
+        if (x.original) bubble.push(T(x.original, { fontSize: 8, italics: true, color: C.muted, margin: [0, 2, 0, 0], lineHeight: 1.2 }));
+        return [
+          storyAvatarNode(p),
+          cell(bubble, { margin: [7, 3, 0, 5] }),
+        ];
+      });
+      stack.push({ table: { widths: ["auto", "*"], body }, layout: "noBorders", margin: [0, 2, 0, 6] });
+    } else if (s.dialogue) {
       const parsedDialogue = htmlToPdfContent(s.dialogue);
       const dialogueStack = parsedDialogue.length ? parsedDialogue : [{ text: stripHtml(s.dialogue) || '', fontSize: 8.5 }];
       stack.push({
@@ -740,7 +788,7 @@ async function enrichWithPhotos(data) {
     return r;
   }));
   return Promise.all(withAlphabet.map(async r => {
-    if (r.type === "dialogue" && Array.isArray(r.participants) && r.participants.some(p => p && p.photoUrl)) {
+    if ((r.type === "dialogue" || r.type === "story") && Array.isArray(r.participants) && r.participants.some(p => p && p.photoUrl)) {
       const participants = await Promise.all(r.participants.map(async p => {
         if (!p || !p.photoUrl) return p;
         const photoBase64 = await resolveImageUrl(p.photoUrl);
@@ -822,6 +870,53 @@ function Boxes({ boxes }) {
     </div>
   );
 }
+const STORY_R_GENDER_COLORS = { male: "#1f4e79", female: "#b0307a", other: "#6d3fa0" };
+function hasStoryScriptR(s) {
+  return Array.isArray(s?.participants) && s.participants.length > 0
+    && Array.isArray(s?.exchanges) && s.exchanges.length > 0;
+}
+function StoryBlock({ s }) {
+  const parts = s.participants || [];
+  return (
+    <div className="gr-dlg">
+      <div className="d-tit">{s.title}</div>
+      {s.youtubeUrl && (
+        <div style={{ padding: "6px 11px 0" }}>
+          <a href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: ".75rem", color: "#1f4e79", wordBreak: "break-all" }}>{s.youtubeUrl}</a>
+        </div>
+      )}
+      {hasStoryScriptR(s) ? (
+        <>
+          {parts.length > 0 && (
+            <div className="gr-mem">{parts.map((p, i) => {
+              const pc = STORY_R_GENDER_COLORS[p.gender] || STORY_R_GENDER_COLORS.other;
+              return (
+                <div className="gr-mem-it" key={i}>
+                  <div className="gr-av" style={{ background: pc }}>{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
+                  <span className="gr-mem-n" style={{ color: pc }}>{p.name || "?"}</span>
+                </div>
+              );
+            })}</div>
+          )}
+          <div className="chat">
+            {(s.exchanges || []).map((x, i) => {
+              const p = parts[x.speakerIndex] || { name: "?" };
+              const pc = STORY_R_GENDER_COLORS[p.gender] || STORY_R_GENDER_COLORS.other;
+              return (
+                <div className="gr-msg" key={i}>
+                  <div className="gr-av" style={{ background: pc }}>{p.photoUrl ? <img src={germanImageUrl(p.photoUrl)} alt={p.name || "?"} /> : (p.name || "?").charAt(0).toUpperCase() || "?"}</div>
+                  <div><span className="who" style={{ color: pc }}>{p.name}</span><span className="bubble">{x.german && <span>{x.german}</span>}{x.original && <span className="orig">{x.original}</span>}</span></div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        s.dialogue ? <NoteRich html={s.dialogue} /> : null
+      )}
+    </div>
+  );
+}
 function Chapter({ ch }) {
   const has = k => (ch[k] || []).length;
   const firstDate = has("note") && ch.note[0] && ch.note[0].date ? ch.note[0].date : "";
@@ -883,6 +978,11 @@ function Chapter({ ch }) {
               <tbody>{ch.mistake.map((m, i) => <tr key={i}><td style={{ color: "var(--red)" }}>{m.incorrect}</td><td style={{ color: "var(--teal)" }}><b>{m.correct}</b></td><td style={{ color: "var(--muted)" }}>{m.why}</td></tr>)}</tbody></table></div>
             </div>)}
         </div>
+        {has("story") && (
+          <div className="full" style={{ marginTop: 12 }}><div className="gr-blk-title">Stories</div>
+            {ch.story.map(s => <StoryBlock s={s} key={s.recordId} />)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -890,7 +990,7 @@ function Chapter({ ch }) {
 function ChaptersView({ data }) {
   const chapters = byType(data)("chapter").slice().sort((a, b) => lvlIdxR(a.level) - lvlIdxR(b.level) || (a.sortOrder || 0) - (b.sortOrder || 0));
   const buckets = {};
-  ["note", "vocab", "grammar", "verb", "memo", "dialogue", "expression", "idiom", "mistake"].forEach(t => {
+  ["note", "vocab", "grammar", "verb", "memo", "dialogue", "story", "expression", "idiom", "mistake"].forEach(t => {
     buckets[t] = {}; byType(data)(t).forEach(r => { const k = r.chapterId; (buckets[t][k] = buckets[t][k] || []).push(r); });
   });
   const withRel = chapters.map(ch => { const c = { ...ch }; Object.keys(buckets).forEach(t => { c[t] = (buckets[t][ch.recordId] || []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); }); return c; });
@@ -906,7 +1006,8 @@ function Standalone({ data }) {
   const notes = unchaptered("note");
   const memos = unchaptered("memo");
   const dialogues = unchaptered("dialogue");
-  if (!notes.length && !memos.length && !dialogues.length) return null;
+  const stories = unchaptered("story");
+  if (!notes.length && !memos.length && !dialogues.length && !stories.length) return null;
   return (
     <>
       {notes.length > 0 && (
@@ -941,6 +1042,14 @@ function Standalone({ data }) {
                       <div><span className="who">{p.name}</span><span className="bubble">{x.german && <span>{x.german}</span>}{x.original && <span className="orig">{x.original}</span>}</span></div></div>); })}
                 </div><Boxes boxes={d.boxes} /></div>);
             })}
+          </div>
+        </section>
+      )}
+      {stories.length > 0 && (
+        <section className="gr-section" id="stories">
+          <div className="gr-sec-head"><div className="gr-tag">S</div><h2>Stories <small>{stories.length} stories</small></h2></div>
+          <div className="gr-card">
+            {stories.map(s => <StoryBlock s={s} key={s.recordId} />)}
           </div>
         </section>
       )}
@@ -1058,6 +1167,7 @@ export default function GermanReport({
             <a href="#daily-notes">Daily Notes</a>
             <a href="#memorization">Memorization</a>
             <a href="#dialogues">Dialogues</a>
+            <a href="#stories">Stories</a>
             <a href="#grammar-index">Grammar</a>
             <a href="#verb-index">Verbs</a>
             <a href="#vocab-index">Vocabulary</a>

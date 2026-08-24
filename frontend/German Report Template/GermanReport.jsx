@@ -110,6 +110,22 @@ const BLOCK_TAGS = { p: 1, div: 1, h1: 1, h2: 1, h3: 1, h4: 1, h5: 1, h6: 1, blo
 function cleanTextR(str) {
   return String(str || '').replace(/\u00a0/g, ' ').replace(/[ \t\r]+/g, ' ').replace(/\n+/g, ' ').trim();
 }
+function stripHtml(html) {
+  return String(html || '')
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 function hslToRgb(h, s, l) {
   h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
   const f = n => {
@@ -462,7 +478,7 @@ function vocabTable(rows) {
 }
 function grammarBlocks(rows) {
   return rows.map(g => {
-    const expContent = htmlToPdfContent(g.explanation);
+    const expContent = htmlToPdfContentR(g.explanation);
     const explanationNode = expContent.length
       ? expContent
       : [{ text: stripHtml(g.explanation) || "", fontSize: 8.5, color: C.muted, margin: [0, 0, 0, 2] }];
@@ -519,6 +535,82 @@ function dialogueBlocks(rows) {
     };
   });
 }
+const STORY_GENDER_COLORS = { male: "#1f4e79", female: "#b0307a", other: "#6d3fa0" };
+function hasStoryScriptT(s) {
+  return Array.isArray(s && s.participants) && s.participants.length > 0
+    && Array.isArray(s.exchanges) && s.exchanges.length > 0;
+}
+function storyAvatarNode(p) {
+  const color = STORY_GENDER_COLORS[p && p.gender] || STORY_GENDER_COLORS.other;
+  return {
+    table: { widths: [20], body: [[T(((p && p.name) || "?").charAt(0).toUpperCase(), { bold: true, fontSize: 9, color: C.white, alignment: "center" })]] },
+    layout: { hLineColor: () => color, vLineColor: () => color, hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 0, paddingTop: () => 4, paddingBottom: () => 4, fillColor: () => color },
+    alignment: "center",
+  };
+}
+function storyBlocks(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  return rows.map(s => {
+    const stack = [];
+    if (s.title) {
+      stack.push({ text: s.title, bold: true, fontSize: 10.5, color: C.ink, margin: [0, 4, 0, 3] });
+    }
+    if (s.youtubeUrl) {
+      stack.push({
+        text: [
+          { text: "YouTube Resource: ", bold: true, fontSize: 8, color: C.muted },
+          { text: s.youtubeUrl, fontSize: 8, color: C.blue, link: s.youtubeUrl, decoration: "underline" },
+        ],
+        margin: [0, 0, 0, 4],
+      });
+    }
+    if (hasStoryScriptT(s)) {
+      const parts = s.participants;
+      stack.push({
+        text: [
+          { text: "Members: ", bold: true, fontSize: 8, color: C.muted },
+          ...parts.flatMap((p, i) => ([
+            ...(i ? [{ text: "   ·   ", fontSize: 8, color: C.muted }] : []),
+            { text: p.name || "?", bold: true, fontSize: 8, color: STORY_GENDER_COLORS[p.gender] || STORY_GENDER_COLORS.other },
+          ])),
+        ],
+        margin: [0, 0, 0, 4],
+      });
+      const body = (s.exchanges || []).map(x => {
+        const p = parts[x.speakerIndex] || { name: "?" };
+        const pColor = STORY_GENDER_COLORS[p.gender] || STORY_GENDER_COLORS.other;
+        const bubble = [
+          { text: p.name || "?", bold: true, fontSize: 7.5, color: pColor, margin: [0, 0, 0, 2] },
+        ];
+        if (x.german) bubble.push(T(x.german, { fontSize: 9, bold: true, color: C.ink, lineHeight: 1.25 }));
+        if (x.original) bubble.push(T(x.original, { fontSize: 8, italics: true, color: C.muted, margin: [0, 2, 0, 0], lineHeight: 1.2 }));
+        return [
+          storyAvatarNode(p),
+          cell(bubble, { margin: [7, 3, 0, 5] }),
+        ];
+      });
+      stack.push({ table: { widths: ["auto", "*"], body }, layout: "noBorders", margin: [0, 2, 0, 6] });
+    } else if (s.dialogue) {
+      stack.push({ text: stripHtml(s.dialogue), fontSize: 8.5, margin: [0, 2, 0, 6] });
+    }
+    if (Array.isArray(s.newWords) && s.newWords.length > 0) {
+      const body = [
+        headRow(["German Word", "Article", "Translation", "Notes / Context"]),
+        ...s.newWords.map(w => [
+          cell(w.word || "", { bold: true }),
+          cell(w.article || "—"),
+          cell(w.translation || "", { color: C.muted }),
+          cell(w.notes || w.example || "—", { fontSize: 8 }),
+        ]),
+      ];
+      stack.push(
+        { text: "New Words Learned from Story", bold: true, fontSize: 8, color: C.teal, margin: [0, 4, 0, 3] },
+        { table: { ...TABLE, widths: ["*", "auto", "*", "*"], body }, layout: tableLayout(), margin: [0, 0, 0, 6] }
+      );
+    }
+    return { stack, margin: [0, 0, 0, 10] };
+  });
+}
 const expressionList = rows => rows.map(e => ({
   text: [{ text: e.phrase || "", bold: true, fontSize: 8.5 }, { text: "   —   " + (e.translation || ""), fontSize: 8.5, color: C.muted }],
   margin: [0, 0, 0, 3],
@@ -548,7 +640,7 @@ function mistakeTable(rows) {
 function chapterBlock(ch, buckets) {
   const key = ch.recordId;
   const rel = {};
-  ["note","vocab","grammar","verb","memo","dialogue","expression","idiom","mistake"].forEach(t => {
+  ["note","vocab","grammar","verb","memo","dialogue","story","expression","idiom","mistake"].forEach(t => {
     rel[t] = (buckets[t] || []).filter(r => r.chapterId === key).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   });
   const has = t => rel[t].length;
@@ -568,6 +660,7 @@ function chapterBlock(ch, buckets) {
   if (has("memo")) stack.push(sectionLabel("Memorization"), ...memoBlocks(rel.memo));
   if (has("verb")) stack.push(sectionLabel("Verbs"), ...verbBlocks(rel.verb));
   if (has("dialogue")) stack.push(sectionLabel("Dialogues"), ...dialogueBlocks(rel.dialogue));
+  if (has("story")) stack.push(sectionLabel("Stories"), ...storyBlocks(rel.story));
   if (has("expression")) stack.push(sectionLabel("Expressions"), ...expressionList(rel.expression));
   if (has("idiom")) stack.push(sectionLabel("Idioms"), ...idiomBlocks(rel.idiom));
   if (has("mistake")) stack.push(sectionLabel("Common Mistakes"), mistakeTable(rel.mistake));
@@ -640,7 +733,7 @@ export function buildPdfDefinition(data, opts = {}) {
   content.push(alphabetBlock(byType("alphabet")));
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
-    memo: byType("memo"), dialogue: byType("dialogue"), expression: byType("expression"),
+    memo: byType("memo"), dialogue: byType("dialogue"), story: byType("story"), expression: byType("expression"),
     idiom: byType("idiom"), mistake: byType("mistake"),
   })));
   content.push({ text: "Grammar Index", style: "h2", pageBreak: "before" });
@@ -789,6 +882,36 @@ function NoteRich({ html }) {
   if (!h) return null;
   return <span className="gr-richtext" dangerouslySetInnerHTML={{ __html: h }} />;
 }
+const STORY_T_GENDER_COLORS = { male: "#1f4e79", female: "#b0307a", other: "#6d3fa0" };
+function StoryBlockT({ s }) {
+  const parts = s.participants || [];
+  return (
+    <div className="gr-dlg">
+      <div className="d-tit">{s.title}</div>
+      {s.youtubeUrl && (
+        <div style={{ padding: "6px 11px 0" }}>
+          <a href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: ".75rem", color: "#1f4e79", wordBreak: "break-all" }}>{s.youtubeUrl}</a>
+        </div>
+      )}
+      {hasStoryScriptT(s) ? (
+        <div className="chat">
+          {(s.exchanges || []).map((x, i) => {
+            const p = parts[x.speakerIndex] || { name: "?" };
+            const pc = STORY_T_GENDER_COLORS[p.gender] || STORY_T_GENDER_COLORS.other;
+            return (
+              <div className="gr-msg" key={i}>
+                <div className="gr-av" style={{ background: pc }}>{(p.name || "?").charAt(0).toUpperCase() || "?"}</div>
+                <div><span className="who" style={{ color: pc }}>{p.name}</span><span className="bubble">{x.german && <span>{x.german}</span>}{x.original && <span className="orig">{x.original}</span>}</span></div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        s.dialogue ? <NoteRich html={s.dialogue} /> : null
+      )}
+    </div>
+  );
+}
 function Chapter({ ch }) {
   const has = k => (ch[k] || []).length;
   const firstDate = has("note") && ch.note[0] && ch.note[0].date ? ch.note[0].date : "";
@@ -846,6 +969,11 @@ function Chapter({ ch }) {
               <tbody>{ch.mistake.map((m, i) => <tr key={i}><td style={{ color: "var(--red)" }}>{m.incorrect}</td><td style={{ color: "var(--teal)" }}><b>{m.correct}</b></td><td style={{ color: "var(--muted)" }}>{m.why}</td></tr>)}</tbody></table></div>
             </div>)}
         </div>
+        {has("story") && (
+          <div className="full" style={{ marginTop: 12 }}><div className="gr-blk-title">Stories</div>
+            {ch.story.map(s => <StoryBlockT s={s} key={s.recordId} />)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -853,7 +981,7 @@ function Chapter({ ch }) {
 function ChaptersView({ data }) {
   const chapters = byType(data)("chapter").slice().sort((a, b) => lvlIdxR(a.level) - lvlIdxR(b.level) || (a.sortOrder || 0) - (b.sortOrder || 0));
   const buckets = {};
-  ["note", "vocab", "grammar", "verb", "memo", "dialogue", "expression", "idiom", "mistake"].forEach(t => {
+  ["note", "vocab", "grammar", "verb", "memo", "dialogue", "story", "expression", "idiom", "mistake"].forEach(t => {
     buckets[t] = {}; byType(data)(t).forEach(r => { const k = r.chapterId; (buckets[t][k] = buckets[t][k] || []).push(r); });
   });
   const withRel = chapters.map(ch => { const c = { ...ch }; Object.keys(buckets).forEach(t => { c[t] = (buckets[t][ch.recordId] || []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); }); return c; });
