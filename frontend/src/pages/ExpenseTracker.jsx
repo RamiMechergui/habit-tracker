@@ -452,8 +452,9 @@ export default function ExpenseTracker() {
     const existing = logs[targetDate];
     const reconMeta = {
       expected: reconExpected,
-      actual: parseFloat(reconActual),
+      actual: reconActualVal,
       diff: reconAbs,
+      mode: reconMissing ? 'missing' : (reconCorrection ? 'correction' : 'extra'),
       editHistory,
     };
 
@@ -485,7 +486,7 @@ export default function ExpenseTracker() {
     setReconNote('');
     setReconSubmitted(false);
     setReconPhase('idle');
-    setReconSuccess(reconMissing ? 'missing' : 'extra');
+    setReconSuccess(reconMissing ? 'missing' : (reconCorrection ? 'correction' : 'extra'));
   };
 
   const handleDeleteRecon = async (entry) => {
@@ -524,9 +525,17 @@ export default function ExpenseTracker() {
   };
 
   const reconExpected = aggregatedData.remaining;
-  const reconDiff = reconExpected - (parseFloat(reconActual) || 0);
+  const reconActualVal = parseFloat(reconActual);
+  // 0 TND is a valid amount — the user may genuinely hold no money.
+  const reconValid = reconActual.trim() !== '' && !isNaN(reconActualVal) && reconActualVal >= 0;
+  const reconDiff = reconExpected - (reconActualVal || 0);
   const reconMissing = reconDiff > 0;
   const reconAbs = Math.abs(reconDiff);
+  // When the ledger says the balance is negative, holding any real amount (even 0)
+  // is "more than expected" — but this is not extra income. The books themselves
+  // are inconsistent (spending exceeds recorded funds), so reconciling records a
+  // Balance Correction that regulates the ledger until Remaining equals actual cash.
+  const reconCorrection = !reconMissing && reconExpected < 0;
 
   return (
     <div className="page-container">
@@ -887,6 +896,17 @@ export default function ExpenseTracker() {
             </div>
             <div style={{ height: 1, background: 'linear-gradient(to right, var(--border), transparent)', marginBottom: 20 }} />
 
+            {reconExpected < 0 && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 10, marginBottom: 20,
+                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
+                fontSize: '0.82rem', color: '#d97706', lineHeight: 1.55,
+              }}>
+                ⚠️ Your ledger shows a negative balance ({reconExpected.toFixed(3)} TND) — recorded spending exceeds recorded funds, which is impossible in reality.
+                Enter the cash you actually hold below (0 is valid) and apply a <b>Balance Correction</b> to realign all your data so Remaining matches your true cash.
+              </div>
+            )}
+
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
               Cash You Currently Hold
             </p>
@@ -931,13 +951,13 @@ export default function ExpenseTracker() {
             />
 
             <button
-              onClick={() => { if (reconActual && parseFloat(reconActual) > 0) setReconSubmitted(true); }}
-              disabled={!reconActual || parseFloat(reconActual) <= 0}
+              onClick={() => { if (reconValid) setReconSubmitted(true); }}
+              disabled={!reconValid}
               style={{
                 width: '100%', padding: '15px', borderRadius: 12, border: 'none',
-                background: !reconActual || parseFloat(reconActual) <= 0 ? 'var(--border)' : (reconEditTarget ? 'linear-gradient(135deg, #d97706, #f59e0b)' : 'linear-gradient(135deg, #4f46e5, #6366f1)'),
-                color: !reconActual || parseFloat(reconActual) <= 0 ? 'var(--text-muted)' : '#fff',
-                fontSize: '1rem', fontWeight: 600, cursor: !reconActual || parseFloat(reconActual) <= 0 ? 'default' : 'pointer',
+                background: !reconValid ? 'var(--border)' : (reconEditTarget ? 'linear-gradient(135deg, #d97706, #f59e0b)' : 'linear-gradient(135deg, #4f46e5, #6366f1)'),
+                color: !reconValid ? 'var(--text-muted)' : '#fff',
+                fontSize: '1rem', fontWeight: 600, cursor: !reconValid ? 'default' : 'pointer',
                 transition: 'all 0.2s',
               }}
             >
@@ -948,23 +968,25 @@ export default function ExpenseTracker() {
           {/* Success Banner */}
           {reconSuccess && (
             <div className="glass-card p-5 mb-4" style={{
-              border: '1.5px solid rgba(34,197,94,0.3)',
-              background: 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02))',
+              border: `1.5px solid ${reconSuccess === 'correction' ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.3)'}`,
+              background: reconSuccess === 'correction'
+                ? 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02))'
+                : 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02))',
               animation: 'recSlideUp 0.4s ease',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: '50%',
-                  background: 'rgba(34,197,94,0.12)', flexShrink: 0,
+                  background: reconSuccess === 'correction' ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '1.3rem', animation: 'recPop 0.4s ease',
-                }}>✓</div>
+                }}>{reconSuccess === 'correction' ? '⚖️' : '✓'}</div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: '#16a34a' }}>
-                    Reconciled as {reconSuccess === 'missing' ? 'Missing Cash' : 'Extra Income'}
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: reconSuccess === 'correction' ? '#d97706' : '#16a34a' }}>
+                    Reconciled as {reconSuccess === 'missing' ? 'Missing Cash' : reconSuccess === 'correction' ? 'Balance Correction' : 'Extra Income'}
                   </p>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {reconAbs.toFixed(3)} TND added to today's {reconSuccess === 'missing' ? 'expenses' : 'income'}.
+                    {reconAbs.toFixed(3)} TND added to today's {reconSuccess === 'missing' ? 'expenses' : 'income'} — Remaining now matches your actual cash.
                   </p>
                 </div>
                 <button
@@ -1003,17 +1025,17 @@ export default function ExpenseTracker() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
                     <div style={{
                       width: 48, height: 48, borderRadius: 14,
-                      background: reconMissing ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                      background: reconMissing ? 'rgba(239,68,68,0.1)' : reconCorrection ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.1)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '1.4rem', flexShrink: 0,
                     }}>
-                      {reconMissing ? '⚠️' : '🎉'}
+                      {reconMissing ? '⚠️' : reconCorrection ? '⚖️' : '🎉'}
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: '1.05rem', color: reconMissing ? '#dc2626' : '#16a34a' }}>
-                        {reconMissing ? 'Missing Cash' : 'Extra Cash Found'}
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: '1.05rem', color: reconMissing ? '#dc2626' : reconCorrection ? '#d97706' : '#16a34a' }}>
+                        {reconMissing ? 'Missing Cash' : reconCorrection ? 'Balance Correction' : 'Extra Cash Found'}
                       </p>
-                      <p style={{ margin: '2px 0 0 0', fontSize: '1.3rem', fontWeight: 700, color: reconMissing ? '#dc2626' : '#16a34a' }}>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '1.3rem', fontWeight: 700, color: reconMissing ? '#dc2626' : reconCorrection ? '#d97706' : '#16a34a' }}>
                         {reconMissing ? '−' : '+'}{reconAbs.toFixed(3)} TND
                       </p>
                     </div>
@@ -1022,6 +1044,8 @@ export default function ExpenseTracker() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
                     {reconMissing
                       ? "You have less cash than expected. Some expenses may not have been logged."
+                      : reconCorrection
+                      ? `Your ledger says ${reconExpected.toFixed(3)} TND — a negative balance you can't physically hold. Applying this correction adds +${reconAbs.toFixed(3)} TND as balancing income so your Period Summary and Dashboard regulate to the ${(reconActualVal || 0).toFixed(3)} TND you actually hold.`
                       : "You have more cash than expected. You may have forgotten to record some income."}
                   </p>
 
@@ -1040,11 +1064,11 @@ export default function ExpenseTracker() {
                     onClick={handleRecordRecon}
                     style={{
                     width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-                    background: reconMissing ? 'linear-gradient(135deg, #dc2626, #ef4444)' : 'linear-gradient(135deg, #16a34a, #22c55e)',
+                    background: reconMissing ? 'linear-gradient(135deg, #dc2626, #ef4444)' : reconCorrection ? 'linear-gradient(135deg, #d97706, #f59e0b)' : 'linear-gradient(135deg, #16a34a, #22c55e)',
                     color: '#fff', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer',
                     marginBottom: 8, transition: 'opacity 0.2s',
                   }}>
-                    ✓ Record as {reconMissing ? 'Missing Cash' : 'Extra Income'}
+                    ✓ {reconMissing ? 'Record as Missing Cash' : reconCorrection ? `Apply Correction (+${reconAbs.toFixed(3)} TND)` : 'Record as Extra Income'}
                   </button>
 
                   <button
@@ -1111,18 +1135,18 @@ export default function ExpenseTracker() {
                       <>
                     <div style={{
                       width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                      background: entry.type === 'missing' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                      background: entry.type === 'missing' ? 'rgba(239,68,68,0.1)' : entry.meta?.mode === 'correction' ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.1)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '0.85rem',
                     }}>
-                      {entry.type === 'missing' ? '⚠️' : '🎉'}
+                      {entry.type === 'missing' ? '⚠️' : entry.meta?.mode === 'correction' ? '⚖️' : '🎉'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                          {entry.type === 'missing' ? 'Missing' : 'Extra'}
+                          {entry.type === 'missing' ? 'Missing' : entry.meta?.mode === 'correction' ? 'Correction' : 'Extra'}
                         </span>
-                        <span style={{ fontWeight: 700, color: entry.type === 'missing' ? '#dc2626' : '#16a34a', fontSize: '0.85rem' }}>
+                        <span style={{ fontWeight: 700, color: entry.type === 'missing' ? '#dc2626' : entry.meta?.mode === 'correction' ? '#d97706' : '#16a34a', fontSize: '0.85rem' }}>
                           {entry.amount.toFixed(3)} TND
                         </span>
                       </div>
