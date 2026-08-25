@@ -240,11 +240,11 @@ router.delete('/study/day', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle } = req.body;
+    const { word, translation, example, notes, category, plural, article, wordType, comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, wordType: wordType || 'noun', comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST vocab error:', err);

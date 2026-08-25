@@ -379,7 +379,7 @@ function GenderBadge({ article }) {
 }
 
 function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading, defaultLevel = 'A1.1' }) {
-  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', contrary: '' });
+  const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -406,6 +406,8 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         article: (wt === 'noun' && detected) ? detected.article : (editRecord.article || ''),
         level: editRecord.level || defaultLevel,
         wordType: wt,
+        comparative: editRecord.comparative || '',
+        superlative: editRecord.superlative || '',
         contrary: editRecord.contrary || '',
       });
       setBoxes(editRecord.boxes || []);
@@ -432,7 +434,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         setNewPhotoFile(null);
       }
     }
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', contrary: '' });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
     setCustomCat('');
     setNewPhotoFile(null);
     setDirty(false);
@@ -456,7 +458,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
       return;
     }
     setShowCancelConfirm(false);
-    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', contrary: '' });
+    setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
     setBoxes([]);
     setCustomCat('');
     setNewPhotoFile(null);
@@ -506,7 +508,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>German Word *</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{form.wordType === 'adjective' ? 'Base Form (Positiv) *' : 'German Word *'}</label>
             <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
               {form.wordType === 'noun' && (
                 <select value={form.article} onChange={e => set('article', e.target.value)} style={{ ...inputBase, width: 80, padding: '0.5rem 0.5rem', fontSize: '0.82rem', flexShrink: 0 }}>
@@ -530,10 +532,20 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
           </div>
           )}
           {form.wordType === 'adjective' && (
+          <>
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Contrary / Opposite <span style={{ color: C.red }}>*</span></label>
-            <input value={form.contrary} onChange={e => set('contrary', e.target.value)} placeholder="e.g. klein (opposite of groß)" style={{ ...inputBase, borderColor: !form.contrary.trim() ? `${C.red}60` : undefined }} />
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Comparative (Komparativ)</label>
+            <input value={form.comparative} onChange={e => set('comparative', e.target.value)} placeholder="e.g. größer" style={inputBase} />
           </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Superlative (Superlativ)</label>
+            <input value={form.superlative} onChange={e => set('superlative', e.target.value)} placeholder="e.g. am größten" style={inputBase} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Contrary / Opposite</label>
+            <input value={form.contrary} onChange={e => set('contrary', e.target.value)} placeholder="e.g. klein (opposite of groß)" style={inputBase} />
+          </div>
+          </>
           )}
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Example Sentence</label>
@@ -3628,7 +3640,7 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
   const [dialogue, setDialogue] = useState('');
   const [newWords, setNewWords] = useState([]);
   const [syncToVocab, setSyncToVocab] = useState(true);
-  const [wordForm, setWordForm] = useState({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
+  const [wordForm, setWordForm] = useState({ wordType: 'noun', word: '', article: 'der', comparative: '', superlative: '', contrary: '', translation: '', notes: '', photoFile: null, photoPreview: null });
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -3670,7 +3682,7 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
     setChapterId('');
     setDialogue('');
     setNewWords([]);
-    setWordForm({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
+    setWordForm({ wordType: 'noun', word: '', article: 'der', comparative: '', superlative: '', contrary: '', translation: '', notes: '', photoFile: null, photoPreview: null });
     setParticipants(defaultMembers());
     setExchanges([]);
     Object.values(autoTranslateTimers.current).forEach(t => clearTimeout(t));
@@ -3841,7 +3853,7 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
     if (!wordForm.word.trim()) return;
     const preview = wordForm.photoFile ? URL.createObjectURL(wordForm.photoFile) : null;
     setNewWords(prev => [...prev, { id: `w-${Date.now()}`, ...wordForm, photoPreview: preview }]);
-    setWordForm({ word: '', article: 'der', translation: '', notes: '', photoFile: null, photoPreview: null });
+    setWordForm({ wordType: wordForm.wordType, word: '', article: 'der', comparative: '', superlative: '', contrary: '', translation: '', notes: '', photoFile: null, photoPreview: null });
   };
 
   const handleRemoveWord = (id) => {
@@ -3912,8 +3924,13 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
       if (syncToVocab && newWords.length > 0 && onAddVocab) {
         for (const w of newWords) {
           try {
+            const isAdjective = w.wordType === 'adjective';
             const created = await onAddVocab({
-              word: w.article && w.article !== 'none' ? `${w.article} ${w.word}` : w.word,
+              word: !isAdjective && w.article && w.article !== 'none' ? `${w.article} ${w.word}` : w.word,
+              wordType: w.wordType || 'noun',
+              comparative: w.comparative || '',
+              superlative: w.superlative || '',
+              contrary: w.contrary || '',
               translation: w.translation,
               example: w.notes,
               notes: `Learned from story: ${title.trim()}`,
@@ -4226,24 +4243,72 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
             <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.88rem', fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 6 }}>
               <BookOpen size={16} /> New Words Learned from this Dialogue
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 100px 1fr 1fr auto auto', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'end' }}>
-              <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>German Word</label>
-                <input value={wordForm.word} onChange={e => setWordForm(f => ({ ...f, word: e.target.value }))} placeholder="e.g. Brötchen" style={inputStyle} />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              {[{ v: 'noun', l: 'Noun' }, { v: 'adjective', l: 'Adjective' }, { v: 'other', l: 'Adverb / Other' }].map(t => (
+                <button key={t.v} type="button" onClick={() => setWordForm(f => ({ ...f, wordType: t.v }))} style={{
+                  padding: '0.35rem 0.9rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                  border: wordForm.wordType === t.v ? `1px solid ${C.teal}` : '1px solid var(--border)',
+                  background: wordForm.wordType === t.v ? C.teal : 'var(--bg-card)',
+                  color: wordForm.wordType === t.v ? '#fff' : 'var(--text-muted)',
+                  boxShadow: wordForm.wordType === t.v ? `0 2px 8px ${C.teal}40` : 'none',
+                  transition: 'all 0.2s',
+                }}>
+                  {t.l}
+                </button>
+              ))}
+            </div>
+            {wordForm.wordType === 'adjective' && (
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: C.purple, fontWeight: 700, display: 'block', marginBottom: 2 }}>Base Form (Positiv)</label>
+                  <input value={wordForm.word} onChange={e => setWordForm(f => ({ ...f, word: e.target.value }))} placeholder="e.g. schnell" style={{ ...inputStyle, borderColor: `${C.purple}55` }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: C.purple, fontWeight: 700, display: 'block', marginBottom: 2 }}>Comparative (Komparativ)</label>
+                  <input value={wordForm.comparative} onChange={e => setWordForm(f => ({ ...f, comparative: e.target.value }))} placeholder="e.g. schneller" style={{ ...inputStyle, borderColor: `${C.purple}55` }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: C.purple, fontWeight: 700, display: 'block', marginBottom: 2 }}>Superlative (Superlativ)</label>
+                  <input value={wordForm.superlative} onChange={e => setWordForm(f => ({ ...f, superlative: e.target.value }))} placeholder="e.g. am schnellsten" style={{ ...inputStyle, borderColor: `${C.purple}55` }} />
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Article</label>
-                <select value={wordForm.article} onChange={e => setWordForm(f => ({ ...f, article: e.target.value }))} style={inputStyle}>
-                  <option value="der">der</option>
-                  <option value="die">die</option>
-                  <option value="das">das</option>
-                  <option value="none">none</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Translation</label>
-                <input value={wordForm.translation} onChange={e => setWordForm(f => ({ ...f, translation: e.target.value }))} placeholder="e.g. bread roll" style={inputStyle} />
-              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (wordForm.wordType === 'noun' ? '1fr 100px 1fr 1fr auto auto' : '1fr 1fr 1fr auto auto'), gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'end' }}>
+              {wordForm.wordType !== 'adjective' && (
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>{wordForm.wordType === 'noun' ? 'German Word' : 'Word / Expression'}</label>
+                  <input value={wordForm.word} onChange={e => setWordForm(f => ({ ...f, word: e.target.value }))} placeholder="e.g. Brötchen" style={inputStyle} />
+                </div>
+              )}
+              {wordForm.wordType === 'noun' && (
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Article</label>
+                  <select value={wordForm.article} onChange={e => setWordForm(f => ({ ...f, article: e.target.value }))} style={inputStyle}>
+                    <option value="der">der</option>
+                    <option value="die">die</option>
+                    <option value="das">das</option>
+                    <option value="none">none</option>
+                  </select>
+                </div>
+              )}
+              {wordForm.wordType === 'adjective' && (
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Translation / Meaning</label>
+                  <input value={wordForm.translation} onChange={e => setWordForm(f => ({ ...f, translation: e.target.value }))} placeholder="e.g. fast" style={inputStyle} />
+                </div>
+              )}
+              {wordForm.wordType === 'adjective' && (
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Contrary / Opposite</label>
+                  <input value={wordForm.contrary} onChange={e => setWordForm(f => ({ ...f, contrary: e.target.value }))} placeholder="e.g. langsam" style={inputStyle} />
+                </div>
+              )}
+              {wordForm.wordType !== 'adjective' && (
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Translation</label>
+                  <input value={wordForm.translation} onChange={e => setWordForm(f => ({ ...f, translation: e.target.value }))} placeholder="e.g. bread roll" style={inputStyle} />
+                </div>
+              )}
               <div>
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Notes / Context</label>
                 <input value={wordForm.notes} onChange={e => setWordForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Bakery phrase" style={inputStyle} />
@@ -4270,14 +4335,26 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
             {newWords.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: '0.5rem' }}>
                 {newWords.map((w, idx) => (
-                  <div key={w.id || idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.4rem 0.75rem', borderRadius: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                  <div key={w.id || idx} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '0.4rem 0.75rem', borderRadius: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
                     {w.photoPreview && (
                       <img src={w.photoPreview} alt={w.word} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', border: `1px solid ${C.teal}40`, flexShrink: 0 }} />
                     )}
-                    <span style={{ fontWeight: 700, color: C.teal }}>{w.article !== 'none' ? w.article : ''} {w.word}</span>
+                    <span style={{
+                      background: w.wordType === 'adjective' ? `${C.purple}18` : `${C.teal}15`, color: w.wordType === 'adjective' ? C.purple : C.teal,
+                      padding: '2px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700,
+                    }}>
+                      {w.wordType ? w.wordType.charAt(0).toUpperCase() + w.wordType.slice(1) : 'Noun'}
+                    </span>
+                    <span style={{ fontWeight: 700, color: C.teal }}>
+                      {w.article && w.article !== 'none' ? `${w.article} ` : ''}{w.word}
+                    </span>
+                    {w.wordType === 'adjective' ? (
+                      <span style={{ color: C.purple, fontWeight: 600 }}>{w.comparative || '—'} → {w.superlative || '—'}</span>
+                    ) : null}
                     <span style={{ color: 'var(--text-muted)' }}>— {w.translation}</span>
+                    {w.wordType === 'adjective' && w.contrary && <span style={{ color: C.purple, fontSize: '0.75rem' }}>⇔ {w.contrary}</span>}
                     {w.notes && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>({w.notes})</span>}
-                    {w.photoPreview && <span style={{ fontSize: '0.7rem', color: C.teal, display: 'flex', alignItems: 'center', gap: 3 }}><Camera size={11} /> Photo</span>}
+                    {(w.photoPreview || w.photoUrl) && <span style={{ fontSize: '0.7rem', color: C.teal, display: 'flex', alignItems: 'center', gap: 3 }}><Camera size={11} /> Photo</span>}
                     <button type="button" onClick={() => handleRemoveWord(w.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.red, cursor: 'pointer', display: 'flex' }}>
                       <X size={14} />
                     </button>
@@ -4463,11 +4540,22 @@ function StoriesForm({ onAdd, onUpdate, onDelete, onAddVocab, onUploadVocabPhoto
                     </h5>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
                       {s.newWords.map((w, idx) => (
-                        <div key={idx} style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'var(--bg)', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
-                          <div style={{ fontWeight: 700, color: C.teal }}>
+                        <div key={idx} style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'var(--bg)', border: `1px solid ${w.wordType === 'adjective' ? `${C.purple}40` : 'var(--border)'}`, fontSize: '0.82rem' }}>
+                          <div style={{ fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {w.article && w.article !== 'none' ? `${w.article} ` : ''}{w.word}
+                            {w.wordType === 'adjective' && (
+                              <span style={{ background: `${C.purple}18`, color: C.purple, padding: '1px 7px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 700 }}>Adjective</span>
+                            )}
                           </div>
+                          {w.wordType === 'adjective' && (w.comparative || w.superlative) && (
+                            <div style={{ color: C.purple, fontSize: '0.78rem', fontWeight: 600, marginTop: 2 }}>
+                              {w.comparative || '—'} → {w.superlative || '—'}
+                            </div>
+                          )}
                           <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{w.translation}</div>
+                          {w.wordType === 'adjective' && w.contrary && (
+                            <div style={{ color: C.purple, fontSize: '0.72rem', marginTop: 2 }}>⇔ {w.contrary}</div>
+                          )}
                           {w.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{w.notes}</div>}
                         </div>
                       ))}
@@ -6034,12 +6122,12 @@ export default function LearningGerman() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['Photo', 'German Word', 'Translation', 'Plural', 'Category', 'Mastery', 'Notes', ''].map(h => <th key={h} style={headerCellStyle}>{h}</th>)}
+                    {['Photo', 'German Word', 'Translation', 'Plural / Degrees', 'Type', 'Category', 'Mastery', 'Notes', ''].map(h => <th key={h} style={headerCellStyle}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedVocab.length === 0 && (
-                    <tr><td colSpan={8} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                    <tr><td colSpan={9} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                       {search ? 'No results found.' : favoritesOnly ? 'No favorited words.' : 'No vocabulary added yet. Click "Add Word" to start!'}
                     </td></tr>
                   )}
@@ -6067,9 +6155,12 @@ export default function LearningGerman() {
                         </div>
                       </td>
                       <td data-label="Translation" style={cellStyle}>{v.translation}</td>
-                      <td data-label="Plural / Contrary" style={{ ...cellStyle, fontSize: '0.8rem' }}>
-                        {v.wordType === 'adjective' && v.contrary ? (
-                          <span style={{ color: C.purple, fontWeight: 600 }}>⇔ {v.contrary}</span>
+                      <td data-label="Plural / Degrees / Contrary" style={{ ...cellStyle, fontSize: '0.8rem' }}>
+                        {v.wordType === 'adjective' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ color: C.purple, fontWeight: 600 }}>{v.word} → {v.comparative || '—'} → {v.superlative || '—'}</span>
+                            {v.contrary && <span style={{ color: C.purple }}>⇔ {v.contrary}</span>}
+                          </div>
                         ) : v.wordType === 'adverb' ? (
                           <span style={{ color: 'var(--text-muted)' }}>—</span>
                         ) : (

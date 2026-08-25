@@ -93,6 +93,8 @@ const splitWord = v => {
   if (a) w = w.replace(new RegExp("^" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*", "i"), "");
   return { a, w };
 };
+const DEG = "\u2192"; // →
+const adjectiveDegreeText = v => `${v.word || ""} ${DEG} ${v.comparative || "\u2014"} ${DEG} ${v.superlative || "\u2014"}${v.contrary ? `\n\u21d4 ${v.contrary}` : ""}`;
 
 function coverContent(stats, opts) {
   const flag = {
@@ -175,10 +177,12 @@ function noteBlocks(notes) {
 
 function vocabTable(rows) {
   const body = [
-    headRow(["Photo", "German", "Plural / Contrary", "English", "Example", "Category"]),
+    headRow(["Photo", "German", "Plural / Degree", "English", "Example", "Category"]),
     ...rows.map(v => {
       const s = splitWord(v);
-      const thirdCol = v.wordType === 'adjective' && v.contrary ? `⇔ ${v.contrary}` : (v.wordType === 'adverb' ? '—' : v.plural || '—');
+      const thirdCol = v.wordType === 'adjective'
+        ? adjectiveDegreeText(v)
+        : (v.wordType === 'adverb' ? '—' : v.plural || '—');
       return [
         v.photoBase64 ? { image: v.photoBase64, fit: [30, 30], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
         cell([s.a ? { text: s.a + " ", fontSize: 8, color: C.muted } : "", { text: s.w, bold: true, fontSize: 8.5 }, ...boxBlocks(v.boxes)]),
@@ -188,7 +192,7 @@ function vocabTable(rows) {
       ];
     }),
   ];
-  return { table: { ...TABLE, widths: [44, "*", 50, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
+  return { table: { ...TABLE, widths: [44, "*", "*", "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 
 function grammarBlocks(rows) {
@@ -370,14 +374,25 @@ function storyBlocks(rows) {
       });
     }
     if (Array.isArray(s.newWords) && s.newWords.length > 0) {
+      const hasAdjectives = s.newWords.some(w => w && w.wordType === "adjective");
       const body = [
-        headRow(["German Word", "Article", "Translation", "Notes / Context"]),
-        ...s.newWords.map(w => [
-          cell(w.word || "", { bold: true }),
-          cell(w.article || "—"),
-          cell(w.translation || "", { color: C.muted }),
-          cell(w.notes || w.example || "—", { fontSize: 8 }),
-        ]),
+        headRow(hasAdjectives ? ["Word", "Degrees (Positiv \u2192 Komparativ \u2192 Superlativ)", "Translation / Meaning", "Notes / Context"] : ["German Word", "Article", "Translation", "Notes / Context"]),
+        ...s.newWords.map(w => {
+          if (w && w.wordType === "adjective") {
+            return [
+              cell(w.word || "", { bold: true }),
+              cell(`${w.comparative || "\u2014"} ${DEG} ${w.superlative || "\u2014"}`, { color: C.teal }),
+              cell(w.translation || "", { color: C.muted }),
+              cell([w.contrary ? `Contrary: ${w.contrary}` : "", w.notes ? `\n${w.notes}` : ""].filter(Boolean).join("") || "—", { fontSize: 8 }),
+            ];
+          }
+          return [
+            cell(w.word || "", { bold: true }),
+            cell(w.article || "—"),
+            cell(w.translation || "", { color: C.muted }),
+            cell(w.notes || w.example || "—", { fontSize: 8 }),
+          ];
+        }),
       ];
       stack.push(
         { text: "New Words Learned from Story", bold: true, fontSize: 8, color: C.teal, margin: [0, 4, 0, 3] },
@@ -434,12 +449,14 @@ function verbIndex(rows) {
 }
 
 function vocabIndex(rows) {
-  const body = [headRow(["Photo", "German", "Article", "Plural", "English", "Category"]), ...rows.map(v => {
+  const body = [headRow(["Photo", "German", "Article", "Plural / Degree", "English", "Category"]), ...rows.map(v => {
     const s = splitWord(v);
     return [
       v.photoBase64 ? { image: v.photoBase64, fit: [22, 22], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
       cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
-      cell(s.a || "—"), cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
+      cell(s.a || "—"),
+      v.wordType === 'adjective' ? cell(adjectiveDegreeText(v), { color: C.teal }) : cell(v.plural || "—"),
+      cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
     ];
   })];
   return { table: { ...TABLE, widths: [34, "*", 40, "*", "*", "*"], body }, layout: tableLayout() };

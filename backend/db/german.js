@@ -54,7 +54,7 @@ async function backfillLevels(userId, level) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '' }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', wordType = 'noun', comparative = '', superlative = '', contrary = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '' }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -67,6 +67,10 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     category,
     plural,
     article,
+    wordType,
+    comparative,
+    superlative,
+    contrary,
     leitnerBox,
     lastReviewDate,
     mastery,
@@ -84,7 +88,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes', 'level', 'chapterId', 'chapterTitle'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'wordType', 'comparative', 'superlative', 'contrary', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes', 'level', 'chapterId', 'chapterTitle'];
   const sets = [];
   const names = {};
   const values = {};

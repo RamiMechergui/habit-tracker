@@ -109,6 +109,8 @@ const splitWord = v => {
   if (a) w = w.replace(new RegExp("^" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*", "i"), "");
   return { a, w };
 };
+const DEG = "\u2192"; // →
+const adjectiveDegreeText = v => `${v.word || ""} ${DEG} ${v.comparative || "\u2014"} ${DEG} ${v.superlative || "\u2014"}${v.contrary ? `\n\u21d4 ${v.contrary}` : ""}`;
 
 function coverContent(stats, opts) {
   const flag = {
@@ -189,10 +191,12 @@ function noteBlocks(notes) {
 }
 function vocabTable(rows) {
   const body = [
-    headRow(["Photo", "German", "Plural / Contrary", "English", "Example", "Category"]),
+    headRow(["Photo", "German", "Plural / Degree", "English", "Example", "Category"]),
     ...rows.map(v => {
       const s = splitWord(v);
-      const thirdCol = v.wordType === 'adjective' && v.contrary ? `⇔ ${v.contrary}` : (v.wordType === 'adverb' ? '—' : v.plural || '—');
+      const thirdCol = v.wordType === 'adjective'
+        ? adjectiveDegreeText(v)
+        : (v.wordType === 'adverb' ? '—' : v.plural || '—');
       return [
         v.photoBase64 ? { image: v.photoBase64, fit: [30, 30], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
         cell([s.a ? { text: s.a + " ", fontSize: 8, color: C.muted } : "", { text: s.w, bold: true, fontSize: 8.5 }, ...boxBlocks(v.boxes)]),
@@ -202,7 +206,7 @@ function vocabTable(rows) {
       ];
     }),
   ];
-  return { table: { ...TABLE, widths: [44, "*", 50, "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
+  return { table: { ...TABLE, widths: [44, "*", "*", "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 function grammarBlocks(rows) {
   return rows.map(g => {
@@ -392,14 +396,25 @@ function storyBlocks(rows) {
       });
     }
     if (Array.isArray(s.newWords) && s.newWords.length > 0) {
+      const hasAdjectives = s.newWords.some(w => w && w.wordType === "adjective");
       const body = [
-        headRow(["German Word", "Article", "Translation", "Notes / Context"]),
-        ...s.newWords.map(w => [
-          cell(w.word || "", { bold: true }),
-          cell(w.article || "—"),
-          cell(w.translation || "", { color: C.muted }),
-          cell(w.notes || w.example || "—", { fontSize: 8 }),
-        ]),
+        headRow(hasAdjectives ? ["Word", "Degrees (Positiv \u2192 Komparativ \u2192 Superlativ)", "Translation / Meaning", "Notes / Context"] : ["German Word", "Article", "Translation", "Notes / Context"]),
+        ...s.newWords.map(w => {
+          if (w && w.wordType === "adjective") {
+            return [
+              cell(w.word || "", { bold: true }),
+              cell(`${w.comparative || "\u2014"} ${DEG} ${w.superlative || "\u2014"}`, { color: C.teal }),
+              cell(w.translation || "", { color: C.muted }),
+              cell([w.contrary ? `Contrary: ${w.contrary}` : "", w.notes ? `\n${w.notes}` : ""].filter(Boolean).join("") || "—", { fontSize: 8 }),
+            ];
+          }
+          return [
+            cell(w.word || "", { bold: true }),
+            cell(w.article || "—"),
+            cell(w.translation || "", { color: C.muted }),
+            cell(w.notes || w.example || "—", { fontSize: 8 }),
+          ];
+        }),
       ];
       stack.push(
         { text: "New Words Learned from Story", bold: true, fontSize: 8, color: C.teal, margin: [0, 4, 0, 3] },
@@ -453,12 +468,14 @@ function verbIndex(rows) {
   return { table: { ...TABLE, widths: ["*", "*", "*", "*"], body }, layout: tableLayout() };
 }
 function vocabIndex(rows) {
-  const body = [headRow(["Photo", "German", "Article", "Plural", "English", "Category"]), ...rows.map(v => {
+  const body = [headRow(["Photo", "German", "Article", "Plural / Degree", "English", "Category"]), ...rows.map(v => {
     const s = splitWord(v);
     return [
       v.photoBase64 ? { image: v.photoBase64, fit: [22, 22], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
       cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
-      cell(s.a || "—"), cell(v.plural || "—"), cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
+      cell(s.a || "—"),
+      v.wordType === 'adjective' ? cell(adjectiveDegreeText(v), { color: C.teal }) : cell(v.plural || "—"),
+      cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
     ];
   })];
   return { table: { ...TABLE, widths: [34, "*", 40, "*", "*", "*"], body }, layout: tableLayout() };
@@ -914,6 +931,35 @@ function StoryBlock({ s }) {
       ) : (
         s.dialogue ? <NoteRich html={s.dialogue} /> : null
       )}
+      {Array.isArray(s.newWords) && s.newWords.length > 0 && (
+        <div style={{ padding: "6px 11px 10px" }}>
+          <div className="gr-blk-title" style={{ color: "var(--teal, #14b8a6)" }}>New Words Learned from Story</div>
+          <div className="gr-tablewrap"><table className="gr-t">
+            <thead><tr>
+              {s.newWords.some(w => w && w.wordType === "adjective")
+                ? <><th>Word</th><th>Degrees (Positiv &rarr; Komparativ &rarr; Superlativ)</th><th>Translation / Meaning</th><th>Notes / Context</th></>
+                : <><th>German Word</th><th>Article</th><th>Translation</th><th>Notes / Context</th></>}
+            </tr></thead>
+            <tbody>
+              {s.newWords.map((w, i) => w && w.wordType === "adjective" ? (
+                <tr key={i}>
+                  <td><b>{w.word}</b></td>
+                  <td style={{ color: "var(--teal, #14b8a6)", whiteSpace: "pre-line" }}>{w.comparative || "—"} → {w.superlative || "—"}{w.contrary ? `\n⇔ ${w.contrary}` : ""}</td>
+                  <td style={{ color: "var(--muted)" }}>{w.translation}</td>
+                  <td style={{ fontSize: ".75rem" }}>{w.notes || "—"}</td>
+                </tr>
+              ) : (
+                <tr key={i}>
+                  <td><b>{w.word}</b></td>
+                  <td>{w.article || "—"}</td>
+                  <td style={{ color: "var(--muted)" }}>{w.translation}</td>
+                  <td style={{ fontSize: ".75rem" }}>{w.notes || w.example || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </div>
+      )}
     </div>
   );
 }
@@ -928,8 +974,8 @@ function Chapter({ ch }) {
         <div className="gr-2col">
           {has("vocab") && (
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
-              <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Contrary</th><th>English</th><th>Category</th></tr></thead>
-              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); const thirdCol = v.wordType === 'adjective' && v.contrary ? `⇔ ${v.contrary}` : (v.wordType === 'adverb' ? '—' : v.plural || '—'); return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b><Boxes boxes={v.boxes} /></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+              <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Degree</th><th>English</th><th>Category</th></tr></thead>
+              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); const thirdCol = v.wordType === 'adjective' ? `${v.word} → ${v.comparative || '—'} → ${v.superlative || '—'}${v.contrary ? `\n⇔ ${v.contrary}` : ''}` : (v.wordType === 'adverb' ? '—' : v.plural || '—'); return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b><Boxes boxes={v.boxes} /></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined, whiteSpace: 'pre-line' }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
             </div>)}
           {has("grammar") && (
             <div><div className="gr-blk-title">Grammar</div>
@@ -1075,8 +1121,8 @@ function Indexes({ data }) {
         <div className="gr-idx">{verbs.map((v, i) => <div className="gr-idx-card" key={i}><div className="t">{v.infinitive}</div><div className="s"><b>{v.meaning}</b></div><div className="s">ich {v.ich} · du {v.du} · er/sie/es {v.erSieEs}</div></div>)}</div>
       </IndexSection>
       <IndexSection id="vocab-index" tag="W" title="Vocabulary Index" count={vocab.length + " words"}>
-        <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Contrary</th><th>English</th><th>Category</th></tr></thead>
-        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); const thirdCol = v.wordType === 'adjective' && v.contrary ? `⇔ ${v.contrary}` : (v.wordType === 'adverb' ? '—' : v.plural || '—'); return (<tr key={i}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+        <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Degree</th><th>English</th><th>Category</th></tr></thead>
+        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); const thirdCol = v.wordType === 'adjective' ? `${v.word} → ${v.comparative || '—'} → ${v.superlative || '—'}${v.contrary ? `\n⇔ ${v.contrary}` : ''}` : (v.wordType === 'adverb' ? '—' : v.plural || '—'); return (<tr key={i}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined, whiteSpace: 'pre-line' }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
       </IndexSection>
       <IndexSection id="expression-index" tag="E" title="Expressions Index" count={expressions.length + " expressions"}>
         <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>German</th><th>English</th><th>Category</th></tr></thead>
