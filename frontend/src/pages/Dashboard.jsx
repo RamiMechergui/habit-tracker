@@ -5,6 +5,14 @@ import { format, startOfMonth, getDay, differenceInCalendarDays, isSameMonth } f
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Trash2, BookOpen, CheckCircle2, BookMarked, BookX, CheckCircle, ChevronLeft, ChevronRight, Edit2, Check, X, Search, Calendar, Clock, ExternalLink, SlidersHorizontal, Shield, AlertTriangle, X as XIcon } from 'lucide-react';
 import EmojiPickerPopover from '../components/EmojiPickerPopover';
+
+// Round to 3 decimals (millimes) and normalize -0 → 0, so float drift
+// never renders as "-0.000 TND".
+const round3 = v => {
+  const r = Math.round((v + Number.EPSILON) * 1000) / 1000;
+  return r === 0 ? 0 : r;
+};
+
 export default function Dashboard() {
   const { user, getLog, saveLog, getMonthlyData, expenseCategories, addExpenseCategory, deleteExpenseCategory, editExpenseCategory, getCategoryName, getCategoryIcon, currentBook, setCurrentBook, finishCurrentBook, getBookProgress, archivedBooks, logs, checkSessionCleanupStatus, confirmSessionCleanup } = useHabits();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -281,11 +289,11 @@ export default function Dashboard() {
     });
     const totalAvailable = openingBalance + totalIncome;
     return {
-      openingBalance,
-      totalIncome,
-      totalExpenses,
-      totalAvailable,
-      remaining: totalAvailable - totalExpenses
+      openingBalance: round3(openingBalance),
+      totalIncome: round3(totalIncome),
+      totalExpenses: round3(totalExpenses),
+      totalAvailable: round3(totalAvailable),
+      remaining: round3(totalAvailable - totalExpenses)
     };
   }, [logs, calendarDate]);
 

@@ -3,6 +3,14 @@ import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Doughnut } from 'react-chartjs-2';
 import { format, parseISO, isSameDay, isSameMonth, isSameYear, startOfDay, startOfMonth, startOfYear } from 'date-fns';
+
+// Round to 3 decimals (millimes) and normalize -0 → 0, so float drift
+// never renders as "-0.000 TND" and negative-zero doesn't trigger the
+// correction branch when the balance is effectively zero.
+const round3 = v => {
+  const r = Math.round((v + Number.EPSILON) * 1000) / 1000;
+  return r === 0 ? 0 : r;
+};
 import { ChevronLeft, ChevronRight, Wallet, Download, Trash2, Edit3 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
@@ -180,7 +188,14 @@ export default function ExpenseTracker() {
     const totalAvailable = openingBalance + totalIncome;
     const remaining = totalAvailable - totalSpent;
 
-    return { totalSpent, totalIncome, openingBalance, totalAvailable, remaining, activeCategories };
+    return {
+      totalSpent: round3(totalSpent),
+      totalIncome: round3(totalIncome),
+      openingBalance: round3(openingBalance),
+      totalAvailable: round3(totalAvailable),
+      remaining: round3(remaining),
+      activeCategories
+    };
   }, [logs, viewMode, currentDate, expenseCategories]);
 
   // Build a fast name → icon lookup map from the user's category list.
