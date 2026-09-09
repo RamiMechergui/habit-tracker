@@ -8,6 +8,7 @@
 
 import { buildPdfDefinition } from './germanPdfBuilder';
 import { withCircularAvatars } from './circularAvatar';
+import { downloadPdfDocument } from './mobilePdfDownloader';
 
 let pdfMakeInstance = null;
 
@@ -179,7 +180,8 @@ export async function exportGermanReportPDF({
   const userFullName = userName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || user?.surname || '';
   const doc = buildPdfDefinition(data, { title, subtitle, logoBase64, userFullName });
   const pdfMake = await getPdfMake();
-  pdfMake.createPdf(doc).download(fileName);
+  const pdfDoc = pdfMake.createPdf(doc);
+  return await downloadPdfDocument(pdfDoc, fileName, title);
 }
 
 /**

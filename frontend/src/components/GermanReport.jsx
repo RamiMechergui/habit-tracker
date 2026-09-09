@@ -43,6 +43,7 @@ import { htmlToPdfContent } from "../utils/htmlToPdf";
 import { withCircularAvatars } from "../utils/circularAvatar";
 import { EDITOR_IMAGE_BASE } from "../config";
 import { hasArabic, reshapeArabic } from "../utils/arabicHandler";
+import { downloadPdfDocument } from "../utils/mobilePdfDownloader";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
 /* Pure builder: JSON → pdfmake document definition. No pdfmake import needed. */
@@ -679,8 +680,20 @@ table.gr-t{border-collapse:collapse;width:100%;font-size:.84rem}.gr-t th,.gr-t t
 .gr-dlg{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:8px}.gr-dlg .d-tit{background:#fafaf8;padding:8px 11px;font-weight:700;font-size:.88rem}.gr-dlg .chat{padding:4px 11px}
 .gr-msg{display:flex;gap:8px;align-items:flex-start;margin:8px 0}.gr-av{width:28px;height:28px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;background:var(--red);flex:none}.gr-msg.alt .gr-av{background:var(--blue)}.gr-msg .who{font-size:.66rem;color:var(--muted);display:block}.gr-msg .bubble{background:#f1f1ef;border-radius:11px;padding:8px 11px;font-size:.86rem;display:block}.gr-msg .bubble .orig{display:block;color:var(--muted);font-style:italic;font-size:.78rem;margin-top:2px}.gr-msg.alt .bubble{background:#e8f0fb}
 .gr-idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}.gr-idx-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px}.gr-idx-card .t{font-weight:700;font-size:.88rem}.gr-idx-card .s{color:var(--muted);font-size:.8rem;margin-top:3px}
-.gr-tablewrap{overflow-x:auto}
-@media(max-width:760px){.gr-2col{grid-template-columns:1fr}.gr-conj{grid-template-columns:1fr 1fr}}
+.gr-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:760px){
+  .gr-2col{grid-template-columns:1fr}
+  .gr-conj{grid-template-columns:1fr 1fr}
+  .gr-toolbar{flex-direction:column;align-items:stretch;gap:10px;padding:10px 12px}
+  .gr-toolbar h3{font-size:1.1rem}
+  .gr-actions{display:flex;width:100%;gap:8px}
+  .gr-actions button{flex:1;text-align:center;padding:10px 12px;font-size:0.85rem}
+  .gr-cover{padding:24px 14px}
+  .gr-cover h1{font-size:1.9rem}
+  .gr-card{padding:12px}
+  .gr-toc{gap:4px}
+  .gr-toc a{font-size:0.75rem;padding:4px 8px}
+}
 @media print{.gr-toolbar,.gr-toc{display:none}.gr-cover,.gr-report{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .full{grid-column:1/-1}
 `;
@@ -1182,7 +1195,8 @@ export default function GermanReport({
       const logoBase64 = await getLogoBase64();
       const doc = buildPdfDefinition(ready, { title, subtitle, logoBase64, userFullName });
       const pdfMake = await getPdfMake();
-      pdfMake.createPdf(doc).download(fileName);
+      const pdfDoc = pdfMake.createPdf(doc);
+      await downloadPdfDocument(pdfDoc, fileName, title);
     } catch (e) {
       setError("PDF generation failed: " + (e && e.message || e));
     } finally {

@@ -925,6 +925,35 @@ function StoryBlockT({ s }) {
       ) : (
         s.dialogue ? <NoteRich html={s.dialogue} /> : null
       )}
+      {Array.isArray(s.newWords) && s.newWords.length > 0 && (
+        <div style={{ padding: "6px 11px 10px" }}>
+          <div className="gr-blk-title" style={{ color: "var(--teal, #14b8a6)" }}>New Words Learned from Story</div>
+          <div className="gr-tablewrap"><table className="gr-t">
+            <thead><tr>
+              {s.newWords.some(w => w && w.wordType === "adjective")
+                ? <><th>Word</th><th>Degrees (Positiv &rarr; Komparativ &rarr; Superlativ)</th><th>Translation / Meaning</th><th>Notes / Context</th></>
+                : <><th>German Word</th><th>Article</th><th>Translation</th><th>Notes / Context</th></>}
+            </tr></thead>
+            <tbody>
+              {s.newWords.map((w, i) => w && w.wordType === "adjective" ? (
+                <tr key={i}>
+                  <td><b>{w.word}</b></td>
+                  <td style={{ color: "var(--teal, #14b8a6)", whiteSpace: "pre-line" }}>{w.comparative || "—"} → {w.superlative || "—"}{w.contrary ? `\n⇔ ${w.contrary}` : ""}</td>
+                  <td style={{ color: "var(--muted)" }}>{w.translation}</td>
+                  <td style={{ fontSize: ".75rem" }}>{w.notes || "—"}</td>
+                </tr>
+              ) : (
+                <tr key={i}>
+                  <td><b>{w.word}</b></td>
+                  <td>{w.article || "—"}</td>
+                  <td style={{ color: "var(--muted)" }}>{w.translation}</td>
+                  <td style={{ fontSize: ".75rem" }}>{w.notes || w.example || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1059,7 +1088,12 @@ export default function GermanReport({
     try {
       const doc = buildPdfDefinition(data, { title, subtitle });
       const pdfMake = await getPdfMake();
-      pdfMake.createPdf(doc).download(fileName);
+      try {
+        const { downloadPdfDocument } = await import("../src/utils/mobilePdfDownloader");
+        await downloadPdfDocument(pdfMake.createPdf(doc), fileName, title);
+      } catch (dlErr) {
+        pdfMake.createPdf(doc).download(fileName);
+      }
     } catch (e) {
       setError("PDF generation failed: " + (e && e.message || e));
     } finally {

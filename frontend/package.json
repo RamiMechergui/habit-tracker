@@ -14,8 +14,10 @@
   "dependencies": {
     "@capacitor/android": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/filesystem": "^6.0.1",
     "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.1",
     "@tiptap/extension-code-block-lowlight": "^3.28.0",
     "@tiptap/extension-color": "^3.27.1",
     "@tiptap/extension-font-family": "^3.28.0",

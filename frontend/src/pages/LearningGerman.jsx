@@ -17,6 +17,7 @@ import {
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, Pause, Settings2, ExternalLink, Loader2, BookMarked, Sparkles,
+  Code, Copy, CheckCheck,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -378,10 +379,695 @@ function GenderBadge({ article }) {
   );
 }
 
+const VOCAB_JSON_TEMPLATES = {
+  noun: {
+    key: 'noun',
+    label: 'Noun (Substantiv)',
+    badge: 'der / die / das',
+    color: '#3b82f6',
+    description: 'Add German nouns with gender/article, plural form, example sentence, category, and CEFR level.',
+    code: JSON.stringify({
+      wordType: "noun",
+      article: "der",
+      word: "Tisch",
+      translation: "table",
+      plural: "Tische",
+      example: "Der Tisch steht mitten im Zimmer.",
+      category: "Furniture",
+      level: "A1.1",
+      notes: "Masculine noun, plural with -e",
+      boxes: [
+        {
+          type: "info",
+          content: "Remember: Akkusativ is 'den Tisch'."
+        }
+      ]
+    }, null, 2),
+    fields: [
+      { key: 'wordType', req: true, val: '"noun"', desc: 'Specifies word type' },
+      { key: 'word', req: true, val: '"Tisch"', desc: 'German noun (without article)' },
+      { key: 'translation', req: true, val: '"table"', desc: 'English translation' },
+      { key: 'article', req: false, val: '"der" | "die" | "das"', desc: 'Definite article' },
+      { key: 'plural', req: false, val: '"Tische"', desc: 'Plural form' },
+      { key: 'example', req: false, val: '"Der Tisch..."', desc: 'Example sentence' },
+      { key: 'category', req: false, val: '"Furniture"', desc: 'Category' },
+      { key: 'level', req: false, val: '"A1.1"', desc: 'CEFR level' },
+      { key: 'notes', req: false, val: '"..."', desc: 'Learning notes' }
+    ]
+  },
+  adjective: {
+    key: 'adjective',
+    label: 'Adjective (Adjektiv)',
+    badge: 'Positiv / Komparativ / Superlativ',
+    color: '#f97316',
+    description: 'Add German adjectives with base form (Positiv), comparative (Komparativ), superlative (Superlativ), and opposite / contrary.',
+    code: JSON.stringify({
+      wordType: "adjective",
+      word: "schnell",
+      translation: "fast / quick",
+      comparative: "schneller",
+      superlative: "am schnellsten",
+      contrary: "langsam",
+      example: "Er läuft viel schneller als ich.",
+      category: "General",
+      level: "A1.1",
+      notes: "Regular adjective comparison"
+    }, null, 2),
+    fields: [
+      { key: 'wordType', req: true, val: '"adjective"', desc: 'Specifies word type' },
+      { key: 'word', req: true, val: '"schnell"', desc: 'Base form (Positiv)' },
+      { key: 'translation', req: true, val: '"fast / quick"', desc: 'English translation' },
+      { key: 'comparative', req: false, val: '"schneller"', desc: 'Comparative (Komparativ)' },
+      { key: 'superlative', req: false, val: '"am schnellsten"', desc: 'Superlative (Superlativ)' },
+      { key: 'contrary', req: false, val: '"langsam"', desc: 'Opposite / antonym' },
+      { key: 'example', req: false, val: '"..."', desc: 'Example sentence' },
+      { key: 'category', req: false, val: '"General"', desc: 'Category' },
+      { key: 'level', req: false, val: '"A1.1"', desc: 'CEFR level' }
+    ]
+  },
+  adverb: {
+    key: 'adverb',
+    label: 'Adverb (Adverb)',
+    badge: 'Time / Place / Manner',
+    color: '#8b5cf6',
+    description: 'Add German adverbs (time, frequency, place, manner) with translation, example sentence, and notes.',
+    code: JSON.stringify({
+      wordType: "adverb",
+      word: "oft",
+      translation: "often / frequently",
+      example: "Ich gehe sehr oft im Park spazieren.",
+      category: "Time",
+      level: "A1.1",
+      notes: "Adverb of frequency"
+    }, null, 2),
+    fields: [
+      { key: 'wordType', req: true, val: '"adverb"', desc: 'Specifies word type' },
+      { key: 'word', req: true, val: '"oft"', desc: 'German adverb' },
+      { key: 'translation', req: true, val: '"often"', desc: 'English translation' },
+      { key: 'example', req: false, val: '"..."', desc: 'Example sentence' },
+      { key: 'category', req: false, val: '"Time"', desc: 'Category' },
+      { key: 'level', req: false, val: '"A1.1"', desc: 'CEFR level' },
+      { key: 'notes', req: false, val: '"..."', desc: 'Additional notes' }
+    ]
+  },
+  batch: {
+    key: 'batch',
+    label: 'Batch List (Array)',
+    badge: 'Multi-Item [ ... ]',
+    color: '#10b981',
+    description: 'Add multiple German vocabulary words (mix of nouns, adjectives, and adverbs) simultaneously in a single JSON array.',
+    code: JSON.stringify([
+      {
+        wordType: "noun",
+        article: "die",
+        word: "Katze",
+        translation: "cat",
+        plural: "Katzen",
+        example: "Die Katze schläft auf dem Sofa.",
+        category: "Animals",
+        level: "A1.1"
+      },
+      {
+        wordType: "adjective",
+        word: "freundlich",
+        translation: "friendly / kind",
+        comparative: "freundlicher",
+        superlative: "am freundlichsten",
+        contrary: "unfreundlich",
+        example: "Die Nachbarn sind sehr freundlich.",
+        category: "General",
+        level: "A1.1"
+      },
+      {
+        wordType: "adverb",
+        word: "immer",
+        translation: "always",
+        example: "Er kommt immer pünktlich an.",
+        category: "Time",
+        level: "A1.1"
+      }
+    ], null, 2),
+    fields: [
+      { key: '[ ... ]', req: true, val: 'Array of objects', desc: 'Array containing noun, adjective, or adverb items' }
+    ]
+  }
+};
+
+function VocabJsonForm({ onAdd, defaultLevel = 'A1.1', onCancel, isMobile }) {
+  const [selectedTemplate, setSelectedTemplate] = useState('noun');
+  const [jsonInput, setJsonInput] = useState(VOCAB_JSON_TEMPLATES.noun.code);
+  const [copied, setCopied] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [progressMsg, setProgressMsg] = useState('');
+  const [successCount, setSuccessCount] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
+
+  const tpl = VOCAB_JSON_TEMPLATES[selectedTemplate] || VOCAB_JSON_TEMPLATES.noun;
+
+  const handleCopyExample = () => {
+    navigator.clipboard.writeText(tpl.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLoadExample = (key = selectedTemplate) => {
+    const target = VOCAB_JSON_TEMPLATES[key] || tpl;
+    setJsonInput(target.code);
+    setSubmitError(null);
+    setSuccessCount(null);
+  };
+
+  const handleFormatJson = () => {
+    try {
+      const parsed = JSON.parse(jsonInput);
+      setJsonInput(JSON.stringify(parsed, null, 2));
+      setSubmitError(null);
+    } catch (e) {
+      setSubmitError(`Cannot format: ${e.message}`);
+    }
+  };
+
+  const validation = useMemo(() => {
+    if (!jsonInput.trim()) {
+      return { status: 'empty', items: [], error: null };
+    }
+    try {
+      const parsed = JSON.parse(jsonInput);
+      const rawList = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? [parsed] : null);
+      if (!rawList) {
+        return { status: 'invalid', items: [], error: 'JSON must be an object { ... } or an array of objects [ { ... } ]' };
+      }
+      if (rawList.length === 0) {
+        return { status: 'invalid', items: [], error: 'JSON array is empty.' };
+      }
+      const invalidIdx = [];
+      const normalizedItems = rawList.map((item, idx) => {
+        if (!item || typeof item !== 'object') {
+          invalidIdx.push(`Item #${idx + 1} is not an object`);
+          return null;
+        }
+        const word = (item.word || item.german || '').trim();
+        const translation = (item.translation || '').trim();
+        if (!word || !translation) {
+          invalidIdx.push(`Item #${idx + 1} (${word || 'unnamed'}) is missing "word" or "translation"`);
+        }
+        const wt = (item.wordType || 'noun').toLowerCase();
+        let article = item.article || '';
+        let baseWord = word;
+        if (wt === 'noun') {
+          const detected = detectArticle(word);
+          if (detected) {
+            article = detected.article;
+            baseWord = detected.word;
+          }
+        }
+        return {
+          ...item,
+          wordType: wt,
+          word: baseWord,
+          article,
+          translation,
+          plural: item.plural || '',
+          comparative: item.comparative || '',
+          superlative: item.superlative || '',
+          contrary: item.contrary || '',
+          example: item.example || '',
+          category: item.category || 'General',
+          level: item.level || defaultLevel,
+          notes: item.notes || '',
+          boxes: Array.isArray(item.boxes) ? item.boxes : [],
+        };
+      });
+
+      if (invalidIdx.length > 0) {
+        return { status: 'missing_fields', items: normalizedItems.filter(Boolean), error: invalidIdx.join('; ') };
+      }
+      return { status: 'valid', items: normalizedItems, error: null };
+    } catch (err) {
+      return { status: 'syntax_error', items: [], error: err.message };
+    }
+  }, [jsonInput, defaultLevel]);
+
+  const handleAddFromJson = async () => {
+    if (validation.status !== 'valid' || validation.items.length === 0) return;
+    setAdding(true);
+    setSubmitError(null);
+    setSuccessCount(null);
+    let added = 0;
+    try {
+      for (let i = 0; i < validation.items.length; i++) {
+        const it = validation.items[i];
+        setProgressMsg(`Adding ${i + 1} of ${validation.items.length}: "${it.word}"...`);
+        const wordStr = (it.wordType === 'noun' && it.article) ? `${it.article} ${it.word.trim()}` : it.word.trim();
+        const payload = {
+          word: wordStr,
+          translation: it.translation,
+          example: it.example || '',
+          notes: it.notes || '',
+          category: it.category || 'General',
+          plural: it.plural || '',
+          article: it.article || '',
+          wordType: it.wordType || 'noun',
+          comparative: it.comparative || '',
+          superlative: it.superlative || '',
+          contrary: it.contrary || '',
+          level: it.level || defaultLevel,
+          mastery: typeof it.mastery === 'number' ? it.mastery : 0,
+          boxes: (it.boxes || []).map(b => ({ id: b.id || nextBoxId(), type: b.type || 'info', content: b.content || '', author: b.author || '' })),
+        };
+        await onAdd(payload);
+        added++;
+      }
+      setSuccessCount(added);
+      setProgressMsg('');
+      setJsonInput('');
+    } catch (e) {
+      setSubmitError(`Failed while adding items: ${e.message}`);
+    } finally {
+      setAdding(false);
+      setProgressMsg('');
+    }
+  };
+
+  return (
+    <div style={{
+      background: 'var(--bg-card)',
+      border: `1px solid ${C.gold}40`,
+      borderRadius: '14px',
+      padding: '1.25rem',
+      marginTop: '0.85rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem',
+    }}>
+      {/* Example Tabs Bar */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Code size={16} color={C.gold} />
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              JSON Vocabulary Templates &amp; Examples
+            </span>
+          </div>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            Select a category below to see its JSON structure, then copy or load into the editor
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 8 }}>
+          {Object.values(VOCAB_JSON_TEMPLATES).map(t => {
+            const active = selectedTemplate === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  setSelectedTemplate(t.key);
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  border: `1px solid ${active ? t.color : 'var(--border)'}`,
+                  background: active ? `${t.color}15` : 'var(--bg)',
+                  transition: 'all 0.2s',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 3 }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: active ? t.color : 'var(--text-primary)' }}>
+                    {t.label}
+                  </span>
+                  {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.color }} />}
+                </div>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t.badge}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected Template Display Box */}
+      <div style={{
+        background: 'var(--bg)',
+        border: `1px solid ${tpl.color}35`,
+        borderRadius: '10px',
+        padding: '0.85rem 1rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+          <div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: tpl.color }}>
+              {tpl.label} JSON Example
+            </span>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+              {tpl.description}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              onClick={handleCopyExample}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '0.35rem 0.75rem',
+                borderRadius: '7px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: copied ? `${C.green}20` : 'var(--bg-card)',
+                border: `1px solid ${copied ? C.green : 'var(--border)'}`,
+                color: copied ? C.green : 'var(--text-primary)',
+              }}
+            >
+              {copied ? <CheckCheck size={13} /> : <Copy size={13} />}
+              {copied ? 'Copied!' : 'Copy Example'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLoadExample(selectedTemplate)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '0.35rem 0.75rem',
+                borderRadius: '7px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: `linear-gradient(135deg, ${tpl.color}, ${tpl.color}cc)`,
+                border: 'none',
+                color: '#fff',
+                boxShadow: `0 2px 8px ${tpl.color}40`,
+              }}
+            >
+              <Plus size={13} /> Load into Editor
+            </button>
+          </div>
+        </div>
+
+        {/* Code Box */}
+        <pre style={{
+          margin: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          padding: '0.75rem 0.9rem',
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: '0.76rem',
+          fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+          color: '#38bdf8',
+          overflowX: 'auto',
+          lineHeight: 1.45,
+        }}>
+          {tpl.code}
+        </pre>
+
+        {/* Fields list */}
+        {tpl.fields && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {tpl.fields.map(f => (
+              <span key={f.key || f.name} style={{
+                fontSize: '0.66rem',
+                padding: '2px 7px',
+                borderRadius: '5px',
+                background: f.req ? `${C.gold}15` : 'var(--bg-card)',
+                border: `1px solid ${f.req ? C.gold + '40' : 'var(--border)'}`,
+                color: f.req ? C.gold : 'var(--text-muted)',
+              }}>
+                <strong>{f.key || f.name}</strong> {f.req ? '(req)' : '(opt)'}: {f.desc}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* JSON Editor Textarea */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Edit3 size={14} color={C.gold} />
+            JSON Input Editor
+            <span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+              (accepts a single {`{ ... }`} or an array {`[ { ... }, { ... } ]`})
+            </span>
+          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              onClick={handleFormatJson}
+              style={{
+                padding: '0.3rem 0.65rem',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Prettify JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => { setJsonInput(''); setSubmitError(null); setSuccessCount(null); }}
+              style={{
+                padding: '0.3rem 0.65rem',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <textarea
+          value={jsonInput}
+          onChange={e => {
+            setJsonInput(e.target.value);
+            setSubmitError(null);
+            setSuccessCount(null);
+          }}
+          placeholder="Paste your JSON vocabulary data here..."
+          rows={isMobile ? 10 : 12}
+          style={{
+            width: '100%',
+            background: 'rgba(15, 23, 42, 0.95)',
+            color: '#e2e8f0',
+            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+            fontSize: '0.82rem',
+            lineHeight: 1.5,
+            padding: '0.85rem 1rem',
+            borderRadius: '10px',
+            border: `1px solid ${
+              validation.status === 'valid'
+                ? C.green
+                : validation.status === 'syntax_error' || validation.status === 'missing_fields'
+                ? C.red
+                : 'var(--border)'
+            }`,
+            outline: 'none',
+            resize: 'vertical',
+            boxShadow: validation.status === 'valid' ? `0 0 10px ${C.green}20` : 'none',
+          }}
+        />
+
+        {/* Live Validation Bar */}
+        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          {validation.status === 'valid' && (
+            <span style={{ fontSize: '0.76rem', color: C.green, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Check size={14} />
+              Valid JSON — {validation.items.length} {validation.items.length === 1 ? 'word' : 'words'} parsed &amp; ready to add
+            </span>
+          )}
+          {validation.status === 'syntax_error' && (
+            <span style={{ fontSize: '0.76rem', color: C.red, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <AlertTriangle size={14} />
+              JSON Syntax Error: {validation.error}
+            </span>
+          )}
+          {validation.status === 'missing_fields' && (
+            <span style={{ fontSize: '0.76rem', color: C.red, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <AlertTriangle size={14} />
+              Validation Error: {validation.error}
+            </span>
+          )}
+          {validation.status === 'empty' && (
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+              Ready for JSON input.
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Live Preview of parsed items */}
+      {validation.status === 'valid' && validation.items.length > 0 && (
+        <div style={{
+          background: 'var(--bg)',
+          borderRadius: '10px',
+          border: '1px solid var(--border)',
+          padding: '0.85rem 1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Live Preview ({validation.items.length} {validation.items.length === 1 ? 'item' : 'items'})
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+            {validation.items.map((it, idx) => (
+              <div key={idx} style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '0.6rem 0.8rem',
+                fontSize: '0.78rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, color: C.gold }}>
+                    {it.article && <GenderBadge article={it.article} />}
+                    <span>{it.word}</span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    background: it.wordType === 'adjective' ? `${C.purple}20` : it.wordType === 'adverb' ? `${C.teal}20` : `${C.blue}20`,
+                    color: it.wordType === 'adjective' ? C.purple : it.wordType === 'adverb' ? C.teal : C.blue,
+                    textTransform: 'capitalize',
+                  }}>
+                    {it.wordType}
+                  </span>
+                </div>
+                <div style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{it.translation}</div>
+                {it.wordType === 'noun' && it.plural && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Plural: {it.plural}</div>
+                )}
+                {it.wordType === 'adjective' && (it.comparative || it.superlative) && (
+                  <div style={{ fontSize: '0.7rem', color: C.purple }}>
+                    {it.word} → {it.comparative || '—'} → {it.superlative || '—'}
+                  </div>
+                )}
+                {it.example && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2 }}>
+                    &ldquo;{it.example}&rdquo;
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Success banner */}
+      {successCount !== null && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '0.75rem 1rem',
+          borderRadius: '8px',
+          background: `${C.green}18`,
+          border: `1px solid ${C.green}45`,
+          color: C.green,
+          fontSize: '0.85rem',
+          fontWeight: 700,
+        }}>
+          <Check size={16} />
+          Successfully added {successCount} {successCount === 1 ? 'word' : 'words'} to your vocabulary!
+        </div>
+      )}
+
+      {/* Error banner */}
+      {submitError && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '0.75rem 1rem',
+          borderRadius: '8px',
+          background: `${C.red}18`,
+          border: `1px solid ${C.red}45`,
+          color: C.red,
+          fontSize: '0.82rem',
+          fontWeight: 600,
+        }}>
+          <AlertTriangle size={16} />
+          {submitError}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', alignItems: 'center' }}>
+        {progressMsg && (
+          <span style={{ fontSize: '0.78rem', color: C.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Loader2 size={14} className="spin" /> {progressMsg}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            color: 'var(--text-muted)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={adding || validation.status !== 'valid' || validation.items.length === 0}
+          onClick={handleAddFromJson}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '0.55rem 1.3rem',
+            borderRadius: '8px',
+            cursor: (adding || validation.status !== 'valid' || validation.items.length === 0) ? 'not-allowed' : 'pointer',
+            background: (adding || validation.status !== 'valid' || validation.items.length === 0) ? 'var(--bg)' : `linear-gradient(135deg, ${C.gold}, ${C.red})`,
+            border: (adding || validation.status !== 'valid' || validation.items.length === 0) ? '1px solid var(--border)' : 'none',
+            color: (adding || validation.status !== 'valid' || validation.items.length === 0) ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            boxShadow: (validation.status === 'valid' && validation.items.length > 0) ? `0 4px 14px ${C.gold}40` : 'none',
+            opacity: adding ? 0.6 : 1,
+            transition: 'all 0.2s',
+          }}
+        >
+          {adding ? <Loader2 size={15} className="spin" /> : <Plus size={15} />}
+          {adding
+            ? 'Adding Vocabulary…'
+            : validation.items.length > 0
+            ? `Add ${validation.items.length} ${validation.items.length === 1 ? 'Word' : 'Words'} to Vocabulary`
+            : 'Add to Vocabulary'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading, defaultLevel = 'A1.1' }) {
   const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
+  const [entryMode, setEntryMode] = useState('form'); // 'form' | 'json'
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
   const [newPhotoFile, setNewPhotoFile] = useState(null);
@@ -411,6 +1097,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
         contrary: editRecord.contrary || '',
       });
       setBoxes(editRecord.boxes || []);
+      setEntryMode('form');
       setOpen(true);
     }
   }, [editRecord, defaultLevel]);
@@ -474,23 +1161,110 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <button onClick={() => { if (!open) { setOpen(true); if (onCancelEdit) onCancelEdit(); } else handleCancel(); }} style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem',
-        background: `linear-gradient(135deg, ${C.gold} 0%, ${C.red} 100%)`,
-        color: '#fff', border: 'none', borderRadius: '10px',
-        padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
-        boxShadow: `0 4px 14px ${C.gold}40`,
-      }}>
-        {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
-        {editRecord ? 'Edit Word' : 'Add Word'}
-        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </button>
-      {open && (
-        <form onSubmit={handleSubmit} style={{
-          marginTop: '0.85rem', background: 'var(--bg-card)',
-          border: `1px solid ${editRecord ? C.blue + '40' : C.gold + '30'}`, borderRadius: '14px', padding: '1.25rem',
-          display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem',
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={() => {
+          if (!open || entryMode !== 'form') {
+            setOpen(true);
+            setEntryMode('form');
+            if (onCancelEdit) onCancelEdit();
+          } else {
+            handleCancel();
+          }
+        }} style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: `linear-gradient(135deg, ${C.gold} 0%, ${C.red} 100%)`,
+          color: '#fff', border: 'none', borderRadius: '10px',
+          padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+          boxShadow: `0 4px 14px ${C.gold}40`,
         }}>
+          {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
+          {editRecord ? 'Edit Word' : 'Add Word'}
+          {(open && entryMode === 'form') ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {!editRecord && (
+          <button onClick={() => {
+            if (!open || entryMode !== 'json') {
+              setOpen(true);
+              setEntryMode('json');
+              if (onCancelEdit) onCancelEdit();
+            } else {
+              setOpen(false);
+            }
+          }} style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: (open && entryMode === 'json') ? `linear-gradient(135deg, ${C.blue}, ${C.purple})` : 'var(--bg-card)',
+            color: (open && entryMode === 'json') ? '#fff' : 'var(--text-primary)',
+            border: `1px solid ${(open && entryMode === 'json') ? C.blue : 'var(--border)'}`,
+            borderRadius: '10px',
+            padding: '0.6rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+            boxShadow: (open && entryMode === 'json') ? `0 4px 14px ${C.blue}40` : 'none',
+            transition: 'all 0.2s ease',
+          }}>
+            <Code size={16} color={(open && entryMode === 'json') ? '#fff' : C.blue} />
+            Add via JSON
+            {(open && entryMode === 'json') ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <>
+          {!editRecord && (
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: '0.85rem',
+              background: 'var(--bg)',
+              padding: '4px',
+              borderRadius: '10px',
+              border: '1px solid var(--border)',
+              width: 'fit-content',
+            }}>
+              <button
+                type="button"
+                onClick={() => setEntryMode('form')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: '7px', border: 'none',
+                  fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                  background: entryMode === 'form' ? 'var(--bg-card)' : 'transparent',
+                  color: entryMode === 'form' ? 'var(--text-primary)' : 'var(--text-muted)',
+                  boxShadow: entryMode === 'form' ? '0 2px 6px rgba(0,0,0,0.1)' : 'none',
+                }}
+              >
+                <Plus size={13} /> Standard Form
+              </button>
+              <button
+                type="button"
+                onClick={() => setEntryMode('json')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: '7px', border: 'none',
+                  fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                  background: entryMode === 'json' ? 'var(--bg-card)' : 'transparent',
+                  color: entryMode === 'json' ? C.blue : 'var(--text-muted)',
+                  boxShadow: entryMode === 'json' ? '0 2px 6px rgba(0,0,0,0.1)' : 'none',
+                }}
+              >
+                <Code size={13} /> JSON Form &amp; Examples
+              </button>
+            </div>
+          )}
+
+          {entryMode === 'json' && !editRecord ? (
+            <VocabJsonForm
+              onAdd={onAdd}
+              defaultLevel={defaultLevel}
+              onCancel={() => setOpen(false)}
+              isMobile={isMobile}
+            />
+          ) : (
+            <form onSubmit={handleSubmit} style={{
+              marginTop: '0.85rem', background: 'var(--bg-card)',
+              border: `1px solid ${editRecord ? C.blue + '40' : C.gold + '30'}`, borderRadius: '14px', padding: '1.25rem',
+              display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem',
+            }}>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Word Type</label>
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -632,6 +1406,8 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
             }}>{saving ? 'Saving…' : editRecord ? 'Update Word' : 'Save Word'}</button>
           </div>
         </form>
+          )}
+        </>
       )}
     </div>
   );

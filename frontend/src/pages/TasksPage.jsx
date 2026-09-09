@@ -25,6 +25,7 @@ import {
 
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
+import { downloadJsPdfDocument } from '../utils/mobilePdfDownloader';
 
 const stripEmoji = (str) => {
   if (!str) return str;
@@ -845,7 +846,7 @@ export default function TasksPage() {
       }
 
       // ── SAVE ───────────────────────────────────────────────────────
-      doc.save(`Evolvio_DailyReport_${date}.pdf`);
+      await downloadJsPdfDocument(doc, `Evolvio_DailyReport_${date}.pdf`, 'Evolvio Daily Report');
     } catch (err) {
       console.error('[PDF] Error generating report:', err);
       setPdfError('Could not generate PDF. Please try again.');

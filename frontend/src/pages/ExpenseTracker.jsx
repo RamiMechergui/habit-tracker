@@ -14,6 +14,7 @@ const round3 = v => {
 import { ChevronLeft, ChevronRight, Wallet, Download, Trash2, Edit3 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
+import { downloadJsPdfDocument } from '../utils/mobilePdfDownloader';
 
 const stripEmoji = (str) => {
   if (!str) return str;
@@ -387,7 +388,7 @@ export default function ExpenseTracker() {
       headStyles: { fillColor: [59, 130, 246] }
     });
     
-    doc.save(`Evolvio_Report_${dateTitle.replace(/[\s,]+/g, '_')}.pdf`);
+    await downloadJsPdfDocument(doc, `Evolvio_Report_${dateTitle.replace(/[\s,]+/g, '_')}.pdf`, 'Evolvio Finance Report');
   };
 
   // Reconciliation history — scans logs for entries with category/source === 'Reconciliation'

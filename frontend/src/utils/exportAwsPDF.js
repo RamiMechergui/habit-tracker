@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
+import { downloadJsPdfDocument } from './mobilePdfDownloader';
 
 const COLORS = {
   orange:    [255, 153, 0],
@@ -60,7 +61,7 @@ function addStatBadge(doc, x, y, label, value, color) {
   doc.text(label, x + 27, y + 20, { align: 'center' });
 }
 
-export function exportAwsPDF(awsData) {
+export async function exportAwsPDF(awsData) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
 
@@ -182,5 +183,5 @@ export function exportAwsPDF(awsData) {
     doc.text(format(new Date(), 'yyyy-MM-dd'), W - 14, H - 4, { align: 'right' });
   }
 
-  doc.save(`AWS_Learning_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  await downloadJsPdfDocument(doc, `AWS_Learning_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`, 'AWS Learning Report');
 }
