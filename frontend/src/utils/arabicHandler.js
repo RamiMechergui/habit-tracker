@@ -1,5 +1,5 @@
 /**
- * arabicHandler.js — Arabic text detection, contextual glyph shaping & BiDi reversal
+ * arabicHandler.js — Arabic text detection, contextual glyph shaping & BiDi visual ordering
  * for client-side PDF generation via pdfmake.
  */
 
@@ -9,7 +9,7 @@ const ARABIC_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE7
  * Arabic glyph mapping table:
  * Character: [Isolated, Final, Initial, Medial]
  */
-const ARABIC_FORMS = {
+export const ARABIC_FORMS = {
   '\u0621': ['\uFE80', '\uFE80', '\uFE80', '\uFE80'], // ء
   '\u0622': ['\uFE81', '\uFE82', '\uFE81', '\uFE82'], // آ (Right joiner)
   '\u0623': ['\uFE83', '\uFE84', '\uFE83', '\uFE84'], // أ (Right joiner)
@@ -47,10 +47,16 @@ const ARABIC_FORMS = {
   '\u0649': ['\uFEEF', '\uFEF0', '\uFEEF', '\uFEF0'], // ى (Right joiner)
   '\u064A': ['\uFEF1', '\uFEF2', '\uFEF3', '\uFEF4'], // ي
   '\u0671': ['\uFE8D', '\uFE8E', '\uFE8D', '\uFE8E'], // ٱ
+  '\u067E': ['\uFB56', '\uFB57', '\uFB58', '\uFB59'], // پ
+  '\u0686': ['\uFB7A', '\uFB7B', '\uFB7C', '\uFB7D'], // چ
+  '\u0698': ['\uFB8A', '\uFB8B', '\uFB8A', '\uFB8B'], // ژ
+  '\u06AF': ['\uFB92', '\uFB93', '\uFB94', '\uFB95'], // گ
+  '\u06A9': ['\uFB8E', '\uFB8F', '\uFB90', '\uFB91'], // ک
+  '\u06CC': ['\uFBFC', '\uFBFD', '\uFBFE', '\uFBFF'], // ی
 };
 
 // Lam-Alef ligatures
-const LAM_ALEF_MAP = {
+export const LAM_ALEF_MAP = {
   '\u0622': ['\uFEF5', '\uFEF6'], // آ -> ﻵ / ﻶ
   '\u0623': ['\uFEF7', '\uFEF8'], // أ -> ﻷ / ﻸ
   '\u0625': ['\uFEF9', '\uFEFA'], // إ -> ﻹ / ﻺ
@@ -58,9 +64,10 @@ const LAM_ALEF_MAP = {
 };
 
 // Right-only joiners (cannot connect to the following letter)
-const RIGHT_JOINERS = new Set([
+export const RIGHT_JOINERS = new Set([
   '\u0621', '\u0622', '\u0623', '\u0624', '\u0625', '\u0627', '\u0629',
-  '\u062F', '\u0630', '\u0631', '\u0632', '\u0648', '\u0649', '\u0671'
+  '\u062F', '\u0630', '\u0631', '\u0632', '\u0648', '\u0649', '\u0671',
+  '\u0698'
 ]);
 
 /**
@@ -74,7 +81,7 @@ export function hasArabic(text) {
  * Strip diacritics / harakat for clean shaping.
  */
 function stripHarakat(str) {
-  return str.replace(/[\u064B-\u0652\u0670]/g, '');
+  return str.replace(/[\u064B-\u0652\u0670\u0640]/g, '');
 }
 
 /**
@@ -92,14 +99,9 @@ function canConnectFollowing(ch) {
 }
 
 /**
- * Reshape an Arabic string into positional Unicode presentation forms
- * and apply BiDi visual order reversal for pdfmake.
+ * Contextual letter shaping for a continuous Arabic string.
  */
-export function reshapeArabic(text) {
-  if (!text) return '';
-  const clean = stripHarakat(String(text));
-  if (!hasArabic(clean)) return clean;
-
+function shapeArabicChars(clean) {
   const chars = Array.from(clean);
   const shaped = [];
 
@@ -141,55 +143,77 @@ export function reshapeArabic(text) {
     shaped.push(glyph);
   }
 
-  // Reverse words / tokens to achieve correct RTL visual ordering in pdfmake.
-  // We process contiguous Arabic runs vs non-Arabic punctuation/spaces.
-  return reverseBidi(shaped.join(''));
+  return shaped.join('');
 }
 
 /**
- * Reverse character sequence of Arabic segments so left-to-right rendering engine
- * displays them correctly right-to-left.
+ * Reshape an Arabic run (including spaces between Arabic words) and
+ * reverse its characters for correct right-to-left rendering in pdfmake.
  */
-function reverseBidi(reshapedText) {
-  // Split into lines first to preserve line breaks
-  const lines = reshapedText.split('\n');
+function reshapeArabicRun(text) {
+  const shaped = shapeArabicChars(text);
+  return Array.from(shaped).reverse().join('');
+}
 
-  return lines.map(line => {
-    // Tokenize into Arabic segments vs non-Arabic segments (numbers, symbols, spaces)
-    const tokens = [];
+/**
+ * Reshape an Arabic string (pure or mixed with Latin/numbers/symbols) into
+ * positional Unicode presentation forms and apply BiDi visual order for pdfmake.
+ */
+export function reshapeArabic(text) {
+  if (!text) return '';
+  const clean = stripHarakat(String(text));
+  if (!hasArabic(clean)) return clean;
+
+  const isArChar = (c) => ARABIC_REGEX.test(c);
+
+  return clean.split('\n').map(line => {
+    const runs = [];
+    const chars = Array.from(line);
     let currentType = null;
-    let currentBuf = '';
+    let currentBuf = [];
 
-    for (const char of line) {
-      const isAr = ARABIC_REGEX.test(char) || /[\uFE70-\uFEFF\uFB50-\uFDFF]/.test(char);
-      const isSpace = char === ' ' || char === '\t';
+    for (let i = 0; i < chars.length; i++) {
+      const c = chars[i];
+      const isAr = isArChar(c);
 
-      const type = isAr ? 'ar' : isSpace ? 'space' : 'other';
-
-      if (type === currentType || (currentType === 'ar' && isSpace)) {
-        currentBuf += char;
+      let type;
+      if (isAr) {
+        type = 'ar';
+      } else if (c === ' ' || c === '\t') {
+        // Lookahead to see if next non-space character is Arabic
+        let hasArAhead = false;
+        for (let j = i + 1; j < chars.length; j++) {
+          if (chars[j] === ' ' || chars[j] === '\t') continue;
+          if (isArChar(chars[j])) hasArAhead = true;
+          break;
+        }
+        type = (currentType === 'ar' && hasArAhead) ? 'ar' : 'other';
       } else {
-        if (currentBuf) tokens.push({ type: currentType, text: currentBuf });
+        type = 'other';
+      }
+
+      if (type === currentType) {
+        currentBuf.push(c);
+      } else {
+        if (currentBuf.length) runs.push({ type: currentType, text: currentBuf.join('') });
         currentType = type;
-        currentBuf = char;
+        currentBuf = [c];
       }
     }
-    if (currentBuf) tokens.push({ type: currentType, text: currentBuf });
+    if (currentBuf.length) runs.push({ type: currentType, text: currentBuf.join('') });
 
-    // Reverse Arabic tokens character-by-character, and reverse order of Arabic words
-    return tokens.map(t => {
-      if (t.type === 'ar') {
-        return Array.from(t.text).reverse().join('');
+    return runs.map(r => {
+      if (r.type === 'ar') {
+        return reshapeArabicRun(r.text);
       }
-      return t.text;
-    }).reverse().join('');
+      return r.text;
+    }).join('');
   }).join('\n');
 }
 
 /**
  * Process a string and format it for pdfmake:
  * If it contains Arabic, reshape it and apply font: 'Amiri'.
- * Returns an array of inline runs or a formatted object.
  */
 export function formatTextForPdf(text, baseStyle = {}) {
   const str = String(text || '');
@@ -199,7 +223,6 @@ export function formatTextForPdf(text, baseStyle = {}) {
     return Object.assign({ text: str }, baseStyle);
   }
 
-  // Split into segments of Arabic vs Non-Arabic
   const reshaped = reshapeArabic(str);
   return Object.assign({ text: reshaped, font: 'Amiri' }, baseStyle);
 }

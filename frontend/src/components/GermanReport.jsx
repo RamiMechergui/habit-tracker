@@ -95,7 +95,11 @@ const T = (t, o = {}) => fmtTxt(t, o);
 const sectionLabel = t => T(t.toUpperCase(), { fontSize: 9, bold: true, color: C.red, margin: [0, 14, 0, 6] });
 const cell = (content, opts = {}) => {
   const o = { margin: [4, 4, 4, 4], fontSize: 8.5, ...opts };
-  return Array.isArray(content) ? Object.assign({ stack: content }, o) : Object.assign({ text: content }, o);
+  if (Array.isArray(content)) return Object.assign({ stack: content }, o);
+  if (typeof content === "string" && hasArabic(content)) {
+    return Object.assign({ text: reshapeArabic(content), font: "Amiri" }, o);
+  }
+  return Object.assign({ text: content }, o);
 };
 const TABLE = { headerRows: 1, keepWithHeaderRows: 1 };
 const tableLayout = (headerFill = C.light) => ({
