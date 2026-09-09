@@ -1,74 +1,27 @@
 /**
- * arabicHandler.js — Arabic text detection, contextual glyph shaping & BiDi visual ordering
+ * arabicHandler.js — Arabic text detection, reshaping & BiDi visual ordering
  * for client-side PDF generation via pdfmake.
+ *
+ * Uses:
+ *   • arabic-reshaper  — contextual glyph shaping (isolated/initial/medial/final forms)
+ *   • bidi-js          — Unicode BiDi algorithm for correct visual ordering
+ *
+ * Both are pure JS, browser-safe, and produce the Presentation Forms (FBxx/FExx)
+ * that the Amiri font can render directly, even inside pdfmake which has no native
+ * RTL / BiDi support.
  */
+
+import reshaper from 'arabic-reshaper';
+import bidiFactory from 'bidi-js';
 
 const ARABIC_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
-/**
- * Arabic glyph mapping table:
- * Character: [Isolated, Final, Initial, Medial]
- */
-export const ARABIC_FORMS = {
-  '\u0621': ['\uFE80', '\uFE80', '\uFE80', '\uFE80'], // ء
-  '\u0622': ['\uFE81', '\uFE82', '\uFE81', '\uFE82'], // آ (Right joiner)
-  '\u0623': ['\uFE83', '\uFE84', '\uFE83', '\uFE84'], // أ (Right joiner)
-  '\u0624': ['\uFE85', '\uFE86', '\uFE85', '\uFE86'], // ؤ (Right joiner)
-  '\u0625': ['\uFE87', '\uFE88', '\uFE87', '\uFE88'], // إ (Right joiner)
-  '\u0626': ['\uFE89', '\uFE8A', '\uFE8B', '\uFE8C'], // ئ
-  '\u0627': ['\uFE8D', '\uFE8E', '\uFE8D', '\uFE8E'], // ا (Right joiner)
-  '\u0628': ['\uFE8F', '\uFE90', '\uFE91', '\uFE92'], // ب
-  '\u0629': ['\uFE93', '\uFE94', '\uFE93', '\uFE94'], // ة (Right joiner)
-  '\u062A': ['\uFE95', '\uFE96', '\uFE97', '\uFE98'], // ت
-  '\u062B': ['\uFE99', '\uFE9A', '\uFE9B', '\uFE9C'], // ث
-  '\u062C': ['\uFE9D', '\uFE9E', '\uFE9F', '\uFEA0'], // ج
-  '\u062D': ['\uFEA1', '\uFEA2', '\uFEA3', '\uFEA4'], // ح
-  '\u062E': ['\uFEA5', '\uFEA6', '\uFEA7', '\uFEA8'], // خ
-  '\u062F': ['\uFEA9', '\uFEAA', '\uFEA9', '\uFEAA'], // د (Right joiner)
-  '\u0630': ['\uFEAB', '\uFEAC', '\uFEAB', '\uFEAC'], // ذ (Right joiner)
-  '\u0631': ['\uFEAD', '\uFEAE', '\uFEAD', '\uFEAE'], // ر (Right joiner)
-  '\u0632': ['\uFEAF', '\uFEB0', '\uFEAF', '\uFEB0'], // ز (Right joiner)
-  '\u0633': ['\uFEB1', '\uFEB2', '\uFEB3', '\uFEB4'], // س
-  '\u0634': ['\uFEB5', '\uFEB6', '\uFEB7', '\uFEB8'], // ش
-  '\u0635': ['\uFEB9', '\uFEBA', '\uFEBB', '\uFEBC'], // ص
-  '\u0636': ['\uFEBD', '\uFEBE', '\uFEBF', '\uFEC0'], // ض
-  '\u0637': ['\uFEC1', '\uFEC2', '\uFEC3', '\uFEC4'], // ط
-  '\u0638': ['\uFEC5', '\uFEC6', '\uFEC7', '\uFEC8'], // ظ
-  '\u0639': ['\uFEC9', '\uFECA', '\uFECB', '\uFECC'], // ع
-  '\u063A': ['\uFECD', '\uFECE', '\uFECF', '\uFED0'], // غ
-  '\u0641': ['\uFED1', '\uFED2', '\uFED3', '\uFED4'], // ف
-  '\u0642': ['\uFED5', '\uFED6', '\uFED7', '\uFED8'], // ق
-  '\u0643': ['\uFED9', '\uFEDA', '\uFEDB', '\uFEDC'], // ك
-  '\u0644': ['\uFEDD', '\uFEDE', '\uFEDF', '\uFEE0'], // ل
-  '\u0645': ['\uFEE1', '\uFEE2', '\uFEE3', '\uFEE4'], // م
-  '\u0646': ['\uFEE5', '\uFEE6', '\uFEE7', '\uFEE8'], // ن
-  '\u0647': ['\uFEE9', '\uFEEA', '\uFEEB', '\uFEEC'], // ه
-  '\u0648': ['\uFEED', '\uFEEE', '\uFEED', '\uFEEE'], // و (Right joiner)
-  '\u0649': ['\uFEEF', '\uFEF0', '\uFEEF', '\uFEF0'], // ى (Right joiner)
-  '\u064A': ['\uFEF1', '\uFEF2', '\uFEF3', '\uFEF4'], // ي
-  '\u0671': ['\uFE8D', '\uFE8E', '\uFE8D', '\uFE8E'], // ٱ
-  '\u067E': ['\uFB56', '\uFB57', '\uFB58', '\uFB59'], // پ
-  '\u0686': ['\uFB7A', '\uFB7B', '\uFB7C', '\uFB7D'], // چ
-  '\u0698': ['\uFB8A', '\uFB8B', '\uFB8A', '\uFB8B'], // ژ
-  '\u06AF': ['\uFB92', '\uFB93', '\uFB94', '\uFB95'], // گ
-  '\u06A9': ['\uFB8E', '\uFB8F', '\uFB90', '\uFB91'], // ک
-  '\u06CC': ['\uFBFC', '\uFBFD', '\uFBFE', '\uFBFF'], // ی
-};
-
-// Lam-Alef ligatures
-export const LAM_ALEF_MAP = {
-  '\u0622': ['\uFEF5', '\uFEF6'], // آ -> ﻵ / ﻶ
-  '\u0623': ['\uFEF7', '\uFEF8'], // أ -> ﻷ / ﻸ
-  '\u0625': ['\uFEF9', '\uFEFA'], // إ -> ﻹ / ﻺ
-  '\u0627': ['\uFEFB', '\uFEFC'], // ا -> ﻻ / ﻼ
-};
-
-// Right-only joiners (cannot connect to the following letter)
-export const RIGHT_JOINERS = new Set([
-  '\u0621', '\u0622', '\u0623', '\u0624', '\u0625', '\u0627', '\u0629',
-  '\u062F', '\u0630', '\u0631', '\u0632', '\u0648', '\u0649', '\u0671',
-  '\u0698'
-]);
+// Lazily initialised bidi instance (stateless after creation)
+let _bidi = null;
+function getBidi() {
+  if (!_bidi) _bidi = bidiFactory();
+  return _bidi;
+}
 
 /**
  * Check if text contains any Arabic characters.
@@ -78,142 +31,43 @@ export function hasArabic(text) {
 }
 
 /**
- * Strip diacritics / harakat for clean shaping.
- */
-function stripHarakat(str) {
-  return str.replace(/[\u064B-\u0652\u0670\u0640]/g, '');
-}
-
-/**
- * Check if a character can connect to its left (preceding) neighbor.
- */
-function canConnectPreceding(ch) {
-  return !!ARABIC_FORMS[ch];
-}
-
-/**
- * Check if a character can connect to its right (following) neighbor.
- */
-function canConnectFollowing(ch) {
-  return !!ARABIC_FORMS[ch] && !RIGHT_JOINERS.has(ch);
-}
-
-/**
- * Contextual letter shaping for a continuous Arabic string.
- */
-function shapeArabicChars(clean) {
-  const chars = Array.from(clean);
-  const shaped = [];
-
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i];
-    const prev = i > 0 ? chars[i - 1] : null;
-    const next = i < chars.length - 1 ? chars[i + 1] : null;
-
-    // Check Lam-Alef ligature
-    if (ch === '\u0644' && next && LAM_ALEF_MAP[next]) {
-      const prevConnects = prev && canConnectFollowing(prev);
-      const ligForms = LAM_ALEF_MAP[next];
-      shaped.push(prevConnects ? ligForms[1] : ligForms[0]);
-      i++; // Skip the Alef
-      continue;
-    }
-
-    if (!ARABIC_FORMS[ch]) {
-      shaped.push(ch);
-      continue;
-    }
-
-    const prevConnects = prev && canConnectFollowing(prev);
-    const nextConnects = next && canConnectPreceding(next);
-
-    const forms = ARABIC_FORMS[ch];
-    let glyph = forms[0]; // Default Isolated
-
-    if (prevConnects && nextConnects) {
-      glyph = forms[3]; // Medial
-    } else if (prevConnects && !nextConnects) {
-      glyph = forms[1]; // Final
-    } else if (!prevConnects && nextConnects) {
-      glyph = forms[2]; // Initial
-    } else {
-      glyph = forms[0]; // Isolated
-    }
-
-    shaped.push(glyph);
-  }
-
-  return shaped.join('');
-}
-
-/**
- * Reshape an Arabic run (including spaces between Arabic words) and
- * reverse its characters for correct right-to-left rendering in pdfmake.
- */
-function reshapeArabicRun(text) {
-  const shaped = shapeArabicChars(text);
-  return Array.from(shaped).reverse().join('');
-}
-
-/**
- * Reshape an Arabic string (pure or mixed with Latin/numbers/symbols) into
- * positional Unicode presentation forms and apply BiDi visual order for pdfmake.
+ * Reshape + apply BiDi visual ordering to an Arabic-containing string.
+ *
+ * Strategy for mixed Arabic/Latin lines (e.g. "above all / خصوصاً"):
+ *   1. Reshape the whole line with arabic-reshaper (produces contextual
+ *      Presentation Forms for Arabic characters; Latin chars are left intact).
+ *   2. Apply the Unicode BiDi algorithm: RTL Arabic segments are reversed
+ *      into visual order; LTR Latin segments stay in place.
+ *   3. Return the visually-ordered string so pdfmake paints it left→right
+ *      and it reads correctly.
  */
 export function reshapeArabic(text) {
   if (!text) return '';
-  const clean = stripHarakat(String(text));
-  if (!hasArabic(clean)) return clean;
+  const str = String(text);
+  if (!hasArabic(str)) return str;
 
-  const isArChar = (c) => ARABIC_REGEX.test(c);
+  const bidi = getBidi();
 
-  return clean.split('\n').map(line => {
-    const runs = [];
-    const chars = Array.from(line);
-    let currentType = null;
-    let currentBuf = [];
+  return str.split('\n').map(line => {
+    if (!line) return line;
 
-    for (let i = 0; i < chars.length; i++) {
-      const c = chars[i];
-      const isAr = isArChar(c);
+    // Step 1: reshape Arabic glyphs to contextual Presentation Forms
+    const reshaped = reshaper.convertArabic(line);
 
-      let type;
-      if (isAr) {
-        type = 'ar';
-      } else if (c === ' ' || c === '\t') {
-        // Lookahead to see if next non-space character is Arabic
-        let hasArAhead = false;
-        for (let j = i + 1; j < chars.length; j++) {
-          if (chars[j] === ' ' || chars[j] === '\t') continue;
-          if (isArChar(chars[j])) hasArAhead = true;
-          break;
-        }
-        type = (currentType === 'ar' && hasArAhead) ? 'ar' : 'other';
-      } else {
-        type = 'other';
-      }
-
-      if (type === currentType) {
-        currentBuf.push(c);
-      } else {
-        if (currentBuf.length) runs.push({ type: currentType, text: currentBuf.join('') });
-        currentType = type;
-        currentBuf = [c];
-      }
+    // Step 2: apply BiDi visual ordering
+    try {
+      const levels = bidi.getEmbeddingLevels(reshaped);
+      return bidi.getReorderedString(reshaped, levels);
+    } catch (_) {
+      // Fallback: return the reshaped string if bidi fails
+      return reshaped;
     }
-    if (currentBuf.length) runs.push({ type: currentType, text: currentBuf.join('') });
-
-    return runs.map(r => {
-      if (r.type === 'ar') {
-        return reshapeArabicRun(r.text);
-      }
-      return r.text;
-    }).join('');
   }).join('\n');
 }
 
 /**
  * Process a string and format it for pdfmake:
- * If it contains Arabic, reshape it and apply font: 'Amiri'.
+ * If it contains Arabic, reshape + BiDi-order it and apply font: 'Amiri'.
  */
 export function formatTextForPdf(text, baseStyle = {}) {
   const str = String(text || '');

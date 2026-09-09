@@ -159,7 +159,7 @@ function cellAlign(el) {
 const BLOCK_TAGS = { p: 1, div: 1, h1: 1, h2: 1, h3: 1, h4: 1, h5: 1, h6: 1, blockquote: 1, pre: 1 };
 
 function cleanText(str) {
-  return String(str || '').replace(/\u00a0/g, ' ').replace(/[ \t\r]+/g, ' ').replace(/\n+/g, ' ').trim();
+  return String(str || '').replace(/\u00a0/g, ' ').replace(/[ \t\r\n]+/g, ' ');
 }
 
 /**
@@ -173,8 +173,26 @@ function inlineRuns(root, base = {}) {
 
   const walk = (node, fmt) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      const t = cleanText(node.nodeValue);
+      let t = cleanText(node.nodeValue);
       if (!t) return;
+
+      if (/^\s+$/.test(t)) {
+        if (!out.length) return;
+        const last = out[out.length - 1];
+        if (typeof last.text === 'string' && (last.text.endsWith(' ') || last.text.endsWith('\n'))) return;
+        t = ' ';
+      } else {
+        if (out.length) {
+          const last = out[out.length - 1];
+          if (typeof last.text === 'string' && (last.text.endsWith(' ') || last.text.endsWith('\n')) && t.startsWith(' ')) {
+            t = t.replace(/^\s+/, '');
+          }
+        } else {
+          t = t.replace(/^\s+/, '');
+        }
+      }
+      if (!t) return;
+
       const baseFmt = {};
       if (fmt.bold) baseFmt.bold = true;
       if (fmt.italics) baseFmt.italics = true;

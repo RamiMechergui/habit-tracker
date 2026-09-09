@@ -38,6 +38,8 @@
     "@tiptap/pm": "^3.27.1",
     "@tiptap/react": "^3.28.0",
     "@tiptap/starter-kit": "^3.28.0",
+    "arabic-reshaper": "^1.1.0",
+    "bidi-js": "^1.1.0",
     "chart.js": "^4.5.1",
     "chartjs-plugin-annotation": "^3.1.0",
     "date-fns": "^4.1.0",
