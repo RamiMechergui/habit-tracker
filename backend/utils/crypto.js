@@ -4,9 +4,15 @@ const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16; // AES block size in bytes
 
 const CURRENT_FALLBACK = 'evolvio_default_encryption_secret_key_12345';
-// Historical fallback secrets used before commit 5003def (secret typo fix).
-// Kept so data encrypted with the old fallback key can still be decrypted.
+// Historical fallback secrets used in earlier EC2 deployments.
+// Each entry allows data encrypted with that key to still be decrypted.
+// DO NOT remove these — removing them will permanently break old stored passwords.
 const LEGACY_FALLBACKS = [
+  // Used in setup-server.sh initial EC2 provisioning (before proper key was set)
+  '32_char_encryption_key_for_testing',
+  // Used from .env.example placeholder on some deployments
+  'your_32_char_encryption_key_here_',
+  // Typo-era fallback (before commit 5003def)
   'evolvia_default_encryption_secret_key_12345',
 ];
 
