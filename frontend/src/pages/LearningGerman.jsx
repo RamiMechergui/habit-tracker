@@ -9,6 +9,8 @@ import { buildReportData, buildChapterReportData } from '../utils/exportGermanRe
 import { germanImageUrl } from '../utils/germanImageUrl';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
 import GermanReport from '../components/GermanReport';
+import VerbConjugationBadge from '../components/VerbConjugationBadge';
+import VerbJsonModal from '../components/VerbJsonModal';
 
 import { format } from 'date-fns';
 import {
@@ -1926,7 +1928,7 @@ function WordsChart({ notes }) {
   );
 }
 
-function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile }) {
+function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, onOpenJsonModal, saving, isMobile }) {
   const [form, setForm] = useState({ infinitive: '', meaning: '', ich: '', du: '', erSieEs: '', wir: '', ihr: '', Sie: '', category: 'General' });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
@@ -1980,17 +1982,31 @@ function VerbForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile 
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <button onClick={() => { if (!open) { setOpen(true); if (onCancelEdit) onCancelEdit(); } else handleCancel(); }} style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem',
-        background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 100%)`,
-        color: '#fff', border: 'none', borderRadius: '10px',
-        padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
-        boxShadow: `0 4px 14px ${C.purple}40`,
-      }}>
-        {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
-        {editRecord ? 'Edit Verb' : 'Add Verb'}
-        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </button>
+      <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={() => { if (!open) { setOpen(true); if (onCancelEdit) onCancelEdit(); } else handleCancel(); }} style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 100%)`,
+          color: '#fff', border: 'none', borderRadius: '10px',
+          padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+          boxShadow: `0 4px 14px ${C.purple}40`,
+        }}>
+          {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
+          {editRecord ? 'Edit Verb' : 'Add Verb'}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {!editRecord && onOpenJsonModal && (
+          <button type="button" onClick={onOpenJsonModal} style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: 'var(--bg-card)',
+            color: C.blue, border: `1px solid ${C.blue}50`, borderRadius: '10px',
+            padding: '0.6rem 1.1rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          }}>
+            <Code size={15} /> Add Verb (JSON)
+          </button>
+        )}
+      </div>
       {open && (
         <form onSubmit={handleSubmit} style={{
           marginTop: '0.85rem', background: 'var(--bg-card)',
@@ -5403,6 +5419,7 @@ export default function LearningGerman() {
   const [editVocab, setEditVocab] = useState(null);
   const [editGrammar, setEditGrammar] = useState(null);
   const [editVerb, setEditVerb] = useState(null);
+  const [showVerbJsonModal, setShowVerbJsonModal] = useState(false);
   const [newDialogueOpen, setNewDialogueOpen] = useState(false);
   const [editDialogue, setEditDialogue] = useState(null);
   const [, setDialogueSaving] = useState(false);
@@ -5771,9 +5788,21 @@ export default function LearningGerman() {
 
   const displayedVerbs = useMemo(() => {
     let list = [...verbs].sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)));
+    if (tab === 'verbs' && debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
+      list = list.filter(v =>
+        v.infinitive?.toLowerCase().includes(q) ||
+        v.meaning?.toLowerCase().includes(q) ||
+        v.category?.toLowerCase().includes(q) ||
+        v.pastParticiple?.toLowerCase().includes(q) ||
+        v.ich?.toLowerCase().includes(q) ||
+        v.du?.toLowerCase().includes(q) ||
+        v.erSieEs?.toLowerCase().includes(q)
+      );
+    }
     if (favoritesOnly) list = list.filter(v => v.favorite);
     return list;
-  }, [verbs, favoritesOnly]);
+  }, [verbs, favoritesOnly, tab, debouncedSearch]);
 
   const filteredGrammar = useMemo(() => {
     if (tab !== 'grammar' || !debouncedSearch.trim()) return [];
@@ -5801,7 +5830,7 @@ export default function LearningGerman() {
 
   useEffect(() => { setVocabPage(1); }, [debouncedSearch, sortVocab, favoritesOnly]);
   useEffect(() => { setGrammarPage(1); }, [debouncedSearch, sortGrammar, favoritesOnly]);
-  useEffect(() => { setVerbPage(1); }, [tab, favoritesOnly]);
+  useEffect(() => { setVerbPage(1); }, [tab, favoritesOnly, debouncedSearch]);
 
   function isNoteEmpty(html) {
     if (!html) return true;
@@ -7089,8 +7118,34 @@ export default function LearningGerman() {
 
       {tab === 'verbs' && (
         <div>
-          <VerbForm onAdd={handleAddVerb} onUpdate={handleUpdateVerb} editRecord={editVerb} onCancelEdit={() => setEditVerb(null)} saving={verbSaving} isMobile={isMobile} />
+          <VerbForm
+            onAdd={handleAddVerb}
+            onUpdate={handleUpdateVerb}
+            editRecord={editVerb}
+            onCancelEdit={() => setEditVerb(null)}
+            onOpenJsonModal={() => setShowVerbJsonModal(true)}
+            saving={verbSaving}
+            isMobile={isMobile}
+          />
+          <VerbJsonModal
+            isOpen={showVerbJsonModal}
+            onClose={() => setShowVerbJsonModal(false)}
+            onSave={handleAddVerb}
+            existingVerbs={verbs}
+            isMobile={isMobile}
+            saving={verbSaving}
+          />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <button onClick={() => setShowVerbJsonModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: 'pointer',
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15))',
+              border: `1px solid ${C.purple}60`,
+              color: C.purple,
+              fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap',
+            }}>
+              <Code size={14} /> Add Verb (JSON)
+            </button>
             <button onClick={() => setFavoritesOnly(p => !p)} style={{
               display: 'flex', alignItems: 'center', gap: 4,
               padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: 'pointer',
@@ -7112,21 +7167,59 @@ export default function LearningGerman() {
                 </thead>
                 <tbody>
                   {displayedVerbs.length === 0 && (
-                    <tr><td colSpan={10} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>{favoritesOnly ? 'No favorited verbs.' : 'No verbs added yet. Click "Add Verb" to start!'}</td></tr>
+                    <tr><td colSpan={10} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>{favoritesOnly ? 'No favorited verbs.' : 'No verbs added yet. Click "Add Verb" or "Add Verb (JSON)" to start!'}</td></tr>
                   )}
                   {displayedVerbs.slice(0, verbPage * PAGE_SIZE).map(v => (
                     <tr key={v.recordId} style={{ transition: 'background 0.15s' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td data-label="Infinitive" style={{ ...cellStyle, fontWeight: 700, color: C.purple }}>{v.infinitive}</td>
-                      <td data-label="Meaning" style={cellStyle}>{v.meaning}</td>
-                      <td data-label="ich" style={cellStyle}>{v.ich || '—'}</td>
-                      <td data-label="du" style={cellStyle}>{v.du || '—'}</td>
-                      <td data-label="er/sie/es" style={cellStyle}>{v.erSieEs || '—'}</td>
-                      <td data-label="wir" style={cellStyle}>{v.wir || '—'}</td>
-                      <td data-label="ihr" style={cellStyle}>{v.ihr || '—'}</td>
-                      <td data-label="Sie" style={cellStyle}>{v.Sie || '—'}</td>
+                      <td data-label="Infinitive" style={{ ...cellStyle, fontWeight: 700, color: C.purple }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>{v.infinitive}</span>
+                          {v.verbType && v.verbType !== 'regular' && (
+                            <span style={{ fontSize: '0.64rem', padding: '1px 5px', borderRadius: 4, background: `${C.purple}20`, color: C.purple, fontWeight: 700, textTransform: 'uppercase' }}>
+                              {v.verbType}
+                            </span>
+                          )}
+                          {v.level && (
+                            <span style={{ fontSize: '0.64rem', padding: '1px 5px', borderRadius: 4, background: `${C.blue}20`, color: C.blue, fontWeight: 800 }}>
+                              {v.level}
+                            </span>
+                          )}
+                        </div>
+                        {(v.pastParticiple || v.auxiliary) && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+                            <span style={{ color: C.green, fontWeight: 600 }}>{v.auxiliary || 'haben'}</span> {v.pastParticiple || ''}
+                          </div>
+                        )}
+                      </td>
+                      <td data-label="Meaning" style={cellStyle}>
+                        <div>{v.meaning}</div>
+                        {v.examples && v.examples.length > 0 && (
+                          <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2 }} title={v.examples[0].english}>
+                            „{v.examples[0].german}“
+                          </div>
+                        )}
+                      </td>
+                      <td data-label="ich" style={cellStyle}>
+                        <VerbConjugationBadge word={v.ich} pronoun="ich" infinitive={v.infinitive} overrides={v.stemEndingOverrides} />
+                      </td>
+                      <td data-label="du" style={cellStyle}>
+                        <VerbConjugationBadge word={v.du} pronoun="du" infinitive={v.infinitive} overrides={v.stemEndingOverrides} />
+                      </td>
+                      <td data-label="er/sie/es" style={cellStyle}>
+                        <VerbConjugationBadge word={v.erSieEs} pronoun="erSieEs" infinitive={v.infinitive} overrides={v.stemEndingOverrides} />
+                      </td>
+                      <td data-label="wir" style={cellStyle}>
+                        <VerbConjugationBadge word={v.wir} pronoun="wir" infinitive={v.infinitive} overrides={v.stemEndingOverrides} />
+                      </td>
+                      <td data-label="ihr" style={cellStyle}>
+                        <VerbConjugationBadge word={v.ihr} pronoun="ihr" infinitive={v.infinitive} overrides={v.stemEndingOverrides} />
+                      </td>
+                      <td data-label="Sie" style={cellStyle}>
+                        <VerbConjugationBadge word={v.Sie} pronoun="Sie" infinitive={v.infinitive} overrides={v.stemEndingOverrides} />
+                      </td>
                       <td data-label="Category" style={cellStyle}><span style={{ background: `${C.purple}20`, color: C.purple, padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600 }}>{v.category || 'General'}</span></td>
                       <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
                         <button onClick={() => handleToggleFavorite(v.recordId, v.favorite)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: v.favorite ? C.gold : 'var(--text-muted)', padding: 2, verticalAlign: 'middle' }} title="Toggle Favorite">

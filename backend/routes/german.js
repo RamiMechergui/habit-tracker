@@ -730,11 +730,28 @@ router.delete('/alphabet/:recordId/photo', async (req, res) => {
 // ── POST /api/german/verb ──────────────────────────────────────────────────────
 router.post('/verb', async (req, res) => {
   try {
-    const { infinitive, meaning, ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level, chapterId, chapterTitle } = req.body;
-    if (!infinitive?.trim() || !meaning?.trim()) {
-      return res.status(400).json({ message: 'infinitive and meaning are required' });
+    const {
+      infinitive, meaning, translation, ich, du, erSieEs, wir, ihr, Sie,
+      category, favorite, boxes, level, chapterId, chapterTitle,
+      verbType, type, pastParticiple, auxiliary, examples, stemEndingOverrides
+    } = req.body;
+    const finalMeaning = (meaning || translation || '').trim();
+    if (!infinitive?.trim() || !finalMeaning) {
+      return res.status(400).json({ message: 'infinitive and meaning (or translation) are required' });
     }
-    const record = await addVerb(req.user.userId, { infinitive: infinitive.trim(), meaning: meaning.trim(), ich, du, erSieEs, wir, ihr, Sie, category, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
+    const record = await addVerb(req.user.userId, {
+      infinitive: infinitive.trim(),
+      meaning: finalMeaning,
+      ich, du, erSieEs, wir, ihr, Sie,
+      category, favorite, boxes,
+      level: level || 'A1.1',
+      chapterId, chapterTitle,
+      verbType: verbType || type || 'regular',
+      pastParticiple: pastParticiple || '',
+      auxiliary: auxiliary || 'haben',
+      examples: Array.isArray(examples) ? examples : [],
+      stemEndingOverrides: stemEndingOverrides || null
+    });
     res.status(201).json(record);
   } catch (err) {
     console.error('[German] POST verb error:', err);

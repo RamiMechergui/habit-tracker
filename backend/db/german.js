@@ -211,7 +211,12 @@ async function getNoteByDate(userId, date) {
 }
 
 // ── Verbs ──────────────────────────────────────────────────────────────────────
-async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs = '', wir = '', ihr = '', Sie = '', category = 'General', favorite = false, sortOrder = Date.now(), boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '' }) {
+async function addVerb(userId, {
+  infinitive, meaning, ich = '', du = '', erSieEs = '', wir = '', ihr = '', Sie = '',
+  category = 'General', favorite = false, sortOrder = Date.now(), boxes = [], level = 'A1.1',
+  chapterId = null, chapterTitle = '', verbType = 'regular', pastParticiple = '',
+  auxiliary = 'haben', examples = [], stemEndingOverrides = null
+}) {
   const recordId = `VERB#${uuidv4()}`;
   const item = {
     userId, recordId, type: 'verb',
@@ -224,6 +229,11 @@ async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs
     level,
     chapterId: chapterId || null,
     chapterTitle: chapterTitle || '',
+    verbType,
+    pastParticiple,
+    auxiliary,
+    examples,
+    stemEndingOverrides: stemEndingOverrides || null,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -231,7 +241,11 @@ async function addVerb(userId, { infinitive, meaning, ich = '', du = '', erSieEs
 }
 
 async function updateVerb(userId, recordId, updates) {
-  const allowed = ['infinitive', 'meaning', 'ich', 'du', 'erSieEs', 'wir', 'ihr', 'Sie', 'category', 'favorite', 'sortOrder', 'boxes', 'level', 'chapterId', 'chapterTitle'];
+  const allowed = [
+    'infinitive', 'meaning', 'ich', 'du', 'erSieEs', 'wir', 'ihr', 'Sie',
+    'category', 'favorite', 'sortOrder', 'boxes', 'level', 'chapterId', 'chapterTitle',
+    'verbType', 'pastParticiple', 'auxiliary', 'examples', 'stemEndingOverrides'
+  ];
   const sets = [];
   const names = {};
   const values = {};
