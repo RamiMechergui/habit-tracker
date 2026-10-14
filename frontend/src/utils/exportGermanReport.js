@@ -6,7 +6,7 @@
  * 100% client-side — no server dependency.
  */
 
-import { buildPdfDefinition } from './germanPdfBuilder';
+import { buildChapterPdfDefinition, buildPdfDefinition } from './germanPdfBuilder';
 import { withCircularAvatars } from './circularAvatar';
 import { downloadPdfDocument } from './mobilePdfDownloader';
 
@@ -169,8 +169,13 @@ export async function exportGermanReportPDF({
   subtitle = 'My German Learning Journey',
   user,
   userName = '',
+  isChapterMode = false,
+  chapter = null,
 }) {
-  const data = await withCircularAvatars(buildReportData(germanData, germanStudy, germanProgress));
+  const rawData = isChapterMode && chapter
+    ? buildChapterReportData(germanData, chapter, germanStudy, germanProgress)
+    : buildReportData(germanData, germanStudy, germanProgress);
+  const data = await withCircularAvatars(rawData);
 
   if (!data.length) {
     throw new Error('No data available to generate the report.');
@@ -178,7 +183,11 @@ export async function exportGermanReportPDF({
 
   const logoBase64 = await getLogoBase64();
   const userFullName = userName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || user?.surname || '';
-  const doc = buildPdfDefinition(data, { title, subtitle, logoBase64, userFullName });
+  const effectiveSubtitle = isChapterMode
+    ? (chapter?.title || subtitle)
+    : subtitle;
+  const builder = isChapterMode ? buildChapterPdfDefinition : buildPdfDefinition;
+  const doc = builder(data, { title, subtitle: effectiveSubtitle, logoBase64, userFullName });
   const pdfMake = await getPdfMake();
   const pdfDoc = pdfMake.createPdf(doc);
   return await downloadPdfDocument(pdfDoc, fileName, title);
@@ -198,8 +207,13 @@ export async function generateGermanReportBlob({
   subtitle = 'My German Learning Journey',
   user,
   userName = '',
+  isChapterMode = false,
+  chapter = null,
 }) {
-  const data = await withCircularAvatars(buildReportData(germanData, germanStudy, germanProgress));
+  const rawData = isChapterMode && chapter
+    ? buildChapterReportData(germanData, chapter, germanStudy, germanProgress)
+    : buildReportData(germanData, germanStudy, germanProgress);
+  const data = await withCircularAvatars(rawData);
 
   if (!data.length) {
     throw new Error('No data available to generate the report.');
@@ -207,7 +221,11 @@ export async function generateGermanReportBlob({
 
   const logoBase64 = await getLogoBase64();
   const userFullName = userName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || user?.surname || '';
-  const doc = buildPdfDefinition(data, { title, subtitle, logoBase64, userFullName });
+  const effectiveSubtitle = isChapterMode
+    ? (chapter?.title || subtitle)
+    : subtitle;
+  const builder = isChapterMode ? buildChapterPdfDefinition : buildPdfDefinition;
+  const doc = builder(data, { title, subtitle: effectiveSubtitle, logoBase64, userFullName });
   const pdfMake = await getPdfMake();
 
   return new Promise((resolve) => {

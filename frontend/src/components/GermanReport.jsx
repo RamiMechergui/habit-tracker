@@ -532,6 +532,87 @@ function alphabetNoteBlock({ title = '', note = '' }) {
     margin: [0, 0, 0, 10],
   };
 }
+export function buildChapterPdfDefinition(data, opts = {}) {
+  // Focused single-chapter layout: cover + one chapter body only.
+  // Skips the Alphabet page, standalone sections, and global indexes so a
+  // chapter-filtered dataset does not render as a full German Report.
+  // Keep in sync with buildPdfDefinition helpers above.
+  const byType = t => data.filter(r => r.type === t);
+  const stats = computeStats(data);
+  const today = fmtDate(opts.today || new Date().toISOString());
+  const ch = byType("chapter")[0];
+  const chapterTitle = ch?.title || opts.subtitle || "Chapter Report";
+  const content = [];
+  content.push(...coverContent(stats, {
+    title: opts.title || "DEUTSCH LERNEN",
+    subtitle: chapterTitle,
+    subtitle2: ch?.level ? `Level: ${ch.level}` : undefined,
+    today,
+  }));
+  if (ch) {
+    content.push(chapterBlock(ch, {
+      note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"),
+      verb: byType("verb"), memo: byType("memo"), dialogue: byType("dialogue"),
+      story: byType("story"), expression: byType("expression"),
+      idiom: byType("idiom"), mistake: byType("mistake"),
+    }));
+  } else {
+    // Fallback: no chapter record in data — render items directly.
+    const noteRows = byType("note");
+    const vocabRows = byType("vocab");
+    const grammarRows = byType("grammar");
+    const memoRows = byType("memo");
+    const verbRows = byType("verb");
+    const dialogueRows = byType("dialogue");
+    const storyRows = byType("story");
+    const expressionRows = byType("expression");
+    const idiomRows = byType("idiom");
+    const mistakeRows = byType("mistake");
+    if (noteRows.length) { content.push(sectionLabel("Daily Notes")); content.push(...noteBlocks(noteRows)); }
+    if (vocabRows.length) { content.push(sectionLabel("Vocabulary")); content.push(vocabTable(vocabRows)); }
+    if (grammarRows.length) { content.push(sectionLabel("Grammar Rules")); content.push(...grammarBlocks(grammarRows)); }
+    if (memoRows.length) { content.push(sectionLabel("Memorization")); content.push(...memoBlocks(memoRows)); }
+    if (verbRows.length) { content.push(sectionLabel("Verbs")); content.push(...verbBlocks(verbRows)); }
+    if (dialogueRows.length) { content.push(sectionLabel("Dialogues")); content.push(...dialogueBlocks(dialogueRows)); }
+    if (storyRows.length) { content.push(sectionLabel("Stories")); content.push(...storyBlocks(storyRows)); }
+    if (expressionRows.length) { content.push(sectionLabel("Expressions")); content.push(...expressionList(expressionRows)); }
+    if (idiomRows.length) { content.push(sectionLabel("Idioms")); content.push(...idiomBlocks(idiomRows)); }
+    if (mistakeRows.length) { content.push(sectionLabel("Common Mistakes")); content.push(mistakeTable(mistakeRows)); }
+  }
+  return {
+    pageSize: "A4",
+    pageOrientation: "portrait",
+    pageMargins: [42, 70, 42, 54],
+    header: currentPage => (currentPage === 1 ? null : {
+      columns: [
+        { text: (opts.title || "DEUTSCH LERNEN"), fontSize: 7.5, bold: true, color: C.muted },
+        { text: chapterTitle, fontSize: 7.5, color: C.muted, alignment: "right" },
+      ],
+      margin: [42, 16, 42, 0],
+    }),
+    footer: (currentPage, total) => {
+      const leftCol = [];
+      if (opts.logoBase64) {
+        leftCol.push({ image: opts.logoBase64, fit: [16, 16], alignment: "left", margin: [0, -2, 6, 0] });
+      }
+      leftCol.push({ text: "EVOLVIO", fontSize: 8.5, bold: true, color: C.red });
+
+      const userName = opts.userFullName || opts.userName || "";
+
+      return {
+        columns: [
+          { width: "auto", columns: leftCol },
+          { width: "*", text: userName ? `Learner: ${userName}` : "", fontSize: 8.5, bold: true, color: C.ink, alignment: "center" },
+          { width: "auto", text: `Page ${currentPage} / ${total}`, fontSize: 8, color: C.muted, alignment: "right" },
+        ],
+        margin: [42, 0, 42, 16],
+      };
+    },
+    defaultStyle: { font: "Roboto", fontSize: 9, color: C.ink, lineHeight: 1.35 },
+    styles: { h2: { fontSize: 18, bold: true, color: C.ink, margin: [0, 6, 0, 10] } },
+    content,
+  };
+}
 export function buildPdfDefinition(data, opts = {}) {
   const byType = t => data.filter(r => r.type === t);
   const stats = computeStats(data);
@@ -1182,6 +1263,7 @@ export default function GermanReport({
   showPreview = true,
   className = "",
   userName = "",
+  isChapterMode = false,
 }) {
   const habitsContext = useHabits ? useHabits() : {};
   const user = habitsContext?.user;
@@ -1197,7 +1279,8 @@ export default function GermanReport({
       const enriched = await enrichWithPhotos(data);
       const ready = await withCircularAvatars(enriched);
       const logoBase64 = await getLogoBase64();
-      const doc = buildPdfDefinition(ready, { title, subtitle, logoBase64, userFullName });
+      const builder = isChapterMode ? buildChapterPdfDefinition : buildPdfDefinition;
+      const doc = builder(ready, { title, subtitle, logoBase64, userFullName });
       const pdfMake = await getPdfMake();
       const pdfDoc = pdfMake.createPdf(doc);
       await downloadPdfDocument(pdfDoc, fileName, title);
@@ -1206,7 +1289,7 @@ export default function GermanReport({
     } finally {
       setBusy(false);
     }
-  }, [data, fileName, title, subtitle, userFullName]);
+  }, [data, fileName, title, subtitle, userFullName, isChapterMode]);
 
   const print = useCallback(() => { try { window.print(); } catch (e) {} }, []);
 
@@ -1226,23 +1309,23 @@ export default function GermanReport({
       {showPreview && (
         <>
           <div className="gr-toc">
-            <a href="#alphabet">Alphabet</a>
+            {!isChapterMode && <a href="#alphabet">Alphabet</a>}
             <a href="#chapters">Chapters</a>
             <a href="#daily-notes">Daily Notes</a>
             <a href="#memorization">Memorization</a>
             <a href="#dialogues">Dialogues</a>
             <a href="#stories">Stories</a>
-            <a href="#grammar-index">Grammar</a>
-            <a href="#verb-index">Verbs</a>
-            <a href="#vocab-index">Vocabulary</a>
-            <a href="#expression-index">Expressions</a>
-            <a href="#idiom-index">Idioms</a>
+            {!isChapterMode && <a href="#grammar-index">Grammar</a>}
+            {!isChapterMode && <a href="#verb-index">Verbs</a>}
+            {!isChapterMode && <a href="#vocab-index">Vocabulary</a>}
+            {!isChapterMode && <a href="#expression-index">Expressions</a>}
+            {!isChapterMode && <a href="#idiom-index">Idioms</a>}
           </div>
           <Cover stats={stats} title={title} subtitle={subtitle} />
-          <Alphabet data={data} stats={stats} />
+          {!isChapterMode && <Alphabet data={data} stats={stats} />}
           <ChaptersView data={data} />
           <Standalone data={data} />
-          <Indexes data={data} />
+          {!isChapterMode && <Indexes data={data} />}
         </>
       )}
     </div>

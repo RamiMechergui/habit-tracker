@@ -510,6 +510,81 @@ function alphabetNoteBlock({ title = '', note = '' }) {
   };
 }
 
+export function buildChapterPdfDefinition(data, opts = {}) {
+  // Focused single-chapter layout: cover + one chapter body only.
+  // Skips the Alphabet page, standalone sections, and global indexes so a
+  // chapter-filtered dataset does not render as a full German Report.
+  // Keep in sync with buildPdfDefinition helpers above.
+  const byType = t => data.filter(r => r.type === t);
+  const stats = computeStats(data);
+  const today = fmtDate(opts.today || new Date().toISOString());
+  const ch = byType("chapter")[0];
+  const chapterTitle = ch?.title || opts.subtitle || "Chapter Report";
+  const content = [];
+  content.push(...coverContent(stats, {
+    title: opts.title || "DEUTSCH LERNEN",
+    subtitle: chapterTitle,
+    subtitle2: ch?.level ? `Level: ${ch.level}` : undefined,
+    today,
+  }));
+  if (ch) {
+    content.push(chapterBlock(ch, {
+      note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"),
+      verb: byType("verb"), memo: byType("memo"), dialogue: byType("dialogue"),
+      story: byType("story"), expression: byType("expression"),
+      idiom: byType("idiom"), mistake: byType("mistake"),
+    }));
+  } else {
+    // Fallback: no chapter record in data — render items directly.
+    const noteRows = byType("note");
+    const vocabRows = byType("vocab");
+    const grammarRows = byType("grammar");
+    const memoRows = byType("memo");
+    const verbRows = byType("verb");
+    const dialogueRows = byType("dialogue");
+    const storyRows = byType("story");
+    const expressionRows = byType("expression");
+    const idiomRows = byType("idiom");
+    const mistakeRows = byType("mistake");
+    if (noteRows.length) { content.push(sectionLabel("Daily Notes")); content.push(...noteBlocks(noteRows)); }
+    if (vocabRows.length) { content.push(sectionLabel("Vocabulary")); content.push(vocabTable(vocabRows)); }
+    if (grammarRows.length) { content.push(sectionLabel("Grammar Rules")); content.push(...grammarBlocks(grammarRows)); }
+    if (memoRows.length) { content.push(sectionLabel("Memorization")); content.push(...memoBlocks(memoRows)); }
+    if (verbRows.length) { content.push(sectionLabel("Verbs")); content.push(...verbBlocks(verbRows)); }
+    if (dialogueRows.length) { content.push(sectionLabel("Dialogues")); content.push(...dialogueBlocks(dialogueRows)); }
+    if (storyRows.length) { content.push(sectionLabel("Stories")); content.push(...storyBlocks(storyRows)); }
+    if (expressionRows.length) { content.push(sectionLabel("Expressions")); content.push(...expressionList(expressionRows)); }
+    if (idiomRows.length) { content.push(sectionLabel("Idioms")); content.push(...idiomBlocks(idiomRows)); }
+    if (mistakeRows.length) { content.push(sectionLabel("Common Mistakes")); content.push(mistakeTable(mistakeRows)); }
+  }
+  return {
+    pageSize: "A4",
+    pageOrientation: "portrait",
+    pageMargins: [42, 70, 42, 54],
+    header: currentPage => (currentPage === 1 ? null : {
+      columns: [
+        { text: (opts.title || "DEUTSCH LERNEN"), fontSize: 7.5, bold: true, color: C.muted },
+        { text: chapterTitle, fontSize: 7.5, color: C.muted, alignment: "right" },
+      ],
+      margin: [42, 16, 42, 0],
+    }),
+    footer: (currentPage, total) => {
+      const userName = opts.userFullName || opts.userName || "";
+      return {
+        columns: [
+          { text: "EVOLVIO", fontSize: 8.5, bold: true, color: C.red },
+          { width: "*", text: userName ? `Learner: ${userName}` : "", fontSize: 8.5, bold: true, color: C.ink, alignment: "center" },
+          { text: `Page ${currentPage} / ${total}`, fontSize: 8, color: C.muted, alignment: "right" },
+        ],
+        margin: [42, 0, 42, 16],
+      };
+    },
+    defaultStyle: { font: "Roboto", fontSize: 9, color: C.ink, lineHeight: 1.35 },
+    styles: { h2: { fontSize: 18, bold: true, color: C.ink, margin: [0, 6, 0, 10] } },
+    content,
+  };
+}
+
 export function buildPdfDefinition(data, opts = {}) {
   const byType = t => data.filter(r => r.type === t);
   const stats = computeStats(data);

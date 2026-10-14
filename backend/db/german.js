@@ -22,12 +22,19 @@ const TABLE = 'HabitGerman';
 
 // ── Fetch all records ─────────────────────────────────────────────────────────
 async function getAllGermanRecords(userId) {
-  const res = await docClient.send(new QueryCommand({
-    TableName: TABLE,
-    KeyConditionExpression: 'userId = :uid',
-    ExpressionAttributeValues: { ':uid': userId },
-  }));
-  return res.Items || [];
+  const items = [];
+  let lastKey;
+  do {
+    const res = await docClient.send(new QueryCommand({
+      TableName: TABLE,
+      KeyConditionExpression: 'userId = :uid',
+      ExpressionAttributeValues: { ':uid': userId },
+      ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
+    }));
+    if (res.Items) items.push(...res.Items);
+    lastKey = res.LastEvaluatedKey;
+  } while (lastKey);
+  return items;
 }
 
 // Record types that belong to a CEFR level workspace. Study / progress / document

@@ -5409,6 +5409,7 @@ export default function LearningGerman() {
   const [showReport, setShowReport] = useState(false);
   const [showPdfMenu, setShowPdfMenu] = useState(false);
   const [chapterReportData, setChapterReportData] = useState(null);
+  const [chapterReportTitle, setChapterReportTitle] = useState('');
   const [showChapterPicker, setShowChapterPicker] = useState(false);
   const [chapterModalLevel, setChapterModalLevel] = useState(null);
   const [levelDetailsLevel, setLevelDetailsLevel] = useState(null);
@@ -6191,6 +6192,7 @@ export default function LearningGerman() {
   const handleExportPDF = () => {
     if (!germanData.length) return;
     setChapterReportData(null);
+    setChapterReportTitle('');
     setShowPdfMenu(false);
     setShowReport(true);
   };
@@ -6198,6 +6200,7 @@ export default function LearningGerman() {
   const handleExportChapterPDF = (chapter) => {
     const data = buildChapterReportData(germanData, chapter, germanStudy, germanProgress);
     setChapterReportData(data);
+    setChapterReportTitle(chapter?.title || 'Chapter Report');
     setShowPdfMenu(false);
     setShowChapterPicker(false);
     setShowReport(true);
@@ -7821,7 +7824,7 @@ export default function LearningGerman() {
           display: 'flex', flexDirection: 'column',
           background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)',
           padding: isMobile ? 0 : '1.5rem',
-        }} onClick={() => { setShowReport(false); setChapterReportData(null); }}>
+        }} onClick={() => { setShowReport(false); setChapterReportData(null); setChapterReportTitle(''); }}>
           <div onClick={e => e.stopPropagation()} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             width: '100%', maxWidth: 1100, margin: '0 auto',
@@ -7837,13 +7840,13 @@ export default function LearningGerman() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                 <FileText size={18} style={{ color: C.green, flexShrink: 0 }} />
                 <span style={{ fontWeight: 800, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {chapterReportData ? `${workspaceChapters.find(c => c.recordId === (chapterReportData.find(r => r.type === 'chapter') || {}).recordId)?.title || 'Chapter'} Report` : 'German Report Preview'}
+                  {chapterReportData ? `${chapterReportTitle || 'Chapter'} Report` : 'German Report Preview'}
                 </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                   {(chapterReportData ?? reportData).length} records
                 </span>
               </div>
-              <button onClick={() => { setShowReport(false); setChapterReportData(null); }} title="Close" style={{
+              <button onClick={() => { setShowReport(false); setChapterReportData(null); setChapterReportTitle(''); }} title="Close" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'transparent', border: 'none', color: 'var(--text-muted)',
                 cursor: 'pointer', padding: 6, borderRadius: 8, flexShrink: 0,
@@ -7858,7 +7861,8 @@ export default function LearningGerman() {
                   ? `german_chapter_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`
                   : `german_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`}
                 title="DEUTSCH LERNEN"
-                subtitle={chapterReportData ? workspaceChapters.find(c => c.recordId === (chapterReportData.find(r => r.type === 'chapter') || {}).recordId)?.title || 'Chapter Report' : 'My German Learning Journey'}
+                subtitle={chapterReportData ? (chapterReportTitle || 'Chapter Report') : 'My German Learning Journey'}
+                isChapterMode={!!chapterReportData}
               />
             </div>
           </div>
