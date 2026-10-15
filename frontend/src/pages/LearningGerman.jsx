@@ -5506,10 +5506,12 @@ export default function LearningGerman() {
   const levelVerbs = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r)), [germanData, matchesLevel]);
   const levelNotes = useMemo(() => germanData.filter(r => r.type === 'note' && matchesLevel(r)), [germanData, matchesLevel]);
 
+  // The Vocabulary tab lists EVERY word from the backend across all levels and
+  // chapters (no level/chapter scoping), so nothing ever looks "missing".
+  // levelVocab above stays level-scoped for the header/progress stats.
   const vocab     = useMemo(() => {
-    const filtered = levelVocab.filter(matchesChapter);
-    return filtered;
-  }, [levelVocab, matchesChapter]);
+    return germanData.filter(r => isVocabRecord(r));
+  }, [germanData, isVocabRecord]);
   const grammar   = useMemo(() => {
     const filtered = levelGrammar.filter(matchesChapter);
     return filtered;
@@ -6929,6 +6931,11 @@ export default function LearningGerman() {
             }}>
               <Star size={13} fill={favoritesOnly ? C.gold : 'none'} /> {favoritesOnly ? 'Favorites' : '★ Favorites'}
             </button>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+            {(debouncedSearch.trim() || favoritesOnly)
+              ? `Showing ${displayedVocab.length} of ${vocab.length} words (filtered)`
+              : `${vocab.length} word${vocab.length === 1 ? '' : 's'} · all levels & chapters`}
           </div>
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="responsive-table" style={{ overflowX: 'auto' }}>
