@@ -114,10 +114,39 @@ async function fetchWithTimeout(url, ms = 60000, accept = 'image/*,*/*;q=0.8') {
       signal: ctrl.signal,
       headers: { 'User-Agent': APP_UA, Accept: accept },
     });
-    if (!res.ok) throw new Error(`Image fetch failed with status ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`Image fetch failed with status ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
     return res;
   } finally {
     clearTimeout(t);
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function statusOf(err) {
+  if (err && typeof err.status === 'number') return err.status;
+  const m = String(err?.message || '').match(/status (\d{3})/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+// Retryable: throttled (429) or transient server errors. NOT 402 (needs a
+// cooldown, retrying immediately is useless) and not 4xx client errors.
+function isRetryable(err) {
+  const s = statusOf(err);
+  return s === 429 || s === 500 || s === 502 || s === 503 || s === 0;
+}
+
+async function withRetry(fn, delayMs = 2500) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (!isRetryable(err)) throw err;
+    await sleep(delayMs);
+    return await fn();
   }
 }
 
@@ -186,23 +215,33 @@ async function fetchWikimediaPhoto(vocab = {}) {
     String(vocab.category || '').split('/')[0].trim(),
   ].map((s) => String(s || '').trim()).filter(Boolean);
   const tried = new Set();
+  let lastErr = '';
   for (const kw of candidates) {
     if (tried.has(kw.toLowerCase())) continue;
     tried.add(kw.toLowerCase());
     let pages = [];
     try {
-      pages = await searchCommons(kw);
-    } catch (_) {
+      pages = await withRetry(() => searchCommons(kw), 2500);
+    } catch (e) {
+      lastErr = `search "${kw}": ${e.message}`;
       continue;
     }
     const pick = pickCommonsImage(pages);
-    if (!pick) continue;
+    if (!pick) {
+      lastErr = `search "${kw}": 0 suitable images`;
+      continue;
+    }
     const srcUrl = pick.info.thumburl || pick.info.url;
-    const res = await fetchWithTimeout(srcUrl, 60000);
-    const { buffer, contentType } = await readImageBuffer(res);
-    return { buffer, contentType, credit: commonsCredit(pick.info), keyword: kw, title: pick.page.title };
+    try {
+      const res = await withRetry(() => fetchWithTimeout(srcUrl, 60000), 3000);
+      const { buffer, contentType } = await readImageBuffer(res);
+      return { buffer, contentType, credit: commonsCredit(pick.info), keyword: kw, title: pick.page.title };
+    } catch (e) {
+      lastErr = `download "${pick.page.title}": ${e.message}`;
+      continue;
+    }
   }
-  throw new Error('No suitable Wikimedia Commons photo found');
+  throw new Error(`No suitable Wikimedia Commons photo found (${lastErr || 'no candidates'})`);
 }
 
 // ── Main entry points ────────────────────────────────────────────────────────
@@ -247,7 +286,7 @@ async function generateAndStoreVocabPhoto(userId, record, opts = {}) {
   } catch (wikiErr) {
     const { prompt, seed, url } = previewForVocab(vocabLike);
     try {
-      const res = await fetchWithTimeout(url, 90000);
+      const res = await withRetry(() => fetchWithTimeout(url, 90000), 4000);
       ({ buffer, contentType: mimetype } = await readImageBuffer(res));
       source = 'ai-pollinations';
       detail = prompt;
