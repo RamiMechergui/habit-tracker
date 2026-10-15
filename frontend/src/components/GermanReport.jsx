@@ -63,7 +63,10 @@ export function fmtMs(ms) {
   return m >= 60 ? `${h + 1}h 0m` : `${h}h ${m}m`;
 }
 export function computeStats(data) {
-  const byType = t => data.filter(r => r.type === t);
+  // 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+  const byType = t => t === "vocab"
+    ? data.filter(r => r.type === "vocab" || r.type === "unified-vocab")
+    : data.filter(r => r.type === t);
   const study = byType("study")[0] || {};
   const days = study.days || {};
   let totalMs = Number(study.totalMs) || 0;
@@ -537,7 +540,10 @@ export function buildChapterPdfDefinition(data, opts = {}) {
   // Skips the Alphabet page, standalone sections, and global indexes so a
   // chapter-filtered dataset does not render as a full German Report.
   // Keep in sync with buildPdfDefinition helpers above.
-  const byType = t => data.filter(r => r.type === t);
+  // 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+  const byType = t => t === "vocab"
+    ? data.filter(r => r.type === "vocab" || r.type === "unified-vocab")
+    : data.filter(r => r.type === t);
   const stats = computeStats(data);
   const today = fmtDate(opts.today || new Date().toISOString());
   const ch = byType("chapter")[0];
@@ -614,7 +620,10 @@ export function buildChapterPdfDefinition(data, opts = {}) {
   };
 }
 export function buildPdfDefinition(data, opts = {}) {
-  const byType = t => data.filter(r => r.type === t);
+  // 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+  const byType = t => t === "vocab"
+    ? data.filter(r => r.type === "vocab" || r.type === "unified-vocab")
+    : data.filter(r => r.type === t);
   const stats = computeStats(data);
   const today = fmtDate(opts.today || new Date().toISOString());
   const chapters = byType("chapter").slice().sort((a, b) => lvlIdx(a.level) - lvlIdx(b.level) || (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -784,7 +793,10 @@ table.gr-t{border-collapse:collapse;width:100%;font-size:.84rem}.gr-t th,.gr-t t
 `;
 const LEVEL_ORDER_R = ["A1.1","A1.2","A2.1","A2.2","B1.1","B1.2","B2.1","B2.2","B2.3","C1.1","C1.2","C2.1","C2.2"];
 const lvlIdxR = l => { const i = LEVEL_ORDER_R.indexOf(l); return i === -1 ? 99 : i; };
-const byType = data => t => data.filter(r => r.type === t);
+// 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+const byType = data => t => t === 'vocab'
+  ? data.filter(r => r.type === 'vocab' || r.type === 'unified-vocab')
+  : data.filter(r => r.type === t);
 const NOTE_COLOR = { writing: "#1f4e79", daily: "#dd0000", listening: "#8a6b1f", speaking: "#3b7d5d", list: "#8f4c9c", vocab: "#0f7d6a" };
 const splitWordR = v => { const a = (v.article || "").trim(); let w = (v.word || "").trim(); if (a) w = w.replace(new RegExp("^" + a + "\\s*", "i"), ""); return { a, w }; };
 const fmtDateR = iso => { if (!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }); };

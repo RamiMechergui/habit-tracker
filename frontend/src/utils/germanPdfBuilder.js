@@ -25,7 +25,10 @@ export function fmtMs(ms) {
 }
 
 export function computeStats(data) {
-  const byType = t => data.filter(r => r.type === t);
+  // 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+  const byType = t => t === "vocab"
+    ? data.filter(r => r.type === "vocab" || r.type === "unified-vocab")
+    : data.filter(r => r.type === t);
   const study = byType("study")[0] || {};
   const days = study.days || {};
   let totalMs = Number(study.totalMs) || 0;
@@ -515,7 +518,10 @@ export function buildChapterPdfDefinition(data, opts = {}) {
   // Skips the Alphabet page, standalone sections, and global indexes so a
   // chapter-filtered dataset does not render as a full German Report.
   // Keep in sync with buildPdfDefinition helpers above.
-  const byType = t => data.filter(r => r.type === t);
+  // 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+  const byType = t => t === "vocab"
+    ? data.filter(r => r.type === "vocab" || r.type === "unified-vocab")
+    : data.filter(r => r.type === t);
   const stats = computeStats(data);
   const today = fmtDate(opts.today || new Date().toISOString());
   const ch = byType("chapter")[0];
@@ -586,7 +592,10 @@ export function buildChapterPdfDefinition(data, opts = {}) {
 }
 
 export function buildPdfDefinition(data, opts = {}) {
-  const byType = t => data.filter(r => r.type === t);
+  // 'unified-vocab' (Smart Vocab saves) counts as vocabulary everywhere.
+  const byType = t => t === "vocab"
+    ? data.filter(r => r.type === "vocab" || r.type === "unified-vocab")
+    : data.filter(r => r.type === t);
   const stats = computeStats(data);
   const today = fmtDate(opts.today || new Date().toISOString());
   const chapters = byType("chapter").slice().sort((a, b) => lvlIdx(a.level) - lvlIdx(b.level) || (a.sortOrder || 0) - (b.sortOrder || 0));

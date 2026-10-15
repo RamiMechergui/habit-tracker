@@ -2618,7 +2618,7 @@ function GlobalSearchModal({ germanData, onClose }) {
     if (!q.trim()) return [];
     const query = q.toLowerCase();
     const all = germanData.filter(r => {
-      const searchable = r.type === 'vocab' ? `${r.word} ${r.translation} ${r.notes || ''}` :
+      const searchable = (r.type === 'vocab' || r.type === 'unified-vocab') ? `${r.word} ${r.translation} ${r.notes || ''}` :
         r.type === 'grammar' ? `${r.rule} ${r.explanation} ${r.notes || ''}` :
         r.type === 'verb' ? `${r.infinitive} ${r.meaning}` :
         r.type === 'note' ? `${r.content || ''}` : '';
@@ -2638,12 +2638,13 @@ function GlobalSearchModal({ germanData, onClose }) {
         {results.length === 0 && q.trim() && <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>No results for "{q}"</p>}
         <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {results.map(r => {
-            const icon = r.type === 'vocab' ? <BookOpen size={14} style={{ color: C.gold }} /> :
+            const isVocab = r.type === 'vocab' || r.type === 'unified-vocab';
+            const icon = isVocab ? <BookOpen size={14} style={{ color: C.gold }} /> :
               r.type === 'grammar' ? <GraduationCap size={14} style={{ color: C.blue }} /> :
               r.type === 'verb' ? <PenTool size={14} style={{ color: C.purple }} /> :
               <NotebookPen size={14} style={{ color: C.green }} />;
-            const title = r.type === 'vocab' ? r.word : r.type === 'grammar' ? r.rule : r.type === 'verb' ? r.infinitive : 'Study Note';
-            const subtitle = r.type === 'vocab' ? r.translation : r.type === 'grammar' ? r.explanation?.slice(0, 80) : r.type === 'verb' ? r.meaning : r.content?.slice(0, 80);
+            const title = isVocab ? r.word : r.type === 'grammar' ? r.rule : r.type === 'verb' ? r.infinitive : 'Study Note';
+            const subtitle = isVocab ? r.translation : r.type === 'grammar' ? r.explanation?.slice(0, 80) : r.type === 'verb' ? r.meaning : r.content?.slice(0, 80);
             return (
               <div key={r.recordId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0.75rem', borderRadius: '10px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
                 {icon}
@@ -5382,7 +5383,7 @@ export default function LearningGerman() {
     addGermanChapter, updateGermanChapter,
     addGermanStory, updateGermanStory,
     uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto,
-    processVocab, saveUnifiedVocab,
+    processVocab, saveUnifiedVocab, updateUnifiedVocab,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
     germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
   } = useHabits();
@@ -5429,7 +5430,6 @@ export default function LearningGerman() {
   const [showGrammarQuiz, setShowGrammarQuiz] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [verbSaving, setVerbSaving] = useState(false);
-  const [vocabPage, setVocabPage] = useState(1);
   const [grammarPage, setGrammarPage] = useState(1);
   const [verbPage, setVerbPage] = useState(1);
   const [showMCQuiz, setShowMCQuiz] = useState(false);
@@ -5497,7 +5497,11 @@ export default function LearningGerman() {
 
   // Level-wide views used by the header stats (always reflect the whole level,
   // even when a chapter is selected).
-  const levelVocab = useMemo(() => germanData.filter(r => r.type === 'vocab' && matchesLevel(r)), [germanData, matchesLevel]);
+  // NOTE: 'unified-vocab' records (saved via Smart Vocab / /api/vocab/save) are
+  // vocabulary too — they must be included everywhere 'vocab' is used,
+  // otherwise smart-saved words silently disappear from the list/stats/PDF.
+  const isVocabRecord = useCallback((r) => r?.type === 'vocab' || r?.type === 'unified-vocab', []);
+  const levelVocab = useMemo(() => germanData.filter(r => isVocabRecord(r) && matchesLevel(r)), [germanData, matchesLevel, isVocabRecord]);
   const levelGrammar = useMemo(() => germanData.filter(r => r.type === 'grammar' && matchesLevel(r)), [germanData, matchesLevel]);
   const levelVerbs = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r)), [germanData, matchesLevel]);
   const levelNotes = useMemo(() => germanData.filter(r => r.type === 'note' && matchesLevel(r)), [germanData, matchesLevel]);
@@ -5823,13 +5827,10 @@ export default function LearningGerman() {
     return list;
   }, [sortedGrammar, filteredGrammar, debouncedSearch, tab, favoritesOnly]);
 
-  const vocabPageTotal = Math.max(1, Math.ceil(displayedVocab.length / PAGE_SIZE));
   const grammarPageTotal = Math.max(1, Math.ceil(displayedGrammar.length / PAGE_SIZE));
 
-  const paginatedVocab = useMemo(() => displayedVocab.slice(0, vocabPage * PAGE_SIZE), [displayedVocab, vocabPage]);
   const paginatedGrammar = useMemo(() => displayedGrammar.slice(0, grammarPage * PAGE_SIZE), [displayedGrammar, grammarPage]);
 
-  useEffect(() => { setVocabPage(1); }, [debouncedSearch, sortVocab, favoritesOnly]);
   useEffect(() => { setGrammarPage(1); }, [debouncedSearch, sortGrammar, favoritesOnly]);
   useEffect(() => { setVerbPage(1); }, [tab, favoritesOnly, debouncedSearch]);
 
@@ -6074,7 +6075,10 @@ export default function LearningGerman() {
   const handleToggleFavorite = async (recordId, current) => {
     try {
       const type = germanData.find(r => r.recordId === recordId)?.type;
-      if (type === 'vocab') await updateGermanVocab(recordId, { favorite: !current });
+      if (type === 'vocab' || type === 'unified-vocab') {
+        if (type === 'unified-vocab') await updateUnifiedVocab(recordId, { favorite: !current });
+        else await updateGermanVocab(recordId, { favorite: !current });
+      }
       else if (type === 'grammar') await updateGermanGrammar(recordId, { favorite: !current });
       else if (type === 'verb') await updateGermanVerb(recordId, { favorite: !current });
     } catch (e) { setError(e.message); }
@@ -6091,9 +6095,10 @@ export default function LearningGerman() {
     const otherSort = other.sortOrder || 0;
     try {
       const type = current.type;
-      if (type === 'vocab') {
-        await updateGermanVocab(current.recordId, { sortOrder: otherSort });
-        await updateGermanVocab(other.recordId, { sortOrder: currentSort });
+      if (type === 'vocab' || type === 'unified-vocab') {
+        const updater = type === 'unified-vocab' ? updateUnifiedVocab : updateGermanVocab;
+        await updater(current.recordId, { sortOrder: otherSort });
+        await updater(other.recordId, { sortOrder: currentSort });
       } else if (type === 'grammar') {
         await updateGermanGrammar(current.recordId, { sortOrder: otherSort });
         await updateGermanGrammar(other.recordId, { sortOrder: currentSort });
@@ -6934,12 +6939,12 @@ export default function LearningGerman() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedVocab.length === 0 && (
+                  {displayedVocab.length === 0 && (
                     <tr><td colSpan={9} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                       {search ? 'No results found.' : favoritesOnly ? 'No favorited words.' : 'No vocabulary added yet. Click "Add Word" to start!'}
                     </td></tr>
                   )}
-                  {paginatedVocab.map(v => (
+                  {displayedVocab.map(v => (
                     <tr key={v.recordId} style={{ transition: 'background 0.15s' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -7023,14 +7028,6 @@ export default function LearningGerman() {
                 </tbody>
               </table>
             </div>
-            {vocabPage < vocabPageTotal && (
-              <div style={{ textAlign: 'center', padding: '0.85rem' }}>
-                <button onClick={() => setVocabPage(p => p + 1)} style={{
-                  padding: '0.5rem 1.2rem', borderRadius: '8px', cursor: 'pointer',
-                  background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem',
-                }}>Show More ({displayedVocab.length - paginatedVocab.length} remaining)</button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -7623,7 +7620,7 @@ export default function LearningGerman() {
                 const isCompleted = levelsCompleted.includes(level);
                 const isCurrent = level === currentLevel;
                 const isLocked = idx > ALL_LEVELS.indexOf(currentLevel) && !isCompleted;
-                const vocabCount = germanData.filter(r => r.type === 'vocab' && levelOf(r) === level).length;
+                const vocabCount = germanData.filter(r => (r.type === 'vocab' || r.type === 'unified-vocab') && levelOf(r) === level).length;
                 const grammarCount = germanData.filter(r => r.type === 'grammar' && levelOf(r) === level).length;
                 const noteCount = germanData.filter(r => r.type === 'note' && levelOf(r) === level).length;
                 const total = vocabCount + grammarCount + noteCount;
@@ -7748,7 +7745,7 @@ export default function LearningGerman() {
         <LevelDetailsModal
           level={levelDetailsLevel}
           progress={germanProgress}
-          itemCount={germanData.filter(r => (r.type === 'vocab' || r.type === 'grammar' || r.type === 'note') && levelOf(r) === levelDetailsLevel).length}
+          itemCount={germanData.filter(r => (r.type === 'vocab' || r.type === 'unified-vocab' || r.type === 'grammar' || r.type === 'note') && levelOf(r) === levelDetailsLevel).length}
           chapterCount={chapters.filter(c => normalizeLevel(c.level) === levelDetailsLevel).length}
           onClose={() => setLevelDetailsLevel(null)}
           onManageChapters={(l) => { setLevelDetailsLevel(null); setChapterModalLevel(l); }}

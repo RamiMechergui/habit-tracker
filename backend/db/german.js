@@ -39,7 +39,7 @@ async function getAllGermanRecords(userId) {
 
 // Record types that belong to a CEFR level workspace. Study / progress / document
 // records are excluded.
-const LEVELED_TYPES = new Set(['vocab', 'grammar', 'note', 'verb', 'dialogue', 'memo', 'expression', 'idiom', 'mistake', 'alphabet', 'resource', 'book', 'chapter']);
+const LEVELED_TYPES = new Set(['vocab', 'unified-vocab', 'grammar', 'note', 'verb', 'dialogue', 'memo', 'expression', 'idiom', 'mistake', 'alphabet', 'resource', 'book', 'chapter']);
 
 // ── One-time backfill: stamp legacy records (created before levels existed) ──
 // with the user's current level so every section is scoped correctly.

@@ -2809,6 +2809,20 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const updateUnifiedVocab = useCallback(async (recordId, payload) => {
+    const res = await fetch(`${API_URL}/api/vocab/save/${encodeURIComponent(recordId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update vocabulary');
+    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+    logHistory('german_vocab_update', `Updated smart vocabulary: ${payload?.word || ''}`);
+    return data;
+  }, [API_URL]);
+
   const uploadGermanAlphabetPhoto = useCallback(async (recordId, file) => {
     const formData = new FormData();
     formData.append('photo', file);
@@ -3311,7 +3325,7 @@ export const HabitProvider = ({ children }) => {
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
       addGermanStory, updateGermanStory,
-      processVocab, saveUnifiedVocab,
+      processVocab, saveUnifiedVocab, updateUnifiedVocab,
       // German Progress
       germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
       germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
