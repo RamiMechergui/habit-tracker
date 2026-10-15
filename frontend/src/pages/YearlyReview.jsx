@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban, CheckSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban, CheckSquare, Languages, Rocket, Video, BookOpen } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -86,6 +86,23 @@ const getScoreTone = (score) => {
   if (score >= 60) return 'score-mid';
   return 'score-low';
 };
+
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const s = String(timeStr).trim().toLowerCase();
+  const hrMinMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?\s*(\d+)\s*m(?:in)?s?/);
+  if (hrMinMatch) return Math.round(parseFloat(hrMinMatch[1]) * 60 + parseFloat(hrMinMatch[2]));
+  const hrMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?/);
+  if (hrMatch) return Math.round(parseFloat(hrMatch[1]) * 60);
+  const minMatch = s.match(/(\d+)\s*m(?:in)?s?/);
+  if (minMatch) return parseInt(minMatch[1], 10);
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num <= 24) return Math.round(num * 60);
+    return Math.round(num);
+  }
+  return 0;
+}
 
 // ── Sub-components ───────────────────────────────────────────────
 function StatBadge({ icon: Icon, label, value, colorRgb }) {
@@ -394,6 +411,112 @@ export default function YearlyReview() {
     plugins: { legend: { display: false } }
   });
 
+  // ── Learning German Aggregation ─────────────────────────────
+  let germanDays = 0, totalGermanMinutes = 0;
+  const germanMonthlyMinutes = yearlyData.map(m => {
+    let mins = 0;
+    m.days.forEach(d => {
+      if (d.log.german?.achieved) germanDays++;
+      const t = parseTimeToMinutes(d.log.german?.time);
+      mins += t;
+      totalGermanMinutes += t;
+    });
+    return mins;
+  });
+  const fmtGermanTime = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+  // ── Side Hustle / Video / Books Aggregation ───────────────────
+  let hustleDays = 0, totalHustleMinutes = 0, videoDays = 0, totalVideoMinutes = 0, booksDays = 0;
+  const hustleMonthlyMinutes = yearlyData.map(m => {
+    let mins = 0;
+    m.days.forEach(d => {
+      if (d.log.hustle?.achieved) hustleDays++;
+      const t = parseTimeToMinutes(d.log.hustle?.time);
+      mins += t;
+      totalHustleMinutes += t;
+    });
+    return mins;
+  });
+  const videoMonthlyMinutes = yearlyData.map(m => {
+    let mins = 0;
+    m.days.forEach(d => {
+      if (d.log.video?.achieved) videoDays++;
+      if (d.log.books?.read) booksDays++;
+      const t = parseTimeToMinutes(d.log.video?.time);
+      mins += t;
+      totalVideoMinutes += t;
+    });
+    return mins;
+  });
+  const booksMonthlyDays = yearlyData.map(m => m.days.filter(d => d.log.books?.read).length);
+
+  const germanData = {
+    labels,
+    datasets: [{
+      label: 'German Time (Hours)',
+      data: germanMonthlyMinutes.map(mins => parseFloat((mins / 60).toFixed(2))),
+      backgroundColor: 'rgba(234,179,8,0.55)',
+      borderColor: 'rgba(234,179,8,0.8)',
+      borderWidth: 1, borderRadius: 4,
+      barPercentage: 0.6,
+    }]
+  };
+
+  const germanOptions = mergeChartOptions({
+    scales: {
+      y: { beginAtZero: true, ticks: { callback: (value) => `${value}h` } }
+    },
+    plugins: { legend: { display: false } }
+  });
+
+  // ── Projects & Reading (Hustle / Video / Books per month) ────
+  const projectsData = {
+    labels,
+    datasets: [
+      {
+        label: 'Hustle Time (Hours)',
+        data: hustleMonthlyMinutes.map(mins => parseFloat((mins / 60).toFixed(2))),
+        backgroundColor: 'rgba(37,99,235,0.55)',
+        borderColor: 'rgba(37,99,235,0.8)',
+        borderWidth: 1, borderRadius: 4,
+        barPercentage: 0.6,
+      },
+      {
+        label: 'Video Time (Hours)',
+        data: videoMonthlyMinutes.map(mins => parseFloat((mins / 60).toFixed(2))),
+        backgroundColor: 'rgba(99,102,241,0.55)',
+        borderColor: 'rgba(99,102,241,0.8)',
+        borderWidth: 1, borderRadius: 4,
+        barPercentage: 0.6,
+      }
+    ]
+  };
+
+  const projectsOptions = mergeChartOptions({
+    scales: {
+      y: { beginAtZero: true, ticks: { callback: (value) => `${value}h` } }
+    }
+  });
+
+  const booksData = {
+    labels,
+    datasets: [{
+      label: 'Books Read (Days)',
+      data: booksMonthlyDays,
+      backgroundColor: 'rgba(249,115,22,0.55)',
+      borderColor: 'rgba(249,115,22,0.8)',
+      borderWidth: 1, borderRadius: 4,
+      barPercentage: 0.6,
+    }]
+  };
+
+  const booksOptions = mergeChartOptions({
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
+    },
+    plugins: { legend: { display: false } }
+  });
+
   // ── Flatten all days for CircularTracker ────────────────────
   const allDays = yearlyData.flatMap(m => m.days);
 
@@ -537,6 +660,10 @@ export default function YearlyReview() {
         <StatBadge icon={MessageCircle} label="Avg Social" value={fmtMin(avgSocialMin)} colorRgb="236,72,153" />
         <StatBadge icon={Ban} label="Avg Cigs" value={`${avgCigs}`} colorRgb="239,68,68" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalYearExpenses} colorRgb="245,158,11" />
+        <StatBadge icon={Languages} label="German" value={`${germanDays}d · ${fmtGermanTime(totalGermanMinutes)}`} colorRgb="234,179,8" />
+        <StatBadge icon={Rocket} label="Hustle" value={`${hustleDays}d · ${fmtGermanTime(totalHustleMinutes)}`} colorRgb="37,99,235" />
+        <StatBadge icon={Video} label="Video" value={`${videoDays}d · ${fmtGermanTime(totalVideoMinutes)}`} colorRgb="99,102,241" />
+        <StatBadge icon={BookOpen} label="Books" value={`${booksDays}d`} colorRgb="249,115,22" />
       </div>
 
       {/* ── Monthly Heatmap Strip ───────────────────────────── */}
@@ -648,6 +775,18 @@ export default function YearlyReview() {
 
       <ChartCard title="System Check Completion" colorGradient="linear-gradient(135deg,#3b82f6,#2563eb)" icon="⚙️" borderColor="#3b82f6" height={220}>
         <Bar data={systemData} options={systemOptions} />
+      </ChartCard>
+
+      <ChartCard title={`German Study Time — ${germanDays} days · ${fmtGermanTime(totalGermanMinutes)}`} colorGradient="linear-gradient(135deg,#eab308,#d97706)" icon="🇩🇪" borderColor="#eab308" height={300}>
+        <Bar data={germanData} options={germanOptions} />
+      </ChartCard>
+
+      <ChartCard title={`Projects Time — Hustle ${fmtGermanTime(totalHustleMinutes)} · Video ${fmtGermanTime(totalVideoMinutes)}`} colorGradient="linear-gradient(135deg,#2563eb,#6366f1)" icon="🚀" borderColor="#2563eb" height={300}>
+        <Bar data={projectsData} options={projectsOptions} />
+      </ChartCard>
+
+      <ChartCard title={`Book Reading — ${booksDays} days`} colorGradient="linear-gradient(135deg,#f59e0b,#d97706)" icon="📖" borderColor="#f59e0b" height={260}>
+        <Bar data={booksData} options={booksOptions} />
       </ChartCard>
 
     </div>

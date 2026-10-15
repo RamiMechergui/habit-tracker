@@ -20,6 +20,7 @@ function getTargetSection(task) {
   const cats = Array.isArray(task.categories) ? task.categories : [task.category || 'Other'];
   for (const c of cats) {
     const cl = c.toLowerCase();
+    if (cl === 'learning german') return 'german';
     if (cl === 'video editing' || cl === 'learning') return 'video';
     if (cl === 'side hustle') return 'hustle';
   }
@@ -28,6 +29,9 @@ function getTargetSection(task) {
 
 function formatSummary(targetSection, focusMins, restMins, dateStr) {
   const total = focusMins + restMins;
+  if (targetSection === 'german') {
+    return `[${dateStr}] - You studied German for ${focusMins} minutes of Deep Work and ${restMins} minutes of Rest.`;
+  }
   if (targetSection === 'video') {
     return `[${dateStr}] - You have passed today ${focusMins} minutes of Deep Work and ${restMins} minutes of Rest on this project.`;
   }
@@ -231,7 +235,9 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
     const summary = formatSummary(targetSection, focusMins, restMins, today);
     const updatedLog = { ...log };
     if (!updatedLog[targetSection]) {
-      updatedLog[targetSection] = { task: '', time: '', achieved: false, lessons: [] };
+      updatedLog[targetSection] = targetSection === 'german'
+        ? { task: '', startTime: '', endTime: '', time: '', achieved: false, lessons: [] }
+        : { task: '', time: '', achieved: false, lessons: [] };
     }
     const section = { ...updatedLog[targetSection] };
     section.lessons = [...(section.lessons || []), summary];
@@ -288,7 +294,7 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
     // Only set the generic log message if we didn't already set a completion one
     setSessionMsg(prev => {
       if (prev?.type === 'complete') return prev;
-      return { type: 'log', text: `Logged to ${targetSection === 'video' ? 'Video Editing' : 'Side Hustle'}` };
+      return { type: 'log', text: `Logged to ${targetSection === 'video' ? 'Video Editing' : targetSection === 'german' ? 'Learning German' : 'Side Hustle'}` };
     });
     setTimeout(() => setSessionMsg(prev => prev?.type === 'complete' ? prev : null), 3000);
   }, [getLog, saveLog]);
@@ -341,7 +347,9 @@ export default function DeepTimerSection({ category, title, icon: Icon, accentCo
       const targetSection = getTargetSection(task);
       const summary = formatSummary(targetSection, t.focusMinutes, t.restMinutes, today);
       if (!updatedLog[targetSection]) {
-        updatedLog[targetSection] = { task: '', time: '', achieved: false, lessons: [] };
+        updatedLog[targetSection] = targetSection === 'german'
+          ? { task: '', startTime: '', endTime: '', time: '', achieved: false, lessons: [] }
+          : { task: '', time: '', achieved: false, lessons: [] };
       }
       const section = { ...updatedLog[targetSection] };
       section.lessons = [...(section.lessons || []), summary];

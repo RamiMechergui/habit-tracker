@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Star, BarChart2, Smartphone, MessageCircle, Clock, Ban, Languages, Rocket, Video, BookOpen } from 'lucide-react';
 import CircularTracker from '../components/CircularTracker';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -87,6 +87,23 @@ const getScoreTone = (score) => {
   if (score >= 60) return 'score-mid';
   return 'score-low';
 };
+
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const s = String(timeStr).trim().toLowerCase();
+  const hrMinMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?\s*(\d+)\s*m(?:in)?s?/);
+  if (hrMinMatch) return Math.round(parseFloat(hrMinMatch[1]) * 60 + parseFloat(hrMinMatch[2]));
+  const hrMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?/);
+  if (hrMatch) return Math.round(parseFloat(hrMatch[1]) * 60);
+  const minMatch = s.match(/(\d+)\s*m(?:in)?s?/);
+  if (minMatch) return parseInt(minMatch[1], 10);
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num <= 24) return Math.round(num * 60);
+    return Math.round(num);
+  }
+  return 0;
+}
 
 // ── Sub-components ───────────────────────────────────────────────
 function StatBadge({ icon: Icon, label, value, colorRgb }) {
@@ -438,6 +455,95 @@ export default function MonthlyReview() {
     plugins: { legend: { display: false } }
   });
 
+  // ── Learning German Aggregation ─────────────────────────────
+  const germanDays = monthlyData.filter(d => d.log.german?.achieved).length;
+  const totalGermanMinutes = monthlyData.reduce((s, d) => s + parseTimeToMinutes(d.log.german?.time), 0);
+  const fmtGermanTime = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+  // ── Side Hustle / Video / Books Aggregation ───────────────────
+  const hustleDays = monthlyData.filter(d => d.log.hustle?.achieved).length;
+  const totalHustleMinutes = monthlyData.reduce((s, d) => s + parseTimeToMinutes(d.log.hustle?.time), 0);
+  const videoDays = monthlyData.filter(d => d.log.video?.achieved).length;
+  const totalVideoMinutes = monthlyData.reduce((s, d) => s + parseTimeToMinutes(d.log.video?.time), 0);
+  const booksDays = monthlyData.filter(d => d.log.books?.read).length;
+  const germanTimeData = {
+    labels: monthlyData.map(d => d.dayNum),
+    datasets: [{
+      label: 'German Time (Hours)',
+      data: monthlyData.map(d => parseFloat((parseTimeToMinutes(d.log.german?.time) / 60).toFixed(2))),
+      borderColor: '#eab308',
+      backgroundColor: 'rgba(234,179,8,0.12)',
+      tension: 0.35,
+      fill: true,
+      pointBackgroundColor: '#eab308',
+      pointRadius: 2.5,
+      pointHoverRadius: 5,
+    }]
+  };
+  const germanTimeOptions = mergeChartOptions({
+    scales: { y: { beginAtZero: true, ticks: { callback: (value) => `${value}h` } } }
+  });
+  const germanCompletionData = {
+    labels: ['German Achieved'],
+    datasets: [{
+      label: 'Days Completed',
+      data: [germanDays],
+      backgroundColor: ['rgba(234,179,8,0.6)'],
+      borderColor: ['rgba(234,179,8,0.9)'],
+      borderWidth: 1, borderRadius: 6, barPercentage: 0.45,
+    }]
+  };
+  const germanCompletionOptions = mergeChartOptions({
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+    plugins: { legend: { display: false } }
+  });
+
+  // ── Projects & Reading (Hustle / Video / Books) ───────────────
+  const projectsCompletionData = {
+    labels: ['Hustle Achieved', 'Video Achieved', 'Books Read'],
+    datasets: [{
+      label: 'Days Completed',
+      data: [hustleDays, videoDays, booksDays],
+      backgroundColor: ['rgba(37,99,235,0.6)', 'rgba(99,102,241,0.6)', 'rgba(249,115,22,0.6)'],
+      borderColor: ['rgba(37,99,235,0.9)', 'rgba(99,102,241,0.9)', 'rgba(249,115,22,0.9)'],
+      borderWidth: 1, borderRadius: 6, barPercentage: 0.45,
+    }]
+  };
+  const projectsCompletionOptions = mergeChartOptions({
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+    plugins: { legend: { display: false } }
+  });
+  const projectsTimeData = {
+    labels: monthlyData.map(d => d.dayNum),
+    datasets: [
+      {
+        label: 'Hustle Time (Hours)',
+        data: monthlyData.map(d => parseFloat((parseTimeToMinutes(d.log.hustle?.time) / 60).toFixed(2))),
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37,99,235,0.12)',
+        tension: 0.35,
+        fill: true,
+        pointBackgroundColor: '#2563eb',
+        pointRadius: 2.5,
+        pointHoverRadius: 5,
+      },
+      {
+        label: 'Video Time (Hours)',
+        data: monthlyData.map(d => parseFloat((parseTimeToMinutes(d.log.video?.time) / 60).toFixed(2))),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.12)',
+        tension: 0.35,
+        fill: true,
+        pointBackgroundColor: '#6366f1',
+        pointRadius: 2.5,
+        pointHoverRadius: 5,
+      }
+    ]
+  };
+  const projectsTimeOptions = mergeChartOptions({
+    scales: { y: { beginAtZero: true, ticks: { callback: (value) => `${value}h` } } }
+  });
+
   return (
     <div className="review-page review-page--monthly" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
@@ -578,6 +684,10 @@ export default function MonthlyReview() {
         <StatBadge icon={MessageCircle} label="Avg Social" value={fmtMin(avgSocialMin)} colorRgb="236,72,153" />
         <StatBadge icon={Ban} label="Avg Cigs" value={`${avgCigs}`} colorRgb="239,68,68" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalMonthlySpend} colorRgb="245,158,11" />
+        <StatBadge icon={Languages} label="German" value={`${germanDays}d · ${fmtGermanTime(totalGermanMinutes)}`} colorRgb="234,179,8" />
+        <StatBadge icon={Rocket} label="Hustle" value={`${hustleDays}d · ${fmtGermanTime(totalHustleMinutes)}`} colorRgb="37,99,235" />
+        <StatBadge icon={Video} label="Video" value={`${videoDays}d · ${fmtGermanTime(totalVideoMinutes)}`} colorRgb="99,102,241" />
+        <StatBadge icon={BookOpen} label="Books" value={`${booksDays}d`} colorRgb="249,115,22" />
       </div>
 
       {/* ── Mini Calendar Heatmap Strip ──────────────────────── */}
@@ -716,6 +826,22 @@ export default function MonthlyReview() {
 
       <ChartCard title="System Check Completion" colorGradient="linear-gradient(135deg,#3b82f6,#2563eb)" icon="⚙️" borderColor="#3b82f6" height={220}>
         <Bar data={systemData} options={systemOptions} />
+      </ChartCard>
+
+      <ChartCard title={`German Learning — ${germanDays} days · ${fmtGermanTime(totalGermanMinutes)}`} colorGradient="linear-gradient(135deg,#eab308,#f59e0b)" icon="🇩🇪" borderColor="#eab308" height={250}>
+        <Bar data={germanCompletionData} options={germanCompletionOptions} />
+      </ChartCard>
+
+      <ChartCard title="German Study Time (Hours / Day)" colorGradient="linear-gradient(135deg,#eab308,#d97706)" icon="⏱️" borderColor="#eab308" height={260}>
+        <Line data={germanTimeData} options={germanTimeOptions} />
+      </ChartCard>
+
+      <ChartCard title={`Projects & Reading — Hustle ${hustleDays}d · Video ${videoDays}d · Books ${booksDays}d`} colorGradient="linear-gradient(135deg,#2563eb,#6366f1)" icon="🚀" borderColor="#2563eb" height={250}>
+        <Bar data={projectsCompletionData} options={projectsCompletionOptions} />
+      </ChartCard>
+
+      <ChartCard title="Hustle & Video Time (Hours / Day)" colorGradient="linear-gradient(135deg,#6366f1,#2563eb)" icon="⏱️" borderColor="#6366f1" height={260}>
+        <Line data={projectsTimeData} options={projectsTimeOptions} />
       </ChartCard>
 
     </div>

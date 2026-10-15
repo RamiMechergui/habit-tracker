@@ -36,6 +36,8 @@
   --dl-color-hustle-bg: rgba(37, 99, 235, 0.08);
   --dl-color-video: #6366f1;
   --dl-color-video-bg: rgba(99, 102, 241, 0.08);
+  --dl-color-german: #eab308;
+  --dl-color-german-bg: rgba(234, 179, 8, 0.10);
   --dl-color-book: var(--accent-amber, #f97316);
   --dl-color-book-bg: rgba(249, 115, 22, 0.08);
   --dl-color-system: var(--text-muted, #71717a);
@@ -249,6 +251,10 @@
 
 .dl-card-accent-blue {
   border-left: 3px solid var(--dl-color-hustle);
+}
+
+.dl-card-accent-german {
+  border-left: 3px solid var(--dl-color-german);
 }
 
 .dl-card-accent-rose {
@@ -1480,6 +1486,7 @@
   --dl-color-weekend-bg: rgba(249, 115, 22, 0.06);
   --dl-color-hustle-bg: rgba(37, 99, 235, 0.06);
   --dl-color-video-bg: rgba(99, 102, 241, 0.06);
+  --dl-color-german-bg: rgba(234, 179, 8, 0.08);
   --dl-color-book-bg: rgba(249, 115, 22, 0.06);
   --dl-color-system-bg: rgba(113, 113, 122, 0.04);
   --dl-color-expenses-bg: rgba(244, 63, 94, 0.06);

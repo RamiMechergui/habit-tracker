@@ -30,6 +30,7 @@ const CATEGORY_COLORS = {
   Social:        'var(--cat-social)',
   'Video Editing': 'var(--cat-video-editing)',
   'Side Hustle':   'var(--cat-side-hustle)',
+  'Learning German': 'var(--cat-learning-german, #eab308)',
   Other:         'var(--cat-other)',
 };
 

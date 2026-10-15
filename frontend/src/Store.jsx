@@ -383,11 +383,12 @@ export const HabitProvider = ({ children }) => {
     date: dateStr,
     morning: { wakeTime: '', meditate: false, bed: false, teeth: false, shower: false, gel: false, perfume: false },
     bad: { smoking: { checked: false, a: false, s: false, count: 0 }, sexual: { checked: false, a: false, s: false }, social: { checked: false, a: false, s: false, min: 0 }, phone: { checked: false, a: false, s: false, min: 0 }, coffee: { checked: false, a: false, s: false }, eating: { checked: false, a: false, s: false }, noSugar: { checked: false, a: false, s: false } },
-    night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, fillApp: false },
+    night: { gym: false, cleanTable: false, orgTable: false, teeth: false, shave: false, washFace: false, hotShower: false, hygiene: false, fingerNails: false, toeNails: false, wiseSpend: false, saves: false, fillApp: false, paperNotebook: false },
     weekend: { saturday: { preLaundry: false }, sunday: { cleanRoom: false, regularLaundry: false, shareBought: false } },
     books: { name: '', page: '', read: false },
     hustle: { task: '', time: '', achieved: false, lessons: [] },
     video: { task: '', time: '', achieved: false, progress: 'Same', lessons: [] },
+    german: { task: '', startTime: '', endTime: '', time: '', achieved: false, lessons: [] },
     system: { todo: false, money: false },
     tasks: [],
     expenses: [{ desc: '', category: 'Other', amount: 0, time: pageOpenTime, cigarettesCount: 0 }],
@@ -398,6 +399,7 @@ export const HabitProvider = ({ children }) => {
     bookScore: 0,
     hustleScore: 0,
     videoScore: 0,
+    germanScore: 0,
     totalScore: 0,
     rank: 'F'
   }), [pageOpenTime]);
@@ -1142,6 +1144,7 @@ export const HabitProvider = ({ children }) => {
         books: { ...emptyLog.books, ...(existingLog.books || {}) },
         hustle: { ...emptyLog.hustle, ...(existingLog.hustle || {}) },
         video: { ...emptyLog.video, ...(existingLog.video || {}) },
+        german: { ...emptyLog.german, ...(existingLog.german || {}) },
         system: { ...emptyLog.system, ...(existingLog.system || {}) },
         tasks: normalizedTasks,
         expenses: Array.isArray(existingLog.expenses) && existingLog.expenses.length > 0 ? existingLog.expenses : emptyLog.expenses
@@ -1150,6 +1153,12 @@ export const HabitProvider = ({ children }) => {
       // Fix lessons if they are strings (legacy support)
       if (filledLog.hustle && typeof filledLog.hustle.lessons === 'string') {
         filledLog.hustle.lessons = filledLog.hustle.lessons.trim() ? [filledLog.hustle.lessons] : [];
+      }
+      if (filledLog.video && typeof filledLog.video.lessons === 'string') {
+        filledLog.video.lessons = filledLog.video.lessons.trim() ? [filledLog.video.lessons] : [];
+      }
+      if (filledLog.german && typeof filledLog.german.lessons === 'string') {
+        filledLog.german.lessons = filledLog.german.lessons.trim() ? [filledLog.german.lessons] : [];
       }
 
       // Ensure all expenses have cigarettesCount field for smoking category
@@ -1235,7 +1244,8 @@ export const HabitProvider = ({ children }) => {
     if(n.toeNails) nScore += 1;
     if(n.wiseSpend) nScore += 1;
     if(n.saves) nScore += 1;
-    if(n.fillApp) nScore += 3;
+    if(n.fillApp) nScore += 2;
+    if(n.paperNotebook) nScore += 1;
 
     // Bad Habits (28 pts)
     let bScore = 0;
@@ -1252,17 +1262,20 @@ export const HabitProvider = ({ children }) => {
     let bkScore = 0;
     let hScore = 0;
     let vScore = 0;
+    let gScore = 0;
     let sysScore = 0;
     
     if((data.books || {}).read) bkScore += 10;
     if(data.system?.todo) sysScore += 1;
     if(data.system?.money) sysScore += 1;
 
-    // Hustle and Video are bonus — not counted in the 100 base
+    // Hustle, Video and German are bonus (+5 each) — total capped at 100
     if((data.hustle || {}).achieved) hScore += 5;
     if((data.video || {}).achieved) vScore += 5;
+    if((data.german || {}).achieved) gScore += 5;
 
-    let score = mScore + nScore + bScore + bkScore + sysScore;
+    // Regularized total: base (30+30+28+10+2=100) + bonuses, capped at 100
+    let score = mScore + nScore + bScore + bkScore + sysScore + hScore + vScore + gScore;
     score = Math.max(0, Math.min(100, score));
     
     let rank = 'F';
@@ -1278,6 +1291,7 @@ export const HabitProvider = ({ children }) => {
     data.sysScore = sysScore;
     data.hustleScore = hScore;
     data.videoScore = vScore;
+    data.germanScore = gScore;
     data.totalScore = score;
     data.rank = rank;
     data.isSubmitted = true;

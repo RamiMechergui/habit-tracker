@@ -225,7 +225,7 @@ export default function TasksPage() {
   }, [tasks]);
 
   const totalDeepWork = useMemo(() => {
-    const qualifying = ['Video Editing', 'Side Hustle', 'Learning'];
+    const qualifying = ['Video Editing', 'Side Hustle', 'Learning', 'Learning German'];
     return tasks
       .filter(t => {
         const cats = Array.isArray(t.categories) ? t.categories : [t.category || 'Other'];

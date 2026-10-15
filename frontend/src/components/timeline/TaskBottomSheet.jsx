@@ -19,6 +19,7 @@ const CATEGORIES = [
   { key: 'Social',        color: 'var(--cat-social)',        icon: '👥' },
   { key: 'Video Editing', color: 'var(--cat-video-editing)', icon: '🎬' },
   { key: 'Side Hustle',   color: 'var(--cat-side-hustle)',   icon: '🚀' },
+  { key: 'Learning German', color: 'var(--cat-learning-german, #eab308)', icon: '🇩🇪' },
   { key: 'Other',         color: 'var(--cat-other)',         icon: '📌' },
 ];
 

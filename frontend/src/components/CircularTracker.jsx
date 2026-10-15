@@ -33,12 +33,14 @@ const CircularTracker = ({ data }) => {
     { name: 'Wise Spend', getValue: (l) => l.night?.wiseSpend },
     { name: 'Savings', getValue: (l) => l.night?.saves },
     { name: 'Fill App', getValue: (l) => l.night?.fillApp },
+    { name: 'Notebook', getValue: (l) => l.night?.paperNotebook },
     // Extra
     { name: 'Book Reading', getValue: (l) => l.books?.read },
     { name: 'ToDo App', getValue: (l) => l.system?.todo },
     { name: 'Money Tracker', getValue: (l) => l.system?.money },
     { name: 'Side Hustle', getValue: (l) => l.hustle?.achieved },
     { name: 'Video Edit', getValue: (l) => l.video?.achieved },
+    { name: 'German', getValue: (l) => l.german?.achieved },
     // Weekend
     { name: 'Pre-laundry', getValue: (l, d) => (d.dayName === 'Sat' || d.dayName === 'Saturday') ? (l.weekend?.saturday?.preLaundry ?? false) : null },
     { name: 'Clean Room', getValue: (l, d) => (d.dayName === 'Sun' || d.dayName === 'Sunday') ? (l.weekend?.sunday?.cleanRoom ?? false) : null },

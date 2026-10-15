@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useHabits } from '../Store';
 import { format } from 'date-fns';
-import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download, RefreshCw, ChevronLeft, ChevronRight, Play, Pause, RotateCcw } from 'lucide-react';
+import { Trash2, CheckCircle2, Target, Clock, BookOpen, Edit2, Plus, Sparkles, Video, TrendingUp, TrendingDown, Minus, ShieldCheck, Calendar, Download, RefreshCw, ChevronLeft, ChevronRight, Play, Pause, RotateCcw, Languages } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { UsageStats } from '../utils/usageStats';
@@ -253,6 +253,7 @@ export default function DailyLog() {
 
   const [hustleWarning, setHustleWarning] = useState(false);
   const [videoWarning, setVideoWarning] = useState(false);
+  const [germanWarning, setGermanWarning] = useState(false);
   const [saveStatus, setSaveStatus] = useState('Saved');
   const [, setSubmitError] = useState('');
   const [localDirty, setLocalDirty] = useState(false);
@@ -268,8 +269,14 @@ export default function DailyLog() {
   const [editingVideoLessonIdx, setEditingVideoLessonIdx] = useState(null);
   const [editingVideoLessonText, setEditingVideoLessonText] = useState('');
 
+  const [newGermanLesson, setNewGermanLesson] = useState('');
+  const [editingGermanLessonIdx, setEditingGermanLessonIdx] = useState(null);
+  const [editingGermanLessonText, setEditingGermanLessonText] = useState('');
+  const [germanLessonMsg, setGermanLessonMsg] = useState('');
+
   const showLessonMessage = (msg) => { setLessonMsg(msg); setTimeout(() => setLessonMsg(''), 3000); };
   const showVideoLessonMessage = (msg) => { setVideoLessonMsg(msg); setTimeout(() => setVideoLessonMsg(''), 3000); };
+  const showGermanLessonMessage = (msg) => { setGermanLessonMsg(msg); setTimeout(() => setGermanLessonMsg(''), 3000); };
 
   const handleAddLesson = () => {
     if (!newLesson.trim()) return;
@@ -335,6 +342,72 @@ export default function DailyLog() {
     setLocalDirty(true);
   };
 
+  /* ── Learning German helpers ── */
+  const computeGermanDuration = (startTime, endTime) => {
+    if (!startTime || !endTime) return '';
+    const toMin = (t) => {
+      const [h, m] = String(t).split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return null;
+      return h * 60 + m;
+    };
+    const s = toMin(startTime);
+    const e = toMin(endTime);
+    if (s === null || e === null) return '';
+    let diff = e - s;
+    if (diff < 0) diff += 24 * 60; // overnight session
+    if (diff === 0) return '';
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    if (h > 0 && m > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+  };
+
+  const handleGermanTimeBoundChange = (key, val) => {
+    setLog(prev => {
+      const german = { ...(prev.german || {}), [key]: val };
+      const auto = computeGermanDuration(
+        key === 'startTime' ? val : german.startTime,
+        key === 'endTime' ? val : german.endTime
+      );
+      if (auto) german.time = auto;
+      return { ...prev, german };
+    });
+    setLocalDirty(true);
+  };
+
+  const handleAddGermanLesson = () => {
+    if (!newGermanLesson.trim()) return;
+    setLog(prev => {
+      const lessons = [...((prev.german || {}).lessons || []), newGermanLesson.trim()];
+      return { ...prev, german: { ...prev.german, lessons } };
+    });
+    setNewGermanLesson('');
+    setLocalDirty(true);
+  };
+
+  const handleSaveEditGermanLesson = (idx) => {
+    if (!editingGermanLessonText.trim()) return;
+    setLog(prev => {
+      const lessons = [...((prev.german || {}).lessons || [])];
+      lessons[idx] = editingGermanLessonText.trim();
+      return { ...prev, german: { ...prev.german, lessons } };
+    });
+    setEditingGermanLessonIdx(null);
+    setEditingGermanLessonText('');
+    showGermanLessonMessage('Key lesson edited');
+    setLocalDirty(true);
+  };
+
+  const handleDeleteGermanLesson = (idx) => {
+    setLog(prev => {
+      const lessons = ((prev.german || {}).lessons || []).filter((_, i) => i !== idx);
+      return { ...prev, german: { ...prev.german, lessons } };
+    });
+    showGermanLessonMessage('Key lesson deleted');
+    setLocalDirty(true);
+  };
+
   const bookProgress = getBookProgress();
   const dateObj = new Date(date + 'T00:00:00');
   const dayOfWeek = dateObj.getDay();
@@ -353,6 +426,7 @@ export default function DailyLog() {
     });
     setHustleWarning(false);
     setVideoWarning(false);
+    setGermanWarning(false);
     setSearchParams({ date });
   }, [date, currentBook, logs, localDirty]);
 
@@ -472,10 +546,12 @@ export default function DailyLog() {
   if (n.toeNails) nScore += 1;
   if (n.wiseSpend) nScore += 1;
   if (n.saves) nScore += 1;
-  if (n.fillApp) nScore += 3;
+  if (n.fillApp) nScore += 2;
+  if (n.paperNotebook) nScore += 1;
 
   const hScore = log.hustle.achieved ? 5 : 0;
   const vScore = log.video.achieved ? 5 : 0;
+  const gScore = log.german?.achieved ? 5 : 0;
   const bkScore = log.books.read ? 10 : 0;
   const sysScore = (log.system?.todo ? 1 : 0) + (log.system?.money ? 1 : 0);
 
@@ -489,7 +565,7 @@ export default function DailyLog() {
   if (b.eating?.checked) dynamicBadScore += 2;
   if (b.noSugar?.checked) dynamicBadScore += 2;
 
-  let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + sysScore + hScore + vScore));
+  let dynamicTotalScore = Math.max(0, Math.min(100, mScore + nScore + dynamicBadScore + bkScore + sysScore + hScore + vScore + gScore));
   let dynamicRank = 'F';
   if (dynamicTotalScore >= 90) dynamicRank = 'S';
   else if (dynamicTotalScore >= 80) dynamicRank = 'A';
@@ -542,7 +618,8 @@ export default function DailyLog() {
     { id: 'toeNails', label: 'Trim toenails', icon: '✂️', pts: '1pt' },
     { id: 'wiseSpend', label: 'Wise spending', icon: '💰', pts: '1pt' },
     { id: 'saves', label: '1 TND Saved', icon: '🏦', pts: '1pt' },
-    { id: 'fillApp', label: 'Fill web app', icon: '📝', pts: '3pts' },
+    { id: 'fillApp', label: 'Fill web app', icon: '📝', pts: '2pts' },
+    { id: 'paperNotebook', label: 'Complete paper-based Notebook', icon: '📓', pts: '1pt' },
   ];
 
   const totalExpenses = (Array.isArray(log.expenses) ? log.expenses : []).reduce((t, e) => t + (parseFloat(e.amount) || 0), 0);
@@ -875,6 +952,80 @@ export default function DailyLog() {
               <div style={{ display: 'flex', gap: 'var(--dl-space-2)', marginTop: 'var(--dl-space-3)' }}>
                 <input className="dl-input dl-input-sm" style={{ flex: 1 }} placeholder="Add a key lesson..." value={newVideoLesson} onChange={e => setNewVideoLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddVideoLesson()} disabled={isFuture} />
                 <button className="dl-add-lesson-btn" style={{ width: 40, minWidth: 40, height: 36, padding: 0 }} onClick={handleAddVideoLesson} disabled={isFuture}><Plus size={16} /></button>
+              </div>
+            </div>
+          </div>
+
+          {/* Learning German */}
+          <div className="dl-card dl-card-accent-german">
+            <div className="dl-section-header">
+              <span className="dl-section-icon" style={{ background: 'var(--dl-color-german-bg)' }}><Languages size={16} /></span>
+              <h3 className="dl-section-title">Learning German</h3>
+              <span className="dl-grade-pill" style={{ background: 'var(--dl-color-german-bg)', color: 'var(--dl-color-german)' }}>{gScore}/5</span>
+            </div>
+            <div className="dl-task-card">
+              <div className="dl-input-icon">
+                <span className="dl-input-icon-prefix"><Languages size={14} /></span>
+                <input className="dl-input" placeholder="Planned Task (e.g. A1.1 Lesson 4)" value={log.german?.task || ''} onChange={e => updateSection('german', 'task', e.target.value)} disabled={isFuture} />
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--dl-space-2)', flexWrap: 'wrap' }}>
+                <div className="dl-input-icon" style={{ flex: '1 1 140px' }}>
+                  <span className="dl-input-icon-prefix"><Clock size={14} /></span>
+                  <input type="time" className="dl-input" value={log.german?.startTime || ''} onChange={e => handleGermanTimeBoundChange('startTime', e.target.value)} disabled={isFuture} aria-label="Starting time" title="Starting time" style={{ width: '100%' }} />
+                </div>
+                <div className="dl-input-icon" style={{ flex: '1 1 140px' }}>
+                  <span className="dl-input-icon-prefix"><Clock size={14} /></span>
+                  <input type="time" className="dl-input" value={log.german?.endTime || ''} onChange={e => handleGermanTimeBoundChange('endTime', e.target.value)} disabled={isFuture} aria-label="Ending time" title="Ending time" style={{ width: '100%' }} />
+                </div>
+              </div>
+              <TimeSpentTimerInput
+                value={log.german?.time || ''}
+                onChange={val => updateSection('german', 'time', val)}
+                placeholder="Time Spent (auto from start/end, e.g. 1h 30m)"
+                disabled={isFuture}
+                icon={<Clock size={14} />}
+                accentColor="var(--dl-color-german)"
+              />
+              {germanWarning && <span className="dl-animate-shake" style={{ color: 'var(--accent-rose)', fontSize: '0.75rem' }}>⚠️ Fill Task & Time (or Start & End) to check this box.</span>}
+              <div className="dl-task-achieved" style={{ background: log.german?.achieved ? 'var(--dl-color-german-bg)' : undefined, borderColor: log.german?.achieved ? 'rgba(234, 179, 8, 0.25)' : undefined }}>
+                <input type="checkbox" className="dl-checkbox dl-checkbox--blue" checked={log.german?.achieved || false} onChange={e => { if (e.target.checked && (!(log.german?.task || '').trim() || (!(log.german?.time || '').trim() && (!(log.german?.startTime || '').trim() || !(log.german?.endTime || '').trim())))) { setGermanWarning(true); return; } setGermanWarning(false); updateSection('german', 'achieved', e.target.checked); }} disabled={isFuture} />
+                <span className="dl-task-achieved-label" style={{ color: log.german?.achieved ? 'var(--dl-color-german)' : undefined }}>🇩🇪 Task Achieved</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 'var(--dl-space-4)', marginTop: 'var(--dl-space-2)' }}>
+              <div className="dl-section-header" style={{ marginBottom: 'var(--dl-space-3)' }}>
+                <h4 className="dl-section-title" style={{ fontSize: '0.85rem' }}><Sparkles size={13} className="text-amber" /> Key Lessons</h4>
+              </div>
+              {germanLessonMsg && <div style={{ background: 'var(--dl-color-bad-bg)', color: 'var(--dl-color-bad)', padding: '6px 12px', borderRadius: 8, fontSize: '0.78rem', marginBottom: 8, border: '1px solid rgba(16,185,129,0.12)' }}>{germanLessonMsg}</div>}
+              <div className="dl-lessons">
+                {((log.german || {}).lessons || []).map((lesson, idx) => (
+                  <div key={idx} className="dl-lesson-card">
+                    {editingGermanLessonIdx === idx ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                        <textarea className="dl-input" style={{ height: 'auto', minHeight: 60, padding: 8, fontSize: '0.85rem', resize: 'none', borderRadius: 8 }} rows={2} value={editingGermanLessonText} onChange={e => setEditingGermanLessonText(e.target.value)} autoFocus />
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button className="dl-add-lesson-btn" style={{ width: 'auto', padding: '0 12px', height: 30 }} onClick={() => setEditingGermanLessonIdx(null)}>Cancel</button>
+                          <button className="dl-add-lesson-btn" style={{ width: 'auto', padding: '0 12px', height: 30, background: 'var(--accent-blue)', color: '#fff', borderStyle: 'solid', borderColor: 'var(--accent-blue)' }} onClick={() => handleSaveEditGermanLesson(idx)}>Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                          <span style={{ color: 'var(--accent-amber)', marginRight: 6 }}>•</span>{lesson}
+                        </span>
+                        <div className="dl-lesson-actions">
+                          <button className="dl-lesson-action-btn" onClick={() => { setEditingGermanLessonIdx(idx); setEditingGermanLessonText(lesson); }} disabled={isFuture}><Edit2 size={13} /></button>
+                          <button className="dl-lesson-action-btn dl-lesson-action-btn--delete" onClick={() => handleDeleteGermanLesson(idx)} disabled={isFuture}><Trash2 size={13} /></button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--dl-space-2)', marginTop: 'var(--dl-space-3)' }}>
+                <input className="dl-input dl-input-sm" style={{ flex: 1 }} placeholder="Add a key lesson..." value={newGermanLesson} onChange={e => setNewGermanLesson(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isFuture && handleAddGermanLesson()} disabled={isFuture} />
+                <button className="dl-add-lesson-btn" style={{ width: 40, minWidth: 40, height: 36, padding: 0 }} onClick={handleAddGermanLesson} disabled={isFuture}><Plus size={16} /></button>
               </div>
             </div>
           </div>

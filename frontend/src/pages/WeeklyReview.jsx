@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useHabits } from '../Store';
 import { Line, Bar } from 'react-chartjs-2';
 import CircularTracker from '../components/CircularTracker';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Clock, CheckSquare, Smartphone, MessageCircle, Ban } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, DollarSign, Clock, CheckSquare, Smartphone, MessageCircle, Ban, Languages, Rocket, Video, BookOpen } from 'lucide-react';
 import { format, addDays, subDays, isToday } from 'date-fns';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -101,6 +101,23 @@ const getScoreColor = (score) => {
   if (score >= 60) return '#f59e0b';
   return '#ef4444';
 };
+
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const s = String(timeStr).trim().toLowerCase();
+  const hrMinMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?\s*(\d+)\s*m(?:in)?s?/);
+  if (hrMinMatch) return Math.round(parseFloat(hrMinMatch[1]) * 60 + parseFloat(hrMinMatch[2]));
+  const hrMatch = s.match(/(\d+(?:\.\d+)?)\s*h(?:our)?s?/);
+  if (hrMatch) return Math.round(parseFloat(hrMatch[1]) * 60);
+  const minMatch = s.match(/(\d+)\s*m(?:in)?s?/);
+  if (minMatch) return parseInt(minMatch[1], 10);
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num <= 24) return Math.round(num * 60);
+    return Math.round(num);
+  }
+  return 0;
+}
 
 // ── Summary Stat Card ────────────────────────────────────────────
 function StatBadge({ icon: Icon, label, value, color }) {
@@ -238,6 +255,18 @@ export default function WeeklyReview() {
     const [h, m] = timeStr.split(':');
     return parseInt(h, 10) + parseInt(m, 10) / 60;
   };
+
+  // ── Learning German aggregation ────────────────────────────
+  const germanDays = weeklyData.filter(d => d.log.german?.achieved).length;
+  const totalGermanMinutes = weeklyData.reduce((s, d) => s + parseTimeToMinutes(d.log.german?.time), 0);
+  const fmtGermanTime = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+  // ── Side Hustle / Video / Books aggregation ──────────────────
+  const hustleDays = weeklyData.filter(d => d.log.hustle?.achieved).length;
+  const totalHustleMinutes = weeklyData.reduce((s, d) => s + parseTimeToMinutes(d.log.hustle?.time), 0);
+  const videoDays = weeklyData.filter(d => d.log.video?.achieved).length;
+  const totalVideoMinutes = weeklyData.reduce((s, d) => s + parseTimeToMinutes(d.log.video?.time), 0);
+  const booksDays = weeklyData.filter(d => d.log.books?.read).length;
 
   // ── Chart Datasets ───────────────────────────────────────────
   const disciplineData = {
@@ -464,6 +493,85 @@ export default function WeeklyReview() {
     }
   });
 
+  const germanData = {
+    labels,
+    datasets: [
+      {
+        label: 'German Achieved',
+        data: weeklyData.map(d => d.log.german?.achieved ? 1 : 0),
+        backgroundColor: 'rgba(234,179,8,0.6)',
+        borderColor: 'rgba(234,179,8,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      },
+      {
+        label: 'German Time (Hours)',
+        data: weeklyData.map(d => parseFloat((parseTimeToMinutes(d.log.german?.time) / 60).toFixed(2))),
+        backgroundColor: 'rgba(59,130,246,0.45)',
+        borderColor: 'rgba(59,130,246,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      }
+    ]
+  };
+
+  const germanOptions = mergeChartOptions({
+    scales: {
+      y: {
+        min: 0,
+        ticks: { stepSize: 1 }
+      }
+    }
+  });
+
+  const projectsData = {
+    labels,
+    datasets: [
+      {
+        label: 'Hustle Achieved',
+        data: weeklyData.map(d => d.log.hustle?.achieved ? 1 : 0),
+        backgroundColor: 'rgba(37,99,235,0.6)',
+        borderColor: 'rgba(37,99,235,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      },
+      {
+        label: 'Video Achieved',
+        data: weeklyData.map(d => d.log.video?.achieved ? 1 : 0),
+        backgroundColor: 'rgba(99,102,241,0.6)',
+        borderColor: 'rgba(99,102,241,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      },
+      {
+        label: 'Books Read',
+        data: weeklyData.map(d => d.log.books?.read ? 1 : 0),
+        backgroundColor: 'rgba(249,115,22,0.6)',
+        borderColor: 'rgba(249,115,22,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      },
+      {
+        label: 'Hustle Time (Hours)',
+        data: weeklyData.map(d => parseFloat((parseTimeToMinutes(d.log.hustle?.time) / 60).toFixed(2))),
+        backgroundColor: 'rgba(37,99,235,0.3)',
+        borderColor: 'rgba(37,99,235,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      },
+      {
+        label: 'Video Time (Hours)',
+        data: weeklyData.map(d => parseFloat((parseTimeToMinutes(d.log.video?.time) / 60).toFixed(2))),
+        backgroundColor: 'rgba(99,102,241,0.3)',
+        borderColor: 'rgba(99,102,241,0.9)',
+        borderWidth: 1, borderRadius: 6,
+      }
+    ]
+  };
+
+  const projectsOptions = mergeChartOptions({
+    scales: {
+      y: {
+        min: 0,
+        ticks: { stepSize: 1 }
+      }
+    }
+  });
+
   return (
     <div className="review-page review-page--weekly" style={{ paddingBottom: '2rem', animation: 'pageSlideIn 0.4s ease' }}>
 
@@ -605,6 +713,10 @@ export default function WeeklyReview() {
         <StatBadge icon={Ban} label="Avg Cigs" value={`${avgCigs}`} color="239,68,68" />
         <StatBadge icon={DollarSign} label="Total (TND)" value={totalExpenses} color="59,130,246" />
         <StatBadge icon={CheckSquare} label="Days Logged" value={`${submittedDays.length}/7`} color="139,92,246" />
+        <StatBadge icon={Languages} label="German" value={`${germanDays}/7 · ${fmtGermanTime(totalGermanMinutes)}`} color="234,179,8" />
+        <StatBadge icon={Rocket} label="Hustle" value={`${hustleDays}/7 · ${fmtGermanTime(totalHustleMinutes)}`} color="37,99,235" />
+        <StatBadge icon={Video} label="Video" value={`${videoDays}/7 · ${fmtGermanTime(totalVideoMinutes)}`} color="99,102,241" />
+        <StatBadge icon={BookOpen} label="Books" value={`${booksDays}/7`} color="249,115,22" />
       </div>
 
       {/* ── Day Pills ─────────────────────────────────────────── */}
@@ -768,6 +880,14 @@ export default function WeeklyReview() {
 
       <ChartCard title="System Check Completion" color="linear-gradient(135deg,#8b5cf6,#7c3aed)" icon="⚙️" height={220}>
         <Bar data={systemData} options={systemOptions} />
+      </ChartCard>
+
+      <ChartCard title={`German Learning — ${germanDays}/7 days · ${fmtGermanTime(totalGermanMinutes)}`} color="linear-gradient(135deg,#eab308,#f59e0b)" icon="🇩🇪" height={220}>
+        <Bar data={germanData} options={germanOptions} />
+      </ChartCard>
+
+      <ChartCard title={`Projects & Reading — Hustle ${hustleDays}/7 · Video ${videoDays}/7 · Books ${booksDays}/7`} color="linear-gradient(135deg,#2563eb,#6366f1)" icon="🚀" height={240}>
+        <Bar data={projectsData} options={projectsOptions} />
       </ChartCard>
 
     </div>
