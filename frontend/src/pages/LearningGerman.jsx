@@ -5370,7 +5370,7 @@ export default function LearningGerman() {
     addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar,
     addGermanVerb, updateGermanVerb,
     saveGermanNote, deleteGermanRecord,
-    uploadGermanVocabPhoto, deleteGermanVocabPhoto,
+    uploadGermanVocabPhoto, deleteGermanVocabPhoto, autoGenerateGermanVocabPhoto, autoFillGermanVocabPhotos,
     uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto,
     uploadGermanNotePhoto,
     translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo,
@@ -5438,6 +5438,9 @@ export default function LearningGerman() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [autoPhotoBusyId, setAutoPhotoBusyId] = useState(null);
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFillMsg, setAutoFillMsg] = useState('');
   const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
   const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
   const [confirmDeleteVerbId, setConfirmDeleteVerbId] = useState(null);
@@ -6071,6 +6074,41 @@ export default function LearningGerman() {
       await deleteGermanVocabPhoto(recordId);
     } catch (e) {
       setError(e.message);
+    }
+  };
+
+  const handleAutoPhoto = async (record) => {
+    if (!record || autoPhotoBusyId) return;
+    setAutoPhotoBusyId(record.recordId);
+    try {
+      await autoGenerateGermanVocabPhoto(record.recordId);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAutoPhotoBusyId(null);
+    }
+  };
+
+  const handleAutoFillPhotos = async () => {
+    if (autoFilling) return;
+    const missing = vocab.filter(v => !v.photoUrl).length;
+    if (missing === 0) {
+      setAutoFillMsg('Every vocabulary word already has a photo.');
+      setTimeout(() => setAutoFillMsg(''), 4000);
+      return;
+    }
+    if (!confirm(`Generate AI descriptive photos for ${missing} word${missing === 1 ? '' : 's'} missing a photo? This may take a while (each image is AI-generated).`)) return;
+    setAutoFilling(true);
+    setAutoFillMsg(`Generating 0 of ${missing} photos…`);
+    try {
+      const summary = await autoFillGermanVocabPhotos({ limit: Math.min(Math.max(missing, 1), 200) });
+      setAutoFillMsg(`Done: ${summary.updated} photo${summary.updated === 1 ? '' : 's'} added${summary.failed ? `, ${summary.failed} failed` : ''}.`);
+    } catch (e) {
+      setError(e.message);
+      setAutoFillMsg('');
+    } finally {
+      setAutoFilling(false);
+      setTimeout(() => setAutoFillMsg(''), 6000);
     }
   };
 
@@ -6931,7 +6969,24 @@ export default function LearningGerman() {
             }}>
               <Star size={13} fill={favoritesOnly ? C.gold : 'none'} /> {favoritesOnly ? 'Favorites' : '★ Favorites'}
             </button>
+            <button onClick={handleAutoFillPhotos} disabled={autoFilling} title="Generate AI descriptive photos for every word missing one (stored in the database)" style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: autoFilling ? 'wait' : 'pointer',
+              background: `linear-gradient(135deg, ${C.purple}22, ${C.blue}22)`,
+              border: `1px solid ${C.purple}55`,
+              color: C.purple,
+              fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap',
+              opacity: autoFilling ? 0.6 : 1,
+            }}>
+              {autoFilling ? <Loader2 size={13} className="spin" /> : <Sparkles size={13} />}
+              {autoFilling ? 'Generating…' : 'AI photos'}
+            </button>
           </div>
+          {autoFillMsg && (
+            <div style={{ fontSize: '0.78rem', color: C.purple, fontWeight: 600, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Sparkles size={13} /> {autoFillMsg}
+            </div>
+          )}
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
             {(debouncedSearch.trim() || favoritesOnly)
               ? `Showing ${displayedVocab.length} of ${vocab.length} words (filtered)`
@@ -6958,10 +7013,23 @@ export default function LearningGerman() {
                     >
                       <td data-label="Photo" style={{ ...cellStyle, width: 60, textAlign: 'center' }}>
                         {v.photoUrl ? (
-                          <img src={germanImageUrl(v.photoUrl)} alt={v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
-                            onClick={() => setPreviewImage(germanImageUrl(v.photoUrl))} />
+                          <span style={{ position: 'relative', display: 'inline-block' }}>
+                            <img src={germanImageUrl(v.photoUrl)} alt={v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
+                              onClick={() => setPreviewImage(germanImageUrl(v.photoUrl))} />
+                            {v.photoSource && v.photoSource !== 'manual' && (
+                              <span title={v.photoSource === 'ai-pollinations' ? 'AI-generated descriptive photo' : 'Auto keyword photo'} style={{ position: 'absolute', right: -4, bottom: -4, width: 16, height: 16, borderRadius: '50%', background: C.purple, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff' }}>
+                                <Sparkles size={9} />
+                              </span>
+                            )}
+                          </span>
                         ) : (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>—</span>
+                          <button onClick={() => handleAutoPhoto(v)} disabled={autoPhotoBusyId === v.recordId} title={`Generate AI descriptive photo for "${v.word}"`} style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 40, height: 40, borderRadius: 8, cursor: autoPhotoBusyId === v.recordId ? 'wait' : 'pointer',
+                            background: `${C.purple}12`, border: `1px dashed ${C.purple}55`, color: C.purple,
+                          }}>
+                            {autoPhotoBusyId === v.recordId ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                          </button>
                         )}
                       </td>
                       <td data-label="German Word" style={{ ...cellStyle, fontWeight: 700, color: C.gold }}>

@@ -55,8 +55,10 @@ const {
   addStudyMs,
   resetStudyTotal,
   resetStudyDay,
+  updateUnifiedVocab,
 } = require('../db/german');
 const { translateText } = require('../services/translate');
+const vocabPhoto = require('../services/vocabPhoto');
 const { getOrInitProgress } = require('../db/germanProgress');
 
 router.use(protect);
@@ -240,12 +242,24 @@ router.delete('/study/day', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, article, wordType, comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle } = req.body;
+    const { word, translation, example, notes, category, plural, article, wordType, comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle, photoUrl, photoSource, autoPhoto } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, wordType: wordType || 'noun', comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, wordType: wordType || 'noun', comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle, photoUrl: photoUrl || '', photoSource: photoSource || (photoUrl ? 'manual' : '') });
     res.status(201).json(record);
+    // Fire-and-forget: every stored vocab gets an AI descriptive photo unless
+    // the client opted out (autoPhoto: false) or already supplied one.
+    if (!record.photoUrl && autoPhoto !== false) {
+      const userId = req.user.userId;
+      setImmediate(async () => {
+        try {
+          await vocabPhoto.generateAndStoreVocabPhoto(userId, record);
+        } catch (e) {
+          console.warn('[German] background vocab AI photo failed:', e.message);
+        }
+      });
+    }
   } catch (err) {
     console.error('[German] POST vocab error:', err);
     res.status(500).json({ message: 'Failed to add vocabulary' });
@@ -363,6 +377,62 @@ router.delete('/vocab/:recordId/photo', async (req, res) => {
   } catch (err) {
     console.error('[German] DELETE vocab photo error:', err);
     res.status(500).json({ message: 'Failed to remove photo' });
+  }
+});
+
+// ── GET /api/german/vocab/photo/preview?word=..&translation=.. ───────────────
+// Returns the AI prompt + direct generation URL without saving anything.
+router.get('/vocab/photo/preview', async (req, res) => {
+  try {
+    const { word = '', translation = '', wordType = '', category = '' } = req.query;
+    if (!String(word).trim() && !String(translation).trim()) {
+      return res.status(400).json({ message: 'word or translation is required' });
+    }
+    const preview = vocabPhoto.previewForVocab({ word, translation, wordType, category });
+    res.json({ ...preview, source: 'ai-pollinations' });
+  } catch (err) {
+    console.error('[German] GET vocab photo preview error:', err);
+    res.status(500).json({ message: 'Failed to build photo preview' });
+  }
+});
+
+// ── POST /api/german/vocab/:recordId/photo/auto ─────────────────────────────
+// Generates an AI descriptive photo for one vocab (vocab or unified-vocab),
+// caches it in MinIO/S3 and stores photoUrl in the DB.
+// Missing-only by default: pass { "force": true } to regenerate.
+router.post('/vocab/:recordId/photo/auto', async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const force = req.body?.force === true || req.query.force === 'true';
+    const records = await getAllGermanRecords(userId);
+    const record = records.find(r => r.recordId === req.params.recordId);
+    if (!record) return res.status(404).json({ message: 'Record not found' });
+    if (record.type !== 'vocab' && record.type !== 'unified-vocab') {
+      return res.status(400).json({ message: 'Record is not a vocabulary entry' });
+    }
+    const out = await vocabPhoto.generateAndStoreVocabPhoto(userId, record, { force });
+    res.json({ photoUrl: out.photoUrl, photoSource: out.photoSource || record.photoSource, skipped: !!out.skipped, record: out.record });
+  } catch (err) {
+    console.error('[German] POST vocab photo auto error:', err);
+    res.status(500).json({ message: err.message || 'Failed to generate photo' });
+  }
+});
+
+// ── POST /api/german/vocab/photos/auto-fill ─────────────────────────────────
+// Bulk-generates AI descriptive photos for every vocab missing one.
+// Body: { force?: boolean, limit?: number, level?: string }
+router.post('/vocab/photos/auto-fill', async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const force = req.body?.force === true;
+    const limit = Math.min(Math.max(parseInt(req.body?.limit) || 50, 1), 200);
+    const level = req.body?.level || null;
+    const records = await getAllGermanRecords(userId);
+    const summary = await vocabPhoto.autoFillVocabPhotos(userId, records, { force, limit, level });
+    res.json(summary);
+  } catch (err) {
+    console.error('[German] POST vocab photos auto-fill error:', err);
+    res.status(500).json({ message: 'Failed to auto-fill photos' });
   }
 });
 

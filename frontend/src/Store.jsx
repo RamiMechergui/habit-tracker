@@ -2492,6 +2492,38 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const autoGenerateGermanVocabPhoto = useCallback(async (recordId, { force = false } = {}) => {
+    const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}/photo/auto`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to generate photo');
+    if (data.record) {
+      setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data.record } : r));
+    } else if (data.photoUrl) {
+      setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, photoUrl: data.photoUrl, photoSource: data.photoSource } : r));
+    }
+    logHistory('german_vocab_photo_auto', `Generated AI photo for vocabulary`);
+    return data;
+  }, [API_URL]);
+
+  const autoFillGermanVocabPhotos = useCallback(async ({ force = false, limit = 50, level = null } = {}) => {
+    const res = await fetch(`${API_URL}/api/german/vocab/photos/auto-fill`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force, limit, level }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to auto-fill photos');
+    await fetchGermanData();
+    logHistory('german_vocab_photo_autofill', `Auto-filled ${data.updated || 0} vocab photos`);
+    return data;
+  }, [API_URL, fetchGermanData]);
+
   const deleteGermanRecord = useCallback(async (recordId) => {
     // Optimistic
     setGermanData(prev => prev.filter(r => r.recordId !== recordId));
@@ -3321,7 +3353,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, autoGenerateGermanVocabPhoto, autoFillGermanVocabPhotos, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
       addGermanStory, updateGermanStory,

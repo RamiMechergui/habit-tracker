@@ -75,9 +75,25 @@ router.post('/save', async (req, res) => {
       level,
       chapterId,
       chapterTitle,
+      photoUrl: req.body?.photoUrl || '',
+      photoSource: req.body?.photoSource || '',
     });
 
     res.status(201).json(record);
+
+    // Fire-and-forget: every stored smart-vocab gets an AI descriptive photo
+    // unless the client opted out (autoPhoto: false) or supplied one.
+    if (!record.photoUrl && req.body?.autoPhoto !== false) {
+      const userId = req.user.userId;
+      setImmediate(async () => {
+        try {
+          const vocabPhoto = require('../services/vocabPhoto');
+          await vocabPhoto.generateAndStoreVocabPhoto(userId, record);
+        } catch (e) {
+          console.warn('[VocabProcess] background AI photo failed:', e.message);
+        }
+      });
+    }
   } catch (err) {
     console.error('[VocabProcess] Save error:', err);
     res.status(500).json({ message: 'Failed to save vocabulary entry' });

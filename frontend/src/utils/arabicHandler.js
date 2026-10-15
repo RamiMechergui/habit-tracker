@@ -33,13 +33,18 @@ export function hasArabic(text) {
 /**
  * Reshape + apply BiDi visual ordering to an Arabic-containing string.
  *
- * Strategy for mixed Arabic/Latin lines (e.g. "above all / خصوصاً"):
- *   1. Reshape the whole line with arabic-reshaper (produces contextual
- *      Presentation Forms for Arabic characters; Latin chars are left intact).
- *   2. Apply the Unicode BiDi algorithm: RTL Arabic segments are reversed
- *      into visual order; LTR Latin segments stay in place.
- *   3. Return the visually-ordered string so pdfmake paints it left→right
- *      and it reads correctly.
+ * The report is a German-first, left-to-right document and pdfmake paints
+ * text runs strictly left→right with no paragraph-direction concept, so every
+ * run is ordered with a FORCED 'ltr' paragraph base — never 'auto'.
+ *
+ * Why not 'auto': with automatic base direction the layout flips depending on
+ * which language starts the line. E.g. "قال (sagen)" (Arabic-first) was laid
+ * out as an RTL paragraph → "(sagen) قال", while "Sie (التوضيح)"
+ * (Latin-first) was laid out LTR. Identical box semantics produced mirrored
+ * output, with parentheses detaching to the wrong side — exactly the
+ * scrambled "( Sie / )" rendering seen in exported PDFs. Forcing 'ltr' keeps
+ * Latin-first and pure-Arabic output byte-identical while making
+ * Arabic-first mixed lines lay out German-first like everything else.
  */
 export function reshapeArabic(text) {
   if (!text) return '';
@@ -54,9 +59,9 @@ export function reshapeArabic(text) {
     // Step 1: reshape Arabic glyphs to contextual Presentation Forms
     const reshaped = reshaper.convertArabic(line);
 
-    // Step 2: apply BiDi visual ordering
+    // Step 2: apply BiDi visual ordering with a forced LTR paragraph base
     try {
-      const levels = bidi.getEmbeddingLevels(reshaped);
+      const levels = bidi.getEmbeddingLevels(reshaped, 'ltr');
       return bidi.getReorderedString(reshaped, levels);
     } catch (_) {
       // Fallback: return the reshaped string if bidi fails

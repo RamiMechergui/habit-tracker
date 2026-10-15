@@ -7,6 +7,7 @@ import {
   EntryCategory, GENDER_COLORS, CATEGORY_COLORS, VERB_TYPE_LABELS,
   REGISTER_LABELS, buildUiConfig,
 } from '../utils/vocabTypes';
+import { germanImageUrl } from '../utils/germanImageUrl';
 
 const ICONS = {
   [EntryCategory.NOUN]:      BookA,
@@ -295,7 +296,7 @@ function AudioButton({ word }) {
 
 // ── Main VocabularyCard Component ────────────────────────────────────────────
 
-export default function VocabularyCard({ entryMetadata, linguisticData, uiConfig, onSave }) {
+export default function VocabularyCard({ entryMetadata, linguisticData, uiConfig, onSave, photoUrl, photoSource }) {
   const [expanded, setExpanded] = useState(true);
 
   const cat = entryMetadata?.category || EntryCategory.CUSTOM;
@@ -358,6 +359,26 @@ export default function VocabularyCard({ entryMetadata, linguisticData, uiConfig
       {/* Card Body */}
       {expanded && (
         <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Descriptive photo (AI-generated per vocab, cached in storage) */}
+          {photoUrl && (
+            <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <img
+                src={germanImageUrl(photoUrl)}
+                alt={entryMetadata?.word || 'vocabulary illustration'}
+                style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                loading="lazy"
+              />
+              {photoSource && photoSource !== 'manual' && (
+                <span style={{
+                  position: 'absolute', top: 8, right: 8,
+                  fontSize: '0.65rem', fontWeight: 700, color: '#fff',
+                  background: 'rgba(139,92,246,0.9)', padding: '2px 8px', borderRadius: 12,
+                }}>
+                  AI photo
+                </span>
+              )}
+            </div>
+          )}
           {/* Translation */}
           <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>
             {linguisticData?.partOfSpeech && (
