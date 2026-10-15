@@ -7014,7 +7014,7 @@ export default function LearningGerman() {
                       <td data-label="Photo" style={{ ...cellStyle, width: 60, textAlign: 'center' }}>
                         {v.photoUrl ? (
                           <span style={{ position: 'relative', display: 'inline-block' }}>
-                            <img src={germanImageUrl(v.photoUrl)} alt={v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
+                            <img src={germanImageUrl(v.photoUrl)} alt={v.word} title={v.photoCredit || v.word} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--border)' }}
                               onClick={() => setPreviewImage(germanImageUrl(v.photoUrl))} />
                             {v.photoSource && v.photoSource !== 'manual' && (
                               <span title={v.photoSource === 'ai-pollinations' ? 'AI-generated descriptive photo' : 'Auto keyword photo'} style={{ position: 'absolute', right: -4, bottom: -4, width: 16, height: 16, borderRadius: '50%', background: C.purple, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff' }}>

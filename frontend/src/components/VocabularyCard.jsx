@@ -296,7 +296,7 @@ function AudioButton({ word }) {
 
 // ── Main VocabularyCard Component ────────────────────────────────────────────
 
-export default function VocabularyCard({ entryMetadata, linguisticData, uiConfig, onSave, photoUrl, photoSource }) {
+export default function VocabularyCard({ entryMetadata, linguisticData, uiConfig, onSave, photoUrl, photoSource, photoCredit }) {
   const [expanded, setExpanded] = useState(true);
 
   const cat = entryMetadata?.category || EntryCategory.CUSTOM;
@@ -365,6 +365,7 @@ export default function VocabularyCard({ entryMetadata, linguisticData, uiConfig
               <img
                 src={germanImageUrl(photoUrl)}
                 alt={entryMetadata?.word || 'vocabulary illustration'}
+                title={photoCredit || entryMetadata?.word || ''}
                 style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
                 loading="lazy"
               />

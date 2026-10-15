@@ -61,7 +61,7 @@ async function backfillLevels(userId, level) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', wordType = 'noun', comparative = '', superlative = '', contrary = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', photoSource = '', boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '' }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', wordType = 'noun', comparative = '', superlative = '', contrary = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', photoSource = '', photoCredit = '', boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '' }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -85,6 +85,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     sortOrder,
     photoUrl,
     photoSource,
+    photoCredit,
     boxes,
     level,
     chapterId: chapterId || null,
@@ -96,7 +97,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'wordType', 'comparative', 'superlative', 'contrary', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'photoSource', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes', 'level', 'chapterId', 'chapterTitle'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'wordType', 'comparative', 'superlative', 'contrary', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'photoSource', 'photoCredit', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes', 'level', 'chapterId', 'chapterTitle'];
   const sets = [];
   const names = {};
   const values = {};
@@ -860,7 +861,7 @@ async function saveAlphabetNote(userId, { note = '', title = '' }) {
 }
 
 // ── Unified Vocabulary (LLM-processed structured entries) ─────────────────────
-async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig, leitnerBox = 0, mastery = 0, favorite = false, boxes = [], level = null, chapterId = null, chapterTitle = '', photoUrl = '', photoSource = '' }) {
+async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig, leitnerBox = 0, mastery = 0, favorite = false, boxes = [], level = null, chapterId = null, chapterTitle = '', photoUrl = '', photoSource = '', photoCredit = '' }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -881,6 +882,7 @@ async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig
     uiConfig: uiConfig || null,
     photoUrl: photoUrl || '',
     photoSource: photoSource || '',
+    photoCredit: photoCredit || '',
     leitnerBox,
     mastery,
     favorite,
@@ -895,7 +897,7 @@ async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig
 }
 
 async function updateUnifiedVocab(userId, recordId, updates) {
-  const allowed = ['entryCategory', 'word', 'translation', 'phonetic', 'example', 'exampleTranslation', 'tags', 'partOfSpeech', 'noun', 'verb', 'adjective', 'phrase', 'uiConfig', 'leitnerBox', 'mastery', 'favorite', 'boxes', 'level', 'chapterId', 'chapterTitle', 'photoUrl', 'photoSource'];
+  const allowed = ['entryCategory', 'word', 'translation', 'phonetic', 'example', 'exampleTranslation', 'tags', 'partOfSpeech', 'noun', 'verb', 'adjective', 'phrase', 'uiConfig', 'leitnerBox', 'mastery', 'favorite', 'boxes', 'level', 'chapterId', 'chapterTitle', 'photoUrl', 'photoSource', 'photoCredit'];
   const sets = [];
   const names = {};
   const values = {};
