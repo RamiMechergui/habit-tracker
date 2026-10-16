@@ -35,6 +35,7 @@ const stripEmoji = (str) => {
 import DailyTimeline     from '../components/timeline/DailyTimeline';
 import TaskBottomSheet   from '../components/timeline/TaskBottomSheet';
 import MissedTasksBar    from '../components/timeline/MissedTasksBar';
+import { buildHabitTasksForDate, syncHabitTasksToLog } from '../utils/dailyHabitTasks';
 import MonthlyCalendar   from '../components/timeline/MonthlyCalendar';
 import TimelineAnalytics from '../components/timeline/TimelineAnalytics';
 import LiveFocusBanner   from '../components/timeline/LiveFocusBanner';
@@ -213,8 +214,10 @@ export default function TasksPage() {
     const real = (log.tasks ?? []).filter(t => !t.isVirtual);
     // Pass the real tasks for override detection so deletes are reflected immediately
     const virtual = getVirtualTasksForDate(date, real);
-    return [...real, ...virtual];
-  }, [log.tasks, date, getVirtualTasksForDate, log]);
+    // Daily habits projected from the Daily Log (virtual, checkbox-synced)
+    const habits = buildHabitTasksForDate(date, log);
+    return [...real, ...virtual, ...habits];
+  }, [log.tasks, log, date, getVirtualTasksForDate]);
 
   // #1 — Progress pill stats
   const progressStats = useMemo(() => {
@@ -268,30 +271,55 @@ export default function TasksPage() {
   }, []);
 
   const handleUpdateTasks = useCallback((newTasks) => {
-    markDirty(prev => ({ ...prev, tasks: newTasks }));
+    // Fold habit checkbox changes back into the Daily Log fields, then store.
+    // (saveLog strips isVirtual tasks before persisting.)
+    markDirty(prev => syncHabitTasksToLog({ ...prev, tasks: newTasks }, newTasks));
   }, [markDirty]);
 
-  const handleUpdateTaskStatus = useCallback((taskIndex, newStatus) => {
-    const prevTasks = log.tasks ?? [];
-    const prevTask = prevTasks[taskIndex];
+  const handleUpdateTaskStatus = useCallback((taskIndexOrId, newStatus) => {
+    // Accept an array index (MissedTasksBar) or a task id (LiveFocusBanner).
+    // Resolved against the displayed merged tasks, then applied by id so
+    // virtual (recurring / habit) entries can't corrupt stored positions.
+    const target = typeof taskIndexOrId === 'number'
+      ? tasks[taskIndexOrId]
+      : tasks.find(t => t.id === taskIndexOrId);
+    if (!target) return;
+    // Habit tasks live in the Daily Log fields, not in log.tasks —
+    // update the field directly so Timeline ↔ Daily Log stay in sync.
+    if (target.habitRef && target.isVirtual) {
+      markDirty(prev => syncHabitTasksToLog({ ...prev }, [{ ...target, status: newStatus }]));
+      setUndoToast({ habitRef: target.habitRef, prevStatus: target.status, newStatus, message: `Marked "${target.title || 'task'}" as ${newStatus}` });
+      setTimeout(() => setUndoToast(null), 5000);
+      return;
+    }
     markDirty(prev => {
       const updated = [...(prev.tasks ?? [])];
-      updated[taskIndex] = { ...updated[taskIndex], status: newStatus };
-      return { ...prev, tasks: updated };
+      const i = updated.findIndex(t => t && t.id === target.id);
+      if (i >= 0) updated[i] = { ...updated[i], status: newStatus };
+      return syncHabitTasksToLog({ ...prev, tasks: updated }, updated);
     });
     // Undo toast
-    setUndoToast({ taskIndex, prevStatus: prevTask?.status, newStatus, message: `Marked "${prevTask?.title || 'task'}" as ${newStatus}` });
+    setUndoToast({ targetId: target.id, prevStatus: target?.status, newStatus, message: `Marked "${target?.title || 'task'}" as ${newStatus}` });
     setTimeout(() => setUndoToast(null), 5000);
-  }, [markDirty, log.tasks]);
+  }, [markDirty, tasks]);
 
   const handleUndoStatus = useCallback(() => {
     if (!undoToast) return;
+    // Revert a habit toggle back into its Daily Log field.
+    if (undoToast.habitRef) {
+      markDirty(prev => syncHabitTasksToLog({ ...prev }, [{ habitRef: undoToast.habitRef, isVirtual: true, status: undoToast.prevStatus }]));
+      setUndoToast(null);
+      return;
+    }
     markDirty(prev => {
       const updated = [...(prev.tasks ?? [])];
-      if (updated[undoToast.taskIndex]) {
-        updated[undoToast.taskIndex] = { ...updated[undoToast.taskIndex], status: undoToast.prevStatus };
+      const i = undoToast.targetId
+        ? updated.findIndex(t => t && t.id === undoToast.targetId)
+        : updated[undoToast.taskIndex] ? undoToast.taskIndex : -1;
+      if (i >= 0 && updated[i]) {
+        updated[i] = { ...updated[i], status: undoToast.prevStatus };
       }
-      return { ...prev, tasks: updated };
+      return syncHabitTasksToLog({ ...prev, tasks: updated }, updated);
     });
     setUndoToast(null);
   }, [undoToast, markDirty]);

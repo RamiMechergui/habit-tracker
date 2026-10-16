@@ -67,7 +67,7 @@ const PRIORITY_VISUALS = {
 };
 
 export default function TaskCard({
-  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, sectionOffsetMins = 0, hourHeight = 90,
+  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, sectionOffsetMins = 0, hourHeight = 90, snapMinutes = 15,
   bulkMode, isSelected, onBulkSelect, onDragStart, onDragEnd, blocked = false, onReorder, onMoveToDate,
 }) {
   const [swipeOffset,    setSwipeOffset]    = useState(0);
@@ -167,14 +167,15 @@ export default function TaskCard({
     const [hours, minutes] = (task.time || '00:00').split(':').map(Number);
     const baseTop   = (hours * 60 + minutes) * pxPerMin;
     const totalMins = Math.round((baseTop + dragY) / pxPerMin);
-    const snapped   = Math.round(totalMins / 15) * 15;
-    const safe      = Math.max(0, Math.min(24 * 60 - 15, snapped));
+    const snap      = Math.max(1, parseInt(snapMinutes) || 15);
+    const snapped   = Math.round(totalMins / snap) * snap;
+    const safe      = Math.max(0, Math.min(24 * 60 - snap, snapped));
     const hh = Math.floor(safe / 60).toString().padStart(2, '0');
     const mm = (safe % 60).toString().padStart(2, '0');
     const newTime = `${hh}:${mm}`;
     if (newTime !== task.time) onDragTime(newTime);
     setDragY(0);
-  }, [isDraggingTime, isFutureDate, task.time, dragY, hourHeight, onDragTime]);
+  }, [isDraggingTime, isFutureDate, task.time, dragY, hourHeight, snapMinutes, onDragTime]);
 
   useEffect(() => {
     if (!isDraggingTime) return;
@@ -286,6 +287,19 @@ export default function TaskCard({
         <div className="task-card-body">
           {/* Title row */}
           <div className="task-card-title-row">
+            {/* Habit checkbox — two-way synced with the Daily Log */}
+            {task.habitRef && (
+              <input
+                type="checkbox"
+                checked={statusKey === 'Completed'}
+                disabled={!!isFutureDate}
+                onClick={e => e.stopPropagation()}
+                onChange={e => { e.stopPropagation(); triggerStatus(e.target.checked ? 'Completed' : 'Pending'); }}
+                title={isFutureDate ? 'Cannot check future habits' : `Check habit: ${task.title}`}
+                aria-label={`Check habit: ${task.title}`}
+                style={{ width: 18, height: 18, flexShrink: 0, accentColor: '#10b981', cursor: isFutureDate ? 'not-allowed' : 'pointer' }}
+              />
+            )}
                 <h4 className="task-card-title">
               {/* #33 — Blocked indicator */}
               {blocked && <span style={{ color:'var(--priority-critical)', marginRight:4 }} title="Blocked by another task">🔒</span>}

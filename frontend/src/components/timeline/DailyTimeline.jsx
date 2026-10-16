@@ -24,9 +24,11 @@ const ZOOM_OPTIONS = [
   { label: '60m', factor: 1,   granularity: 60 },
   { label: '30m', factor: 1.5, granularity: 30 },
   { label: '15m', factor: 2,   granularity: 15 },
+  { label: '5m',  factor: 3,   granularity: 5 },
 ];
 
 const granularityToZoom = (g) => {
+  if (g <= 5) return 3;
   if (g <= 15) return 2;
   if (g <= 30) return 1;
   return 0;
@@ -103,7 +105,7 @@ function clusterTasks(tasks) {
 }
 
 // ── Section block component ───────────────────────────────────────────────────
-function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick, openState, onToggle, draggedTaskId, dragOverSection, onSetDraggedTaskId, onSetDragOverSection, sectionColors, onSetSectionColors, onMoveToDate, bulkMode, selectedIds, onBulkSelect, handleReorder }) {
+function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, snapMinutes, isFutureDate, isToday, onUpdateStatus, onEditTask, onDragTime, onAddClick, openState, onToggle, draggedTaskId, dragOverSection, onSetDraggedTaskId, onSetDragOverSection, sectionColors, onSetSectionColors, onMoveToDate, bulkMode, selectedIds, onBulkSelect, handleReorder }) {
   const open = openState;
   const accentColor = sectionColors[section.key] || section.defaultColor;
 
@@ -199,13 +201,38 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 </div>
               )}
               {/* 15min ticks */}
-              {zoomFactor >= 2 && [1, 2, 3].map(q => (
+              {zoomFactor >= 2 && zoomFactor < 3 && [1, 2, 3].map(q => (
                 <div key={q} style={{
                   position: 'absolute',
                   top: `${(hourHeight / 4) * q}px`,
                   left: `calc(var(--tl-axis-width) - 3px)`,
                   width: 4, height: 1, background: 'var(--tl-tick-min)',
                 }} />
+              ))}
+              {/* 5min ticks + quarter-hour labels at max zoom */}
+              {zoomFactor >= 3 && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(q => (
+                <div key={q} style={{
+                  position: 'absolute',
+                  top: `${(hourHeight / 12) * q}px`,
+                  left: `calc(var(--tl-axis-width) - 3px)`,
+                  width: q % 3 === 0 ? 6 : 4, height: 1, background: q % 3 === 0 ? 'var(--tl-tick-maj)' : 'var(--tl-tick-min)',
+                }} />
+              ))}
+              {zoomFactor >= 3 && [15, 45].map(mm => (
+                <div key={mm} style={{
+                  position: 'absolute',
+                  top: `${hourHeight * (mm / 60)}px`,
+                  left: 0,
+                  width: 'calc(var(--tl-axis-width) - 8px)',
+                  textAlign: 'right',
+                  fontSize: '0.6rem',
+                  color: 'var(--tl-tick-maj)',
+                  lineHeight: 1,
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                }}>
+                  :{String(mm).padStart(2,'0')}
+                </div>
               ))}
               <div style={{ flex: 1, height: '1px', background: 'var(--tl-divider)' }} />
             </div>
@@ -256,6 +283,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, isFutu
                 isFutureDate={isFutureDate}
                 zoomFactor={zoomFactor}
                 hourHeight={hourHeight}
+                snapMinutes={snapMinutes}
                 onUpdateStatus={s => onUpdateStatus(task.id, s)}
                 onEdit={() => onEditTask && onEditTask(task)}
                 onDragTime={t => onDragTime(task.id, t)}
@@ -340,6 +368,7 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
   }, [timelinePrefs.intervalGranularity]);
 
   const zoomFactor = ZOOM_OPTIONS[zoom].factor;
+  const granularity = ZOOM_OPTIONS[zoom].granularity;
   const baseHour   = isMobile ? BASE_HOUR_MOBILE : BASE_HOUR_DESKTOP;
   const hourHeight = baseHour * zoomFactor;
 
@@ -657,6 +686,7 @@ export default function DailyTimeline({ date, tasks, onUpdateTask, onEditTask, o
             clustered={clustered}
             zoomFactor={zoomFactor}
             hourHeight={hourHeight}
+            snapMinutes={granularity}
             isFutureDate={isFutureDate}
             isToday={!isFutureDate && date === format(new Date(), 'yyyy-MM-dd')}
             onUpdateStatus={handleUpdateStatus}

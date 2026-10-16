@@ -273,7 +273,7 @@ export default function Settings() {
             </label>
             <p className="settings-hint" style={{ marginBottom: '0.6rem' }}>Controls time grid snapping and minute step in task creation</p>
             <div className="tl-pref-group" role="group" aria-label="Timeline interval">
-              {[15, 30, 60].map(g => (
+              {[5, 15, 30, 60].map(g => (
                 <button
                   key={g}
                   className={`tl-pref-btn ${timelinePrefs.intervalGranularity === g ? 'tl-pref-btn--active' : ''}`}
