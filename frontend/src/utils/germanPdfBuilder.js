@@ -7,6 +7,7 @@
 
 import { htmlToPdfContent } from "./htmlToPdf";
 import { hasArabic, reshapeArabic } from "./arabicHandler";
+import { splitVerbConjugation } from "./germanVerbHelper";
 
 const C = {
   black: "#191a1a", ink: "#2c2b33", muted: "#6b6f78", red: "#dd0000",
@@ -219,15 +220,35 @@ function grammarBlocks(rows) {
   });
 }
 
+// Verb endings are colored (same blue family as the app's conjugation badges)
+// so the stem vs. ending split is visible in print.
+const VERB_ENDING_COLOR = "#2563eb";
+function verbEndingSegments(word, pronoun, infinitive, overrides) {
+  if (!word) return [{ text: "" }];
+  if (hasArabic(word)) return [fmtTxt(word, {})];
+  const { stem, ending, particle } = splitVerbConjugation(word, pronoun, infinitive, overrides);
+  const segs = [{ text: stem || word }];
+  if (ending) segs.push({ text: ending, color: VERB_ENDING_COLOR, bold: true });
+  if (particle) segs.push({ text: " " + particle, color: C.teal });
+  return segs;
+}
+function verbConjCell(word, pronoun, v) {
+  if (!word) return cell("", { alignment: "center", fontSize: 8.5 });
+  return {
+    text: verbEndingSegments(word, pronoun, v.infinitive, v.stemEndingOverrides),
+    alignment: "center", fontSize: 8.5, margin: [4, 4, 4, 4],
+  };
+}
+
 function verbBlocks(rows) {
   return rows.map(v => ({
     stack: [
       { text: [{ text: v.infinitive || "", bold: true, fontSize: 11 }, { text: "   " + (v.meaning || ""), fontSize: 9, color: C.muted }, { text: "   " + (v.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 4] },
       { table: { widths: ["*", "*", "*"], body: [
         ["ich", "du", "er/sie/es"].map(p => cell(p, { bold: true, fontSize: 7, color: C.muted, fillColor: C.light, alignment: "center" })),
-        [v.ich, v.du, v.erSieEs].map(x => cell(x || "", { alignment: "center", fontSize: 8.5 })),
+        [verbConjCell(v.ich, "ich", v), verbConjCell(v.du, "du", v), verbConjCell(v.erSieEs, "erSieEs", v)],
         ["wir", "ihr", "sie/Sie"].map(p => cell(p, { bold: true, fontSize: 7, color: C.muted, fillColor: C.light, alignment: "center" })),
-        [v.wir, v.ihr, v.Sie].map(x => cell(x || "", { alignment: "center", fontSize: 8.5 })),
+        [verbConjCell(v.wir, "wir", v), verbConjCell(v.ihr, "ihr", v), verbConjCell(v.Sie, "Sie", v)],
       ] }, layout: tableLayout() },
       ...boxBlocks(v.boxes),
     ],
@@ -436,45 +457,6 @@ function chapterBlock(ch, buckets) {
   return { stack, pageBreak: "before" };
 }
 
-function grammarIndex(rows) {
-  const body = [headRow(["Rule", "Category", "Explanation"]), ...rows.map(g => [
-    cell(g.rule || "", { bold: true }), cell(g.category || ""), cell((g.explanation || "").slice(0, 140), { color: C.muted }),
-  ])];
-  return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout() };
-}
-
-function verbIndex(rows) {
-  const body = [headRow(["Verb", "Meaning", "Type", "ich · du · er/sie/es"]), ...rows.map(v => [
-    cell(v.infinitive || "", { bold: true }), cell(v.meaning || ""), cell(v.category || ""),
-    cell([v.ich, v.du, v.erSieEs].filter(Boolean).join(" · "), { fontSize: 7.5 }),
-  ])];
-  return { table: { ...TABLE, widths: ["*", "*", "*", "*"], body }, layout: tableLayout() };
-}
-
-function vocabIndex(rows) {
-  const body = [headRow(["Photo", "German", "Article", "Plural / Degree", "English", "Category"]), ...rows.map(v => {
-    const s = splitWord(v);
-    return [
-      v.photoBase64 ? { image: v.photoBase64, fit: [22, 22], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
-      cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
-      cell(s.a || "—"),
-      v.wordType === 'adjective' ? cell(adjectiveDegreeText(v), { color: C.teal }) : cell(v.plural || "—"),
-      cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
-    ];
-  })];
-  return { table: { ...TABLE, widths: [34, "*", 40, "*", "*", "*"], body }, layout: tableLayout() };
-}
-
-function expressionIndex(rows) {
-  const body = [headRow(["Expression", "English", "Category"]), ...rows.map(e => [cell(e.phrase || "", { bold: true }), cell(e.translation || "", { color: C.muted }), cell(e.category || "")])];
-  return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout() };
-}
-
-function idiomIndex(rows) {
-  const body = [headRow(["Idiom", "Meaning"]), ...rows.map(im => [cell(im.phrase || "", { bold: true }), cell(im.meaning || "", { color: C.muted })])];
-  return { table: { ...TABLE, widths: ["*", "*"], body }, layout: tableLayout() };
-}
-
 function alphabetBlock(rows) {
   const sorted = rows.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   const perRow = 5;
@@ -643,16 +625,6 @@ export function buildPdfDefinition(data, opts = {}) {
     content.push(...storyBlocks(storyRows));
   }
 
-  content.push({ text: "Grammar Index", style: "h2", pageBreak: "before" });
-  content.push(grammarIndex(byType("grammar")));
-  content.push({ text: "Verb Index", style: "h2", pageBreak: "before" });
-  content.push(verbIndex(byType("verb")));
-  content.push({ text: "Vocabulary Index", style: "h2", pageBreak: "before" });
-  content.push(vocabIndex(byType("vocab")));
-  content.push({ text: "Expressions Index", style: "h2", pageBreak: "before" });
-  content.push(expressionIndex(byType("expression")));
-  content.push({ text: "Idioms Index", style: "h2", pageBreak: "before" });
-  content.push(idiomIndex(byType("idiom")));
   return {
     pageSize: "A4",
     pageOrientation: "portrait",

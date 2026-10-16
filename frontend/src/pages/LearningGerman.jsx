@@ -13,12 +13,13 @@ import VerbConjugationBadge from '../components/VerbConjugationBadge';
 import VerbJsonModal from '../components/VerbJsonModal';
 
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import {
   Languages, BookOpen, GraduationCap, NotebookPen, BarChart3,
   Plus, Trash2, Download, Search, X, Check, ChevronDown, ChevronUp,
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
-  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, Pause, Settings2, ExternalLink, Loader2, BookMarked, Sparkles,
+  ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked, Sparkles,
   Code, Copy, CheckCheck,
 } from 'lucide-react';
 
@@ -113,7 +114,7 @@ function TabBtn({ active, onClick, icon: Icon, label }) {
   );
 }
 
-function StatCard({ value, label, color, icon: Icon, action, isMobile }) {
+function StatCard({ value, label, color, icon: Icon, action, sub, isMobile }) {
   return (
     <div style={{
       background: `${color}10`, border: `1px solid ${color}30`,
@@ -126,6 +127,7 @@ function StatCard({ value, label, color, icon: Icon, action, isMobile }) {
       </div>
       <div style={{ fontSize: isMobile ? '1.1rem' : '1.4rem', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
       <div style={{ fontSize: isMobile ? '0.65rem' : '0.72rem', color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
+      {sub && <div style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.3, opacity: 0.85 }}>{sub}</div>}
       {action && <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: isMobile ? 2 : 4 }}>{action}</div>}
     </div>
   );
@@ -2411,7 +2413,7 @@ function GrammarQuizModal({ grammar, onClose }) {
   );
 }
 
-function StudyTimeChart({ notes, days = {} }) {
+function StudyTimeChart({ notes, days = {}, dailyPerDayMs = null }) {
   const last30 = [];
   const today = new Date();
   for (let i = 29; i >= 0; i--) {
@@ -2419,7 +2421,12 @@ function StudyTimeChart({ notes, days = {} }) {
     d.setDate(d.getDate() - i);
     const ds = format(d, 'yyyy-MM-dd');
     const note = notes.find(n => n.date === ds);
-    const autoMin = Math.round((parseInt(days[ds]) || 0) / 60000);
+    // Prefer Daily Log totals (Learning German time from Daily Log) when provided.
+    // Falls back to the legacy timer `days` map + note.studyMinutes for old data.
+    const dailyMs = dailyPerDayMs ? (parseInt(dailyPerDayMs[ds]) || 0) : 0;
+    const autoMin = dailyMs > 0
+      ? Math.round(dailyMs / 60000)
+      : Math.round((parseInt(days[ds]) || 0) / 60000);
     last30.push({ date: ds, minutes: autoMin || (parseInt(note?.studyMinutes) || 0) });
   }
 
@@ -5385,8 +5392,10 @@ export default function LearningGerman() {
     uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto,
     processVocab, saveUnifiedVocab, updateUnifiedVocab,
     germanProgress, fetchGermanProgress, advanceGermanLevel, setGermanLevel,
-    germanStudy, fetchGermanStudy, addGermanStudyMs, resetGermanStudy, resetGermanStudyDay,
+    germanStudy, fetchGermanStudy,
+    logs,
   } = useHabits();
+  const navigate = useNavigate();
 
   const [tab, setTab] = useState('notes');
   const [noteCategory, setNoteCategory] = useState('daily');
@@ -5620,145 +5629,96 @@ export default function LearningGerman() {
     setNoteSaved(false);
   }, [selectedDate, germanData, noteCategory, matchesLevel, selectedChapterId]);
 
-  // ── Study time tracking (persisted to DB) ──
-  // The timer starts when the Learning German section opens and banks the
-  // elapsed time to the database (per-day + all-time total) periodically,
-  // when the tab/app is hidden, and on leaving the section.
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const todayBaseRef = useRef(0);   // ms already banked for today (from DB)
-  const totalBaseRef = useRef(0);   // ms banked all-time (from DB)
-  const sessionStartRef = useRef(Date.now());
-  const dayRef = useRef(todayStr);
-  const pausedRef = useRef(false);
-  const [studyPaused, setStudyPaused] = useState(false);
-  const [showResetTotalConfirm, setShowResetTotalConfirm] = useState(false);
-  const [showResetDailyConfirm, setShowResetDailyConfirm] = useState(false);
-
-  useEffect(() => {
-    if (!germanStudy) return;
-    const today = format(new Date(), 'yyyy-MM-dd');
-    todayBaseRef.current = parseInt(germanStudy.days?.[today]) || 0;
-    totalBaseRef.current = parseInt(germanStudy.totalMs) || 0;
-    dayRef.current = today;
-    sessionStartRef.current = Date.now();
-    setElapsedMs(0);
-  }, [germanStudy]);
-
-  const flushStudy = useCallback(async (dayOverride) => {
-    const now = Date.now();
-    const delta = now - sessionStartRef.current;
-    sessionStartRef.current = now;
-    setElapsedMs(0);
-    if (pausedRef.current) return;
-    if (delta < 1000) return;
-    const day = dayOverride || format(new Date(), 'yyyy-MM-dd');
-    try {
-      const updated = await addGermanStudyMs({ date: day, ms: delta });
-      if (updated) {
-        const nowDay = format(new Date(), 'yyyy-MM-dd');
-        todayBaseRef.current = day === nowDay
-          ? (parseInt(updated.days?.[day]) || todayBaseRef.current + delta)
-          : 0;
-        totalBaseRef.current = parseInt(updated.totalMs) || totalBaseRef.current + delta;
-      } else {
-        todayBaseRef.current += delta;
-        totalBaseRef.current += delta;
-      }
-    } catch {
-      todayBaseRef.current += delta;
-      totalBaseRef.current += delta;
+  // ── Total Study Time (from Daily Log) ──
+  // Single source of truth: sum of "Learning German → Time Spent" across all
+  // Daily Logs (log.german.time, with startTime/endTime fallback). It
+  // accumulates automatically as the user logs time in Daily Log — no manual
+  // timer, no per-day card.
+  const parseGermanTimeToMs = (timeStr) => {
+    if (!timeStr) return 0;
+    const s = String(timeStr).trim().toLowerCase();
+    if (!s) return 0;
+    const hMatch = s.match(/(\d+(?:\.\d+)?)\s*h/);
+    const mMatch = s.match(/(\d+)\s*m(?!s)/);
+    const sMatch = s.match(/(\d+)\s*s/);
+    if (hMatch || mMatch || sMatch) {
+      let totalSec = 0;
+      if (hMatch) totalSec += Math.round(parseFloat(hMatch[1]) * 3600);
+      if (mMatch) totalSec += parseInt(mMatch[1], 10) * 60;
+      if (sMatch) totalSec += parseInt(sMatch[1], 10);
+      return totalSec * 1000;
     }
-  }, [addGermanStudyMs]);
+    if (s.includes(':')) {
+      const parts = s.split(':').map(p => parseInt(p, 10) || 0);
+      if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
+      if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
+    }
+    const num = parseFloat(s);
+    if (!Number.isNaN(num)) {
+      // Bare number: <=24 → hours (e.g. "1.5" = 1.5h), otherwise minutes.
+      if (num <= 24) return Math.round(num * 3600) * 1000;
+      return Math.round(num * 60) * 1000;
+    }
+    return 0;
+  };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentDay = format(new Date(), 'yyyy-MM-dd');
-      if (currentDay !== dayRef.current) {
-        flushStudy(dayRef.current);
-        dayRef.current = currentDay;
-        todayBaseRef.current = 0;
-        sessionStartRef.current = Date.now();
-        setElapsedMs(0);
-      } else if (document.visibilityState === 'visible' && !pausedRef.current) {
-        setElapsedMs(Date.now() - sessionStartRef.current);
+  const germanDurationToMs = (startTime, endTime) => {
+    if (!startTime || !endTime) return 0;
+    const toMin = (t) => {
+      const [h, m] = String(t).split(':').map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return null;
+      return h * 60 + m;
+    };
+    const sMin = toMin(startTime);
+    const eMin = toMin(endTime);
+    if (sMin === null || eMin === null) return 0;
+    let diff = eMin - sMin;
+    if (diff < 0) diff += 24 * 60; // overnight session
+    if (diff <= 0) return 0;
+    return diff * 60 * 1000;
+  };
+
+  const germanDailyTotals = useMemo(() => {
+    const perDayMs = {};
+    let entries = 0;
+    const allLogs = logs || {};
+    for (const [date, log] of Object.entries(allLogs)) {
+      const g = log?.german;
+      if (!g) continue;
+      let ms = parseGermanTimeToMs(g.time);
+      if (!ms) ms = germanDurationToMs(g.startTime, g.endTime);
+      if (ms > 0) {
+        perDayMs[date] = (perDayMs[date] || 0) + ms;
+        entries += 1;
       }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [flushStudy]);
+    }
+    const totalMs = Object.values(perDayMs).reduce((a, b) => a + b, 0);
+    return { perDayMs, totalMs, daysWithTime: Object.keys(perDayMs).length, entries };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs]);
 
-  useEffect(() => {
-    const flushTimer = setInterval(() => flushStudy(), 30000);
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') flushStudy();
-      else { sessionStartRef.current = Date.now(); setElapsedMs(0); }
-    };
-    const onPageHide = () => flushStudy();
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('pagehide', onPageHide);
-    return () => {
-      clearInterval(flushTimer);
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('pagehide', onPageHide);
-    };
-  }, [flushStudy]);
-
-  useEffect(() => {
-    return () => { flushStudy(); };
-  }, [flushStudy]);
+  const totalStudyMsAllTime = germanDailyTotals.totalMs || 0;
 
   const formatMs = (ms) => {
+    if (!ms || ms <= 0) return '0m';
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
     if (m > 0) return `${m}m`;
-    return `${Math.floor(totalSec)}s`;
+    return `${totalSec}s`;
   };
 
-  const startStudyTimer = () => {
-    if (!pausedRef.current) return;
-    pausedRef.current = false;
-    sessionStartRef.current = Date.now();
-    setElapsedMs(0);
-    setStudyPaused(false);
+  const formatMsLong = (ms) => {
+    if (!ms || ms <= 0) return 'No time logged yet';
+    const totalMin = Math.round(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h > 0 && m > 0) return `${h} hour${h > 1 ? 's' : ''} ${m} min`;
+    if (h > 0) return `${h} hour${h > 1 ? 's' : ''}`;
+    return `${m} min`;
   };
-
-  const stopStudyTimer = () => {
-    if (pausedRef.current) return;
-    flushStudy();
-    pausedRef.current = true;
-    setElapsedMs(0);
-    setStudyPaused(true);
-  };
-
-  const handleResetTotalStudy = async () => {
-    setShowResetTotalConfirm(false);
-    try {
-      await resetGermanStudy();
-      totalBaseRef.current = 0;
-      setElapsedMs(0);
-    } catch (e) {
-      setError(`Reset failed: ${e.message}`);
-      console.error(e);
-    }
-  };
-
-  const handleResetDailyStudy = async () => {
-    setShowResetDailyConfirm(false);
-    const today = format(new Date(), 'yyyy-MM-dd');
-    try {
-      await resetGermanStudyDay(today);
-      todayBaseRef.current = 0;
-      setElapsedMs(0);
-    } catch (e) {
-      setError(`Reset failed: ${e.message}`);
-      console.error(e);
-    }
-  };
-
-  const todayStudyMs = todayBaseRef.current + elapsedMs;
-  const totalStudyMsAllTime = totalBaseRef.current + elapsedMs;
 
   const sortedVocab = useMemo(() => {
     let list = [...vocab];
@@ -6229,9 +6189,16 @@ export default function LearningGerman() {
   // ── PDF Report handler ─────────────────────────────────────────────────────
   // Flatten app data into the report record array and open the GermanReport
   // preview. The report (with its Download PDF button) is only triggered here.
+  // Study stats in the report come from the Daily Log totals so the PDF
+  // matches the Total Study Time shown in the header.
+  const reportStudy = useMemo(() => ({
+    totalMs: totalStudyMsAllTime,
+    days: germanDailyTotals.perDayMs || {},
+    updatedAt: new Date().toISOString(),
+  }), [totalStudyMsAllTime, germanDailyTotals]);
   const reportData = useMemo(
-    () => buildReportData(germanData, germanStudy, germanProgress),
-    [germanData, germanStudy, germanProgress]
+    () => buildReportData(germanData, reportStudy, germanProgress),
+    [germanData, reportStudy, germanProgress]
   );
 
   const handleExportPDF = () => {
@@ -6243,7 +6210,7 @@ export default function LearningGerman() {
   };
 
   const handleExportChapterPDF = (chapter) => {
-    const data = buildChapterReportData(germanData, chapter, germanStudy, germanProgress);
+    const data = buildChapterReportData(germanData, chapter, reportStudy, germanProgress);
     setChapterReportData(data);
     setChapterReportTitle(chapter?.title || 'Chapter Report');
     setShowPdfMenu(false);
@@ -6313,28 +6280,34 @@ export default function LearningGerman() {
           <StatCard value={levelVocab.length}   label="Words Learned"    color={C.gold}   icon={BookOpen} isMobile={isMobile} />
           <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} isMobile={isMobile} />
           <StatCard value={levelNotes.length}   label="Study Days"       color={C.green}  icon={NotebookPen} isMobile={isMobile} />
-          <StatCard value={formatMs(todayStudyMs)}     label="Daily Study Time"  color={C.teal}  icon={Clock} isMobile={isMobile} action={
-            <div style={{ display: 'flex', gap: 3 }}>
-              <button title="Start counting daily study time" onClick={startStudyTimer} disabled={!studyPaused}
-                style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? `${C.green}22` : 'transparent', opacity: studyPaused ? 1 : 0.35 }}>
-                <Play size={isMobile ? 12 : 14} style={{ color: C.green }} />
+          <StatCard
+            value={formatMs(totalStudyMsAllTime)}
+            label="Total Study Time"
+            sub={totalStudyMsAllTime > 0
+              ? `${formatMsLong(totalStudyMsAllTime)} • ${germanDailyTotals.daysWithTime} day${germanDailyTotals.daysWithTime === 1 ? '' : 's'}`
+              : 'From Daily Log'}
+            color={C.purple}
+            icon={Clock}
+            isMobile={isMobile}
+            action={
+              <button
+                title="Log German study time in Daily Log"
+                onClick={() => navigate('/daily')}
+                style={{ padding: isMobile ? '4px 10px' : '5px 12px', borderRadius: '8px', border: `1px solid ${C.purple}45`, cursor: 'pointer', background: `${C.purple}15`, color: C.purple, fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.72rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <Plus size={isMobile ? 11 : 12} /> Log time
               </button>
-              <button title="Stop counting daily study time" onClick={stopStudyTimer} disabled={studyPaused}
-                style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: studyPaused ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: studyPaused ? 'transparent' : `${C.red}22`, opacity: studyPaused ? 0.35 : 1 }}>
-                <Pause size={isMobile ? 12 : 14} style={{ color: C.red }} />
-              </button>
-              <button title="Reset daily study time to zero" onClick={() => setShowResetDailyConfirm(true)}
-                style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.teal}22` }}>
-                <Settings2 size={isMobile ? 12 : 14} style={{ color: C.teal }} />
-              </button>
-            </div>
-          } />
-          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} isMobile={isMobile} action={
-            <button title="Reset total study time to zero" onClick={() => setShowResetTotalConfirm(true)}
-              style={{ width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${C.purple}22` }}>
-              <Settings2 size={isMobile ? 12 : 14} style={{ color: C.purple }} />
-            </button>
-          } />
+            }
+          />
+        </div>
+        <div style={{ marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: isMobile ? '0.68rem' : '0.72rem', color: 'var(--text-muted)' }}>
+          <Clock size={12} style={{ flexShrink: 0 }} />
+          <span>
+            Total = sum of <strong style={{ color: 'var(--text-primary)' }}>Daily Log → Learning German → Time Spent</strong>
+            {germanDailyTotals.entries > 0
+              ? ` • ${germanDailyTotals.entries} ${germanDailyTotals.entries === 1 ? 'entry' : 'entries'} accumulated automatically`
+              : ' • log time in Daily Log and it appears here automatically'}
+          </span>
         </div>
       </div>
 
@@ -7649,7 +7622,19 @@ export default function LearningGerman() {
             <StatCard value={levelGrammar.length} label="Grammar Rules"    color={C.blue}   icon={GraduationCap} />
             <StatCard value={levelVerbs.length}   label="Verbs"            color={C.purple} icon={PenTool} />
             <StatCard value={levelNotes.length}   label="Study Sessions"   color={C.green}  icon={FileText} />
-          <StatCard value={formatMs(totalStudyMsAllTime)} label="Total Study Time" color={C.purple} icon={Clock} />
+          <StatCard
+            value={formatMs(totalStudyMsAllTime)}
+            label="Total Study Time"
+            sub={totalStudyMsAllTime > 0
+              ? `${germanDailyTotals.daysWithTime} day${germanDailyTotals.daysWithTime === 1 ? '' : 's'} • from Daily Log`
+              : 'From Daily Log'}
+            color={C.purple}
+            icon={Clock}
+          />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <Clock size={12} />
+            <span>Total = sum of <strong style={{ color: 'var(--text-primary)' }}>Daily Log → Learning German → Time Spent</strong>, accumulated automatically.</span>
           </div>
 
           <div style={{
@@ -7803,7 +7788,7 @@ export default function LearningGerman() {
             </div>
           )}
           <WordsChart notes={notes} />
-          <StudyTimeChart notes={notes} days={germanStudy?.days || {}} />
+          <StudyTimeChart notes={notes} days={germanStudy?.days || {}} dailyPerDayMs={germanDailyTotals.perDayMs} />
         </div>
       )}
 
@@ -7825,58 +7810,6 @@ export default function LearningGerman() {
           onClose={() => setLevelDetailsLevel(null)}
           onManageChapters={(l) => { setLevelDetailsLevel(null); setChapterModalLevel(l); }}
         />
-      )}
-
-      {showResetTotalConfirm && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-          onClick={() => setShowResetTotalConfirm(false)}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '1.5rem', width: '90%', maxWidth: 360,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.red, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={18} /> Reset Total Study Time?
-            </h3>
-            <p style={{ margin: '0.75rem 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              This will set your all-time Total Study Time to 0. Your per-day study history is kept.
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowResetTotalConfirm(false)} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button onClick={handleResetTotalStudy} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.red}, #b91c1c)`, color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-                Reset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResetDailyConfirm && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-          onClick={() => setShowResetDailyConfirm(false)}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '1.5rem', width: '90%', maxWidth: 360,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={18} /> Reset Daily Study Time?
-            </h3>
-            <p style={{ margin: '0.75rem 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              This will set today's Daily Study Time to 0. Your total study time will also be reduced by the same amount.
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowResetDailyConfirm(false)} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button onClick={handleResetDailyStudy} style={{ padding: '0.55rem 1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.teal}, #0d9488)`, color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-                Reset
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {previewImage && (

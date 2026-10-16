@@ -43,6 +43,7 @@ import { htmlToPdfContent } from "../utils/htmlToPdf";
 import { withCircularAvatars } from "../utils/circularAvatar";
 import { EDITOR_IMAGE_BASE } from "../config";
 import { hasArabic, reshapeArabic } from "../utils/arabicHandler";
+import { splitVerbConjugation } from "../utils/germanVerbHelper";
 import { downloadPdfDocument } from "../utils/mobilePdfDownloader";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
@@ -236,15 +237,34 @@ function grammarBlocks(rows) {
     };
   });
 }
+// Verb endings are colored (same blue family as the app's conjugation badges)
+// so the stem vs. ending split is visible in print.
+const VERB_ENDING_COLOR = "#2563eb";
+function verbEndingSegments(word, pronoun, infinitive, overrides) {
+  if (!word) return [{ text: "" }];
+  if (hasArabic(word)) return [fmtTxt(word, {})];
+  const { stem, ending, particle } = splitVerbConjugation(word, pronoun, infinitive, overrides);
+  const segs = [{ text: stem || word }];
+  if (ending) segs.push({ text: ending, color: VERB_ENDING_COLOR, bold: true });
+  if (particle) segs.push({ text: " " + particle, color: C.teal });
+  return segs;
+}
+function verbConjCell(word, pronoun, v) {
+  if (!word) return cell("", { alignment: "center", fontSize: 8.5 });
+  return {
+    text: verbEndingSegments(word, pronoun, v.infinitive, v.stemEndingOverrides),
+    alignment: "center", fontSize: 8.5, margin: [4, 4, 4, 4],
+  };
+}
 function verbBlocks(rows) {
   return rows.map(v => ({
     stack: [
       { text: [{ text: v.infinitive || "", bold: true, fontSize: 11 }, { text: "   " + (v.meaning || ""), fontSize: 9, color: C.muted }, { text: "   " + (v.category || ""), fontSize: 7, color: C.muted }], margin: [0, 0, 0, 4] },
       { table: { widths: ["*", "*", "*"], body: [
         ["ich", "du", "er/sie/es"].map(p => cell(p, { bold: true, fontSize: 7, color: C.muted, fillColor: C.light, alignment: "center" })),
-        [v.ich, v.du, v.erSieEs].map(x => cell(x || "", { alignment: "center", fontSize: 8.5 })),
+        [verbConjCell(v.ich, "ich", v), verbConjCell(v.du, "du", v), verbConjCell(v.erSieEs, "erSieEs", v)],
         ["wir", "ihr", "sie/Sie"].map(p => cell(p, { bold: true, fontSize: 7, color: C.muted, fillColor: C.light, alignment: "center" })),
-        [v.wir, v.ihr, v.Sie].map(x => cell(x || "", { alignment: "center", fontSize: 8.5 })),
+        [verbConjCell(v.wir, "wir", v), verbConjCell(v.ihr, "ihr", v), verbConjCell(v.Sie, "Sie", v)],
       ] }, layout: tableLayout() },
       ...boxBlocks(v.boxes),
     ],
@@ -462,40 +482,6 @@ function chapterBlock(ch, buckets) {
   if (has("mistake")) stack.push(sectionLabel("Common Mistakes"), mistakeTable(rel.mistake));
   return { stack, pageBreak: "before" };
 }
-function grammarIndex(rows) {
-  const body = [headRow(["Rule", "Category", "Explanation"]), ...rows.map(g => [
-    cell(g.rule || "", { bold: true }), cell(g.category || ""), cell((g.explanation || "").slice(0, 140), { color: C.muted }),
-  ])];
-  return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout() };
-}
-function verbIndex(rows) {
-  const body = [headRow(["Verb", "Meaning", "Type", "ich · du · er/sie/es"]), ...rows.map(v => [
-    cell(v.infinitive || "", { bold: true }), cell(v.meaning || ""), cell(v.category || ""),
-    cell([v.ich, v.du, v.erSieEs].filter(Boolean).join(" · "), { fontSize: 7.5 }),
-  ])];
-  return { table: { ...TABLE, widths: ["*", "*", "*", "*"], body }, layout: tableLayout() };
-}
-function vocabIndex(rows) {
-  const body = [headRow(["Photo", "German", "Article", "Plural / Degree", "English", "Category"]), ...rows.map(v => {
-    const s = splitWord(v);
-    return [
-      v.photoBase64 ? { image: v.photoBase64, fit: [22, 22], alignment: "center", margin: [0, 1, 0, 1] } : cell("", { fillColor: C.light }),
-      cell([{ text: s.a + " ", fontSize: 8, color: C.muted }, { text: s.w, bold: true, fontSize: 8.5 }]),
-      cell(s.a || "—"),
-      v.wordType === 'adjective' ? cell(adjectiveDegreeText(v), { color: C.teal }) : cell(v.plural || "—"),
-      cell(v.translation || "", { color: C.muted }), cell(v.category || ""),
-    ];
-  })];
-  return { table: { ...TABLE, widths: [34, "*", 40, "*", "*", "*"], body }, layout: tableLayout() };
-}
-function expressionIndex(rows) {
-  const body = [headRow(["Expression", "English", "Category"]), ...rows.map(e => [cell(e.phrase || "", { bold: true }), cell(e.translation || "", { color: C.muted }), cell(e.category || "")])];
-  return { table: { ...TABLE, widths: ["*", "*", "*"], body }, layout: tableLayout() };
-}
-function idiomIndex(rows) {
-  const body = [headRow(["Idiom", "Meaning"]), ...rows.map(im => [cell(im.phrase || "", { bold: true }), cell(im.meaning || "", { color: C.muted })])];
-  return { table: { ...TABLE, widths: ["*", "*"], body }, layout: tableLayout() };
-}
 function alphabetBlock(rows) {
   const sorted = rows.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   const perRow = 5;
@@ -671,16 +657,6 @@ export function buildPdfDefinition(data, opts = {}) {
     content.push(...storyBlocks(storyRows));
   }
 
-  content.push({ text: "Grammar Index", style: "h2", pageBreak: "before" });
-  content.push(grammarIndex(byType("grammar")));
-  content.push({ text: "Verb Index", style: "h2", pageBreak: "before" });
-  content.push(verbIndex(byType("verb")));
-  content.push({ text: "Vocabulary Index", style: "h2", pageBreak: "before" });
-  content.push(vocabIndex(byType("vocab")));
-  content.push({ text: "Expressions Index", style: "h2", pageBreak: "before" });
-  content.push(expressionIndex(byType("expression")));
-  content.push({ text: "Idioms Index", style: "h2", pageBreak: "before" });
-  content.push(idiomIndex(byType("idiom")));
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
@@ -1073,6 +1049,17 @@ function StoryBlock({ s }) {
     </div>
   );
 }
+function VerbForm({ word, pronoun, infinitive, overrides }) {
+  if (!word) return <span style={{ color: "var(--muted)" }}>—</span>;
+  const { stem, ending, particle } = splitVerbConjugation(word, pronoun, infinitive, overrides);
+  return (
+    <span>
+      <span style={{ fontWeight: 600 }}>{stem}</span>
+      {ending ? <span style={{ color: "#2563eb", fontWeight: 800 }}>{ending}</span> : null}
+      {particle ? <span style={{ color: "#0f7d6a", fontWeight: 700 }}> {particle}</span> : null}
+    </span>
+  );
+}
 function Chapter({ ch }) {
   const has = k => (ch[k] || []).length;
   const firstDate = has("note") && ch.note[0] && ch.note[0].date ? ch.note[0].date : "";
@@ -1095,8 +1082,8 @@ function Chapter({ ch }) {
             <div><div className="gr-blk-title">Verbs</div>
               {ch.verb.map(v => <div className="gr-v" key={v.recordId}><span className="inf">{v.infinitive}</span> <span style={{ color: "var(--muted)" }}>{v.meaning}</span>
                 <div className="gr-conj">
-                  <p><span className="pn">ich</span>{v.ich}</p><p><span className="pn">du</span>{v.du}</p><p><span className="pn">er/sie/es</span>{v.erSieEs}</p>
-                  <p><span className="pn">wir</span>{v.wir}</p><p><span className="pn">ihr</span>{v.ihr}</p><p><span className="pn">sie/Sie</span>{v.Sie}</p>
+                  <p><span className="pn">ich</span><VerbForm word={v.ich} pronoun="ich" infinitive={v.infinitive} overrides={v.stemEndingOverrides} /></p><p><span className="pn">du</span><VerbForm word={v.du} pronoun="du" infinitive={v.infinitive} overrides={v.stemEndingOverrides} /></p><p><span className="pn">er/sie/es</span><VerbForm word={v.erSieEs} pronoun="erSieEs" infinitive={v.infinitive} overrides={v.stemEndingOverrides} /></p>
+                  <p><span className="pn">wir</span><VerbForm word={v.wir} pronoun="wir" infinitive={v.infinitive} overrides={v.stemEndingOverrides} /></p><p><span className="pn">ihr</span><VerbForm word={v.ihr} pronoun="ihr" infinitive={v.infinitive} overrides={v.stemEndingOverrides} /></p><p><span className="pn">sie/Sie</span><VerbForm word={v.Sie} pronoun="Sie" infinitive={v.infinitive} overrides={v.stemEndingOverrides} /></p>
                 </div><Boxes boxes={v.boxes} /></div>)}
             </div>)}
           {has("memo") && (
@@ -1212,39 +1199,6 @@ function Standalone({ data }) {
     </>
   );
 }
-function IndexSection({ id, tag, title, count, children }) {
-  return (
-    <section className="gr-section" id={id}>
-      <div className="gr-sec-head"><div className="gr-tag">{tag}</div><h2>{title} <small>{count}</small></h2></div>
-      <div className="gr-card">{children}</div>
-    </section>
-  );
-}
-function Indexes({ data }) {
-  const grammar = byType(data)("grammar"), verbs = byType(data)("verb"), vocab = byType(data)("vocab"), expressions = byType(data)("expression"), idioms = byType(data)("idiom");
-  return (
-    <>
-      <IndexSection id="grammar-index" tag="G" title="Grammar Index" count={grammar.length + " rules"}>
-        <div className="gr-idx">{grammar.map((g, i) => <div className="gr-idx-card" key={i}>{g.category && <span className="c">{g.category}</span>}<div className="t">{g.rule}</div><div className="s"><NoteRich html={g.explanation} /></div>{(g.examples || []).map((e, exI) => <div className="x" key={exI}>• {stripHtml(e)}</div>)}<Boxes boxes={g.boxes} /></div>)}</div>
-      </IndexSection>
-      <IndexSection id="verb-index" tag="V" title="Verb Index" count={verbs.length + " verbs"}>
-        <div className="gr-idx">{verbs.map((v, i) => <div className="gr-idx-card" key={i}><div className="t">{v.infinitive}</div><div className="s"><b>{v.meaning}</b></div><div className="s">ich {v.ich} · du {v.du} · er/sie/es {v.erSieEs}</div></div>)}</div>
-      </IndexSection>
-      <IndexSection id="vocab-index" tag="W" title="Vocabulary Index" count={vocab.length + " words"}>
-        <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Degree</th><th>English</th><th>Category</th></tr></thead>
-        <tbody>{vocab.map((v, i) => { const s = splitWordR(v); const thirdCol = v.wordType === 'adjective' ? `${v.word} → ${v.comparative || '—'} → ${v.superlative || '—'}${v.contrary ? `\n⇔ ${v.contrary}` : ''}` : (v.wordType === 'adverb' ? '—' : v.plural || '—'); return (<tr key={i}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined, whiteSpace: 'pre-line' }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
-      </IndexSection>
-      <IndexSection id="expression-index" tag="E" title="Expressions Index" count={expressions.length + " expressions"}>
-        <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>German</th><th>English</th><th>Category</th></tr></thead>
-        <tbody>{expressions.map((e, i) => <tr key={i}><td><b>{e.phrase}</b></td><td style={{ color: "var(--muted)" }}>{e.translation}</td><td>{e.category}</td></tr>)}</tbody></table></div>
-      </IndexSection>
-      <IndexSection id="idiom-index" tag="I" title="Idioms Index" count={idioms.length + " idioms"}>
-        <div className="gr-idx">{idioms.map((im, i) => <div className="gr-idx-card" key={i}><div className="t">{im.phrase}</div><div className="s">{im.meaning}</div></div>)}</div>
-      </IndexSection>
-    </>
-  );
-}
-
 async function getLogoBase64() {
   if (typeof window === 'undefined') return null;
   try {
@@ -1327,17 +1281,11 @@ export default function GermanReport({
             <a href="#memorization">Memorization</a>
             <a href="#dialogues">Dialogues</a>
             <a href="#stories">Stories</a>
-            {!isChapterMode && <a href="#grammar-index">Grammar</a>}
-            {!isChapterMode && <a href="#verb-index">Verbs</a>}
-            {!isChapterMode && <a href="#vocab-index">Vocabulary</a>}
-            {!isChapterMode && <a href="#expression-index">Expressions</a>}
-            {!isChapterMode && <a href="#idiom-index">Idioms</a>}
           </div>
           <Cover stats={stats} title={title} subtitle={subtitle} />
           {!isChapterMode && <Alphabet data={data} stats={stats} />}
           <ChaptersView data={data} />
           <Standalone data={data} />
-          {!isChapterMode && <Indexes data={data} />}
         </>
       )}
     </div>
