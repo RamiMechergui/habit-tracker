@@ -67,7 +67,7 @@ const PRIORITY_VISUALS = {
 };
 
 export default function TaskCard({
-  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, sectionOffsetMins = 0, hourHeight = 90, snapMinutes = 15,
+  task, onUpdateStatus, onEdit, onDragTime, isFutureDate, sectionOffsetMins = 0, hourHeight = 90, snapMinutes = 15, topOverride,
   bulkMode, isSelected, onBulkSelect, onDragStart, onDragEnd, blocked = false, onReorder, onMoveToDate,
 }) {
   const [swipeOffset,    setSwipeOffset]    = useState(0);
@@ -165,7 +165,9 @@ export default function TaskCard({
     onDragEnd?.();
     const pxPerMin  = hourHeight / 60;
     const [hours, minutes] = (task.time || '00:00').split(':').map(Number);
-    const baseTop   = (hours * 60 + minutes) * pxPerMin;
+    const naturalTop = (hours * 60 + minutes) * pxPerMin - sectionOffsetMins * pxPerMin;
+    // Absolute resting top — accounts for cascade spacing (topOverride) when present
+    const baseTop   = sectionOffsetMins * pxPerMin + (topOverride ?? naturalTop);
     const totalMins = Math.round((baseTop + dragY) / pxPerMin);
     const snap      = Math.max(1, parseInt(snapMinutes) || 15);
     const snapped   = Math.round(totalMins / snap) * snap;
@@ -175,7 +177,7 @@ export default function TaskCard({
     const newTime = `${hh}:${mm}`;
     if (newTime !== task.time) onDragTime(newTime);
     setDragY(0);
-  }, [isDraggingTime, isFutureDate, task.time, dragY, hourHeight, snapMinutes, onDragTime]);
+  }, [isDraggingTime, isFutureDate, task.time, dragY, hourHeight, snapMinutes, topOverride, sectionOffsetMins, onDragTime]);
 
   useEffect(() => {
     if (!isDraggingTime) return;
@@ -194,8 +196,11 @@ export default function TaskCard({
   const [h, m]       = (task.time || '00:00').split(':').map(Number);
   const absTop       = (h * 60 + m) * (hourHeight / 60);
   const sectionTopPx = sectionOffsetMins * (hourHeight / 60);
-  const topPosition  = absTop - sectionTopPx + dragY;
-  const durationH    = Math.max((parseInt(task.duration) || 30) * (hourHeight / 60), 44);
+  // Compact single-row rendering for habit checkboxes
+  const compact      = !!task.habitRef;
+  const restingTop   = topOverride ?? (absTop - sectionTopPx);
+  const topPosition  = restingTop + dragY;
+  const durationH    = Math.max((parseInt(task.duration) || 30) * (hourHeight / 60), compact ? 30 : 44);
 
   const colIndex     = task.layout?.colIndex ?? 0;
   const numCols      = task.layout?.numCols  ?? 1;
@@ -221,7 +226,7 @@ export default function TaskCard({
         left:       `calc(var(--tl-axis-width) + 8px + (100% - var(--tl-axis-width) - 16px) * ${leftPct / 100})`,
         width:      `calc((100% - var(--tl-axis-width) - 16px) * ${widthPct / 100} - 4px)`,
         height:     `${durationH}px`,
-        minHeight:  '44px',
+        minHeight:  compact ? '30px' : '44px',
         zIndex:     isActive ? 10 : 1,
         transition: isActive ? 'none' : 'transform 0.3s ease, top 0.3s ease',
         transform:  `translateX(${swipeOffset}px)`,
@@ -238,7 +243,7 @@ export default function TaskCard({
 
       {/* Card */}
       <div ref={cardRef}
-        className={`task-card-v2 ${statusKey.toLowerCase()} ${pVisual.glowClass} ${pop ? 'task-card-pop' : ''}`}
+        className={`task-card-v2 ${statusKey.toLowerCase()} ${pVisual.glowClass} ${pop ? 'task-card-pop' : ''} ${compact ? 'task-card--compact' : ''}`}
         onTouchStart={bulkMode ? undefined : handleTouchStart}
         onTouchMove={bulkMode ? undefined : handleTouchMove}
         onTouchEnd={bulkMode ? undefined : handleTouchEnd}
@@ -327,7 +332,7 @@ export default function TaskCard({
             >
               <GripVertical size={13} aria-hidden="true" />
             </div>
-            {onReorder && (
+            {onReorder && !compact && (
               <div style={{ display:'flex', flexDirection:'column', gap:1, marginLeft:2 }}>
                 <button onClick={e => { e.stopPropagation(); onReorder(task.id, -1); }} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:0, lineHeight:1, fontSize:'0.55rem', opacity:0.4 }} title="Move up">▲</button>
                 <button onClick={e => { e.stopPropagation(); onReorder(task.id, 1); }} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:0, lineHeight:1, fontSize:'0.55rem', opacity:0.4 }} title="Move down">▼</button>

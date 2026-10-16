@@ -121,6 +121,34 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, snapMi
   const heightPx  = spanHours * hourHeight;
   const hours     = Array.from({ length: spanHours + 1 }, (_, i) => section.start + i);
 
+  // ── Cascade: keep a vertical gap between visually-overlapping cards ──
+  // Short tasks (e.g. 5-min habits) render taller than their time slot, so
+  // without spacing they pile on top of each other. Push each card below the
+  // previous card's bottom (+ gap), per column lane. The section grows if the
+  // cascade runs past its natural height.
+  const GAP_PX = 4;
+  const visualFloor = (t) => (t.habitRef ? 30 : 44);
+  const sectionTasksForLayout = clustered.filter(t => {
+    const h = parseInt((t.time || '00:00').split(':')[0]);
+    return h >= section.start && h <= section.end;
+  });
+  const withGeom = sectionTasksForLayout.map(t => {
+    const [th, tm] = (t.time || '00:00').split(':').map(Number);
+    const top = (th * 60 + tm - section.start * 60) * (hourHeight / 60);
+    const trueH = (parseInt(t.duration) || 30) * (hourHeight / 60);
+    return { task: t, top, estH: Math.max(trueH, visualFloor(t)) };
+  }).sort((a, b) => a.top - b.top);
+  const laneCursor = {};
+  const positioned = withGeom.map(g => {
+    const cols = g.task.layout?.numCols ?? 1;
+    const lane = cols > 1 ? `c${cols}-${g.task.layout?.colIndex ?? 0}` : 'single';
+    const displayTop = Math.max(g.top, laneCursor[lane] ?? -Infinity);
+    laneCursor[lane] = displayTop + g.estH + GAP_PX;
+    return { ...g, displayTop };
+  });
+  const cascadeBottom = positioned.reduce((m, p) => Math.max(m, p.displayTop + p.estH), 0);
+  const bodyHeight = Math.max(heightPx, cascadeBottom + 10);
+
   const now = new Date();
   const currentHour = now.getHours();
   const isCurrentSection = isToday && currentHour >= section.start && currentHour <= section.end;
@@ -151,7 +179,7 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, snapMi
 
       {/* Section body */}
       {open && (
-        <div style={{ position: 'relative', height: `${heightPx}px`, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', height: `${bodyHeight}px`, overflow: 'hidden' }}>
 
           {/* Axis line */}
           <div style={{
@@ -269,21 +297,16 @@ function TimeSection({ section, tasks, clustered, zoomFactor, hourHeight, snapMi
           )}
 
           {/* Tasks in this section */}
-          {clustered.filter(t => {
-            const h = parseInt((t.time || '00:00').split(':')[0]);
-            return h >= section.start && h <= section.end;
-          }).map((task, i) => {
-            const [th, tm] = (task.time || '00:00').split(':').map(Number);
-            const offsetMins = (th * 60 + tm) - (section.start * 60);
-            const relativeTop = offsetMins * (hourHeight / 60);
+          {positioned.map(({ task, displayTop }, i) => {
             return (
               <TaskCard
                 key={task.id || i}
-                task={{ ...task, _relativeTop: relativeTop }}
+                task={task}
                 isFutureDate={isFutureDate}
                 zoomFactor={zoomFactor}
                 hourHeight={hourHeight}
                 snapMinutes={snapMinutes}
+                topOverride={displayTop}
                 onUpdateStatus={s => onUpdateStatus(task.id, s)}
                 onEdit={() => onEditTask && onEditTask(task)}
                 onDragTime={t => onDragTime(task.id, t)}

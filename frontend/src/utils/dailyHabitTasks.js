@@ -18,13 +18,13 @@
 // Morning habits live in the morning section (05–11), night habits in the
 // evening section (18–23). Times are on a 5-minute grid.
 export const HABIT_TIMELINE_SCHEDULE = [
-  // Morning habits (Health)
-  { section: 'morning', field: 'meditate', title: '🧘 Meditate 3 mins',          time: '06:00', duration: 5,  category: 'Health',   priority: 'medium' },
-  { section: 'morning', field: 'bed',      title: '🛏️ Make bed',                time: '06:05', duration: 5,  category: 'Health',   priority: 'medium' },
-  { section: 'morning', field: 'teeth',    title: '🪥 Brush teeth & tongue',     time: '06:10', duration: 5,  category: 'Health',   priority: 'medium' },
-  { section: 'morning', field: 'shower',   title: '🚿 Scottish Shower',          time: '06:15', duration: 10, category: 'Health',   priority: 'medium' },
-  { section: 'morning', field: 'gel',      title: '💇 Apply hair gel',            time: '06:25', duration: 5,  category: 'Health',   priority: 'medium' },
-  { section: 'morning', field: 'perfume',  title: '👃 Put on perfume',            time: '06:30', duration: 5,  category: 'Health',   priority: 'medium' },
+  // Morning habits (Health) — start 05:00
+  { section: 'morning', field: 'meditate', title: '🧘 Meditate 3 mins',          time: '05:00', duration: 5,  category: 'Health',   priority: 'medium' },
+  { section: 'morning', field: 'bed',      title: '🛏️ Make bed',                time: '05:05', duration: 5,  category: 'Health',   priority: 'medium' },
+  { section: 'morning', field: 'teeth',    title: '🪥 Brush teeth & tongue',     time: '05:10', duration: 5,  category: 'Health',   priority: 'medium' },
+  { section: 'morning', field: 'shower',   title: '🚿 Scottish Shower',          time: '05:15', duration: 10, category: 'Health',   priority: 'medium' },
+  { section: 'morning', field: 'gel',      title: '💇 Apply hair gel',            time: '05:25', duration: 5,  category: 'Health',   priority: 'medium' },
+  { section: 'morning', field: 'perfume',  title: '👃 Put on perfume',            time: '05:30', duration: 5,  category: 'Health',   priority: 'medium' },
   // Reading — 10 pages, 20 minutes
   { section: 'books',   field: 'read',     title: '📖 Read 10 pages',            time: '07:00', duration: 20, category: 'Learning', priority: 'medium' },
   // Side Hustle — 1 hour
