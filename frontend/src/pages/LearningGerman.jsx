@@ -5514,6 +5514,7 @@ export default function LearningGerman() {
   const [confirmDeleteMenuId, setConfirmDeleteMenuId] = useState(null);
   const [collapsedMenus, setCollapsedMenus] = useState({});
   const [dragOverMenuKey, setDragOverMenuKey] = useState(null);
+  const [justMovedId, setJustMovedId] = useState(null);
   const [sortGrammar, setSortGrammar] = useState('date');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [noteContent, setNoteContent] = useState('');
@@ -5931,6 +5932,11 @@ export default function LearningGerman() {
   };
 
   const moveWordToMenu = async (recordId, folderId) => {
+    // Real-time feedback: expand the target menu and flash the moved row so
+    // the user watches the word instantly jump from "Ungrouped" into the menu.
+    if (folderId) setCollapsedMenus(prev => (prev[folderId] ? { ...prev, [folderId]: false } : prev));
+    setJustMovedId(recordId);
+    setTimeout(() => setJustMovedId(cur => (cur === recordId ? null : cur)), 1500);
     try { await updateGermanVocab(recordId, { folderId: folderId || null }); }
     catch (e) { setError(e.message); }
   };
@@ -7220,6 +7226,7 @@ export default function LearningGerman() {
                       {/* Menu header row — click to collapse/expand, drop target for words */}
                       <tr
                         onClick={() => toggleMenuCollapsed(section.key)}
+                        onDragEnter={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverMenuKey(section.key); }}
                         onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverMenuKey !== section.key) setDragOverMenuKey(section.key); }}
                         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverMenuKey(k => (k === section.key ? null : k)); }}
                         onDrop={e => {
@@ -7288,7 +7295,7 @@ export default function LearningGerman() {
                         </td></tr>
                       )}
                       {!collapsedMenus[section.key] && section.words.map(v => (
-                    <tr key={v.recordId} style={{ transition: 'background 0.15s' }}
+                    <tr key={v.recordId} style={{ transition: 'background 0.3s', background: justMovedId === v.recordId ? `${C.gold}40` : undefined }}
                       draggable
                       onDragStart={e => { e.dataTransfer.setData('text/plain', v.recordId); e.dataTransfer.effectAllowed = 'move'; }}
                       onDragEnd={() => setDragOverMenuKey(null)}
@@ -7351,7 +7358,11 @@ export default function LearningGerman() {
                       <td data-label="Notes" style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{v.notes || '—'}</td>
                       <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
                         {vocabMenus.length > 0 && (
-                          <select
+                          <>
+                            <span title="Drag this row onto a menu header to move it" style={{ display: 'inline-flex', color: 'var(--text-muted)', opacity: 0.55, cursor: 'grab', verticalAlign: 'middle', marginRight: 4 }}>
+                              <GripVertical size={14} />
+                            </span>
+                            <select
                             value={v.folderId || ''}
                             onChange={e => moveWordToMenu(v.recordId, e.target.value || null)}
                             title="Move to menu (drag & drop also works)"
@@ -7366,6 +7377,7 @@ export default function LearningGerman() {
                             <option value="">— No menu —</option>
                             {vocabMenus.map(m => <option key={m.recordId} value={m.recordId}>{m.title}</option>)}
                           </select>
+                          </>
                         )}
                         <button onClick={() => handleToggleFavorite(v.recordId, v.favorite)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: v.favorite ? C.gold : 'var(--text-muted)', padding: 2, verticalAlign: 'middle' }} title="Toggle Favorite">
                           <Star size={13} fill={v.favorite ? C.gold : 'none'} />

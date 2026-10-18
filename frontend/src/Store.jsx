@@ -353,6 +353,10 @@ export const HabitProvider = ({ children }) => {
 
   // ── German Learning state ─────────────────────────────────────
   const [germanData, setGermanData] = useState([]);
+  // Mirror of germanData for use inside async callbacks (optimistic updates
+  // need the current record snapshot without re-creating callbacks).
+  const germanDataRef = useRef(germanData);
+  useEffect(() => { germanDataRef.current = germanData; }, [germanData]);
   const [germanProgress, setGermanProgress] = useState(null);
   const [germanStudy, setGermanStudy] = useState(null);
 
@@ -2231,18 +2235,29 @@ export const HabitProvider = ({ children }) => {
   }, [API_URL]);
 
   const updateGermanVocab = useCallback(async (recordId, payload) => {
-    const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to update vocab');
-    setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
-    logHistory('german_vocab_update', `Updated German vocabulary: ${payload?.word || ''}`);
-    return data;
-  }, [API_URL]);
+    // Optimistic update: apply the change locally FIRST so the UI reacts in
+    // real time (e.g. a word visibly jumping from "Ungrouped" into a menu),
+    // then reconcile with the server and roll back on failure.
+    const before = germanDataRef.current.find(r => r.recordId === recordId) || null;
+    if (before) setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...payload } : r));
+    try {
+      const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update vocab');
+      setGermanData(prev => prev.map(r => r.recordId === recordId ? { ...r, ...data } : r));
+      logHistory('german_vocab_update', `Updated German vocabulary: ${payload?.word || ''}`);
+      return data;
+    } catch (err) {
+      // Roll back the optimistic change so the UI never shows unsaved state.
+      if (before) setGermanData(prev => prev.map(r => r.recordId === recordId ? before : r));
+      throw err;
+    }
+  }, [API_URL, germanDataRef]);
 
   const reviewGermanVocab = useCallback(async (recordId, score) => {
     const res = await fetch(`${API_URL}/api/german/vocab/${encodeURIComponent(recordId)}/review`, {
