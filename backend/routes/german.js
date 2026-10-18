@@ -49,6 +49,8 @@ const {
   updateBook,
   addChapter,
   updateChapter,
+  addVocabFolder,
+  updateVocabFolder,
   addStory,
   updateStory,
   getOrInitStudy,
@@ -242,11 +244,11 @@ router.delete('/study/day', async (req, res) => {
 // ── POST /api/german/vocab ────────────────────────────────────────────────────
 router.post('/vocab', async (req, res) => {
   try {
-    const { word, translation, example, notes, category, plural, article, wordType, comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle, photoUrl, photoSource, autoPhoto } = req.body;
+    const { word, translation, example, notes, category, plural, article, wordType, comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level, chapterId, chapterTitle, photoUrl, photoSource, autoPhoto, folderId } = req.body;
     if (!word?.trim() || !translation?.trim()) {
       return res.status(400).json({ message: 'word and translation are required' });
     }
-    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, wordType: wordType || 'noun', comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle, photoUrl: photoUrl || '', photoSource: photoSource || (photoUrl ? 'manual' : '') });
+    const record = await addVocab(req.user.userId, { word: word.trim(), translation: translation.trim(), example, notes, category, plural, article, wordType: wordType || 'noun', comparative, superlative, contrary, leitnerBox, lastReviewDate, mastery, favorite, boxes, level: level || 'A1.1', chapterId, chapterTitle, folderId, photoUrl: photoUrl || '', photoSource: photoSource || (photoUrl ? 'manual' : '') });
     res.status(201).json(record);
     // Fire-and-forget: every stored vocab gets an AI descriptive photo unless
     // the client opted out (autoPhoto: false) or already supplied one.
@@ -991,6 +993,32 @@ router.put('/chapter/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT chapter error:', err);
     res.status(500).json({ message: 'Failed to update chapter' });
+  }
+});
+
+// ── POST /api/german/vocab-folder → create a vocabulary menu ─────────────────
+router.post('/vocab-folder', async (req, res) => {
+  try {
+    const { title, sortOrder } = req.body;
+    if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
+    const record = await addVocabFolder(req.user.userId, { title: title.trim(), sortOrder });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST vocab-folder error:', err);
+    res.status(500).json({ message: 'Failed to add vocabulary menu' });
+  }
+});
+
+// ── PUT /api/german/vocab-folder/:recordId → rename / reorder a menu ─────────
+router.put('/vocab-folder/:recordId', async (req, res) => {
+  try {
+    const recordId = decodeURIComponent(req.params.recordId);
+    const updated = await updateVocabFolder(req.user.userId, recordId, req.body);
+    if (!updated) return res.status(404).json({ message: 'Vocabulary menu not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[German] PUT vocab-folder error:', err);
+    res.status(500).json({ message: 'Failed to update vocabulary menu' });
   }
 });
 

@@ -61,7 +61,7 @@ async function backfillLevels(userId, level) {
 }
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
-async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', wordType = 'noun', comparative = '', superlative = '', contrary = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', photoSource = '', photoCredit = '', boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '' }) {
+async function addVocab(userId, { word, translation, example = '', notes = '', category = 'General', plural = '', article = '', wordType = 'noun', comparative = '', superlative = '', contrary = '', leitnerBox = 0, lastReviewDate = null, mastery = 0, favorite = false, sortOrder = Date.now(), photoUrl = '', photoSource = '', photoCredit = '', boxes = [], level = 'A1.1', chapterId = null, chapterTitle = '', folderId = null }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -90,6 +90,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
     level,
     chapterId: chapterId || null,
     chapterTitle: chapterTitle || '',
+    folderId: folderId || null,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -97,7 +98,7 @@ async function addVocab(userId, { word, translation, example = '', notes = '', c
 }
 
 async function updateVocab(userId, recordId, updates) {
-  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'wordType', 'comparative', 'superlative', 'contrary', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'photoSource', 'photoCredit', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes', 'level', 'chapterId', 'chapterTitle'];
+  const allowed = ['word', 'translation', 'example', 'notes', 'category', 'plural', 'article', 'wordType', 'comparative', 'superlative', 'contrary', 'leitnerBox', 'lastReviewDate', 'mastery', 'favorite', 'sortOrder', 'photoUrl', 'photoSource', 'photoCredit', 'easeFactor', 'interval', 'nextReviewDate', 'lapses', 'boxes', 'level', 'chapterId', 'chapterTitle', 'folderId'];
   const sets = [];
   const names = {};
   const values = {};
@@ -600,6 +601,49 @@ async function updateChapter(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Vocabulary Menus (user-defined dropdown menus that group vocabulary) ─────
+async function addVocabFolder(userId, { title, sortOrder = Date.now() }) {
+  const recordId = `VOCABFOLDER#${uuidv4()}`;
+  const item = {
+    userId,
+    recordId,
+    type: 'vocab-folder',
+    title,
+    sortOrder,
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
+async function updateVocabFolder(userId, recordId, updates) {
+  const allowed = ['title', 'sortOrder'];
+  const sets = [];
+  const names = {};
+  const values = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      sets.push(`#${key} = :${key}`);
+      names[`#${key}`] = key;
+      values[`:${key}`] = updates[key];
+    }
+  }
+  if (!sets.length) return null;
+  sets.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  const res = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { userId, recordId },
+    UpdateExpression: `SET ${sets.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ReturnValues: 'ALL_NEW',
+  }));
+  return res.Attributes;
+}
+
 // ── Stories (youtube link, dialogue, new words learned, participants & exchanges) ──
 async function addStory(userId, { title, youtubeUrl = '', dialogue = '', participants = [], exchanges = [], newWords = [], boxes = [], level = 'A1.1', chapterId = null, chapterTitle = null, sortOrder = Date.now() }) {
   const recordId = `STORY#${uuidv4()}`;
@@ -797,6 +841,8 @@ module.exports = {
   updateBook,
   addChapter,
   updateChapter,
+  addVocabFolder,
+  updateVocabFolder,
   addStory,
   updateStory,
   addUnifiedVocab,
@@ -861,7 +907,7 @@ async function saveAlphabetNote(userId, { note = '', title = '' }) {
 }
 
 // ── Unified Vocabulary (LLM-processed structured entries) ─────────────────────
-async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig, leitnerBox = 0, mastery = 0, favorite = false, boxes = [], level = null, chapterId = null, chapterTitle = '', photoUrl = '', photoSource = '', photoCredit = '' }) {
+async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig, leitnerBox = 0, mastery = 0, favorite = false, boxes = [], level = null, chapterId = null, chapterTitle = '', photoUrl = '', photoSource = '', photoCredit = '', folderId = null }) {
   const recordId = `VOCAB#${uuidv4()}`;
   const item = {
     userId,
@@ -890,6 +936,7 @@ async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig
     level: level || entryMetadata.level || 'A1.1',
     chapterId: chapterId || null,
     chapterTitle: chapterTitle || '',
+    folderId: folderId || null,
     createdAt: new Date().toISOString(),
   };
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
@@ -897,7 +944,7 @@ async function addUnifiedVocab(userId, { entryMetadata, linguisticData, uiConfig
 }
 
 async function updateUnifiedVocab(userId, recordId, updates) {
-  const allowed = ['entryCategory', 'word', 'translation', 'phonetic', 'example', 'exampleTranslation', 'tags', 'partOfSpeech', 'noun', 'verb', 'adjective', 'phrase', 'uiConfig', 'leitnerBox', 'mastery', 'favorite', 'boxes', 'level', 'chapterId', 'chapterTitle', 'photoUrl', 'photoSource', 'photoCredit'];
+  const allowed = ['entryCategory', 'word', 'translation', 'phonetic', 'example', 'exampleTranslation', 'tags', 'partOfSpeech', 'noun', 'verb', 'adjective', 'phrase', 'uiConfig', 'leitnerBox', 'mastery', 'favorite', 'boxes', 'level', 'chapterId', 'chapterTitle', 'photoUrl', 'photoSource', 'photoCredit', 'folderId'];
   const sets = [];
   const names = {};
   const values = {};

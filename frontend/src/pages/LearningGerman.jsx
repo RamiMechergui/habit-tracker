@@ -20,7 +20,7 @@ import {
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked, Sparkles,
-  Code, Copy, CheckCheck,
+  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -2628,7 +2628,8 @@ function GlobalSearchModal({ germanData, onClose }) {
       const searchable = (r.type === 'vocab' || r.type === 'unified-vocab') ? `${r.word} ${r.translation} ${r.notes || ''}` :
         r.type === 'grammar' ? `${r.rule} ${r.explanation} ${r.notes || ''}` :
         r.type === 'verb' ? `${r.infinitive} ${r.meaning}` :
-        r.type === 'note' ? `${r.content || ''}` : '';
+        r.type === 'note' ? `${r.content || ''}` :
+        r.type === 'vocab-folder' ? `${r.title || ''}` : '';
       return searchable.toLowerCase().includes(query);
     });
     return all.slice(0, 30);
@@ -2646,12 +2647,14 @@ function GlobalSearchModal({ germanData, onClose }) {
         <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {results.map(r => {
             const isVocab = r.type === 'vocab' || r.type === 'unified-vocab';
+            const isFolder = r.type === 'vocab-folder';
             const icon = isVocab ? <BookOpen size={14} style={{ color: C.gold }} /> :
               r.type === 'grammar' ? <GraduationCap size={14} style={{ color: C.blue }} /> :
               r.type === 'verb' ? <PenTool size={14} style={{ color: C.purple }} /> :
+              isFolder ? <Folder size={14} style={{ color: C.gold }} /> :
               <NotebookPen size={14} style={{ color: C.green }} />;
-            const title = isVocab ? r.word : r.type === 'grammar' ? r.rule : r.type === 'verb' ? r.infinitive : 'Study Note';
-            const subtitle = isVocab ? r.translation : r.type === 'grammar' ? r.explanation?.slice(0, 80) : r.type === 'verb' ? r.meaning : r.content?.slice(0, 80);
+            const title = isVocab ? r.word : r.type === 'grammar' ? r.rule : r.type === 'verb' ? r.infinitive : isFolder ? r.title : 'Study Note';
+            const subtitle = isVocab ? r.translation : r.type === 'grammar' ? r.explanation?.slice(0, 80) : r.type === 'verb' ? r.meaning : isFolder ? 'Vocabulary menu' : r.content?.slice(0, 80);
             return (
               <div key={r.recordId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0.75rem', borderRadius: '10px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
                 {icon}
@@ -2663,6 +2666,103 @@ function GlobalSearchModal({ germanData, onClose }) {
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Key Lessons from Daily Log ──
+// Read-only view of every "Key Lesson" the user recorded under
+// Daily Log → Learning German (log.german.lessons). Grouped by date,
+// most recent day first.
+function KeyLessonsModal({ logs, onClose }) {
+  const [q, setQ] = useState('');
+
+  const days = useMemo(() => {
+    const allLogs = logs || {};
+    const list = [];
+    for (const [date, log] of Object.entries(allLogs)) {
+      const lessons = log?.german?.lessons;
+      if (!Array.isArray(lessons) || lessons.length === 0) continue;
+      const cleaned = lessons.map(l => (typeof l === 'string' ? l.trim() : '')).filter(Boolean);
+      if (cleaned.length === 0) continue;
+      list.push({ date, lessons: cleaned });
+    }
+    list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
+    return list;
+  }, [logs]);
+
+  const totalLessons = days.reduce((sum, d) => sum + d.lessons.length, 0);
+
+  const filteredDays = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return days;
+    return days
+      .map(d => ({ ...d, lessons: d.lessons.filter(l => l.toLowerCase().includes(query)) }))
+      .filter(d => d.lessons.length > 0);
+  }, [days, q]);
+
+  const formatDateHeader = (dateStr) => {
+    try {
+      return format(new Date(dateStr + 'T00:00:00'), 'EEEE, MMMM d, yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '5vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--bg-card)', border: `1px solid ${C.gold}30`, borderRadius: '16px', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)', animation: 'evolvio-up 0.3s ease', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginBottom: 4 }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={16} style={{ color: C.gold }} /> Key Lessons
+          </h3>
+          <button onClick={onClose} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+        <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {totalLessons > 0
+            ? `${totalLessons} lesson${totalLessons === 1 ? '' : 's'} from ${days.length} day${days.length === 1 ? '' : 's'} — Daily Log → Learning German, newest first.`
+            : 'Recorded in Daily Log → Learning German → Key Lessons.'}
+        </p>
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search key lessons..." autoFocus style={{ width: '100%', padding: '0.65rem 2.2rem', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+          {q && <button onClick={() => setQ('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={16} /></button>}
+        </div>
+        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {days.length === 0 && (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem 1rem' }}>
+              No key lessons yet. Add them in <strong style={{ color: 'var(--text-primary)' }}>Daily Log → Learning German → Key Lessons</strong>.
+            </p>
+          )}
+          {days.length > 0 && filteredDays.length === 0 && q.trim() && (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem 1rem' }}>No lessons match "{q}"</p>
+          )}
+          {filteredDays.map(day => (
+            <div key={day.date} style={{
+              background: 'var(--bg)', border: '1px solid var(--border)',
+              borderRadius: '12px', padding: '0.75rem 0.85rem',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <Calendar size={13} style={{ color: C.gold }} />
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.gold }}>{formatDateHeader(day.date)}</span>
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 7px' }}>
+                  {day.lessons.length}
+                </span>
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {day.lessons.map((lesson, idx) => (
+                  <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.85rem', lineHeight: 1.45 }}>
+                    <span style={{ color: C.gold, marginTop: 2, flexShrink: 0 }}>•</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{lesson}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -5388,6 +5488,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
+    addGermanVocabFolder, updateGermanVocabFolder,
     addGermanStory, updateGermanStory,
     uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto,
     processVocab, saveUnifiedVocab, updateUnifiedVocab,
@@ -5404,6 +5505,15 @@ export default function LearningGerman() {
   const [grammarSaving, setGrammarSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [sortVocab, setSortVocab] = useState('word');
+  // ── Vocabulary "menus" (dropdown groups) ──
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [newMenuTitle, setNewMenuTitle] = useState('');
+  const [menuSaving, setMenuSaving] = useState(false);
+  const [editingMenuId, setEditingMenuId] = useState(null);
+  const [editingMenuTitle, setEditingMenuTitle] = useState('');
+  const [confirmDeleteMenuId, setConfirmDeleteMenuId] = useState(null);
+  const [collapsedMenus, setCollapsedMenus] = useState({});
+  const [dragOverMenuKey, setDragOverMenuKey] = useState(null);
   const [sortGrammar, setSortGrammar] = useState('date');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [noteContent, setNoteContent] = useState('');
@@ -5444,6 +5554,7 @@ export default function LearningGerman() {
   const [showMCQuiz, setShowMCQuiz] = useState(false);
   const [showWriting, setShowWriting] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [showKeyLessons, setShowKeyLessons] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -5524,6 +5635,11 @@ export default function LearningGerman() {
   const vocab     = useMemo(() => {
     return germanData.filter(r => isVocabRecord(r));
   }, [germanData, isVocabRecord]);
+  // User-defined vocabulary menus (dropdown groups), in creation order.
+  const vocabMenus = useMemo(() => {
+    const list = germanData.filter(r => r.type === 'vocab-folder');
+    return [...list].sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)));
+  }, [germanData]);
   const grammar   = useMemo(() => {
     const filtered = levelGrammar.filter(matchesChapter);
     return filtered;
@@ -5699,6 +5815,17 @@ export default function LearningGerman() {
 
   const totalStudyMsAllTime = germanDailyTotals.totalMs || 0;
 
+  // Total "Key Lessons" recorded under Daily Log → Learning German,
+  // used for the button badge and the Key Lessons modal.
+  const dailyLogKeyLessonsCount = useMemo(() => {
+    let count = 0;
+    for (const log of Object.values(logs || {})) {
+      const lessons = log?.german?.lessons;
+      if (Array.isArray(lessons)) count += lessons.filter(l => typeof l === 'string' && l.trim()).length;
+    }
+    return count;
+  }, [logs]);
+
   const formatMs = (ms) => {
     if (!ms || ms <= 0) return '0m';
     const totalSec = Math.floor(ms / 1000);
@@ -5755,6 +5882,58 @@ export default function LearningGerman() {
     if (favoritesOnly) list = list.filter(v => v.favorite);
     return list;
   }, [sortedVocab, filteredVocab, debouncedSearch, tab, favoritesOnly]);
+
+  // Words bucketed under their menu (dropdown group) — one section per menu,
+  // plus a final "Ungrouped" section. Order inside each section follows the
+  // active sort (sortVocab).
+  const vocabSections = useMemo(() => {
+    const groups = vocabMenus.map(menu => ({ key: menu.recordId, title: menu.title, menu, words: [] }));
+    const byId = new Map(groups.map(g => [g.key, g]));
+    const unfiled = { key: '__unfiled__', title: 'Ungrouped', menu: null, words: [] };
+    for (const v of displayedVocab) {
+      const g = v.folderId ? byId.get(v.folderId) : null;
+      if (g) g.words.push(v);
+      else unfiled.words.push(v);
+    }
+    return [...groups, unfiled];
+  }, [displayedVocab, vocabMenus]);
+
+  const toggleMenuCollapsed = (key) => {
+    setCollapsedMenus(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleCreateMenu = async () => {
+    const title = newMenuTitle.trim();
+    if (!title || menuSaving) return;
+    setMenuSaving(true);
+    try {
+      await addGermanVocabFolder({ title, sortOrder: Date.now() });
+      setNewMenuOpen(false);
+      setNewMenuTitle('');
+    } catch (e) { setError(e.message); } finally { setMenuSaving(false); }
+  };
+
+  const handleRenameMenu = async (recordId) => {
+    const title = editingMenuTitle.trim();
+    if (!title) return;
+    try {
+      await updateGermanVocabFolder(recordId, { title });
+      setEditingMenuId(null);
+      setEditingMenuTitle('');
+    } catch (e) { setError(e.message); }
+  };
+
+  const handleDeleteMenu = async (recordId) => {
+    // Words keep their folderId but simply render under "Ungrouped"
+    // (orphaned ids are ignored when grouping).
+    try { await deleteGermanRecord(recordId); setConfirmDeleteMenuId(null); }
+    catch (e) { setError(e.message); }
+  };
+
+  const moveWordToMenu = async (recordId, folderId) => {
+    try { await updateGermanVocab(recordId, { folderId: folderId || null }); }
+    catch (e) { setError(e.message); }
+  };
 
   const displayedVerbs = useMemo(() => {
     let list = [...verbs].sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)));
@@ -6449,6 +6628,9 @@ export default function LearningGerman() {
             <button onClick={() => setShowWriting(true)} disabled={vocab.length < 3} title="Writing Practice" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length < 3 ? 'not-allowed' : 'pointer', background: vocab.length < 3 ? 'var(--bg)' : `linear-gradient(135deg, ${C.blue}, ${C.purple})`, border: vocab.length < 3 ? '1px solid var(--border)' : 'none', color: vocab.length < 3 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length < 3 ? 0.5 : 1, boxShadow: vocab.length >= 3 ? `0 4px 12px ${C.blue}40` : 'none' }}>
               <PenTool size={15} /> Writing
             </button>
+            <button onClick={() => setShowKeyLessons(true)} title="Key Lessons from Daily Log" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer', background: 'var(--bg)', border: `1px solid ${C.gold}45`, color: C.gold, fontWeight: 700, fontSize: '0.85rem' }}>
+              <Sparkles size={15} /> Key Lessons{dailyLogKeyLessonsCount > 0 && <span style={{ fontSize: '0.65rem', fontWeight: 800, background: `${C.gold}25`, borderRadius: 10, padding: '1px 7px' }}>{dailyLogKeyLessonsCount}</span>}
+            </button>
             <button onClick={() => setShowGlobalSearch(true)} title="Global Search" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.85rem' }}>
               <List size={15} /> Search
             </button>
@@ -6525,6 +6707,13 @@ export default function LearningGerman() {
           <PenTool size={15} /> Writing
         </button>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button onClick={() => setShowKeyLessons(true)} title="Key Lessons from Daily Log" style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer',
+            background: 'var(--bg)', border: `1px solid ${C.gold}45`, color: C.gold, fontWeight: 700, fontSize: '0.85rem',
+          }}>
+            <Sparkles size={15} /> Key Lessons{dailyLogKeyLessonsCount > 0 && <span style={{ fontSize: '0.65rem', fontWeight: 800, background: `${C.gold}25`, borderRadius: 10, padding: '1px 7px' }}>{dailyLogKeyLessonsCount}</span>}
+          </button>
           <button onClick={() => setShowGlobalSearch(true)} title="Global Search" style={{
             display: 'flex', alignItems: 'center', gap: '0.4rem',
             padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer',
@@ -6963,7 +7152,54 @@ export default function LearningGerman() {
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
             {(debouncedSearch.trim() || favoritesOnly)
               ? `Showing ${displayedVocab.length} of ${vocab.length} words (filtered)`
-              : `${vocab.length} word${vocab.length === 1 ? '' : 's'} · all levels & chapters`}
+              : `${vocab.length} word${vocab.length === 1 ? '' : 's'} · ${vocabMenus.length} menu${vocabMenus.length === 1 ? '' : 's'} · all levels & chapters`}
+          </div>
+          {/* ── Vocabulary menus (dropdown groups) toolbar ── */}
+          <div style={{
+            display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap',
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '12px', padding: '0.5rem 0.65rem', marginBottom: '0.75rem',
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', fontWeight: 800, color: C.gold, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <Folder size={14} /> Menus
+            </span>
+            {vocabMenus.length === 0 && !newMenuOpen && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Group your vocabulary into dropdown menus — give each one a title, then drag words under it.
+              </span>
+            )}
+            {newMenuOpen ? (
+              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                <input
+                  value={newMenuTitle}
+                  onChange={e => setNewMenuTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleCreateMenu(); if (e.key === 'Escape') { setNewMenuOpen(false); setNewMenuTitle(''); } }}
+                  placeholder="Menu title (e.g. Food & Drink)"
+                  autoFocus
+                  maxLength={60}
+                  style={{ ...inputBase, padding: '0.4rem 0.7rem', fontSize: '0.82rem', width: 220, background: 'var(--bg)' }}
+                />
+                <button onClick={handleCreateMenu} disabled={!newMenuTitle.trim() || menuSaving} title="Create menu" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, padding: '0.4rem 0.7rem',
+                  borderRadius: 8, cursor: !newMenuTitle.trim() || menuSaving ? 'not-allowed' : 'pointer',
+                  background: `linear-gradient(135deg, ${C.gold}, #f59e0b)`, border: 'none', color: '#1f1600',
+                  fontWeight: 800, fontSize: '0.75rem', opacity: !newMenuTitle.trim() || menuSaving ? 0.6 : 1,
+                }}>
+                  {menuSaving ? <Loader2 size={12} className="spin" /> : <Check size={12} />} Create
+                </button>
+                <button onClick={() => { setNewMenuOpen(false); setNewMenuTitle(''); }} title="Cancel" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'inline-flex' }}>
+                  <X size={14} />
+                </button>
+              </span>
+            ) : (
+              <button onClick={() => setNewMenuOpen(true)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.4rem 0.75rem',
+                borderRadius: 8, cursor: 'pointer', background: `${C.gold}15`,
+                border: `1px dashed ${C.gold}60`, color: C.gold, fontWeight: 700, fontSize: '0.75rem',
+              }}>
+                <FolderPlus size={13} /> New menu
+              </button>
+            )}
           </div>
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="responsive-table" style={{ overflowX: 'auto' }}>
@@ -6979,8 +7215,83 @@ export default function LearningGerman() {
                       {search ? 'No results found.' : favoritesOnly ? 'No favorited words.' : 'No vocabulary added yet. Click "Add Word" to start!'}
                     </td></tr>
                   )}
-                  {displayedVocab.map(v => (
+                  {displayedVocab.length > 0 && vocabSections.map(section => (
+                    <React.Fragment key={section.key}>
+                      {/* Menu header row — click to collapse/expand, drop target for words */}
+                      <tr
+                        onClick={() => toggleMenuCollapsed(section.key)}
+                        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverMenuKey !== section.key) setDragOverMenuKey(section.key); }}
+                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverMenuKey(k => (k === section.key ? null : k)); }}
+                        onDrop={e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const rid = e.dataTransfer.getData('text/plain');
+                          setDragOverMenuKey(null);
+                          if (rid) moveWordToMenu(rid, section.menu ? section.menu.recordId : null);
+                        }}
+                        style={{ cursor: 'pointer', transition: 'background 0.15s' }}
+                      >
+                        <td colSpan={9} style={{
+                          ...cellStyle, padding: '0.5rem 0.8rem', verticalAlign: 'middle',
+                          background: dragOverMenuKey === section.key ? `${C.gold}30` : section.menu ? `${C.gold}0f` : 'var(--bg)',
+                          borderBottom: `1px solid ${C.gold}35`,
+                          boxShadow: dragOverMenuKey === section.key ? `inset 0 0 0 2px ${C.gold}` : 'none',
+                        }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                            <ChevronDown size={14} style={{ color: section.menu ? C.gold : 'var(--text-muted)', transform: collapsedMenus[section.key] ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+                            {section.menu
+                              ? <Folder size={14} style={{ color: C.gold, flexShrink: 0 }} />
+                              : <FolderOpen size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
+                            {editingMenuId === section.key ? (
+                              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                                <input
+                                  value={editingMenuTitle}
+                                  onChange={e => setEditingMenuTitle(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') handleRenameMenu(section.key); if (e.key === 'Escape') setEditingMenuId(null); }}
+                                  onClick={e => e.stopPropagation()}
+                                  autoFocus
+                                  maxLength={60}
+                                  style={{ ...inputBase, padding: '0.3rem 0.6rem', fontSize: '0.8rem', width: 180, background: 'var(--bg)' }}
+                                />
+                                <button onClick={() => handleRenameMenu(section.key)} title="Save title" style={{ background: `linear-gradient(135deg, ${C.green}, #059669)`, border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 6, padding: '3px 6px', display: 'inline-flex' }}><Check size={13} /></button>
+                                <button onClick={() => setEditingMenuId(null)} title="Cancel" style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 6, padding: '3px 6px', display: 'inline-flex' }}><X size={13} /></button>
+                              </span>
+                            ) : (
+                              <strong style={{ fontSize: '0.82rem', fontWeight: 800, color: section.menu ? C.gold : 'var(--text-muted)', letterSpacing: '0.01em' }}>{section.title}</strong>
+                            )}
+                            <span style={{ fontSize: '0.66rem', fontWeight: 800, background: section.menu ? `${C.gold}25` : 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 7px', color: section.menu ? C.gold : 'var(--text-muted)' }}>
+                              {section.words.length}
+                            </span>
+                            {dragOverMenuKey === section.key && (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: C.gold }}>Release to move here</span>
+                            )}
+                            <span onClick={e => e.stopPropagation()} style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                              {section.menu && (confirmDeleteMenuId === section.key ? (
+                                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.72rem', color: C.red, fontWeight: 700, whiteSpace: 'nowrap' }}>Delete menu? Words stay.</span>
+                                  <button onClick={() => handleDeleteMenu(section.key)} style={{ background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}><Check size={12} /></button>
+                                  <button onClick={() => setConfirmDeleteMenuId(null)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}><X size={12} /></button>
+                                </span>
+                              ) : section.menu ? (
+                                <>
+                                  <button onClick={() => { setEditingMenuId(section.key); setEditingMenuTitle(section.title); }} title="Rename menu" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.blue, padding: 3, display: 'inline-flex' }}><Edit3 size={13} /></button>
+                                  <button onClick={() => setConfirmDeleteMenuId(section.key)} title="Delete menu" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 3, display: 'inline-flex' }}><Trash2 size={13} /></button>
+                                </>
+                              ) : null)}
+                            </span>
+                          </span>
+                        </td>
+                      </tr>
+                      {!collapsedMenus[section.key] && section.words.length === 0 && (
+                        <tr><td colSpan={9} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.76rem', fontStyle: 'italic', padding: '0.9rem', background: 'var(--bg-card)' }}>
+                          {section.menu ? 'No words in this menu yet — drag vocabulary rows here.' : 'No ungrouped words.'}
+                        </td></tr>
+                      )}
+                      {!collapsedMenus[section.key] && section.words.map(v => (
                     <tr key={v.recordId} style={{ transition: 'background 0.15s' }}
+                      draggable
+                      onDragStart={e => { e.dataTransfer.setData('text/plain', v.recordId); e.dataTransfer.effectAllowed = 'move'; }}
+                      onDragEnd={() => setDragOverMenuKey(null)}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
@@ -7039,6 +7350,23 @@ export default function LearningGerman() {
                       <td data-label="Mastery" style={{ ...cellStyle, textAlign: 'center' }}>{masteryStars(v.mastery || 0)}</td>
                       <td data-label="Notes" style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{v.notes || '—'}</td>
                       <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
+                        {vocabMenus.length > 0 && (
+                          <select
+                            value={v.folderId || ''}
+                            onChange={e => moveWordToMenu(v.recordId, e.target.value || null)}
+                            title="Move to menu (drag & drop also works)"
+                            style={{
+                              display: 'block', width: '100%', maxWidth: 130, margin: '0 auto 6px',
+                              padding: '3px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 700,
+                              background: 'var(--bg)', color: 'var(--text-primary)',
+                              border: `1px solid ${v.folderId ? C.gold + '55' : 'var(--border)'}`,
+                              cursor: 'pointer', outline: 'none',
+                            }}
+                          >
+                            <option value="">— No menu —</option>
+                            {vocabMenus.map(m => <option key={m.recordId} value={m.recordId}>{m.title}</option>)}
+                          </select>
+                        )}
                         <button onClick={() => handleToggleFavorite(v.recordId, v.favorite)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: v.favorite ? C.gold : 'var(--text-muted)', padding: 2, verticalAlign: 'middle' }} title="Toggle Favorite">
                           <Star size={13} fill={v.favorite ? C.gold : 'none'} />
                         </button>
@@ -7072,6 +7400,8 @@ export default function LearningGerman() {
                       )}
                       </td>
                     </tr>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -7798,6 +8128,7 @@ export default function LearningGerman() {
       {showMCQuiz && <MultipleChoiceQuiz vocab={vocab} onClose={() => setShowMCQuiz(false)} />}
       {showWriting && <WritingPractice vocab={vocab} onClose={() => setShowWriting(false)} />}
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
+      {showKeyLessons && <KeyLessonsModal logs={logs} onClose={() => setShowKeyLessons(false)} />}
       {chapterModalLevel && (
         <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onClose={() => setChapterModalLevel(null)} modal />
       )}
