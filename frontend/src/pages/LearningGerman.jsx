@@ -5544,6 +5544,7 @@ export default function LearningGerman() {
   const [showVerbJsonModal, setShowVerbJsonModal] = useState(false);
   const [newDialogueOpen, setNewDialogueOpen] = useState(false);
   const [editDialogue, setEditDialogue] = useState(null);
+  const [expandedDialogues, setExpandedDialogues] = useState({});
   const [, setDialogueSaving] = useState(false);
   const [dialogueTranslating, setDialogueTranslating] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -7733,6 +7734,9 @@ export default function LearningGerman() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {dialogues.map(d => {
               const participants = d.participants || [];
+              const isExpanded = !!expandedDialogues[d.recordId];
+              const totalExchanges = d.exchanges?.length || 0;
+              const visibleCount = isExpanded ? totalExchanges : Math.min(totalExchanges, 4);
               return (
                 <div key={d.recordId} className="glass-card" style={{ padding: '1.25rem', position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -7774,11 +7778,11 @@ export default function LearningGerman() {
                       <button onClick={() => handleDeleteDialogue(d.recordId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }} title="Delete"><Trash2 size={15} /></button>
                     </div>
                   </div>
-                  {d.exchanges && d.exchanges.slice(0, 4).map((ex, i) => {
+                  {d.exchanges && d.exchanges.slice(0, visibleCount).map((ex, i) => {
                     const p = participants[ex.speakerIndex] || { name: '?', gender: 'other' };
                     const pColor = PERSON_COLORS[p.gender] || C.purple;
                     return (
-                    <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < Math.min(d.exchanges.length, 4) - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < visibleCount - 1 ? '1px solid var(--border)' : 'none' }}>
                       {p.photoUrl ? (
                         <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${pColor}` }}>
                           <img src={germanImageUrl(p.photoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -7802,9 +7806,20 @@ export default function LearningGerman() {
                     );
                   })}
                   {d.exchanges && d.exchanges.length > 4 && (
-                    <div style={{ textAlign: 'center', paddingTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      +{d.exchanges.length - 4} more exchanges
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDialogues(prev => ({ ...prev, [d.recordId]: !prev[d.recordId] }))}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'center',
+                        paddingTop: '0.5rem', fontSize: '0.78rem', fontWeight: 600,
+                        color: 'var(--text-muted)', background: 'none',
+                        border: 'none', cursor: 'pointer',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = C.blue; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                    >
+                      {isExpanded ? 'Show fewer exchanges' : `+${d.exchanges.length - 4} more exchanges`}
+                    </button>
                   )}
                   {d.boxes && <BoxDisplay boxes={d.boxes} />}
                 </div>
