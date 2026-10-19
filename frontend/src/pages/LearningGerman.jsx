@@ -5488,7 +5488,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
-    addGermanVocabFolder, updateGermanVocabFolder,
+    addGermanVocabFolder, updateGermanVocabFolder, classifyGermanVocab,
     addGermanStory, updateGermanStory,
     uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto,
     processVocab, saveUnifiedVocab, updateUnifiedVocab,
@@ -5515,6 +5515,8 @@ export default function LearningGerman() {
   const [collapsedMenus, setCollapsedMenus] = useState({});
   const [dragOverMenuKey, setDragOverMenuKey] = useState(null);
   const [justMovedId, setJustMovedId] = useState(null);
+  const [autoClassifying, setAutoClassifying] = useState(false);
+  const [autoClassifyMsg, setAutoClassifyMsg] = useState('');
   const [sortGrammar, setSortGrammar] = useState('date');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [noteContent, setNoteContent] = useState('');
@@ -5940,6 +5942,95 @@ export default function LearningGerman() {
     setTimeout(() => setJustMovedId(cur => (cur === recordId ? null : cur)), 1500);
     try { await updateGermanVocab(recordId, { folderId: folderId || null }); }
     catch (e) { setError(e.message); }
+  };
+
+  // ── Auto-classify: analyse every word and file it under a menu ────────────
+  // Words already inside a menu stay where they are. Every other word is sent
+  // to the AI which picks a menu title per word, reusing existing menu titles
+  // whenever one fits. Menus that don't exist yet are created on the fly, then
+  // the words are moved into them. When the AI is unavailable the word's own
+  // category / word-type decides the menu so classification always works.
+  const normalizeMenuTitle = (t) => String(t || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const localMenuTitleFor = (v) => {
+    const cat = String(v.category || '').trim();
+    if (cat && !/^(general|default|none|uncategorized|other)$/i.test(cat)) return cat;
+    const wt = String(v.wordType || v.partOfSpeech || '').toLowerCase();
+    if (wt.includes('noun')) return 'Nouns';
+    if (wt.includes('adject')) return 'Adjectives';
+    if (wt.includes('adverb')) return 'Adverbs';
+    if (wt.includes('verb')) return 'Verbs';
+    if (wt.includes('phrase') || wt.includes('expression')) return 'Phrases & Expressions';
+    return 'General Vocabulary';
+  };
+
+  const handleAutoClassifyMenus = async () => {
+    if (autoClassifying) return;
+    if (!vocab.length) { setAutoClassifyMsg('No words to classify yet — add some vocabulary first.'); return; }
+    setAutoClassifying(true);
+    setAutoClassifyMsg('');
+    try {
+      const menuIds = new Set(vocabMenus.map(m => m.recordId));
+      const ungrouped = vocab.filter(v => !v.folderId || !menuIds.has(v.folderId));
+      if (!ungrouped.length) { setAutoClassifyMsg('All words already belong to a menu.'); return; }
+
+      // 1. Pick a menu title per word (AI first, local rules as fallback).
+      let titleByRecord = {};
+      try {
+        const res = await classifyGermanVocab({
+          words: ungrouped.map(v => ({
+            recordId: v.recordId,
+            word: v.word,
+            article: v.article,
+            translation: v.translation,
+            category: v.category,
+            wordType: v.wordType || v.partOfSpeech,
+          })),
+          existingMenus: vocabMenus.map(m => m.title),
+        });
+        titleByRecord = res?.assignments || {};
+      } catch (e) {
+        ungrouped.forEach(v => { titleByRecord[v.recordId] = localMenuTitleFor(v); });
+      }
+
+      // 2. Reuse existing menus by title; create the missing ones.
+      const assignments = ungrouped
+        .map(v => ({ word: v, title: String(titleByRecord[v.recordId] || localMenuTitleFor(v)).trim() }))
+        .filter(a => a.title);
+      const menuByTitle = new Map(vocabMenus.map(m => [normalizeMenuTitle(m.title), m]));
+      const createdTitles = [];
+      for (const a of assignments) {
+        const key = normalizeMenuTitle(a.title);
+        if (menuByTitle.has(key)) continue;
+        const created = await addGermanVocabFolder({ title: a.title, sortOrder: Date.now() + createdTitles.length });
+        menuByTitle.set(key, created);
+        createdTitles.push(a.title);
+      }
+
+      // 3. Move every word into its menu (small parallel chunks to stay fast).
+      let moved = 0;
+      let failed = 0;
+      for (let i = 0; i < assignments.length; i += 6) {
+        const chunk = assignments.slice(i, i + 6);
+        await Promise.all(chunk.map(async a => {
+          const target = menuByTitle.get(normalizeMenuTitle(a.title));
+          if (!target) { failed += 1; return; }
+          if (a.word.folderId === target.recordId) { moved += 1; return; }
+          try {
+            const updater = a.word.type === 'unified-vocab' ? updateUnifiedVocab : updateGermanVocab;
+            await updater(a.word.recordId, { folderId: target.recordId });
+            moved += 1;
+          } catch (e) { failed += 1; }
+        }));
+      }
+
+      setAutoClassifyMsg(
+        `${moved} word${moved === 1 ? '' : 's'} classified` +
+        `${createdTitles.length ? ` · ${createdTitles.length} new menu${createdTitles.length === 1 ? '' : 's'} created` : ''}` +
+        `${failed ? ` · ${failed} failed — try again` : ''}`
+      );
+    } catch (e) { setError(e.message || 'Failed to classify vocabulary'); }
+    finally { setAutoClassifying(false); }
   };
 
   const displayedVerbs = useMemo(() => {
@@ -7207,7 +7298,28 @@ export default function LearningGerman() {
                 <FolderPlus size={13} /> New menu
               </button>
             )}
+            {vocab.length > 0 && (
+              <button
+                onClick={handleAutoClassifyMenus}
+                disabled={autoClassifying}
+                title="Analyse every word and file it under a menu — existing menus are reused, missing ones are created"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.4rem 0.75rem',
+                  borderRadius: 8, cursor: autoClassifying ? 'not-allowed' : 'pointer',
+                  background: `${C.purple}15`, border: `1px dashed ${C.purple}60`,
+                  color: C.purple, fontWeight: 700, fontSize: '0.75rem', opacity: autoClassifying ? 0.7 : 1,
+                }}
+              >
+                {autoClassifying ? <Loader2 size={13} className="spin" /> : <Sparkles size={13} />}
+                {autoClassifying ? 'Classifying…' : 'Auto-classify'}
+              </button>
+            )}
           </div>
+          {autoClassifyMsg && (
+            <div style={{ fontSize: '0.78rem', color: C.purple, fontWeight: 600, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Sparkles size={13} /> {autoClassifyMsg}
+            </div>
+          )}
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="responsive-table" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>

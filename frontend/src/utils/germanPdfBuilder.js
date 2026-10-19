@@ -199,6 +199,46 @@ function vocabTable(rows) {
   return { table: { ...TABLE, widths: [44, "*", "*", "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
 
+// ── Vocabulary menus (vocab-folder records) ──────────────────────────────────
+// Every user-defined menu is printed as a gold title bar with its words in the
+// table directly beneath it. Words with no menu (or an orphaned folderId) land
+// under "Ungrouped" — or under "Vocabulary" when the user has no menus at all.
+function vocabMenuTitle(title, count) {
+  return {
+    table: { widths: ["*", "auto"], body: [[
+      fmtTxt(String(title || ""), { bold: true, fontSize: 10.5, color: "#1f1600" }),
+      T(`${count} word${count === 1 ? "" : "s"}`, { fontSize: 7.5, color: "#7a6410", alignment: "right" }),
+    ]] },
+    layout: {
+      hLineColor: () => C.gold, vLineColor: () => C.gold,
+      hLineWidth: () => 0.5, vLineWidth: () => 0,
+      fillColor: () => "#fdf3cf",
+      paddingLeft: () => 7, paddingRight: () => 7, paddingTop: () => 4, paddingBottom: () => 4,
+    },
+    margin: [0, 8, 0, 0],
+  };
+}
+function vocabMenuBlocks(rows, menus) {
+  const list = (Array.isArray(menus) ? menus : []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const groups = list.map(m => ({ title: m.title || "Untitled Menu", words: [] }));
+  const index = new Map(list.map((m, i) => [m.recordId, i]));
+  const ungrouped = [];
+  for (const v of rows) {
+    const i = v.folderId ? index.get(v.folderId) : undefined;
+    if (i !== undefined) groups[i].words.push(v);
+    else ungrouped.push(v);
+  }
+  const out = [];
+  for (const g of groups) {
+    if (!g.words.length) continue;
+    out.push(vocabMenuTitle(g.title, g.words.length), vocabTable(g.words));
+  }
+  if (ungrouped.length) {
+    out.push(vocabMenuTitle(list.length ? "Ungrouped" : "Vocabulary", ungrouped.length), vocabTable(ungrouped));
+  }
+  return out;
+}
+
 function grammarBlocks(rows) {
   return rows.map(g => {
     const expContent = htmlToPdfContent(g.explanation);
@@ -445,7 +485,7 @@ function chapterBlock(ch, buckets) {
   ];
   if (rel.note.length && rel.note[0].date) stack.push({ text: fmtDate(rel.note[0].date), fontSize: 8, color: C.muted, margin: [0, 0, 0, 6] });
   if (has("note")) stack.push(sectionLabel("Daily Notes"), ...noteBlocks(rel.note));
-  if (has("vocab")) stack.push(sectionLabel("Vocabulary"), vocabTable(rel.vocab));
+  if (has("vocab")) stack.push(sectionLabel("Vocabulary"), ...vocabMenuBlocks(rel.vocab, buckets.vocabMenus || []));
   if (has("grammar")) stack.push(sectionLabel("Grammar Rules"), ...grammarBlocks(rel.grammar));
   if (has("memo")) stack.push(sectionLabel("Memorization"), ...memoBlocks(rel.memo));
   if (has("verb")) stack.push(sectionLabel("Verbs"), ...verbBlocks(rel.verb));
@@ -521,6 +561,7 @@ export function buildChapterPdfDefinition(data, opts = {}) {
       verb: byType("verb"), memo: byType("memo"), dialogue: byType("dialogue"),
       story: byType("story"), expression: byType("expression"),
       idiom: byType("idiom"), mistake: byType("mistake"),
+      vocabMenus: byType("vocab-folder"),
     }));
   } else {
     // Fallback: no chapter record in data — render items directly.
@@ -535,7 +576,7 @@ export function buildChapterPdfDefinition(data, opts = {}) {
     const idiomRows = byType("idiom");
     const mistakeRows = byType("mistake");
     if (noteRows.length) { content.push(sectionLabel("Daily Notes")); content.push(...noteBlocks(noteRows)); }
-    if (vocabRows.length) { content.push(sectionLabel("Vocabulary")); content.push(vocabTable(vocabRows)); }
+    if (vocabRows.length) { content.push(sectionLabel("Vocabulary")); content.push(...vocabMenuBlocks(vocabRows, byType("vocab-folder"))); }
     if (grammarRows.length) { content.push(sectionLabel("Grammar Rules")); content.push(...grammarBlocks(grammarRows)); }
     if (memoRows.length) { content.push(sectionLabel("Memorization")); content.push(...memoBlocks(memoRows)); }
     if (verbRows.length) { content.push(sectionLabel("Verbs")); content.push(...verbBlocks(verbRows)); }
@@ -597,13 +638,18 @@ export function buildPdfDefinition(data, opts = {}) {
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
     memo: byType("memo"), dialogue: byType("dialogue"), story: byType("story"), expression: byType("expression"),
-    idiom: byType("idiom"), mistake: byType("mistake"),
+    idiom: byType("idiom"), mistake: byType("mistake"), vocabMenus: byType("vocab-folder"),
   })));
 
   // Standalone sections for records that are NOT attached to any chapter, so
   // dialogues, daily notes, stories and memorization always make it into the PDF even
   // when the user never assigned them to a chapter.
   const unchaptered = t => byType(t).filter(r => !r.chapterId);
+  const vocabRows = unchaptered("vocab");
+  if (vocabRows.length) {
+    content.push({ text: "Vocabulary", style: "h2", pageBreak: "before" });
+    content.push(...vocabMenuBlocks(vocabRows, byType("vocab-folder")));
+  }
   const dailyNotes = unchaptered("note");
   if (dailyNotes.length) {
     content.push({ text: "Daily Notes", style: "h2", pageBreak: "before" });

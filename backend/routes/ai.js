@@ -105,4 +105,66 @@ router.post('/correct-writing', async (req, res) => {
   }
 });
 
+// ── POST /api/ai/classify-vocab ───────────────────────────────────────────────
+// Classifies vocabulary words into "menu" (theme) titles. Existing menu titles
+// are sent along so the model REUSES them whenever one fits and only invents a
+// new title when none of them works — the client then creates the missing menus.
+router.post('/classify-vocab', async (req, res) => {
+  try {
+    const { words, existingMenus } = req.body;
+
+    if (!Array.isArray(words) || words.length === 0) {
+      return res.status(400).json({ message: 'words array is required' });
+    }
+    if (!openai) {
+      return res.status(503).json({ message: 'OpenAI API key is not configured on the server.' });
+    }
+
+    // Keep the payload compact — recordId doubles as the assignment key.
+    const clean = words.slice(0, 500).map((w, i) => ({
+      id: w.recordId || String(i),
+      w: w.word || '',
+      a: w.article || '',
+      t: w.translation || '',
+      c: w.category || '',
+      p: w.wordType || w.partOfSpeech || '',
+    }));
+    const menus = (Array.isArray(existingMenus) ? existingMenus : []).slice(0, 200);
+
+    const prompt = `Classify each German vocabulary word below into ONE theme menu (a short topic group).
+Existing menus — reuse one EXACTLY (same characters) whenever it fits: ${menus.length ? JSON.stringify(menus) : 'none yet'}.
+
+Words (JSON array): ${JSON.stringify(clean)}
+
+Rules:
+- Reply with ONE JSON object shaped like { "assignments": { "<id>": "<Menu Title>" } } covering EVERY word id.
+- Reuse an existing menu title whenever one fits; only invent a new short Title Case menu title (2-4 words, e.g. "Food & Drink") when none fits.
+- Words about the same theme must share the same menu title.
+- Use the category hint (field "c") when it is meaningful.
+- No markdown, no extra keys, valid JSON only.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a German language curriculum assistant. You must reply strictly in valid JSON." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 4000,
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content || "{}");
+    const assignments = parsed && typeof parsed.assignments === "object" && parsed.assignments ? parsed.assignments : {};
+
+    res.json({
+      assignments,
+      total: clean.length,
+      returned: Object.keys(assignments).length,
+    });
+  } catch (err) {
+    console.error('[AI] Classify vocab error:', err);
+    res.status(500).json({ message: 'Failed to classify vocabulary', error: err.message });
+  }
+});
+
 module.exports = router;

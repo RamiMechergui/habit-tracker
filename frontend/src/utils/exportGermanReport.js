@@ -103,7 +103,13 @@ export function buildChapterReportData(germanData, chapter, germanStudy, germanP
   const chapterId = chapter?.recordId;
 
   const filtered = records.filter(
-    (r) => r.type === 'chapter' ? r.recordId === chapterId : r.chapterId === chapterId
+    (r) => r.type === 'chapter'
+      ? r.recordId === chapterId
+      // Menus (vocab-folder) travel with every chapter export so the PDF can
+      // render each menu's title above its words.
+      : r.type === 'vocab-folder'
+        ? true
+        : r.chapterId === chapterId
   );
 
   if (germanStudy) {

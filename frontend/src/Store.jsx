@@ -2844,6 +2844,21 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const classifyGermanVocab = useCallback(async (payload) => {
+    // Ask the AI to pick a menu (theme) title for every submitted word,
+    // reusing existing menu titles whenever one fits. Falls back to the
+    // caller when the AI is unavailable — the caller classifies locally.
+    const res = await fetch(`${API_URL}/api/ai/classify-vocab`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to classify vocabulary');
+    return data;
+  }, [API_URL]);
+
   const addGermanStory = useCallback(async (payload) => {
     const res = await fetch(`${API_URL}/api/german/story`, {
       method: 'POST',
@@ -3413,7 +3428,7 @@ export const HabitProvider = ({ children }) => {
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, autoGenerateGermanVocabPhoto, autoFillGermanVocabPhotos, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
-      addGermanVocabFolder, updateGermanVocabFolder,
+      addGermanVocabFolder, updateGermanVocabFolder, classifyGermanVocab,
       addGermanStory, updateGermanStory,
       processVocab, saveUnifiedVocab, updateUnifiedVocab,
       // German Progress

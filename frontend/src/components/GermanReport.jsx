@@ -217,6 +217,45 @@ function vocabTable(rows) {
   ];
   return { table: { ...TABLE, widths: [44, "*", "*", "*", "*", "*"], body }, layout: tableLayout(), margin: [0, 2, 0, 6] };
 }
+// ── Vocabulary menus (vocab-folder records) ──────────────────────────────────
+// Every user-defined menu is printed as a gold title bar with its words in the
+// table directly beneath it. Words with no menu (or an orphaned folderId) land
+// under "Ungrouped" — or under "Vocabulary" when the user has no menus at all.
+function vocabMenuTitle(title, count) {
+  return {
+    table: { widths: ["*", "auto"], body: [[
+      fmtTxt(String(title || ""), { bold: true, fontSize: 10.5, color: "#1f1600" }),
+      T(`${count} word${count === 1 ? "" : "s"}`, { fontSize: 7.5, color: "#7a6410", alignment: "right" }),
+    ]] },
+    layout: {
+      hLineColor: () => C.gold, vLineColor: () => C.gold,
+      hLineWidth: () => 0.5, vLineWidth: () => 0,
+      fillColor: () => "#fdf3cf",
+      paddingLeft: () => 7, paddingRight: () => 7, paddingTop: () => 4, paddingBottom: () => 4,
+    },
+    margin: [0, 8, 0, 0],
+  };
+}
+function vocabMenuBlocks(rows, menus) {
+  const list = (Array.isArray(menus) ? menus : []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const groups = list.map(m => ({ title: m.title || "Untitled Menu", words: [] }));
+  const index = new Map(list.map((m, i) => [m.recordId, i]));
+  const ungrouped = [];
+  for (const v of rows) {
+    const i = v.folderId ? index.get(v.folderId) : undefined;
+    if (i !== undefined) groups[i].words.push(v);
+    else ungrouped.push(v);
+  }
+  const out = [];
+  for (const g of groups) {
+    if (!g.words.length) continue;
+    out.push(vocabMenuTitle(g.title, g.words.length), vocabTable(g.words));
+  }
+  if (ungrouped.length) {
+    out.push(vocabMenuTitle(list.length ? "Ungrouped" : "Vocabulary", ungrouped.length), vocabTable(ungrouped));
+  }
+  return out;
+}
 function grammarBlocks(rows) {
   return rows.map(g => {
     const expContent = htmlToPdfContent(g.explanation);
@@ -471,7 +510,7 @@ function chapterBlock(ch, buckets) {
   ];
   if (rel.note.length && rel.note[0].date) stack.push({ text: fmtDate(rel.note[0].date), fontSize: 8, color: C.muted, margin: [0, 0, 0, 6] });
   if (has("note")) stack.push(sectionLabel("Daily Notes"), ...noteBlocks(rel.note));
-  if (has("vocab")) stack.push(sectionLabel("Vocabulary"), vocabTable(rel.vocab));
+  if (has("vocab")) stack.push(sectionLabel("Vocabulary"), ...vocabMenuBlocks(rel.vocab, buckets.vocabMenus || []));
   if (has("grammar")) stack.push(sectionLabel("Grammar Rules"), ...grammarBlocks(rel.grammar));
   if (has("memo")) stack.push(sectionLabel("Memorization"), ...memoBlocks(rel.memo));
   if (has("verb")) stack.push(sectionLabel("Verbs"), ...verbBlocks(rel.verb));
@@ -547,6 +586,7 @@ export function buildChapterPdfDefinition(data, opts = {}) {
       verb: byType("verb"), memo: byType("memo"), dialogue: byType("dialogue"),
       story: byType("story"), expression: byType("expression"),
       idiom: byType("idiom"), mistake: byType("mistake"),
+      vocabMenus: byType("vocab-folder"),
     }));
   } else {
     // Fallback: no chapter record in data — render items directly.
@@ -561,7 +601,7 @@ export function buildChapterPdfDefinition(data, opts = {}) {
     const idiomRows = byType("idiom");
     const mistakeRows = byType("mistake");
     if (noteRows.length) { content.push(sectionLabel("Daily Notes")); content.push(...noteBlocks(noteRows)); }
-    if (vocabRows.length) { content.push(sectionLabel("Vocabulary")); content.push(vocabTable(vocabRows)); }
+    if (vocabRows.length) { content.push(sectionLabel("Vocabulary")); content.push(...vocabMenuBlocks(vocabRows, byType("vocab-folder"))); }
     if (grammarRows.length) { content.push(sectionLabel("Grammar Rules")); content.push(...grammarBlocks(grammarRows)); }
     if (memoRows.length) { content.push(sectionLabel("Memorization")); content.push(...memoBlocks(memoRows)); }
     if (verbRows.length) { content.push(sectionLabel("Verbs")); content.push(...verbBlocks(verbRows)); }
@@ -629,13 +669,18 @@ export function buildPdfDefinition(data, opts = {}) {
   chapters.forEach(ch => content.push(chapterBlock(ch, {
     note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
     memo: byType("memo"), dialogue: byType("dialogue"), story: byType("story"), expression: byType("expression"),
-    idiom: byType("idiom"), mistake: byType("mistake"),
+    idiom: byType("idiom"), mistake: byType("mistake"), vocabMenus: byType("vocab-folder"),
   })));
 
   // Standalone sections for records that are NOT attached to any chapter, so
   // dialogues, daily notes, stories and memorization always make it into the PDF even
   // when the user never assigned them to a chapter.
   const unchaptered = t => byType(t).filter(r => !r.chapterId);
+  const vocabRows = unchaptered("vocab");
+  if (vocabRows.length) {
+    content.push({ text: "Vocabulary", style: "h2", pageBreak: "before" });
+    content.push(...vocabMenuBlocks(vocabRows, byType("vocab-folder")));
+  }
   const dailyNotes = unchaptered("note");
   if (dailyNotes.length) {
     content.push({ text: "Daily Notes", style: "h2", pageBreak: "before" });
@@ -751,6 +796,8 @@ table.gr-t{border-collapse:collapse;width:100%;font-size:.84rem}.gr-t th,.gr-t t
 .gr-msg{display:flex;gap:8px;align-items:flex-start;margin:8px 0}.gr-av{width:28px;height:28px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;background:var(--red);flex:none}.gr-msg.alt .gr-av{background:var(--blue)}.gr-msg .who{font-size:.66rem;color:var(--muted);display:block}.gr-msg .bubble{background:#f1f1ef;border-radius:11px;padding:8px 11px;font-size:.86rem;display:block}.gr-msg .bubble .orig{display:block;color:var(--muted);font-style:italic;font-size:.78rem;margin-top:2px}.gr-msg.alt .bubble{background:#e8f0fb}
 .gr-idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}.gr-idx-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px}.gr-idx-card .t{font-weight:700;font-size:.88rem}.gr-idx-card .s{color:var(--muted);font-size:.8rem;margin-top:3px}
 .gr-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.gr-menu-title{background:#fdf3cf;font-weight:800;color:#1f1600;padding:6px 9px;font-size:.8rem;letter-spacing:.02em;border-left:3px solid var(--gold)}
+.gr-menu-count{float:right;font-weight:600;font-size:.68rem;color:#7a6410}
 @media(max-width:760px){
   .gr-2col{grid-template-columns:1fr}
   .gr-conj{grid-template-columns:1fr 1fr}
@@ -1060,6 +1107,37 @@ function VerbForm({ word, pronoun, infinitive, overrides }) {
     </span>
   );
 }
+// Vocabulary grouped by menu: every menu title is printed above its own table
+// (gold bar, word count on the right) and words with no menu land under
+// "Ungrouped" — or "Vocabulary" when the user has no menus at all.
+function VocabTables({ vocab, menus }) {
+  const list = (menus || []).slice().sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)));
+  const groups = list.map(m => ({ title: m.title || "Untitled Menu", words: [] }));
+  const index = new Map(list.map((m, i) => [m.recordId, i]));
+  const ungrouped = [];
+  (vocab || []).forEach(v => {
+    const i = v.folderId ? index.get(v.folderId) : undefined;
+    if (i !== undefined) groups[i].words.push(v);
+    else ungrouped.push(v);
+  });
+  const rows = list2 => list2.map(v => {
+    const s = splitWordR(v);
+    const thirdCol = v.wordType === 'adjective' ? `${v.word} → ${v.comparative || '—'} → ${v.superlative || '—'}${v.contrary ? `\n⇔ ${v.contrary}` : ''}` : (v.wordType === 'adverb' ? '—' : v.plural || '—');
+    return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b><Boxes boxes={v.boxes} /></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined, whiteSpace: 'pre-line' }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>);
+  });
+  const menuRow = (title, count) => (
+    <tr><td colSpan={5} className="gr-menu-title">{title}<span className="gr-menu-count">{count} word{count === 1 ? "" : "s"}</span></td></tr>
+  );
+  const bodies = groups.filter(g => g.words.length).map((g, i) => (
+    <tbody key={`menu-${i}`}>{menuRow(g.title, g.words.length)}{rows(g.words)}</tbody>
+  ));
+  if (ungrouped.length) {
+    bodies.push(<tbody key="__unfiled__">{menuRow(list.length ? "Ungrouped" : "Vocabulary", ungrouped.length)}{rows(ungrouped)}</tbody>);
+  }
+  return (
+    <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Degree</th><th>English</th><th>Category</th></tr></thead>{bodies}</table></div>
+  );
+}
 function Chapter({ ch }) {
   const has = k => (ch[k] || []).length;
   const firstDate = has("note") && ch.note[0] && ch.note[0].date ? ch.note[0].date : "";
@@ -1071,8 +1149,7 @@ function Chapter({ ch }) {
         <div className="gr-2col">
           {has("vocab") && (
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
-              <div className="gr-tablewrap"><table className="gr-t"><thead><tr><th>Photo</th><th>German</th><th>Plural / Degree</th><th>English</th><th>Category</th></tr></thead>
-              <tbody>{ch.vocab.map(v => { const s = splitWordR(v); const thirdCol = v.wordType === 'adjective' ? `${v.word} → ${v.comparative || '—'} → ${v.superlative || '—'}${v.contrary ? `\n⇔ ${v.contrary}` : ''}` : (v.wordType === 'adverb' ? '—' : v.plural || '—'); return (<tr key={v.recordId}><td>{v.photoUrl ? <img src={germanImageUrl(v.photoUrl)} alt={v.word} className="gr-vph" /> : <span style={{ color: "var(--muted)" }}>—</span>}</td><td><b>{s.a ? s.a + ' ' : ''}{s.w}</b><Boxes boxes={v.boxes} /></td><td style={{ color: v.wordType === 'adjective' ? 'var(--purple, #8b5cf6)' : undefined, whiteSpace: 'pre-line' }}>{thirdCol}</td><td style={{ color: "var(--muted)" }}>{v.translation}</td><td>{v.category}</td></tr>); })}</tbody></table></div>
+              <VocabTables vocab={ch.vocab} menus={ch.vocabMenus || []} />
             </div>)}
           {has("grammar") && (
             <div><div className="gr-blk-title">Grammar</div>
@@ -1136,7 +1213,8 @@ function ChaptersView({ data }) {
   ["note", "vocab", "grammar", "verb", "memo", "dialogue", "story", "expression", "idiom", "mistake"].forEach(t => {
     buckets[t] = {}; byType(data)(t).forEach(r => { const k = r.chapterId; (buckets[t][k] = buckets[t][k] || []).push(r); });
   });
-  const withRel = chapters.map(ch => { const c = { ...ch }; Object.keys(buckets).forEach(t => { c[t] = (buckets[t][ch.recordId] || []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); }); return c; });
+  const vocabMenus = byType(data)("vocab-folder").slice().sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)));
+  const withRel = chapters.map(ch => { const c = { ...ch }; Object.keys(buckets).forEach(t => { c[t] = (buckets[t][ch.recordId] || []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); }); c.vocabMenus = vocabMenus; return c; });
   return (
     <section className="gr-section" id="chapters">
       <div className="gr-sec-head"><div className="gr-tag">K</div><h2>Kapitel &amp; Chapters <small>{chapters.length} units</small></h2></div>
@@ -1146,13 +1224,22 @@ function ChaptersView({ data }) {
 }
 function Standalone({ data }) {
   const unchaptered = t => byType(data)(t).filter(r => !r.chapterId);
+  const vocab = unchaptered("vocab");
   const notes = unchaptered("note");
   const memos = unchaptered("memo");
   const dialogues = unchaptered("dialogue");
   const stories = unchaptered("story");
-  if (!notes.length && !memos.length && !dialogues.length && !stories.length) return null;
+  if (!vocab.length && !notes.length && !memos.length && !dialogues.length && !stories.length) return null;
   return (
     <>
+      {vocab.length > 0 && (
+        <section className="gr-section" id="vocabulary">
+          <div className="gr-sec-head"><div className="gr-tag">W</div><h2>Vocabulary <small>{vocab.length} words</small></h2></div>
+          <div className="gr-card">
+            <VocabTables vocab={vocab} menus={byType(data)("vocab-folder")} />
+          </div>
+        </section>
+      )}
       {notes.length > 0 && (
         <section className="gr-section" id="daily-notes">
           <div className="gr-sec-head"><div className="gr-tag">N</div><h2>Daily Notes <small>{notes.length} notes</small></h2></div>
