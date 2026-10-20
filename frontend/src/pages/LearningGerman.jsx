@@ -9,6 +9,7 @@ import { buildReportData, buildChapterReportData } from '../utils/exportGermanRe
 import { germanImageUrl } from '../utils/germanImageUrl';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
 import GermanReport from '../components/GermanReport';
+import GermanExercises from '../components/GermanExercises';
 import VerbConjugationBadge from '../components/VerbConjugationBadge';
 import VerbJsonModal from '../components/VerbJsonModal';
 
@@ -20,7 +21,7 @@ import {
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked, Sparkles,
-  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen,
+  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen, Target,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -133,7 +134,7 @@ function StatCard({ value, label, color, icon: Icon, action, sub, isMobile }) {
   );
 }
 
-function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onTakeNotes, onClose, modal = true }) {
+function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onTakeNotes, onExercises, onClose, modal = true }) {
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -226,6 +227,9 @@ function ChapterManager({ level, chapters, onAdd, onUpdate, onDelete, onTakeNote
                   <>
                     {onTakeNotes && (
                       <button onClick={() => onTakeNotes(c)} style={iconBtn(color)} title="Take notes"><NotebookPen size={14} /></button>
+                    )}
+                    {onExercises && (
+                      <button onClick={() => onExercises(c)} style={iconBtn(C.gold)} title="Practice exercises for this chapter"><Target size={14} /></button>
                     )}
                     <button onClick={() => { setEditingId(c.recordId); setEditTitle(c.title || ''); }} style={iconBtn(color)} title="Edit"><Edit3 size={14} /></button>
                     {confirmDeleteId === c.recordId ? (
@@ -5488,6 +5492,7 @@ export default function LearningGerman() {
     fetchResourceInfo, addGermanResource, updateGermanResource,
     addGermanBook, updateGermanBook,
     addGermanChapter, updateGermanChapter,
+    saveGermanExercise,
     addGermanVocabFolder, updateGermanVocabFolder, classifyGermanVocab,
     addGermanStory, updateGermanStory,
     uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto,
@@ -5686,6 +5691,16 @@ export default function LearningGerman() {
     setTab('notes');
   };
 
+  // Jump straight to the Exercises tab, pre-scoped to one chapter → every
+  // question of the test comes only from that chapter's vocabulary.
+  const startChapterExercises = (chapter) => {
+    if (!chapter) return;
+    setSelectedChapterId(chapter.recordId);
+    setSelectedChapterTitle(chapter.title || '');
+    setChapterModalLevel(null);
+    setTab('exercises');
+  };
+
   const clearChapterSelection = () => {
     setSelectedChapterId(null);
     setSelectedChapterTitle('');
@@ -5721,6 +5736,21 @@ export default function LearningGerman() {
       .filter(c => normalizeLevel(c.level) === workspaceLevel)
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [chapters, workspaceLevel]);
+
+  // Knowledge-test results (Exercises tab), scoped to the active level so the
+  // tab — and the chapter/full PDF report — always show this level's attempts.
+  const exerciseResults = useMemo(() => {
+    const filtered = germanData.filter(r => r.type === 'exercise' && matchesLevel(r));
+    return [...filtered].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  }, [germanData, matchesLevel]);
+
+  const handleSaveExercise = useCallback(async (payload) => {
+    await saveGermanExercise(payload);
+  }, [saveGermanExercise]);
+
+  const handleDeleteExercise = useCallback(async (recordId) => {
+    await deleteGermanRecord(recordId);
+  }, [deleteGermanRecord]);
 
   useEffect(() => {
     const dateNotes = germanData.filter(r => r.type === 'note' && r.date === selectedDate && matchesLevel(r) && (r.noteCategory || 'daily') === noteCategory && (!selectedChapterId || r.chapterId === selectedChapterId));
@@ -6710,6 +6740,7 @@ export default function LearningGerman() {
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
             <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
             <TabBtn active={tab === 'stories'} onClick={() => setTab('stories')} icon={Clapperboard} label="Stories" />
+            <TabBtn active={tab === 'exercises'} onClick={() => setTab('exercises')} icon={Target} label="Exercises" />
             <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
             <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: vocab.length === 0 ? 'not-allowed' : 'pointer', background: vocab.length === 0 ? 'var(--bg)' : `linear-gradient(135deg, ${C.green}, #059669)`, border: vocab.length === 0 ? '1px solid var(--border)' : 'none', color: vocab.length === 0 ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem', opacity: vocab.length === 0 ? 0.5 : 1, boxShadow: vocab.length > 0 ? `0 4px 12px ${C.green}40` : 'none' }}>
               <Repeat size={15} /> Review
@@ -6748,6 +6779,7 @@ export default function LearningGerman() {
         {currentLevel === 'A1.1' && <TabBtn active={tab === 'alphabets'} onClick={() => setTab('alphabets')} icon={BookA} label="Alphabets" />}
         <TabBtn active={tab === 'resources'} onClick={() => setTab('resources')} icon={Clapperboard} label="Resources" />
         <TabBtn active={tab === 'stories'} onClick={() => setTab('stories')} icon={Clapperboard} label="Stories" />
+        <TabBtn active={tab === 'exercises'} onClick={() => setTab('exercises')} icon={Target} label="Exercises" />
         <TabBtn active={tab === 'progress'} onClick={() => setTab('progress')} icon={BarChart3}   label="Progress" />
         <button onClick={() => setShowReview(true)} disabled={vocab.length === 0} title="Spaced Repetition Review" style={{
           display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -8057,7 +8089,7 @@ export default function LearningGerman() {
       )}
 
       {tab === 'chapters' && (
-        <ChapterManager level={workspaceLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} modal={false} />
+        <ChapterManager level={workspaceLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onExercises={startChapterExercises} modal={false} />
       )}
 
       {tab === 'resources' && (
@@ -8081,6 +8113,20 @@ export default function LearningGerman() {
           onTranslate={handleTranslateDialogue}
           onUploadParticipantPhoto={handleUploadStoryParticipantPhoto}
           onDeleteParticipantPhoto={handleDeleteStoryParticipantPhoto}
+        />
+      )}
+
+      {tab === 'exercises' && (
+        <GermanExercises
+          germanData={germanData}
+          chapters={workspaceChapters}
+          results={exerciseResults}
+          activeChapterId={selectedChapterId}
+          activeChapterTitle={selectedChapterTitle}
+          level={workspaceLevel}
+          isMobile={isMobile}
+          onSave={handleSaveExercise}
+          onDelete={handleDeleteExercise}
         />
       )}
 
@@ -8269,7 +8315,7 @@ export default function LearningGerman() {
       {showGlobalSearch && <GlobalSearchModal germanData={germanData} onClose={() => setShowGlobalSearch(false)} />}
       {showKeyLessons && <KeyLessonsModal logs={logs} onClose={() => setShowKeyLessons(false)} />}
       {chapterModalLevel && (
-        <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onClose={() => setChapterModalLevel(null)} modal />
+        <ChapterManager level={chapterModalLevel} chapters={chapters} onAdd={handleAddChapter} onUpdate={handleUpdateChapter} onDelete={handleDeleteChapter} onTakeNotes={openChapterNotes} onExercises={startChapterExercises} onClose={() => setChapterModalLevel(null)} modal />
       )}
       {levelDetailsLevel && (
         <LevelDetailsModal

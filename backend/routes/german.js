@@ -49,6 +49,7 @@ const {
   updateBook,
   addChapter,
   updateChapter,
+  addExerciseResult,
   addVocabFolder,
   updateVocabFolder,
   addStory,
@@ -993,6 +994,28 @@ router.put('/chapter/:recordId', async (req, res) => {
   } catch (err) {
     console.error('[German] PUT chapter error:', err);
     res.status(500).json({ message: 'Failed to update chapter' });
+  }
+});
+
+// ── POST /api/german/exercise → save a knowledge-test result ─────────────────
+// The result belongs to a chapter (chapterId) so every chapter reports its own
+// exercises in the PDF; with no chapter it is stored as a global result.
+router.post('/exercise', async (req, res) => {
+  try {
+    const { kind, chapterId, chapterTitle, level, total, correct, byType, wrongAnswers } = req.body;
+    const totalN = parseInt(total, 10);
+    const correctN = parseInt(correct, 10);
+    if (!Number.isFinite(totalN) || totalN <= 0) {
+      return res.status(400).json({ message: 'total must be a positive number' });
+    }
+    if (!Number.isFinite(correctN) || correctN < 0 || correctN > totalN) {
+      return res.status(400).json({ message: 'correct must be between 0 and total' });
+    }
+    const record = await addExerciseResult(req.user.userId, { kind, chapterId, chapterTitle, level, total: totalN, correct: correctN, byType, wrongAnswers });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('[German] POST exercise error:', err);
+    res.status(500).json({ message: 'Failed to save exercise result' });
   }
 });
 

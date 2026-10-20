@@ -2816,6 +2816,20 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL]);
 
+  const saveGermanExercise = useCallback(async (payload) => {
+    const res = await fetch(`${API_URL}/api/german/exercise`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save exercise result');
+    setGermanData(prev => [...prev, data]);
+    logHistory('german_exercise_save', `Saved German ${payload?.kind || ''} exercise result`);
+    return data;
+  }, [API_URL]);
+
   const addGermanVocabFolder = useCallback(async (payload) => {
     const res = await fetch(`${API_URL}/api/german/vocab-folder`, {
       method: 'POST',
@@ -3428,6 +3442,7 @@ export const HabitProvider = ({ children }) => {
       germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, autoGenerateGermanVocabPhoto, autoFillGermanVocabPhotos, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
+      saveGermanExercise,
       addGermanVocabFolder, updateGermanVocabFolder, classifyGermanVocab,
       addGermanStory, updateGermanStory,
       processVocab, saveUnifiedVocab, updateUnifiedVocab,

@@ -39,7 +39,7 @@ async function getAllGermanRecords(userId) {
 
 // Record types that belong to a CEFR level workspace. Study / progress / document
 // records are excluded.
-const LEVELED_TYPES = new Set(['vocab', 'unified-vocab', 'grammar', 'note', 'verb', 'dialogue', 'memo', 'expression', 'idiom', 'mistake', 'alphabet', 'resource', 'book', 'chapter']);
+const LEVELED_TYPES = new Set(['vocab', 'unified-vocab', 'grammar', 'note', 'verb', 'dialogue', 'memo', 'expression', 'idiom', 'mistake', 'alphabet', 'resource', 'book', 'chapter', 'exercise']);
 
 // ── One-time backfill: stamp legacy records (created before levels existed) ──
 // with the user's current level so every section is scoped correctly.
@@ -644,6 +644,51 @@ async function updateVocabFolder(userId, recordId, updates) {
   return res.Attributes;
 }
 
+// ── Exercise results (knowledge tests: articles, gender, plural, possessive,
+//    numbers). Saved per chapter (chapterId) so each chapter gets its own
+//    exercises & results inside the PDF report. ──────────────────────────────
+const EXERCISE_KINDS = new Set(['mixed', 'article', 'gender', 'plural', 'possessive', 'numbers']);
+const MAX_WRONG_ANSWERS = 40;
+
+async function addExerciseResult(userId, { kind = 'mixed', chapterId = null, chapterTitle = '', level = 'A1.1', total = 0, correct = 0, byType = {}, wrongAnswers = [] }) {
+  const recordId = `EXERCISE#${uuidv4()}`;
+  const totalN = Math.max(0, parseInt(total, 10) || 0);
+  const correctN = Math.min(totalN, Math.max(0, parseInt(correct, 10) || 0));
+
+  const cleanByType = {};
+  if (byType && typeof byType === 'object') {
+    Object.keys(byType).forEach((k) => {
+      const b = byType[k] || {};
+      const t = Math.max(0, parseInt(b.total, 10) || 0);
+      if (t > 0) cleanByType[k] = { total: t, correct: Math.min(t, Math.max(0, parseInt(b.correct, 10) || 0)) };
+    });
+  }
+
+  const item = {
+    userId,
+    recordId,
+    type: 'exercise',
+    kind: EXERCISE_KINDS.has(kind) ? kind : 'mixed',
+    chapterId: chapterId || null,
+    chapterTitle: chapterTitle || '',
+    level: level || 'A1.1',
+    total: totalN,
+    correct: correctN,
+    wrong: Math.max(0, totalN - correctN),
+    score: totalN > 0 ? Math.round((correctN / totalN) * 100) : 0,
+    byType: cleanByType,
+    wrongAnswers: (Array.isArray(wrongAnswers) ? wrongAnswers : []).slice(0, MAX_WRONG_ANSWERS).map((w) => ({
+      type: String(w?.type || '').slice(0, 20),
+      question: String(w?.question || '').slice(0, 160),
+      answer: String(w?.answer || '').slice(0, 80),
+      given: String(w?.given || '').slice(0, 80),
+    })),
+    createdAt: new Date().toISOString(),
+  };
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
+  return item;
+}
+
 // ── Stories (youtube link, dialogue, new words learned, participants & exchanges) ──
 async function addStory(userId, { title, youtubeUrl = '', dialogue = '', participants = [], exchanges = [], newWords = [], boxes = [], level = 'A1.1', chapterId = null, chapterTitle = null, sortOrder = Date.now() }) {
   const recordId = `STORY#${uuidv4()}`;
@@ -841,6 +886,7 @@ module.exports = {
   updateBook,
   addChapter,
   updateChapter,
+  addExerciseResult,
   addVocabFolder,
   updateVocabFolder,
   addStory,
