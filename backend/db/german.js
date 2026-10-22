@@ -647,7 +647,7 @@ async function updateVocabFolder(userId, recordId, updates) {
 // ── Exercise results (knowledge tests: articles, gender, plural, possessive,
 //    numbers). Saved per chapter (chapterId) so each chapter gets its own
 //    exercises & results inside the PDF report. ──────────────────────────────
-const EXERCISE_KINDS = new Set(['mixed', 'article', 'gender', 'plural', 'possessive', 'numbers']);
+const EXERCISE_KINDS = new Set(['mixed', 'article', 'picture', 'gender', 'plural', 'conjugation', 'possessive', 'numbers']);
 const MAX_WRONG_ANSWERS = 40;
 
 async function addExerciseResult(userId, { kind = 'mixed', chapterId = null, chapterTitle = '', level = 'A1.1', total = 0, correct = 0, byType = {}, wrongAnswers = [] }) {

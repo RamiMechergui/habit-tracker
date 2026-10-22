@@ -7,6 +7,10 @@
  *
  * Exercise types:
  *   article    → guess the Artikel (der / die / das) of a noun from the vocab list
+ *   picture    → see the vocabulary PHOTO, then write the Artikel, the word,
+ *                its feminine form and the plural (multi-part question)
+ *   conjugation → choose the most suitable verb of the chapter for a sentence,
+ *                 then write its Präsens form for a given pronoun (multi-part)
  *   gender     → choose the feminine form of a masculine noun (der Student → die Studentin)
  *   plural     → write down the plural of the given word
  *   possessive → solve fill-in exercises about possessive articles (mein/dein/sein…)
@@ -98,6 +102,7 @@ export function normalizeVocabRecord(r) {
       article,
       plural: stripArticle(r.plural),
       translation: String(r.translation || ''),
+      photoUrl: String(r.photoUrl || ''),
       wordType: r.wordType || 'noun',
       comparative: String(r.comparative || ''),
       superlative: String(r.superlative || ''),
@@ -120,6 +125,7 @@ export function normalizeVocabRecord(r) {
       article,
       plural: stripArticle(noun.pluralForm || noun.plural || ''),
       translation: String(r.translation || ''),
+      photoUrl: String(r.photoUrl || ''),
       wordType,
       comparative: String((r.adjective && r.adjective.comparative) || ''),
       superlative: String((r.adjective && r.adjective.superlative) || ''),
@@ -282,12 +288,14 @@ function buildGenderQuestions(vocab, rng, count) {
 
 const PLURAL_PLACEHOLDERS = new Set(['', '-', '—', '–', 'kein plural', 'keine', 'no plural', 'plural', 'unregelmäßig']);
 
+/** A word only counts as "plural exercise ready" with a real, distinct plural. */
+function hasUsablePlural(v) {
+  const plural = String(v.plural || '').trim();
+  return !!plural && !PLURAL_PLACEHOLDERS.has(plural.toLowerCase()) && plural.toLowerCase() !== v.word.toLowerCase();
+}
+
 function buildPluralQuestions(vocab, rng, count) {
-  const pool = vocab.filter((v) => {
-    const plural = String(v.plural || '').trim();
-    if (!plural || PLURAL_PLACEHOLDERS.has(plural.toLowerCase())) return false;
-    return plural.toLowerCase() !== v.word.toLowerCase() && v.wordType !== 'adjective';
-  });
+  const pool = vocab.filter((v) => hasUsablePlural(v) && v.wordType !== 'adjective');
   return shuffleWithSeed(pool, rng).slice(0, count).map((v) => ({
     type: 'plural',
     kind: 'text',
@@ -297,6 +305,218 @@ function buildPluralQuestions(vocab, rng, count) {
     answer: v.plural,
     translation: v.translation,
   }));
+}
+
+/**
+ * Picture round — the word stays hidden behind its photo. The learner sees the
+ * image and has to write down:
+ *   1 · the Artikel (der / die / das)   2 · the vocabulary word itself
+ *   3 · the feminine form (when derivable)   4 · the plural (when known)
+ * Every question therefore carries a `parts` array; each part is scored on its
+ * own (see checkAnswer / buildExerciseResultPayload).
+ */
+function buildPictureQuestions(vocab, rng, count) {
+  const pool = vocab.filter((v) => v.photoUrl && v.article && v.wordType !== 'verb' && v.wordType !== 'adjective');
+  return shuffleWithSeed(pool, rng).slice(0, count).map((v) => {
+    const parts = [
+      { key: 'article', label: 'Artikel', kind: 'choice', options: ARTICLES, answer: v.article, placeholder: 'der / die / das' },
+      { key: 'word', label: 'The word', kind: 'text', answer: v.word, placeholder: 'Write the noun you see…' },
+    ];
+    const feminine = deriveFeminine(v.article, v.word, v.translation);
+    if (feminine) parts.push({ key: 'feminine', label: 'Feminine form', kind: 'text', answer: feminine, placeholder: 'die …in' });
+    if (hasUsablePlural(v)) parts.push({ key: 'plural', label: 'Plural', kind: 'text', answer: v.plural, placeholder: 'die …e / die …' });
+    return {
+      type: 'picture',
+      kind: 'multi',
+      prompt: 'Look at the picture — write the Artikel, the word, its feminine form and the plural:',
+      question: v.translation ? `Picture (${v.translation})` : 'Picture',
+      photoUrl: v.photoUrl,
+      parts,
+      options: null,
+      answer: `${v.article} ${v.word}`,
+      translation: v.translation,
+    };
+  });
+}
+
+// ── Verbs — choose the right verb & conjugate it (Präsens) ───────────────────
+const VERB_PERSONS = [
+  { key: 'ich', label: 'ich' },
+  { key: 'du', label: 'du' },
+  { key: 'erSieEs', label: 'er/sie/es' },
+  { key: 'wir', label: 'wir' },
+  { key: 'ihr', label: 'ihr' },
+  { key: 'Sie', label: 'sie / Sie' },
+];
+
+/** Map any conjugation-map key ('er/sie/es', 'er_sie_es', 'sie/Sie'…) to our keys. */
+function verbPronounKey(key) {
+  const k = String(key || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (k === 'ersiees') return 'erSieEs';
+  if (k === 'sie' || k === 'siesie') return 'Sie'; // 'sie' | 'sie/Sie' | 'sie/sie'
+  if (k === 'ich' || k === 'du' || k === 'wir' || k === 'ihr') return k;
+  return '';
+}
+
+/**
+ * Normalize a verb record into the flat shape the conjugation builder consumes.
+ * Supports:
+ *   • type 'verb'          → flat { infinitive, meaning, ich, du, erSieEs, … }
+ *   • type 'unified-vocab' with partOfSpeech "verb" → { word, verb: { conjugation } }
+ */
+export function normalizeVerbRecord(r) {
+  if (!r) return null;
+  if (r.type === 'verb') {
+    const infinitive = String(r.infinitive || '').trim();
+    if (!infinitive) return null;
+    const forms = {};
+    VERB_PERSONS.forEach((p) => { forms[p.key] = String(r[p.key] || '').trim(); });
+    return {
+      recordId: r.recordId,
+      infinitive,
+      meaning: String(r.meaning || ''),
+      forms,
+      examples: Array.isArray(r.examples) ? r.examples : [],
+      chapterId: r.chapterId || null,
+      chapterTitle: r.chapterTitle || '',
+    };
+  }
+  if (r.type === 'unified-vocab') {
+    const pos = String(r.partOfSpeech || '').toLowerCase();
+    if (!pos.includes('verb')) return null;
+    const infinitive = stripArticle(r.word);
+    if (!infinitive) return null;
+    const verb = r.verb || {};
+    const conj = verb.conjugation || {};
+    const forms = {};
+    Object.keys(conj || {}).forEach((k) => {
+      const key = verbPronounKey(k);
+      const form = String(conj[k] || '').trim();
+      if (key && form && !forms[key]) forms[key] = form;
+    });
+    return {
+      recordId: r.recordId,
+      infinitive,
+      meaning: String(r.translation || ''),
+      forms,
+      examples: r.example ? [{ german: r.example, english: r.exampleTranslation || '' }] : [],
+      chapterId: r.chapterId || null,
+      chapterTitle: r.chapterTitle || '',
+    };
+  }
+  return null;
+}
+
+/** Loop the verb records of the given scope (one chapter, or the whole DB). */
+export function scopeVerbs(records, chapterId) {
+  const all = (Array.isArray(records) ? records : []).map(normalizeVerbRecord).filter(Boolean);
+  if (!chapterId) return all;
+  return all.filter((v) => v.chapterId === chapterId);
+}
+
+/** The filled Präsens forms of a verb: [{ pronoun, label, form }] */
+function verbForms(v) {
+  const forms = (v && v.forms) || {};
+  return VERB_PERSONS
+    .map((p) => ({ pronoun: p.key, label: p.label, form: String(forms[p.key] || '').trim() }))
+    .filter((f) => f.form);
+}
+
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Replace the conjugated verb form in an example sentence by a gap (___).
+ * Tries every Präsens form so separable verbs ("stehe auf") and unusual
+ * word orders are covered; returns '' when no form occurs in the sentence.
+ */
+function blankVerbInSentence(sentence, forms) {
+  const text = String(sentence || '');
+  for (const form of forms) {
+    const token = String(form).trim();
+    if (!token) continue;
+    const re = new RegExp(`(^|[^\\p{L}])${escapeRegExp(token)}(?![\\p{L}])`, 'iu');
+    if (re.test(text)) return text.replace(re, '$1___');
+  }
+  return '';
+}
+
+/** The best clue sentence for a verb: the first example that contains a form. */
+function blankedSentenceFor(v) {
+  const forms = verbForms(v).map((f) => f.form);
+  if (!forms.length) return '';
+  for (const ex of (Array.isArray(v.examples) ? v.examples : [])) {
+    const german = String((ex && ex.german) || (typeof ex === 'string' ? ex : '') || '').trim();
+    if (!german) continue;
+    const blanked = blankVerbInSentence(german, forms);
+    if (blanked) return blanked;
+  }
+  return '';
+}
+
+/**
+ * Verbs that can fuel a conjugation question: deduplicated by infinitive,
+ * at least 3 filled Präsens forms, and a clue to guess it (example sentence
+ * or translation). Chapter scope is applied upstream (scopeVerbs).
+ */
+export function scopeConjugationVerbs(records, chapterId) {
+  const seen = new Set();
+  const out = [];
+  for (const v of scopeVerbs(records, chapterId)) {
+    const key = v.infinitive.toLowerCase();
+    if (seen.has(key)) continue;
+    if (verbForms(v).length < 3) continue;
+    if (!v.meaning && !blankedSentenceFor(v)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Conjugation round — two steps per question:
+ *   1 · CHOOSE the most suitable verb (options are the verbs of this chapter)
+ *   2 · CONJUGATE it in the Präsens for a random pronoun
+ * The clue is the verb's own example sentence with the form blanked out, or
+ * its meaning when no usable sentence exists.
+ */
+function buildConjugationQuestions(verbs, rng, count) {
+  const infinitives = verbs.map((v) => v.infinitive);
+  return shuffleWithSeed(verbs, rng).slice(0, count).map((v) => {
+    const forms = verbForms(v);
+    const target = forms[Math.floor(rng() * forms.length)];
+    const sentence = blankedSentenceFor(v);
+    const distractors = infinitives.filter((i) => i.toLowerCase() !== v.infinitive.toLowerCase());
+    const parts = [
+      {
+        key: 'verb',
+        label: 'The most suitable verb',
+        kind: 'choice',
+        options: pickOptions(v.infinitive, distractors, rng),
+        answer: v.infinitive,
+      },
+      {
+        key: 'conjugated',
+        label: `Conjugate for ${target.label}`,
+        kind: 'text',
+        answer: target.form,
+        // separable verbs are stored as "stehe auf" — also accept the bare part
+        alternates: target.form.includes(' ') ? [target.form.split(' ')[0]] : undefined,
+        placeholder: 'Write the Präsens form…',
+      },
+    ];
+    return {
+      type: 'conjugation',
+      kind: 'multi',
+      prompt: sentence
+        ? 'Choose the most suitable verb for this sentence, then conjugate it in the Präsens:'
+        : 'Choose the most suitable verb (see its meaning), then conjugate it in the Präsens:',
+      question: sentence || v.meaning,
+      parts,
+      options: null,
+      answer: `${v.infinitive} → ${target.form}`,
+      translation: v.meaning,
+    };
+  });
 }
 
 function buildPossessiveQuestions(vocab, rng, count) {
@@ -378,8 +598,10 @@ function buildNumberQuestions(rng, count) {
 export const EXERCISE_TYPES = [
   { value: 'mixed', label: 'Mixed Test', hint: 'Articles, genders, plurals, possessives & numbers' },
   { value: 'article', label: 'Articles', hint: 'Guess der / die / das for each word' },
+  { value: 'picture', label: 'Picture Round', hint: 'See the image → write Artikel, word, feminine form & plural' },
   { value: 'gender', label: 'Masculine → Feminine', hint: 'Choose the feminine form of a masculine noun' },
   { value: 'plural', label: 'Plural Forms', hint: 'Write down the plural of the given word' },
+  { value: 'conjugation', label: 'Verb Conjugation', hint: 'Choose the right verb of this chapter & write its Präsens form' },
   { value: 'possessive', label: 'Possessive Articles', hint: 'Fill in mein / dein / sein … with the right ending' },
   { value: 'numbers', label: 'Numbers', hint: 'German numbers 0–999, both directions' },
 ];
@@ -405,9 +627,11 @@ export function countAvailableExercises(records, chapterId = null) {
   return {
     words: vocab.length,
     article: vocab.filter((v) => v.article && v.wordType !== 'verb' && v.wordType !== 'adjective').length,
+    picture: vocab.filter((v) => v.photoUrl && v.article && v.wordType !== 'verb' && v.wordType !== 'adjective').length,
     gender: genderPool.length,
     plural: pluralPool.length,
     possessive: possessivePool,
+    conjugation: scopeConjugationVerbs(records, chapterId).length,
     numbers: 999,
   };
 }
@@ -419,7 +643,7 @@ export function countAvailableExercises(records, chapterId = null) {
  * @param {Object}   opts
  * @param {Array}    opts.records  raw German records (vocab + unified-vocab + …)
  * @param {string}   [opts.chapterId] only use this chapter's vocabulary
- * @param {string}   [opts.type]   'mixed' | 'article' | 'gender' | 'plural' | 'possessive' | 'numbers'
+ * @param {string}   [opts.type]   'mixed' | 'article' | 'picture' | 'gender' | 'plural' | 'conjugation' | 'possessive' | 'numbers'
  * @param {number}   [opts.count]  max number of questions (default 10)
  * @param {number|string} [opts.seed] seed → deterministic output (PDF worksheets)
  * @param {boolean}  [opts.includeNumbers] mixed tests also ask numbers (default true).
@@ -435,8 +659,10 @@ export function generateExercises({ records = [], chapterId = null, type = 'mixe
 
   let questions = [];
   if (type === 'article') questions = buildArticleQuestions(vocab, rng, wanted);
+  else if (type === 'picture') questions = buildPictureQuestions(vocab, rng, wanted);
   else if (type === 'gender') questions = buildGenderQuestions(vocab, rng, wanted);
   else if (type === 'plural') questions = buildPluralQuestions(vocab, rng, wanted);
+  else if (type === 'conjugation') questions = buildConjugationQuestions(scopeConjugationVerbs(records, chapterId), rng, wanted);
   else if (type === 'possessive') questions = buildPossessiveQuestions(vocab, rng, wanted);
   else if (type === 'numbers') questions = buildNumberQuestions(rng, wanted);
   else {
@@ -460,21 +686,42 @@ export function generateExercises({ records = [], chapterId = null, type = 'mixe
   return { questions, scopedWords: vocab.length };
 }
 
+/** Fold a typed German answer for tolerant comparison (umlauts, articles, case). */
+const foldText = (s) => String(s || '')
+  .toLowerCase()
+  .trim()
+  .replace(/^(der|die|das|den|dem|des|ein|eine|einen|einem|einer)\s+/, '')
+  .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+  .replace(/[^a-z0-9]/g, '');
+
+function textEquals(expected, given) {
+  const a = foldText(expected);
+  const b = foldText(given);
+  return !!(a && b && a === b);
+}
+
+/** Check ONE part of a multi-part (picture) question against its input. */
+export function checkAnswerPart(part, given) {
+  if (!part) return false;
+  if (part.kind === 'choice') return String(given ?? '').trim() === String(part.answer ?? '').trim();
+  if (textEquals(part.answer, given)) return true;
+  // extra accepted spellings (e.g. separable verb "stehe auf" → "stehe")
+  return Array.isArray(part.alternates) && part.alternates.some((alt) => textEquals(alt, given));
+}
+
 /** Answer checking — tolerant for typed answers (umlauts, articles, case). */
 export function checkAnswer(question, given) {
   if (!question) return false;
-  const expected = String(question.answer ?? '').trim();
-  if (question.kind === 'choice') return String(given ?? '').trim() === expected;
-  const fold = (s) => String(s || '')
-    .toLowerCase()
-    .trim()
-    .replace(/^(der|die|das|den|dem|des|ein|eine|einen|einem|einer)\s+/, '')
-    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-    .replace(/[^a-z0-9]/g, '');
-  const a = fold(expected);
-  const b = fold(given);
-  if (!a || !b) return false;
-  return a === b;
+  if (question.kind === 'choice') return String(given ?? '').trim() === String(question.answer ?? '').trim();
+  if (question.kind === 'multi') {
+    // Picture round: `given` is an object { article, word, feminine, plural }
+    // and the question only counts as solved when EVERY part is right.
+    const parts = Array.isArray(question.parts) ? question.parts : [];
+    if (!parts.length) return false;
+    const g = given && typeof given === 'object' ? given : {};
+    return parts.every((p) => checkAnswerPart(p, g[p.key]));
+  }
+  return textEquals(question.answer, given);
 }
 
 /** Build the payload stored as an `exercise` record (see backend addExerciseResult). */
@@ -482,29 +729,49 @@ export function buildExerciseResultPayload({ questions, answers, kind, chapterId
   const byType = {};
   const wrongAnswers = [];
   let correct = 0;
-  (questions || []).forEach((q, i) => {
-    const given = answers ? answers[i] : undefined;
-    const ok = checkAnswer(q, given);
-    if (!byType[q.type]) byType[q.type] = { total: 0, correct: 0 };
-    byType[q.type].total += 1;
+  let total = 0;
+  const tally = (type, ok, wrongEntry) => {
+    if (!byType[type]) byType[type] = { total: 0, correct: 0 };
+    byType[type].total += 1;
+    total += 1;
     if (ok) {
       correct += 1;
-      byType[q.type].correct += 1;
+      byType[type].correct += 1;
     } else {
-      wrongAnswers.push({
-        type: q.type,
-        question: `${q.question}`,
-        answer: String(q.answer ?? ''),
-        given: given == null || given === '' ? '—' : String(given),
-      });
+      wrongAnswers.push(wrongEntry);
     }
+  };
+  (questions || []).forEach((q, i) => {
+    const given = answers ? answers[i] : undefined;
+    // Multi-part (picture) questions are scored PART BY PART: the Artikel, the
+    // word, the feminine form and the plural each count as one answer, so the
+    // final score shows exactly which of the four steps the user missed.
+    if (q.kind === 'multi' && Array.isArray(q.parts) && q.parts.length) {
+      const g = given && typeof given === 'object' ? given : {};
+      q.parts.forEach((p) => {
+        const partGiven = g[p.key];
+        tally(q.type, checkAnswerPart(p, partGiven), {
+          type: q.type,
+          question: `${q.question}${p.label ? ` — ${p.label}` : ''}`,
+          answer: String(p.answer ?? ''),
+          given: partGiven == null || partGiven === '' ? '—' : String(partGiven),
+        });
+      });
+      return;
+    }
+    tally(q.type, checkAnswer(q, given), {
+      type: q.type,
+      question: `${q.question}`,
+      answer: String(q.answer ?? ''),
+      given: given == null || given === '' ? '—' : String(given),
+    });
   });
   return {
     kind: kind || 'mixed',
     chapterId: chapterId || null,
     chapterTitle: chapterTitle || '',
     level: level || 'A1.1',
-    total: (questions || []).length,
+    total,
     correct,
     byType,
     wrongAnswers: wrongAnswers.slice(0, 40),

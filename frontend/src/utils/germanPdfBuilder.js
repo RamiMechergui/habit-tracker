@@ -479,7 +479,7 @@ function storyBlocks(rows) {
 // ── Knowledge-test exercises (Übungen) ──────────────────────────────────────
 // A worksheet auto-generated from the chapter's own vocabulary (or from the
 // whole database when no chapter is selected) plus the saved test results.
-const EXERCISE_COLORS = { article: "#1f4e79", gender: "#b0307a", plural: "#0f7d6a", possessive: "#6d28d9", numbers: "#b33700" };
+const EXERCISE_COLORS = { article: "#1f4e79", picture: "#0e7490", gender: "#b0307a", plural: "#0f7d6a", conjugation: "#a16207", possessive: "#6d28d9", numbers: "#b33700" };
 
 function exerciseWorksheetBlocks(questions) {
   if (!Array.isArray(questions) || !questions.length) return [];

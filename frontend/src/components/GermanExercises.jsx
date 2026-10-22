@@ -4,6 +4,10 @@
  * The user picks a chapter (or "All chapters" → the whole database is looped),
  * picks an exercise type and a length, then solves the generated test:
  *   • Articles        → der / die / das ?
+ *   • Picture Round   → see the vocabulary photo, then write the Artikel, the
+ *                       word, its feminine form and the plural
+ *   • Conjugation     → pick the most suitable verb of the chapter, then write
+ *                       its Präsens form for the shown pronoun
  *   • Gender          → feminine form of a masculine noun
  *   • Plural          → type the plural of the word
  *   • Possessive      → fill in mein / dein / sein … with the right ending
@@ -15,24 +19,27 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Target, Check, X, RotateCcw, Play, Trash2, Trophy, AlertTriangle,
-  ChevronRight, PenLine, Hash, Loader2, Layers, BookOpen, Sparkles,
+  ChevronRight, PenLine, Hash, Loader2, Layers, BookOpen, Sparkles, Image, PenTool,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
-  EXERCISE_TYPES, exerciseTypeLabel, generateExercises, checkAnswer,
+  EXERCISE_TYPES, exerciseTypeLabel, generateExercises, checkAnswer, checkAnswerPart,
   countAvailableExercises, buildExerciseResultPayload,
 } from '../utils/germanExercises';
+import { germanImageUrl } from '../utils/germanImageUrl';
 
 const C = {
   gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981',
-  purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316',
+  purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', cyan: '#06b6d4', lime: '#84cc16',
 };
 
 const TYPE_META = {
   mixed:      { color: C.gold,   icon: Layers },
   article:    { color: C.blue,   icon: BookOpen },
+  picture:    { color: C.cyan,   icon: Image },
   gender:     { color: C.pink,   icon: Target },
   plural:     { color: C.teal,   icon: PenLine },
+  conjugation: { color: C.lime,  icon: PenTool },
   possessive: { color: C.purple, icon: Sparkles },
   numbers:    { color: C.orange, icon: Hash },
 };
@@ -77,6 +84,8 @@ export default function GermanExercises({
   const [answered, setAnswered] = useState(false);
   const [feedback, setFeedback] = useState(null); // { ok, given, correct }
   const [textValue, setTextValue] = useState('');
+  // Picture-round answers: { article: 'der', word: 'Haus', feminine: …, plural: … }
+  const [multiAnswers, setMultiAnswers] = useState({});
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -136,7 +145,7 @@ export default function GermanExercises({
     setIndex(0);
     setAnswered(false);
     setFeedback(null);
-    setTextValue('');
+    resetInputs();
     setSaved(false);
     setSaveError('');
     setSaving(false);
@@ -146,11 +155,32 @@ export default function GermanExercises({
 
   const current = questions[index];
 
+  const resetInputs = () => {
+    setTextValue("");
+    setMultiAnswers({});
+  };
+
   const recordAnswer = (given) => {
     if (!current || answered) return;
     const ok = checkAnswer(current, given);
-    answersRef.current[index] = given == null ? '' : String(given);
-    setFeedback({ ok, given: given == null || given === '' ? '—' : String(given), correct: String(current.answer ?? '') });
+    if (current.kind === 'multi') {
+      const g = given && typeof given === 'object' ? { ...given } : {};
+      answersRef.current[index] = g;
+      setFeedback({
+        ok,
+        // every field (Artikel / word / feminine / plural) gets its own verdict
+        parts: (current.parts || []).map((p) => ({
+          key: p.key,
+          label: p.label,
+          ok: checkAnswerPart(p, g[p.key]),
+          given: g[p.key] == null || g[p.key] === '' ? '—' : String(g[p.key]),
+          correct: String(p.answer ?? ''),
+        })),
+      });
+    } else {
+      answersRef.current[index] = given == null ? '' : String(given);
+      setFeedback({ ok, given: given == null || given === '' ? '—' : String(given), correct: String(current.answer ?? '') });
+    }
     setAnswered(true);
   };
 
@@ -191,7 +221,7 @@ export default function GermanExercises({
     setIndex((i) => i + 1);
     setAnswered(false);
     setFeedback(null);
-    setTextValue('');
+    resetInputs();
   };
 
   const skipQuestion = () => {
@@ -204,7 +234,7 @@ export default function GermanExercises({
         setIndex((i) => i + 1);
         setAnswered(false);
         setFeedback(null);
-        setTextValue('');
+        resetInputs();
       }, 0);
     }
   };
@@ -223,7 +253,7 @@ export default function GermanExercises({
     setIndex(0);
     setAnswered(false);
     setFeedback(null);
-    setTextValue('');
+    resetInputs();
     setSaved(false);
     setSaveError('');
     setLastPayload(null);
@@ -234,7 +264,7 @@ export default function GermanExercises({
     setPhase('setup');
     setQuestions([]);
     setFeedback(null);
-    setTextValue('');
+    resetInputs();
   };
 
   const deleteResult = async (recordId) => {
@@ -433,7 +463,25 @@ export default function GermanExercises({
       </div>
 
       <p style={{ margin: '0 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>{current.prompt}</p>
-      <div style={{ fontSize: isMobile ? '1.35rem' : '1.7rem', fontWeight: 900, color: C.gold, marginBottom: '1.1rem', lineHeight: 1.25 }}>{current.question}</div>
+      {/* the clue text stays hidden for the picture round — there the image IS the clue */}
+      {!(current.kind === 'multi' && current.type === 'picture') && (
+        <div style={{ fontSize: isMobile ? '1.35rem' : '1.7rem', fontWeight: 900, color: C.gold, marginBottom: '1.1rem', lineHeight: 1.25 }}>{current.question}</div>
+      )}
+
+      {/* Picture round — the vocabulary word hides behind its photo */}
+      {current.kind === 'multi' && current.type === 'picture' && (
+        <div style={{ position: 'relative', width: '100%', maxWidth: 360, height: isMobile ? 200 : 240, margin: '0 auto 1.1rem', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Image size={42} style={{ color: 'var(--text-muted)', position: 'absolute', opacity: 0.5 }} />
+          {current.photoUrl && (
+            <img
+              src={germanImageUrl(current.photoUrl)}
+              alt="What German word belongs to this picture?"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          )}
+        </div>
+      )}
 
       {current.kind === 'choice' ? (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.55rem' }}>
@@ -457,6 +505,65 @@ export default function GermanExercises({
             );
           })}
         </div>
+      ) : current.kind === 'multi' ? (
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (!answered) recordAnswer(multiAnswers); else nextQuestion(); }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+        >
+          {(current.parts || []).map((p) => {
+            const value = multiAnswers[p.key] || '';
+            const partFeedback = feedback && feedback.parts ? feedback.parts.find((x) => x.key === p.key) : null;
+            if (p.kind === 'choice') {
+              return (
+                <div key={p.key}>
+                  <div style={labelStyle}>{p.label}</div>
+                  <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                    {(p.options || []).map((opt) => {
+                      const active = value === opt;
+                      let bg = 'var(--bg)', border = '1px solid var(--border)', color = 'var(--text-primary)';
+                      if (answered && partFeedback) {
+                        if (String(opt) === String(p.answer)) { bg = `${C.green}18`; border = `1.5px solid ${C.green}70`; color = C.green; }
+                        else if (active) { bg = `${C.red}15`; border = `1.5px solid ${C.red}70`; color = C.red; }
+                      } else if (active) { bg = `${C.cyan}18`; border = `1.5px solid ${C.cyan}70`; color = C.cyan; }
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          disabled={answered}
+                          onClick={() => setMultiAnswers((m) => ({ ...m, [p.key]: opt }))}
+                          style={{ padding: '0.55rem 1.2rem', borderRadius: '10px', background: bg, border, color, fontWeight: 800, fontSize: '0.95rem', cursor: answered ? 'default' : 'pointer', transition: 'all 0.15s ease' }}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div key={p.key}>
+                <div style={labelStyle}>{p.label}</div>
+                <input
+                  value={value}
+                  onChange={(e) => setMultiAnswers((m) => ({ ...m, [p.key]: e.target.value }))}
+                  disabled={answered}
+                  placeholder={p.placeholder || 'Your answer…'}
+                  style={{
+                    width: '100%', padding: '0.7rem 0.85rem', borderRadius: '12px',
+                    border: `1.5px solid ${answered ? (partFeedback?.ok ? C.green : C.red) : 'var(--border)'}`,
+                    background: 'var(--bg)', color: 'var(--text-primary)', fontSize: '0.98rem', fontWeight: 700,
+                  }}
+                />
+              </div>
+            );
+          })}
+          {!answered && (
+            <button type="submit" style={{ padding: '0.8rem 1.4rem', borderRadius: '12px', border: 'none', background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Check size={16} /> Check answers
+            </button>
+          )}
+        </form>
       ) : (
         <form
           onSubmit={(e) => { e.preventDefault(); if (!answered) recordAnswer(textValue); else nextQuestion(); }}
@@ -483,21 +590,46 @@ export default function GermanExercises({
       )}
 
       {feedback && (
-        <div style={{ marginTop: '1rem', padding: '0.75rem 0.9rem', borderRadius: '12px', background: feedback.ok ? `${C.green}12` : `${C.red}10`, border: `1px solid ${feedback.ok ? `${C.green}40` : `${C.red}40`}`, display: 'flex', alignItems: 'center', gap: '0.6rem', animation: 'evolvio-up 0.25s ease' }}>
-          {feedback.ok
-            ? <Check size={18} style={{ color: C.green, flexShrink: 0 }} />
-            : <AlertTriangle size={18} style={{ color: C.red, flexShrink: 0 }} />}
-          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: feedback.ok ? C.green : C.red }}>
-            {feedback.ok ? 'Richtig! Well done.' : (
-              <span>Leider falsch — the correct answer is <span style={{ color: 'var(--text-primary)' }}>{feedback.correct}</span></span>
-            )}
+        <div style={{ marginTop: '1rem', padding: '0.75rem 0.9rem', borderRadius: '12px', background: feedback.ok ? `${C.green}12` : `${C.red}10`, border: `1px solid ${feedback.ok ? `${C.green}40` : `${C.red}40`}`, display: 'flex', flexDirection: feedback.parts ? 'column' : 'row', alignItems: feedback.parts ? 'stretch' : 'center', gap: '0.6rem', animation: 'evolvio-up 0.25s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {feedback.ok
+              ? <Check size={18} style={{ color: C.green, flexShrink: 0 }} />
+              : <AlertTriangle size={18} style={{ color: C.red, flexShrink: 0 }} />}
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: feedback.ok ? C.green : C.red }}>
+              {feedback.ok ? 'Richtig! Well done.' : feedback.parts
+                ? 'Leider nicht alles richtig — check each step below:'
+                : (
+                  <span>Leider falsch — the correct answer is <span style={{ color: 'var(--text-primary)' }}>{feedback.correct}</span></span>
+                )}
+            </div>
+            <button
+              onClick={nextQuestion}
+              style={{ marginLeft: 'auto', padding: '0.5rem 1.1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+            >
+              {index + 1 >= questions.length ? 'Finish' : 'Next'} <ChevronRight size={15} />
+            </button>
           </div>
-          <button
-            onClick={nextQuestion}
-            style={{ marginLeft: 'auto', padding: '0.5rem 1.1rem', borderRadius: '10px', border: 'none', background: `linear-gradient(135deg, ${C.gold}, ${C.red})`, color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
-          >
-            {index + 1 >= questions.length ? 'Finish' : 'Next'} <ChevronRight size={15} />
-          </button>
+
+          {/* Picture round — Artikel / word / feminine / plural, one verdict each */}
+          {feedback.parts && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {feedback.parts.map((p) => (
+                <div key={p.key} style={{ fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {p.ok
+                    ? <Check size={12} style={{ color: C.green, flexShrink: 0 }} />
+                    : <X size={12} style={{ color: C.red, flexShrink: 0 }} />}
+                  <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>{p.label}:</span>
+                  <span style={{ fontWeight: 700, color: p.ok ? C.green : C.red }}>{p.given}</span>
+                  {!p.ok && (
+                    <>
+                      <span style={{ color: 'var(--text-muted)' }}>→</span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.correct}</span>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
