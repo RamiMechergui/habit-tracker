@@ -62,6 +62,7 @@ const {
 } = require('../db/german');
 const { translateText } = require('../services/translate');
 const vocabPhoto = require('../services/vocabPhoto');
+const { checkGermanSpellings, spellFieldsOf, spellUpdatesOf } = require('../services/spellChecker');
 const { getOrInitProgress } = require('../db/germanProgress');
 
 router.use(protect);
@@ -572,6 +573,79 @@ router.post('/translate', async (req, res) => {
   } catch (err) {
     console.error('[German] Translate error:', err);
     res.status(500).json({ message: 'Translation failed' });
+  }
+});
+
+const SPELL_UPDATERS = {
+  'vocab': updateVocab,
+  'unified-vocab': updateUnifiedVocab,
+  'verb': updateVerb,
+  'expression': updateExpression,
+  'idiom': updateIdiom,
+};
+
+// ── POST /api/german/spelling-check → AI Rechtschreibung scan/fix ────────────
+// Body: { apply?: boolean } — apply=false only reports issues; apply=true
+// also writes the corrected text back to each affected record.
+router.post('/spelling-check', async (req, res) => {
+  try {
+    const apply = req.body?.apply === true;
+    const records = await getAllGermanRecords(req.user.userId);
+
+    const entries = [];
+    records.forEach(r => {
+      const fields = spellFieldsOf(r);
+      if (Object.keys(fields).length) entries.push({ ref: r.recordId, type: r.type, fields });
+    });
+    if (!entries.length) return res.json({ checked: 0, recordsChecked: records.length, issues: [], fixed: 0, apply });
+
+    let issues;
+    try {
+      issues = await checkGermanSpellings(entries);
+    } catch (e) {
+      if (e.code === 'NO_API_KEY') return res.status(503).json({ message: e.message });
+      throw e;
+    }
+
+    let fixed = 0;
+    let fixedRecords = 0;
+    if (apply && issues.length) {
+      const byRef = {};
+      issues.forEach(is => (byRef[is.ref] = byRef[is.ref] || []).push(is));
+      const byId = {};
+      records.forEach(r => (byId[r.recordId] = r));
+      for (const [ref, list] of Object.entries(byRef)) {
+        const rec = byId[ref];
+        const updater = rec && SPELL_UPDATERS[rec.type];
+        if (!updater) continue;
+        try {
+          await updater(req.user.userId, ref, spellUpdatesOf(rec, list));
+          fixedRecords += 1;
+          fixed += list.length;
+        } catch (e) {
+          console.warn(`[German] spelling-fix update failed for ${ref}:`, e.message);
+        }
+      }
+    }
+
+    const labelOf = r => (r && (r.type === 'verb' ? r.infinitive : r.word || r.phrase)) || '';
+    const byId = {};
+    records.forEach(r => (byId[r.recordId] = r));
+    res.json({
+      checked: entries.length,
+      recordsChecked: records.length,
+      fixed,
+      fixedRecords,
+      apply,
+      issues: issues.map(i => ({
+        ...i,
+        recordLabel: labelOf(byId[i.ref]),
+        chapterTitle: byId[i.ref]?.chapterTitle || '',
+      })),
+    });
+  } catch (err) {
+    console.error('[German] POST spelling-check error:', err);
+    res.status(500).json({ message: 'Spelling check failed' });
   }
 });
 

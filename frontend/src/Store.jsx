@@ -2575,6 +2575,28 @@ export const HabitProvider = ({ children }) => {
     return data;
   }, [API_URL, fetchGermanData]);
 
+  // AI Rechtschreibung scan across every German text field (words, plurals,
+  // verb forms, examples, phrases). apply=false only reports issues;
+  // apply=true also writes the corrections back and refreshes the data.
+  const checkGermanSpelling = useCallback(async ({ apply = false } = {}) => {
+    const res = await fetch(`${API_URL}/api/german/spelling-check`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apply }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Spelling check failed');
+    if (apply && data.fixed > 0) await fetchGermanData();
+    logHistory(
+      'german_spelling_check',
+      apply
+        ? `Fixed ${data.fixed || 0} spelling issue(s) in ${data.fixedRecords || 0} record(s)`
+        : `Scanned ${data.checked || 0} entries — ${data.issues?.length || 0} issue(s) found`
+    );
+    return data;
+  }, [API_URL, fetchGermanData]);
+
   const deleteGermanRecord = useCallback(async (recordId) => {
     // Optimistic
     setGermanData(prev => prev.filter(r => r.recordId !== recordId));
@@ -3461,7 +3483,7 @@ export const HabitProvider = ({ children }) => {
       recurringTasks, getVirtualTasksForDate,
       saveRecurringTask, updateRecurringTask, disableRecurringTask, deleteRecurringTask,
       // German Learning
-      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, autoGenerateGermanVocabPhoto, autoFillGermanVocabPhotos, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
+      germanData, fetchGermanData, addGermanVocab, addGermanGrammar, updateGermanVocab, reviewGermanVocab, updateGermanGrammar, addGermanVerb, updateGermanVerb, saveGermanNote, deleteGermanRecord, uploadGermanVocabPhoto, deleteGermanVocabPhoto, autoGenerateGermanVocabPhoto, autoFillGermanVocabPhotos, checkGermanSpelling, uploadGermanDialogueParticipantPhoto, deleteGermanDialogueParticipantPhoto, uploadGermanStoryParticipantPhoto, deleteGermanStoryParticipantPhoto, uploadGermanNotePhoto, translateGermanText, addGermanDialogue, updateGermanDialogue, addGermanMemo, updateGermanMemo, addDocument, updateDocument, addGermanExpression, updateGermanExpression, addGermanIdiom, updateGermanIdiom, addGermanMistake, updateGermanMistake, addGermanAlphabet, updateGermanAlphabet, saveGermanAlphabetNote, uploadGermanAlphabetPhoto, deleteGermanAlphabetPhoto,       fetchResourceInfo, addGermanResource, updateGermanResource,
       addGermanBook, updateGermanBook,
       addGermanChapter, updateGermanChapter,
       saveGermanExercise,

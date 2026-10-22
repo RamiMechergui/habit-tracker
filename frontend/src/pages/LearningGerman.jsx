@@ -10,6 +10,7 @@ import { germanImageUrl } from '../utils/germanImageUrl';
 import { AVATAR_COLORS, generateAvatarDataUri, isDataUri } from '../utils/avatar';
 import GermanReport from '../components/GermanReport';
 import GermanExercises from '../components/GermanExercises';
+import GermanSpellCheck from '../components/GermanSpellCheck';
 import VerbConjugationBadge from '../components/VerbConjugationBadge';
 import VerbJsonModal from '../components/VerbJsonModal';
 
@@ -21,7 +22,7 @@ import {
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked, Sparkles,
-  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen, Target,
+  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen, Target, SpellCheck,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -5535,6 +5536,7 @@ export default function LearningGerman() {
   const [draggedBoxId, setDraggedBoxId] = useState(null);
   const [confirmDeleteBoxId, setConfirmDeleteBoxId] = useState(null);
   const [showReport, setShowReport] = useState(false);
+  const [showSpellCheck, setShowSpellCheck] = useState(false);
   const [showPdfMenu, setShowPdfMenu] = useState(false);
   const [chapterReportData, setChapterReportData] = useState(null);
   const [chapterReportTitle, setChapterReportTitle] = useState('');
@@ -6763,6 +6765,9 @@ export default function LearningGerman() {
             <button onClick={() => setShowGlobalSearch(true)} title="Global Search" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.85rem' }}>
               <List size={15} /> Search
             </button>
+            <button onClick={() => setShowSpellCheck(true)} title="AI Spelling Check (Rechtschreibung)" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer', background: 'var(--bg)', border: `1px solid ${C.pink}45`, color: C.pink, fontWeight: 700, fontSize: '0.85rem' }}>
+              <SpellCheck size={15} /> Spelling
+            </button>
             <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
             <ExportPdfMenu disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
             </div>
@@ -6850,6 +6855,13 @@ export default function LearningGerman() {
             background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.85rem',
           }}>
             <List size={15} /> Search
+          </button>
+          <button onClick={() => setShowSpellCheck(true)} title="AI Spelling Check (Rechtschreibung)" style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.6rem 1rem', borderRadius: '10px', cursor: 'pointer',
+            background: 'var(--bg)', border: `1px solid ${C.pink}45`, color: C.pink, fontWeight: 700, fontSize: '0.85rem',
+          }}>
+            <SpellCheck size={15} /> Spelling
           </button>
           <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
           <ExportPdfMenu disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
@@ -8337,6 +8349,10 @@ export default function LearningGerman() {
             </button>
           </div>
         </div>
+      )}
+
+      {showSpellCheck && (
+        <GermanSpellCheck onClose={() => setShowSpellCheck(false)} />
       )}
 
       {showReport && (
