@@ -26,6 +26,19 @@ export const useHabits = () => useContext(HabitContext);
 // Shadow global fetch so all fetch calls in this file use the native-aware helper
 const fetch = nativeFetch;
 
+// Round a stored money amount to 3 decimals (millimes) ONLY when it actually
+// drifts — plain float math can persist values like 8.399999999999999
+// (24.5 - 16.1). Clean values and draft strings ('', "8.40") are returned
+// untouched so typing and existing formats are preserved.
+const healMoneyAmount = (amount) => {
+  if (amount === '' || amount == null) return amount;
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return amount;
+  const r = Math.round((n + Number.EPSILON) * 1000) / 1000;
+  if (n === r) return amount;
+  return r === 0 ? 0 : r; // also normalizes -0 → 0
+};
+
 // ── Session persistence helpers (Capacitor Preferences + localStorage fallback) ──
 const saveSession = async (data) => {
   const json = JSON.stringify(data);
@@ -1165,11 +1178,20 @@ export const HabitProvider = ({ children }) => {
         filledLog.german.lessons = filledLog.german.lessons.trim() ? [filledLog.german.lessons] : [];
       }
 
-      // Ensure all expenses have cigarettesCount field for smoking category
+      // Ensure all expenses have cigarettesCount field for smoking category,
+      // and heal float-drifted money amounts (e.g. a reconciliation saved as
+      // 8.399999999999999 by 24.5 - 16.1) back to clean millimes.
       if (Array.isArray(filledLog.expenses)) {
         filledLog.expenses = filledLog.expenses.map(exp => ({
           ...exp,
+          amount: healMoneyAmount(exp.amount),
           cigarettesCount: exp.cigarettesCount !== undefined ? exp.cigarettesCount : 0
+        }));
+      }
+      if (Array.isArray(filledLog.income)) {
+        filledLog.income = filledLog.income.map(inc => ({
+          ...inc,
+          amount: healMoneyAmount(inc.amount)
         }));
       }
 

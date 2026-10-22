@@ -77,7 +77,9 @@ export default function ExpenseTracker() {
 
   const handleEditIncome = (entry) => {
     setIncomeSource(entry.source);
-    setIncomeAmount(String(entry.amount));
+    // Heal legacy float drift (e.g. a reconciliation saved as 8.399999999999999)
+    // so the input shows a clean millime value like 8.4.
+    setIncomeAmount(String(round3(parseFloat(entry.amount) || 0)));
     setIncomeDate(entry.date);
     setEditIncomeIdx(entry.originalIndex);
   };
@@ -467,8 +469,8 @@ export default function ExpenseTracker() {
 
     const existing = logs[targetDate];
     const reconMeta = {
-      expected: reconExpected,
-      actual: reconActualVal,
+      expected: round3(reconExpected),
+      actual: round3(reconActualVal || 0),
       diff: reconAbs,
       mode: reconMissing ? 'missing' : (reconCorrection ? 'correction' : 'extra'),
       editHistory,
@@ -518,11 +520,14 @@ export default function ExpenseTracker() {
   };
 
   const handleEditRecon = (entry) => {
+    // Heal legacy float drift in stored meta values so the inputs never show
+    // something like "8.399999999999999".
+    const actual = entry.meta?.actual != null ? String(round3(parseFloat(entry.meta.actual) || 0)) : '';
     if (entry.type === 'missing') {
-      setReconActual(entry.meta?.actual?.toString() || '');
+      setReconActual(actual);
       setReconNote(entry.note === 'Unrecorded Expense (Reconciliation)' ? '' : entry.note);
     } else {
-      setReconActual(entry.meta?.actual?.toString() || '');
+      setReconActual(actual);
       setReconNote('');
     }
     setReconSubmitted(false);
@@ -544,9 +549,11 @@ export default function ExpenseTracker() {
   const reconActualVal = parseFloat(reconActual);
   // 0 TND is a valid amount — the user may genuinely hold no money.
   const reconValid = reconActual.trim() !== '' && !isNaN(reconActualVal) && reconActualVal >= 0;
-  const reconDiff = reconExpected - (reconActualVal || 0);
+  // Round to millimes BEFORE anything is displayed or saved — plain float math
+  // (e.g. 24.5 - 16.1 = 8.399999999999999) must never reach the log or the UI.
+  const reconDiff = round3(reconExpected - (reconActualVal || 0));
   const reconMissing = reconDiff > 0;
-  const reconAbs = Math.abs(reconDiff);
+  const reconAbs = round3(Math.abs(reconDiff));
   // When the ledger says the balance is negative, holding any real amount (even 0)
   // is "more than expected" — but this is not extra income. The books themselves
   // are inconsistent (spending exceeds recorded funds), so reconciling records a
