@@ -2792,6 +2792,103 @@ function KeyLessonsModal({ logs, onClose }) {
   );
 }
 
+// ── Expression JSON import ───────────────────────────────────────────────────
+const EXPRESSION_JSON_EXAMPLE = JSON.stringify({
+  phrase: 'Wie geht es Ihnen?',
+  translation: 'How are you? (formal)',
+  category: 'greeting',
+  favorite: false,
+  boxes: [{ type: 'info', content: 'Formal way to ask how someone is doing.' }],
+}, null, 2);
+
+const EXPRESSION_JSON_BATCH_EXAMPLE = JSON.stringify([
+  { phrase: 'Guten Morgen', translation: 'Good morning', category: 'greeting' },
+  { phrase: 'Danke schön', translation: 'Thank you very much', category: 'polite' },
+  { phrase: 'Entschuldigung', translation: 'Excuse me / Sorry', category: 'polite', favorite: true },
+], null, 2);
+
+// Canonical category values (as used by the Expressions grouping) + aliases
+// accepted in JSON so imported data always lands in a visible group.
+const EXPRESSION_CATEGORIES = [
+  { value: 'general', label: 'General', color: C.blue },
+  { value: 'greeting', label: 'Greetings', color: C.green },
+  { value: 'polite', label: 'Polite', color: C.gold },
+  { value: 'idiom', label: 'Idioms', color: C.purple },
+  { value: 'travel', label: 'Travel', color: C.orange },
+  { value: 'food', label: 'Food & Drink', color: C.red },
+  { value: 'time', label: 'Time & Date', color: C.teal },
+  { value: 'emotion', label: 'Emotions', color: C.pink },
+];
+
+const EXPRESSION_CATEGORY_ALIASES = {
+  general: 'general',
+  greeting: 'greeting', greetings: 'greeting',
+  polite: 'polite', 'polite phrases': 'polite', politeness: 'polite',
+  idiom: 'idiom', idioms: 'idiom',
+  travel: 'travel', traveling: 'travel', travelling: 'travel',
+  food: 'food', 'food & drink': 'food', 'food and drink': 'food', drinks: 'food', 'food drink': 'food',
+  time: 'time', 'time & date': 'time', 'time and date': 'time', date: 'time',
+  emotion: 'emotion', emotions: 'emotion',
+};
+
+function normalizeExpressionCategory(raw, warnings, at) {
+  if (raw == null || raw === '') return 'general';
+  if (typeof raw !== 'string') { warnings.push(`${at}"category" must be a string — using "general".`); return 'general'; }
+  const slug = raw.trim().toLowerCase();
+  const known = EXPRESSION_CATEGORY_ALIASES[slug];
+  if (known) return known;
+  warnings.push(`${at}unknown category "${raw}" — kept as its own group.`);
+  return slug;
+}
+
+// Validates pasted JSON (single object or array of objects) and returns the
+// normalized expressions ready to be saved one by one.
+function parseExpressionJsonInput(raw) {
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { return { ok: false, errors: [`JSON syntax error: ${e.message}`], warnings: [], items: [] }; }
+
+  const list = Array.isArray(parsed) ? parsed : [parsed];
+  if (!list.length) return { ok: false, errors: ['JSON array is empty.'], warnings: [], items: [] };
+
+  const errors = [], warnings = [], items = [];
+  const multi = list.length > 1;
+  list.forEach((entry, i) => {
+    const at = multi ? `Item ${i + 1}: ` : '';
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      errors.push(`${at}must be a JSON object { ... }.`);
+      return;
+    }
+    const phrase = typeof entry.phrase === 'string' ? entry.phrase.trim() : '';
+    const translation = typeof entry.translation === 'string' ? entry.translation.trim() : '';
+    if (!phrase) errors.push(`${at}"phrase" is required (the German expression).`);
+    if (!translation) errors.push(`${at}"translation" is required (its translation).`);
+
+    const category = normalizeExpressionCategory(entry.category, warnings, at);
+    const favorite = entry.favorite === true || entry.favorite === 'true';
+    if (entry.favorite != null && typeof entry.favorite !== 'boolean' && entry.favorite !== 'true' && entry.favorite !== 'false') {
+      warnings.push(`${at}"favorite" should be true or false — using false.`);
+    }
+
+    const boxes = [];
+    if (entry.boxes != null) {
+      if (!Array.isArray(entry.boxes)) warnings.push(`${at}"boxes" must be an array — ignored.`);
+      else entry.boxes.forEach((b, bi) => {
+        if (!b || typeof b !== 'object') { warnings.push(`${at}boxes[${bi}] ignored — must be an object.`); return; }
+        const rawType = String(b.type || '').trim().toLowerCase();
+        const type = ['info', 'warning', 'quote'].includes(rawType) ? rawType : 'info';
+        if (b.type && type !== rawType) warnings.push(`${at}boxes[${bi}] unknown type "${b.type}" — saved as "info".`);
+        const content = typeof b.content === 'string' ? b.content : (typeof b.text === 'string' ? b.text : '');
+        boxes.push({ type, content });
+      });
+    }
+
+    if (phrase && translation) items.push({ phrase, translation, category, favorite, boxes });
+  });
+
+  return { ok: errors.length === 0, errors, warnings, items };
+}
+
 function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
   const [phrase, setPhrase] = useState('');
   const [translation, setTranslation] = useState('');
@@ -2803,17 +2900,47 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
   const [editCategory, setEditCategory] = useState('general');
   const [editBoxes, setEditBoxes] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showJson, setShowJson] = useState(false);
+  const [jsonInput, setJsonInput] = useState(EXPRESSION_JSON_EXAMPLE);
+  const [jsonSaving, setJsonSaving] = useState(false);
+  const [jsonError, setJsonError] = useState('');
 
-  const categories = [
-    { value: 'general', label: 'General', color: C.blue },
-    { value: 'greeting', label: 'Greetings', color: C.green },
-    { value: 'polite', label: 'Polite', color: C.gold },
-    { value: 'idiom', label: 'Idioms', color: C.purple },
-    { value: 'travel', label: 'Travel', color: C.orange },
-    { value: 'food', label: 'Food & Drink', color: C.red },
-    { value: 'time', label: 'Time & Date', color: C.teal },
-    { value: 'emotion', label: 'Emotions', color: C.pink },
-  ];
+  const categories = EXPRESSION_CATEGORIES;
+
+  const jsonValidation = useMemo(
+    () => (showJson ? parseExpressionJsonInput(jsonInput) : null),
+    [showJson, jsonInput]
+  );
+
+  const handleJsonFormat = () => {
+    try { setJsonInput(JSON.stringify(JSON.parse(jsonInput), null, 2)); setJsonError(''); }
+    catch (e) { setJsonError(`Cannot format: ${e.message}`); }
+  };
+
+  const handleJsonSave = async () => {
+    const res = parseExpressionJsonInput(jsonInput);
+    if (!res.ok || !res.items.length) return;
+    setJsonSaving(true);
+    setJsonError('');
+    let failed = 0;
+    for (const item of res.items) {
+      try {
+        await onAdd({
+          type: 'expression',
+          ...item,
+          boxes: item.boxes.map(b => ({ ...b, id: nextBoxId() })),
+        });
+      } catch (_) { failed += 1; }
+    }
+    setJsonSaving(false);
+    if (failed > 0) {
+      setJsonError(`${failed} expression${failed === 1 ? '' : 's'} could not be saved — try again.`);
+    } else {
+      setJsonInput(EXPRESSION_JSON_EXAMPLE);
+      setJsonError('');
+      setShowJson(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!phrase.trim() || !translation.trim()) return;
@@ -2865,6 +2992,18 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
     });
     return map;
   }, [expressions]);
+
+  // Built-in categories plus any custom category found in the data (e.g. from
+  // a JSON import), so every expression always lands in a visible group.
+  const categoryList = (() => {
+    const extra = Object.keys(grouped).filter(v => !categories.some(c => c.value === v));
+    const palette = [C.teal, C.pink, C.orange, C.blue, C.purple, C.green, C.gold, C.red];
+    return [...categories, ...extra.map((v, i) => ({
+      value: v,
+      label: v.charAt(0).toUpperCase() + v.slice(1),
+      color: palette[i % palette.length],
+    }))];
+  })();
 
   const [dragId, setDragId] = useState(null);
   const [dragCat, setDragCat] = useState(null);
@@ -2929,9 +3068,14 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
           <Languages size={20} style={{ color: C.green }} /> Useful Expressions ({expressions.length})
         </h3>
-        <button onClick={() => setShowAdd(!showAdd)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.green}, #059669)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
-          {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Expression'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button onClick={() => { setShowJson(!showJson); setShowAdd(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: `1px solid ${C.purple}60`, background: showJson ? C.purple : `${C.purple}15`, color: showJson ? '#fff' : C.purple, fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+            <Code size={14} /> {showJson ? 'Close JSON' : 'Add via JSON'}
+          </button>
+          <button onClick={() => { setShowAdd(!showAdd); setShowJson(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.green}, #059669)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+            {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Expression'}
+          </button>
+        </div>
       </div>
 
       {showAdd && (
@@ -2940,7 +3084,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
             <input value={phrase} onChange={e => setPhrase(e.target.value)} placeholder="German phrase..." style={{ ...inputStyle, flex: 2 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
             <input value={translation} onChange={e => setTranslation(e.target.value)} placeholder="English translation..." style={{ ...inputStyle, flex: 2 }} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
             <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
-              {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              {categoryList.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
           <BoxManager boxes={boxes} onBoxesChange={setBoxes} />
@@ -2950,14 +3094,92 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
         </div>
       )}
 
-      {Object.keys(grouped).length === 0 && !showAdd && (
+      {showJson && (
+        <div style={{ padding: '1rem', borderRadius: '12px', border: `1px solid ${C.purple}40`, background: `${C.purple}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.purple, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Code size={14} /> Paste a JSON object — or an array of objects — to add expressions in bulk
+            </span>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <button onClick={() => { setJsonInput(EXPRESSION_JSON_EXAMPLE); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.purple}40`, background: 'var(--bg-card)', color: C.purple, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+                Object example
+              </button>
+              <button onClick={() => { setJsonInput(EXPRESSION_JSON_BATCH_EXAMPLE); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.purple}40`, background: 'var(--bg-card)', color: C.purple, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+                Array example
+              </button>
+              <button onClick={handleJsonFormat} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+                Format
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            value={jsonInput}
+            onChange={e => { setJsonInput(e.target.value); setJsonError(''); }}
+            spellCheck={false}
+            rows={10}
+            placeholder='Paste expression JSON here… e.g. { "phrase": "Guten Morgen", "translation": "Good morning", "category": "greeting" }'
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '0.75rem',
+              borderRadius: '10px', border: `1px solid ${jsonValidation?.ok ? `${C.green}60` : `${C.red}45`}`,
+              background: 'var(--bg)', color: 'var(--text-primary)', resize: 'vertical',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontSize: '0.8rem', lineHeight: 1.5, outline: 'none',
+            }}
+          />
+
+          {jsonValidation?.warnings.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.gold}50`, background: `${C.gold}12`, color: C.gold, fontSize: '0.75rem' }}>
+              {jsonValidation.warnings.map((w, i) => <span key={i}>⚠ {w}</span>)}
+            </div>
+          )}
+
+          {jsonValidation?.ok ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.green}50`, background: `${C.green}12`, color: C.green, fontSize: '0.76rem', fontWeight: 700 }}>
+              <Check size={14} /> Valid JSON — {jsonValidation.items.length} expression{jsonValidation.items.length === 1 ? '' : 's'} parsed &amp; ready to add
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.red}50`, background: `${C.red}12`, color: C.red, fontSize: '0.75rem' }}>
+              <span style={{ fontWeight: 700 }}>Fix the following to enable saving:</span>
+              {jsonValidation?.errors.map((err, i) => <span key={i}>• {err}</span>)}
+            </div>
+          )}
+
+          {jsonError && (
+            <div style={{ padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.red}`, background: `${C.red}1f`, color: C.red, fontSize: '0.75rem', fontWeight: 600 }}>
+              {jsonError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button onClick={() => { setShowJson(false); setJsonError(''); }} disabled={jsonSaving} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: jsonSaving ? 'not-allowed' : 'pointer' }}>
+              Cancel
+            </button>
+            <button
+              onClick={handleJsonSave}
+              disabled={!jsonValidation?.ok || jsonSaving}
+              style={{
+                padding: '0.5rem 1.1rem', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '0.8rem',
+                background: (!jsonValidation?.ok || jsonSaving) ? 'var(--bg)' : `linear-gradient(135deg, ${C.purple}, #6d28d9)`,
+                color: (!jsonValidation?.ok || jsonSaving) ? 'var(--text-muted)' : '#fff',
+                cursor: (!jsonValidation?.ok || jsonSaving) ? 'not-allowed' : 'pointer',
+                opacity: (!jsonValidation?.ok || jsonSaving) ? 0.6 : 1,
+              }}
+            >
+              {jsonSaving ? 'Saving…' : `Add ${jsonValidation?.ok ? jsonValidation.items.length : 0} Expression${jsonValidation?.items?.length === 1 ? '' : 's'}`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {Object.keys(grouped).length === 0 && !showAdd && !showJson && (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <Languages size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
           <p style={{ fontSize: '0.9rem', margin: 0 }}>No expressions yet. Add your first useful German expression!</p>
         </div>
       )}
 
-      {categories.filter(c => grouped[c.value]?.length > 0).map(cat => (
+      {categoryList.filter(c => grouped[c.value]?.length > 0).map(cat => (
         <div key={cat.value}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color }} />
@@ -2985,7 +3207,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
                       <input value={editPhrase} onChange={e => setEditPhrase(e.target.value)} style={{ ...inputStyle, flex: 2 }} placeholder="German phrase" />
                       <input value={editTranslation} onChange={e => setEditTranslation(e.target.value)} style={{ ...inputStyle, flex: 2 }} placeholder="English translation" />
                       <select value={editCategory} onChange={e => setEditCategory(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
-                        {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        {categoryList.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
                     </div>
                     <BoxManager boxes={editBoxes} onBoxesChange={setEditBoxes} />
