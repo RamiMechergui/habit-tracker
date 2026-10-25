@@ -23,7 +23,7 @@ import {
   Clock, Star, FileText, Edit3, Shuffle, AlertTriangle,
   Filter, Volume2, Upload, Flame, Repeat, PenTool,
   ArrowUp, ArrowDown, HelpCircle, List, MessageSquare, BrainCircuit, Save, GripVertical, Quote, Headphones, BookA, Camera, Clapperboard, Play, ExternalLink, Loader2, BookMarked, Sparkles,
-  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen, Target, SpellCheck,
+  Code, Copy, CheckCheck, Calendar, Folder, FolderPlus, FolderOpen, Target, SpellCheck, Eraser,
 } from 'lucide-react';
 
 const C = { gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', border: 'var(--border)' };
@@ -5910,6 +5910,9 @@ export default function LearningGerman() {
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillMsg, setAutoFillMsg] = useState('');
   const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
+  const [confirmCleanUp, setConfirmCleanUp] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanUpMsg, setCleanUpMsg] = useState('');
   const [confirmFileAll, setConfirmFileAll] = useState(false);
   const [fileAllBusy, setFileAllBusy] = useState(false);
   const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
@@ -6001,6 +6004,26 @@ export default function LearningGerman() {
     () => (selectedChapterId ? levelVocab.filter(isUnfiledVocab) : []),
     [levelVocab, selectedChapterId, isUnfiledVocab]
   );
+
+  // ── Clean Up Data — repeated words inside the current scope ───────────────
+  // Two words count as repeats when their trimmed, lower-cased German word is
+  // identical. Scope = everything the list shows: the active level's words
+  // (chapter-scoped when one is selected) plus the "No chapter assigned" ones.
+  const vocabDuplicateGroups = useMemo(() => {
+    const byKey = new Map();
+    for (const v of [...vocab, ...unfiledVocab]) {
+      const key = String(v.word || '').trim().toLowerCase();
+      if (!key) continue;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(v);
+    }
+    return [...byKey.values()].filter(g => g.length > 1);
+  }, [vocab, unfiledVocab]);
+  const vocabDuplicateExtras = useMemo(
+    () => vocabDuplicateGroups.reduce((n, g) => n + g.length - 1, 0),
+    [vocabDuplicateGroups]
+  );
+
   // User-defined vocabulary menus (dropdown groups), in creation order.
   const vocabMenus = useMemo(() => {
     const list = germanData.filter(r => r.type === 'vocab-folder');
@@ -6667,6 +6690,35 @@ export default function LearningGerman() {
   const confirmVocabDeleteAction = async () => {
     if (!confirmDeleteVocabId) return;
     try { await deleteGermanRecord(confirmDeleteVocabId); setConfirmDeleteVocabId(null); } catch (e) { setError(e.message); }
+  };
+
+  // ── Clean Up Data — delete repeated words, keep the best copy ─────────────
+  // Which copy survives: the most complete one (photo > favorite > example >
+  // notes/boxes > plural > mastery), oldest first on a tie.
+  const vocabCopyScore = (v) =>
+    (v.photoUrl ? 8 : 0) + (v.favorite ? 4 : 0) + (v.example ? 4 : 0) +
+    (v.notes ? 2 : 0) + (v.boxes?.length || 0) + (v.plural ? 1 : 0) +
+    ((v.mastery || 0) > 0 ? 1 : 0);
+
+  const handleCleanUpRun = async () => {
+    if (cleaningUp) return;
+    const toDelete = [];
+    for (const group of vocabDuplicateGroups) {
+      const ranked = [...group].sort((a, b) =>
+        (vocabCopyScore(b) - vocabCopyScore(a)) ||
+        String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+      );
+      toDelete.push(...ranked.slice(1));
+    }
+    if (!toDelete.length) { setConfirmCleanUp(false); return; }
+    setCleaningUp(true);
+    for (const v of toDelete) {
+      try { await deleteGermanRecord(v.recordId); } catch (_) { /* store already reverts */ }
+    }
+    setCleaningUp(false);
+    setConfirmCleanUp(false);
+    setCleanUpMsg(`Removed ${toDelete.length} repeated word${toDelete.length === 1 ? '' : 's'} — one copy of each is kept.`);
+    setTimeout(() => setCleanUpMsg(''), 6000);
   };
 
   // ── Classify words into the active chapter ──
@@ -7710,10 +7762,38 @@ export default function LearningGerman() {
               {autoFilling ? <Loader2 size={13} className="spin" /> : <Sparkles size={13} />}
               {autoFilling ? 'Generating…' : 'AI photos'}
             </button>
+            <button
+              onClick={() => setConfirmCleanUp(true)}
+              title={vocabDuplicateExtras > 0
+                ? `Delete ${vocabDuplicateExtras} repeated word cop${vocabDuplicateExtras === 1 ? 'y' : 'ies'} in ${workspaceLevel}${selectedChapterTitle ? ` · ${selectedChapterTitle}` : ''} and keep one copy of each`
+                : 'No repeated words found in the current view'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: 'pointer',
+                background: vocabDuplicateExtras > 0 ? `${C.red}15` : 'var(--bg-card)',
+                border: `1px solid ${vocabDuplicateExtras > 0 ? `${C.red}60` : 'var(--border)'}`,
+                color: vocabDuplicateExtras > 0 ? C.red : 'var(--text-muted)',
+                fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap',
+                opacity: cleaningUp ? 0.6 : 1,
+              }}
+            >
+              {cleaningUp ? <Loader2 size={13} className="spin" /> : <Eraser size={13} />}
+              Clean Up Data
+              {vocabDuplicateExtras > 0 && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, background: `${C.red}25`, borderRadius: 10, padding: '1px 7px' }}>
+                  {vocabDuplicateExtras}
+                </span>
+              )}
+            </button>
           </div>
           {autoFillMsg && (
             <div style={{ fontSize: '0.78rem', color: C.purple, fontWeight: 600, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={13} /> {autoFillMsg}
+            </div>
+          )}
+          {cleanUpMsg && (
+            <div style={{ fontSize: '0.78rem', color: C.green, fontWeight: 600, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Check size={13} /> {cleanUpMsg}
             </div>
           )}
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -8834,6 +8914,94 @@ export default function LearningGerman() {
 
       {showSpellCheck && (
         <GermanSpellCheck onClose={() => setShowSpellCheck(false)} />
+      )}
+
+      {/* ── Clean Up Data — confirm deleting repeated vocabulary ── */}
+      {confirmCleanUp && (
+        <div
+          onClick={() => { if (!cleaningUp) setConfirmCleanUp(false); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(8px)', padding: '1rem' }}
+        >
+          <div onClick={e => e.stopPropagation()} className="glass-card" style={{
+            width: '100%', maxWidth: 540, maxHeight: '82vh', display: 'flex', flexDirection: 'column',
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
+            overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.9rem 1.1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                <Eraser size={17} style={{ color: C.red, flexShrink: 0 }} />
+                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Clean Up Data</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 9px', borderRadius: 20, whiteSpace: 'nowrap', background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}1a`, border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`, color: LEVEL_COLORS[workspaceLevel] || '#6b7280' }}>
+                  {workspaceLevel}{selectedChapterTitle ? ` · ${selectedChapterTitle}` : ' · all chapters'}
+                </span>
+              </div>
+              <button onClick={() => { if (!cleaningUp) setConfirmCleanUp(false); }} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6, display: 'flex', flexShrink: 0 }}>
+                <X size={17} />
+              </button>
+            </div>
+
+            <div className="evolvio-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {vocabDuplicateExtras > 0 ? (
+                <>
+                  <div style={{ fontSize: '0.82rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
+                    <strong>{vocabDuplicateGroups.length}</strong> repeated word{vocabDuplicateGroups.length === 1 ? '' : 's'} found —
+                    {' '}<strong style={{ color: C.red }}>{vocabDuplicateExtras}</strong> extra cop{vocabDuplicateExtras === 1 ? 'y' : 'ies'} will be deleted.
+                    The most complete copy of each word is kept (photo, favorite, example, notes).
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {vocabDuplicateGroups.map((g, i) => (
+                      <div key={`${g[0].recordId}-${i}`} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+                        padding: '0.55rem 0.7rem', borderRadius: 10,
+                        background: `${C.red}0a`, border: `1px solid ${C.red}25`,
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{g[0].word}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{g[0].translation}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: 10, background: `${C.red}22`, color: C.red }}>
+                          ×{g.length} → keeps 1
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Check size={28} style={{ color: C.green }} />
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                    No repeated words found in {workspaceLevel}{selectedChapterTitle ? ` · ${selectedChapterTitle}` : ''} — your vocabulary is clean.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', padding: '0.85rem 1.1rem', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <button
+                onClick={() => setConfirmCleanUp(false)}
+                disabled={cleaningUp}
+                style={{ padding: '0.55rem 1.1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.82rem', cursor: cleaningUp ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCleanUpRun}
+                disabled={cleaningUp || vocabDuplicateExtras === 0}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0.55rem 1.2rem', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: '0.82rem',
+                  background: (cleaningUp || vocabDuplicateExtras === 0) ? 'var(--bg)' : `linear-gradient(135deg, ${C.red}, #b91c1c)`,
+                  color: (cleaningUp || vocabDuplicateExtras === 0) ? 'var(--text-muted)' : '#fff',
+                  cursor: (cleaningUp || vocabDuplicateExtras === 0) ? 'not-allowed' : 'pointer',
+                  opacity: (cleaningUp || vocabDuplicateExtras === 0) ? 0.6 : 1,
+                }}
+              >
+                {cleaningUp ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                {cleaningUp
+                  ? 'Deleting…'
+                  : `Delete ${vocabDuplicateExtras} repeated cop${vocabDuplicateExtras === 1 ? 'y' : 'ies'}`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showReport && (
