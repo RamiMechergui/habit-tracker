@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useHabits } from '../Store';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import VoiceRecorder from '../components/VoiceRecorder';
@@ -1072,7 +1073,7 @@ function VocabJsonForm({ onAdd, defaultLevel = 'A1.1', onCancel, isMobile }) {
   );
 }
 
-function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading, defaultLevel = 'A1.1' }) {
+function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile, onUploadPhoto, onDeletePhoto, uploading, defaultLevel = 'A1.1', chapterTitle = '' }) {
   const [form, setForm] = useState({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
   const [boxes, setBoxes] = useState([]);
   const [open, setOpen] = useState(false);
@@ -1084,6 +1085,11 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [confirmPhotoDelete, setConfirmPhotoDelete] = useState(false);
   const fileRef = useRef(null);
+  // The CEFR level field follows the active level workspace until the user
+  // picks another level by hand — so a new word always lands under the level
+  // (and chapter) the user is currently looking at.
+  const [levelTouched, setLevelTouched] = useState(false);
+  const levelValue = !editRecord && !levelTouched ? defaultLevel : form.level;
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
   useEffect(() => {
@@ -1116,7 +1122,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     if (!form.word.trim() || !form.translation.trim()) return;
     const cat = customCat.trim() || form.category;
     const wordStr = (form.wordType === 'noun' && form.article) ? `${form.article} ${form.word.trim()}` : form.word.trim();
-    const payload = { ...form, word: wordStr, category: cat, boxes };
+    const payload = { ...form, level: levelValue, word: wordStr, category: cat, boxes };
     if (editRecord) {
       await onUpdate(editRecord.recordId, payload);
       if (newPhotoFile) {
@@ -1131,6 +1137,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
       }
     }
     setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
+    setLevelTouched(false);
     setCustomCat('');
     setNewPhotoFile(null);
     setDirty(false);
@@ -1156,6 +1163,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
     setShowCancelConfirm(false);
     setForm({ word: '', translation: '', example: '', notes: '', category: 'General', plural: '', mastery: 0, article: '', level: defaultLevel, wordType: 'noun', comparative: '', superlative: '', contrary: '' });
     setBoxes([]);
+    setLevelTouched(false);
     setCustomCat('');
     setNewPhotoFile(null);
     setDirty(false);
@@ -1216,6 +1224,16 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
           </button>
         )}
       </div>
+
+      {!editRecord && chapterTitle && (
+        <div style={{
+          marginTop: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: '0.75rem', fontWeight: 700, padding: '4px 11px', borderRadius: 20,
+          background: `${C.purple}15`, border: `1px solid ${C.purple}45`, color: C.purple,
+        }}>
+          <BookMarked size={12} /> New words are saved to "{chapterTitle}"
+        </div>
+      )}
 
       {open && (
         <>
@@ -1336,7 +1354,7 @@ function VocabForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobile
           </div>
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>CEFR Level</label>
-            <select value={form.level} onChange={e => set('level', e.target.value)} style={inputBase}>
+            <select value={levelValue} onChange={e => { setLevelTouched(true); set('level', e.target.value); }} style={inputBase}>
               {ALL_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
@@ -4407,19 +4425,42 @@ function BooksForm({ onAdd, onUpdate, onDelete, isMobile, books }) {
   );
 }
 
-function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
+function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter, isMobile = false }) {
   const [open, setOpen] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
   const ref = useRef(null);
 
+  const closeMenu = () => { setOpen(false); setShowChapters(false); };
+
   useEffect(() => {
     if (!open) { setShowChapters(false); return; }
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setShowChapters(false); } };
+    if (isMobile) {
+      // The mobile sheet is portalled to <body>, so no outside-mousedown anchor
+      // is needed — the backdrop handles closing. Lock page scroll while open.
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) closeMenu(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open, isMobile]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeMenu(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
   const hasChapters = chapters.length > 0;
+
+  const sheetItemStyle = {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+    padding: '0.85rem 0.75rem', background: 'transparent', border: 'none',
+    borderRadius: 10, cursor: 'pointer', color: 'var(--text-primary)',
+    fontSize: '0.95rem', fontWeight: 700, textAlign: 'left', fontFamily: 'inherit',
+  };
 
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
@@ -4435,11 +4476,85 @@ function ExportPdfMenu({ disabled, chapters, onExportFull, onExportChapter }) {
           color: disabled ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: '0.85rem',
           opacity: disabled ? 0.5 : 1,
           boxShadow: !disabled ? `0 4px 12px ${C.green}40` : 'none',
+          whiteSpace: 'nowrap', flexShrink: 0,
         }}
       >
         <FileText size={15} /> Export PDF <ChevronDown size={14} />
       </button>
-      {open && (
+
+      {open && isMobile && createPortal(
+        <div
+          onClick={closeMenu}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 400, display: 'flex', alignItems: 'flex-end',
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderTopLeftRadius: 18, borderTopRightRadius: 18,
+            padding: '0.5rem 0.75rem calc(0.9rem + env(safe-area-inset-bottom, 0px))',
+            boxShadow: '0 -14px 44px rgba(0,0,0,0.45)',
+            animation: 'pageSlideIn 0.22s ease',
+            maxHeight: '80vh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.3rem 0.35rem 0.55rem' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                Export PDF
+              </span>
+              <button onClick={closeMenu} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6, display: 'flex' }}>
+                <X size={17} />
+              </button>
+            </div>
+            <button
+              onClick={() => { onExportFull(); closeMenu(); }}
+              style={sheetItemStyle}
+            >
+              <FileText size={16} style={{ color: C.green, flexShrink: 0 }} /> Export Full PDF
+            </button>
+            <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+            <button
+              onClick={() => { if (hasChapters) setShowChapters((v) => !v); }}
+              title={hasChapters ? 'Export a specific chapter' : 'No chapters available'}
+              style={{
+                ...sheetItemStyle,
+                color: hasChapters ? 'var(--text-primary)' : 'var(--text-muted)',
+                opacity: hasChapters ? 1 : 0.5, cursor: hasChapters ? 'pointer' : 'not-allowed',
+              }}
+            >
+              <BookMarked size={16} style={{ color: C.gold, flexShrink: 0 }} /> Export a specific chapter
+              <ChevronDown size={15} style={{ marginLeft: 'auto', flexShrink: 0, transform: showChapters ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+            {showChapters && hasChapters && (
+              <div style={{ borderTop: '1px solid var(--border)', maxHeight: '40vh', overflowY: 'auto' }}>
+                {chapters.map((c) => (
+                  <button
+                    key={c.recordId}
+                    onClick={() => { onExportChapter(c); closeMenu(); }}
+                    style={{
+                      ...sheetItemStyle, fontWeight: 600, fontSize: '0.9rem',
+                      color: 'var(--text-secondary)', padding: '0.75rem 0.75rem 0.75rem 1.25rem',
+                    }}
+                  >
+                    <BookMarked size={14} style={{ flexShrink: 0 }} /> {c.title}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={closeMenu} style={{
+              ...sheetItemStyle, justifyContent: 'center', marginTop: 6,
+              background: 'var(--bg)', border: '1px solid var(--border)',
+              color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.88rem',
+            }}>
+              Cancel
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {open && !isMobile && (
         <div style={{
           position: 'absolute', top: '100%', right: 0, marginTop: 6, zIndex: 300, minWidth: 210,
           background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
@@ -5573,6 +5688,8 @@ export default function LearningGerman() {
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillMsg, setAutoFillMsg] = useState('');
   const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
+  const [confirmFileAll, setConfirmFileAll] = useState(false);
+  const [fileAllBusy, setFileAllBusy] = useState(false);
   const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
   const [confirmDeleteVerbId, setConfirmDeleteVerbId] = useState(null);
   const [confirmDeleteDialogue, setConfirmDeleteDialogue] = useState(null);
@@ -5640,12 +5757,28 @@ export default function LearningGerman() {
   const levelVerbs = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r)), [germanData, matchesLevel]);
   const levelNotes = useMemo(() => germanData.filter(r => r.type === 'note' && matchesLevel(r)), [germanData, matchesLevel]);
 
-  // The Vocabulary tab lists EVERY word from the backend across all levels and
-  // chapters (no level/chapter scoping), so nothing ever looks "missing".
-  // levelVocab above stays level-scoped for the header/progress stats.
-  const vocab     = useMemo(() => {
-    return germanData.filter(r => isVocabRecord(r));
-  }, [germanData, isVocabRecord]);
+  const chapters = useMemo(() => germanData.filter(r => r.type === 'chapter'), [germanData]);
+  // A word pointing at a chapter that no longer exists counts as unfiled too,
+  // so its words can never become unreachable.
+  const chapterIdSet = useMemo(() => new Set(chapters.map(c => c.recordId)), [chapters]);
+  const isUnfiledVocab = useCallback((v) => !v.chapterId || !chapterIdSet.has(v.chapterId), [chapterIdSet]);
+
+  // The Vocabulary tab is scoped exactly like every other tab: only the active
+  // level's words (press A1.1 → only A1.1 vocabulary), and — once a chapter is
+  // picked — only the words filed under that chapter.
+  // levelVocab above stays level-wide for the header/progress stats.
+  const allVocab   = useMemo(() => germanData.filter(r => isVocabRecord(r)), [germanData, isVocabRecord]);
+  const vocab     = useMemo(
+    () => allVocab.filter(r => matchesLevel(r) && matchesChapter(r)),
+    [allVocab, matchesLevel, matchesChapter]
+  );
+  // Level words that are NOT filed under any chapter. While a chapter is active
+  // they are kept visible in their own collapsible section (instead of silently
+  // vanishing) so they can be classified into the chapter in one click.
+  const unfiledVocab = useMemo(
+    () => (selectedChapterId ? levelVocab.filter(isUnfiledVocab) : []),
+    [levelVocab, selectedChapterId, isUnfiledVocab]
+  );
   // User-defined vocabulary menus (dropdown groups), in creation order.
   const vocabMenus = useMemo(() => {
     const list = germanData.filter(r => r.type === 'vocab-folder');
@@ -5684,13 +5817,14 @@ export default function LearningGerman() {
 
   // Chapter → notes interaction. Double-clicking a chapter (per spec) — or a
   // single click anywhere a chapter is offered — selects it as the active
-  // note-taking chapter and jumps to the Notes tab.
+  // chapter and jumps to the Notes tab. On the Vocabulary tab the click stays
+  // there: it acts as a filter, so only that chapter's words are listed.
   const openChapterNotes = (chapter) => {
     if (!chapter) return;
     setSelectedChapterId(chapter.recordId);
     setSelectedChapterTitle(chapter.title || '');
     setChapterModalLevel(null);
-    setTab('notes');
+    if (tab !== 'vocab') setTab('notes');
   };
 
   // Jump straight to the Exercises tab, pre-scoped to one chapter → every
@@ -5732,12 +5866,28 @@ export default function LearningGerman() {
     const filtered = germanData.filter(r => r.type === 'book' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
   }, [germanData, matchesLevel, matchesChapter]);
-  const chapters = useMemo(() => germanData.filter(r => r.type === 'chapter'), [germanData]);
   const workspaceChapters = useMemo(() => {
     return chapters
       .filter(c => normalizeLevel(c.level) === workspaceLevel)
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }, [chapters, workspaceLevel]);
+
+  // How many vocabulary words are already filed under each chapter — shown on
+  // the chapter chips so it is obvious which chapters hold words.
+  const vocabCountByChapter = useMemo(() => {
+    const counts = new Map();
+    for (const r of germanData) {
+      if (isVocabRecord(r) && r.chapterId) counts.set(r.chapterId, (counts.get(r.chapterId) || 0) + 1);
+    }
+    return counts;
+  }, [germanData, isVocabRecord]);
+
+  // Live chapter titles by id, so a renamed chapter updates every badge.
+  const chapterTitleById = useMemo(() => {
+    const titles = new Map();
+    for (const c of chapters) titles.set(c.recordId, c.title);
+    return titles;
+  }, [chapters]);
 
   // Knowledge-test results (Exercises tab), scoped to the active level so the
   // tab — and the chapter/full PDF report — always show this level's attempts.
@@ -5884,13 +6034,15 @@ export default function LearningGerman() {
   };
 
   const sortedVocab = useMemo(() => {
-    let list = [...vocab];
+    // Chapter-scoped words first, then (while a chapter is active) the level's
+    // unfiled words, so the "No chapter assigned" section can show them too.
+    let list = [...vocab, ...unfiledVocab];
     if (sortVocab === 'word') list.sort((a, b) => (a.word || '').localeCompare(b.word || ''));
     else if (sortVocab === 'category') list.sort((a, b) => (a.category || '').localeCompare(b.category || ''));
     else if (sortVocab === 'date') list.sort((a, b) => ((b.createdAt || '') + (b.updatedAt || '')).localeCompare((a.createdAt || '') + (a.updatedAt || '')));
     else list.sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)));
     return list;
-  }, [vocab, sortVocab]);
+  }, [vocab, unfiledVocab, sortVocab]);
 
   const sortedGrammar = useMemo(() => {
     let list = [...grammar];
@@ -5920,22 +6072,40 @@ export default function LearningGerman() {
   }, [sortedVocab, filteredVocab, debouncedSearch, tab, favoritesOnly]);
 
   // Words bucketed under their menu (dropdown group) — one section per menu,
-  // plus a final "Ungrouped" section. Order inside each section follows the
-  // active sort (sortVocab).
+  // plus a final "Ungrouped" section, and — while a chapter is active — a
+  // leading "No chapter assigned" section for the level's unfiled words.
+  // Order inside each section follows the active sort (sortVocab).
   const vocabSections = useMemo(() => {
     const groups = vocabMenus.map(menu => ({ key: menu.recordId, title: menu.title, menu, words: [] }));
     const byId = new Map(groups.map(g => [g.key, g]));
     const unfiled = { key: '__unfiled__', title: 'Ungrouped', menu: null, words: [] };
+    const noChapter = { key: '__nochapter__', title: 'No chapter assigned', menu: null, words: [], needsChapter: true };
     for (const v of displayedVocab) {
+      // While a chapter is active, words of the level that are not filed under
+      // any chapter are kept apart so they can be moved into it — they never
+      // mix into the chapter's own list.
+      if (selectedChapterId && isUnfiledVocab(v)) { noChapter.words.push(v); continue; }
       const g = v.folderId ? byId.get(v.folderId) : null;
       if (g) g.words.push(v);
       else unfiled.words.push(v);
     }
-    return [...groups, unfiled];
-  }, [displayedVocab, vocabMenus]);
+    const sections = [...groups, unfiled];
+    if (noChapter.words.length > 0) sections.unshift(noChapter);
+    return sections;
+  }, [displayedVocab, vocabMenus, selectedChapterId, isUnfiledVocab]);
 
-  const toggleMenuCollapsed = (key) => {
-    setCollapsedMenus(prev => ({ ...prev, [key]: !prev[key] }));
+  // A section is collapsed when the user toggled it. The "No chapter assigned"
+  // section additionally starts collapsed while a chapter is active, so the list
+  // is a pure view of that chapter until the user opens it — never while
+  // searching, so no match can hide inside the collapsed group.
+  const isSectionCollapsed = (section) => {
+    const state = collapsedMenus[section.key];
+    if (state !== undefined) return state;
+    return section.needsChapter === true && !!selectedChapterId && !debouncedSearch.trim();
+  };
+
+  const toggleMenuCollapsed = (section) => {
+    setCollapsedMenus(prev => ({ ...prev, [section.key]: !isSectionCollapsed(section) }));
   };
 
   const handleCreateMenu = async () => {
@@ -5998,12 +6168,12 @@ export default function LearningGerman() {
 
   const handleAutoClassifyMenus = async () => {
     if (autoClassifying) return;
-    if (!vocab.length) { setAutoClassifyMsg('No words to classify yet — add some vocabulary first.'); return; }
+    if (!allVocab.length) { setAutoClassifyMsg('No words to classify yet — add some vocabulary first.'); return; }
     setAutoClassifying(true);
     setAutoClassifyMsg('');
     try {
       const menuIds = new Set(vocabMenus.map(m => m.recordId));
-      const ungrouped = vocab.filter(v => !v.folderId || !menuIds.has(v.folderId));
+      const ungrouped = allVocab.filter(v => !v.folderId || !menuIds.has(v.folderId));
       if (!ungrouped.length) { setAutoClassifyMsg('All words already belong to a menu.'); return; }
 
       // 1. Pick a menu title per word (AI first, local rules as fallback).
@@ -6277,6 +6447,31 @@ export default function LearningGerman() {
     try { await deleteGermanRecord(confirmDeleteVocabId); setConfirmDeleteVocabId(null); } catch (e) { setError(e.message); }
   };
 
+  // ── Classify words into the active chapter ──
+  // "File here" (one word) and "Move all into this chapter" (the whole
+  // unfiled bucket) so every word ends up under the chapter it belongs to.
+  const fileWordInChapter = async (word, chapterId, chapterTitle) => {
+    const updater = word.type === 'unified-vocab' ? updateUnifiedVocab : updateGermanVocab;
+    await updater(word.recordId, { chapterId, chapterTitle });
+  };
+
+  const handleFileWordClick = async (word) => {
+    if (!selectedChapterId) return;
+    try { await fileWordInChapter(word, selectedChapterId, selectedChapterTitle); } catch (e) { setError(e.message); }
+  };
+
+  const handleFileAllInChapter = async (words) => {
+    if (!selectedChapterId || fileAllBusy) return;
+    setFileAllBusy(true);
+    let failed = 0;
+    for (const w of words) {
+      try { await fileWordInChapter(w, selectedChapterId, selectedChapterTitle); } catch (e) { failed += 1; }
+    }
+    setFileAllBusy(false);
+    setConfirmFileAll(false);
+    if (failed > 0) setError(`${failed} word${failed === 1 ? '' : 's'} could not be filed — try again.`);
+  };
+
   const handleGrammarDeleteClick = (recordId) => {
     setConfirmDeleteGrammarId(recordId);
   };
@@ -6360,7 +6555,7 @@ export default function LearningGerman() {
 
   const handleAutoFillPhotos = async () => {
     if (autoFilling) return;
-    const missing = vocab.filter(v => !v.photoUrl).length;
+    const missing = allVocab.filter(v => !v.photoUrl).length;
     if (missing === 0) {
       setAutoFillMsg('Every vocabulary word already has a photo.');
       setTimeout(() => setAutoFillMsg(''), 4000);
@@ -6687,12 +6882,15 @@ export default function LearningGerman() {
             workspaceChapters.map(c => {
               const active = selectedChapterId === c.recordId;
               const count = notes.filter(n => n.chapterId === c.recordId).length;
+              const wordCount = vocabCountByChapter.get(c.recordId) || 0;
               return (
                 <button
                   key={c.recordId}
                   onClick={() => openChapterNotes(c)}
                   onDoubleClick={() => openChapterNotes(c)}
-                  title={`Take notes under "${c.title}" (double-click)`}
+                  title={tab === 'vocab'
+                    ? `Show only the vocabulary of "${c.title}"`
+                    : `Take notes under "${c.title}" (double-click)`}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
                     padding: '3px 11px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
@@ -6705,7 +6903,12 @@ export default function LearningGerman() {
                   }}>
                   <BookMarked size={11} /> {c.title}
                   {count > 0 && (
-                    <span style={{ fontSize: '0.66rem', fontWeight: 800, background: 'rgba(0,0,0,0.28)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+                    <span title={`${count} note${count === 1 ? '' : 's'}`} style={{ fontSize: '0.66rem', fontWeight: 800, background: 'rgba(0,0,0,0.28)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+                  )}
+                  {wordCount > 0 && (
+                    <span title={`${wordCount} vocabulary word${wordCount === 1 ? '' : 's'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.66rem', fontWeight: 800, background: `${C.gold}30`, color: C.gold, borderRadius: 10, padding: '1px 7px' }}>
+                      <BookOpen size={9} /> {wordCount}
+                    </span>
                   )}
                 </button>
               );
@@ -6769,7 +6972,7 @@ export default function LearningGerman() {
               <SpellCheck size={15} /> Spelling
             </button>
             <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
-            <ExportPdfMenu disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
+            <ExportPdfMenu isMobile={isMobile} disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
             </div>
         ) : (
           <>
@@ -6864,7 +7067,7 @@ export default function LearningGerman() {
             <SpellCheck size={15} /> Spelling
           </button>
           <ImportExport germanData={germanData} onImport={{ addVocab: addGermanVocab, addGrammar: addGermanGrammar, saveNote: saveGermanNote }} workspaceLevel={workspaceLevel} />
-          <ExportPdfMenu disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
+          <ExportPdfMenu isMobile={isMobile} disabled={germanData.length === 0} chapters={workspaceChapters} onExportFull={handleExportPDF} onExportChapter={handleExportChapterPDF} />
         </div>
           </>
         )}
@@ -7250,7 +7453,7 @@ export default function LearningGerman() {
 
       {tab === 'vocab' && (
         <div>
-          <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} onUploadPhoto={handleUploadPhoto} onDeletePhoto={handleDeletePhoto} uploading={photoUploading} defaultLevel={workspaceLevel} />
+          <VocabForm onAdd={handleAddVocab} onUpdate={handleUpdateVocab} editRecord={editVocab} onCancelEdit={() => setEditVocab(null)} saving={vocabSaving} isMobile={isMobile} onUploadPhoto={handleUploadPhoto} onDeletePhoto={handleDeletePhoto} uploading={photoUploading} defaultLevel={workspaceLevel} chapterTitle={selectedChapterTitle} />
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? 140 : 200 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -7291,10 +7494,16 @@ export default function LearningGerman() {
               <Sparkles size={13} /> {autoFillMsg}
             </div>
           )}
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
-            {(debouncedSearch.trim() || favoritesOnly)
-              ? `Showing ${displayedVocab.length} of ${vocab.length} words (filtered)`
-              : `${vocab.length} word${vocab.length === 1 ? '' : 's'} · ${vocabMenus.length} menu${vocabMenus.length === 1 ? '' : 's'} · all levels & chapters`}
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 20, fontWeight: 700, fontSize: '0.72rem', background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}1a`, border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`, color: LEVEL_COLORS[workspaceLevel] || '#6b7280' }}>
+              <GraduationCap size={11} /> {workspaceLevel}
+              {selectedChapterTitle && <><BookMarked size={11} /> {selectedChapterTitle}</>}
+            </span>
+            <span>
+              {(debouncedSearch.trim() || favoritesOnly)
+                ? `Showing ${displayedVocab.length} of ${sortedVocab.length} words (filtered)`
+                : `${sortedVocab.length} word${sortedVocab.length === 1 ? '' : 's'} · ${vocabMenus.length} menu${vocabMenus.length === 1 ? '' : 's'}${unfiledVocab.length > 0 ? ` · ${unfiledVocab.length} not filed under a chapter` : ''}`}
+            </span>
           </div>
           {/* ── Vocabulary menus (dropdown groups) toolbar ── */}
           <div style={{
@@ -7342,7 +7551,7 @@ export default function LearningGerman() {
                 <FolderPlus size={13} /> New menu
               </button>
             )}
-            {vocab.length > 0 && (
+            {allVocab.length > 0 && (
               <button
                 onClick={handleAutoClassifyMenus}
                 disabled={autoClassifying}
@@ -7375,14 +7584,20 @@ export default function LearningGerman() {
                 <tbody>
                   {displayedVocab.length === 0 && (
                     <tr><td colSpan={9} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                      {search ? 'No results found.' : favoritesOnly ? 'No favorited words.' : 'No vocabulary added yet. Click "Add Word" to start!'}
+                      {search
+                        ? 'No results found.'
+                        : favoritesOnly
+                          ? 'No favorited words.'
+                          : selectedChapterId
+                            ? `No vocabulary filed under "${selectedChapterTitle}" yet. Add a word — it is saved to this chapter automatically.`
+                            : `No vocabulary added yet. Click "Add Word" to start!`}
                     </td></tr>
                   )}
                   {displayedVocab.length > 0 && vocabSections.map(section => (
                     <React.Fragment key={section.key}>
                       {/* Menu header row — click to collapse/expand, drop target for words */}
                       <tr
-                        onClick={() => toggleMenuCollapsed(section.key)}
+                        onClick={() => toggleMenuCollapsed(section)}
                         onDragEnter={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverMenuKey(section.key); }}
                         onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverMenuKey !== section.key) setDragOverMenuKey(section.key); }}
                         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverMenuKey(k => (k === section.key ? null : k)); }}
@@ -7402,10 +7617,12 @@ export default function LearningGerman() {
                           boxShadow: dragOverMenuKey === section.key ? `inset 0 0 0 2px ${C.gold}` : 'none',
                         }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                            <ChevronDown size={14} style={{ color: section.menu ? C.gold : 'var(--text-muted)', transform: collapsedMenus[section.key] ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
-                            {section.menu
-                              ? <Folder size={14} style={{ color: C.gold, flexShrink: 0 }} />
-                              : <FolderOpen size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
+                            <ChevronDown size={14} style={{ color: section.needsChapter ? C.purple : section.menu ? C.gold : 'var(--text-muted)', transform: isSectionCollapsed(section) ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+                            {section.needsChapter
+                              ? <BookMarked size={14} style={{ color: C.purple, flexShrink: 0 }} />
+                              : section.menu
+                                ? <Folder size={14} style={{ color: C.gold, flexShrink: 0 }} />
+                                : <FolderOpen size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
                             {editingMenuId === section.key ? (
                               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                                 <input
@@ -7421,15 +7638,30 @@ export default function LearningGerman() {
                                 <button onClick={() => setEditingMenuId(null)} title="Cancel" style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 6, padding: '3px 6px', display: 'inline-flex' }}><X size={13} /></button>
                               </span>
                             ) : (
-                              <strong style={{ fontSize: '0.82rem', fontWeight: 800, color: section.menu ? C.gold : 'var(--text-muted)', letterSpacing: '0.01em' }}>{section.title}</strong>
+                              <strong style={{ fontSize: '0.82rem', fontWeight: 800, color: section.needsChapter ? C.purple : section.menu ? C.gold : 'var(--text-muted)', letterSpacing: '0.01em' }}>{section.title}</strong>
                             )}
-                            <span style={{ fontSize: '0.66rem', fontWeight: 800, background: section.menu ? `${C.gold}25` : 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 7px', color: section.menu ? C.gold : 'var(--text-muted)' }}>
+                            <span style={{ fontSize: '0.66rem', fontWeight: 800, background: section.needsChapter ? `${C.purple}25` : section.menu ? `${C.gold}25` : 'var(--bg-card)', border: `1px solid ${section.needsChapter ? C.purple + '45' : 'var(--border)'}`, borderRadius: 10, padding: '1px 7px', color: section.needsChapter ? C.purple : section.menu ? C.gold : 'var(--text-muted)' }}>
                               {section.words.length}
                             </span>
                             {dragOverMenuKey === section.key && (
                               <span style={{ fontSize: '0.7rem', fontWeight: 800, color: C.gold }}>Release to move here</span>
                             )}
                             <span onClick={e => e.stopPropagation()} style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                              {section.needsChapter && (confirmFileAll ? (
+                                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.72rem', color: C.purple, fontWeight: 700, whiteSpace: 'nowrap', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    File all {section.words.length} under "{selectedChapterTitle}"?
+                                  </span>
+                                  <button onClick={() => handleFileAllInChapter(section.words)} disabled={fileAllBusy} title="Yes, file them into this chapter" style={{ background: '#7c3aed', border: 'none', color: '#fff', cursor: fileAllBusy ? 'wait' : 'pointer', borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
+                                    {fileAllBusy ? <Loader2 size={12} className="spin" /> : <Check size={12} />}
+                                  </button>
+                                  <button onClick={() => setConfirmFileAll(false)} title="Cancel" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 5, padding: '2px 7px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}><X size={12} /></button>
+                                </span>
+                              ) : (
+                                <button onClick={() => setConfirmFileAll(true)} title={`File every word of this section under "${selectedChapterTitle}"`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', background: `${C.purple}18`, border: `1px solid ${C.purple}55`, color: C.purple, whiteSpace: 'nowrap' }}>
+                                  <BookMarked size={12} /> File all into "{selectedChapterTitle}"
+                                </button>
+                              ))}
                               {section.menu && (confirmDeleteMenuId === section.key ? (
                                 <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                                   <span style={{ fontSize: '0.72rem', color: C.red, fontWeight: 700, whiteSpace: 'nowrap' }}>Delete menu? Words stay.</span>
@@ -7446,12 +7678,12 @@ export default function LearningGerman() {
                           </span>
                         </td>
                       </tr>
-                      {!collapsedMenus[section.key] && section.words.length === 0 && (
+                      {!isSectionCollapsed(section) && section.words.length === 0 && (
                         <tr><td colSpan={9} style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.76rem', fontStyle: 'italic', padding: '0.9rem', background: 'var(--bg-card)' }}>
                           {section.menu ? 'No words in this menu yet — drag vocabulary rows here.' : 'No ungrouped words.'}
                         </td></tr>
                       )}
-                      {!collapsedMenus[section.key] && section.words.map(v => (
+                      {!isSectionCollapsed(section) && section.words.map(v => (
                     <tr key={v.recordId} style={{ transition: 'background 0.3s', background: justMovedId === v.recordId ? `${C.gold}40` : undefined }}
                       draggable
                       onDragStart={e => { e.dataTransfer.setData('text/plain', v.recordId); e.dataTransfer.effectAllowed = 'move'; }}
@@ -7509,11 +7741,38 @@ export default function LearningGerman() {
                         </span>
                       </td>
                       <td data-label="Category" style={cellStyle}>
-                        <span style={{ background: `${C.gold}20`, color: C.gold, padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600 }}>{v.category || 'General'}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          <span style={{ background: `${C.gold}20`, color: C.gold, padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600 }}>{v.category || 'General'}</span>
+                          {!selectedChapterId && (
+                            <span
+                              title={!isUnfiledVocab(v) ? `Chapter: ${chapterTitleById.get(v.chapterId) || v.chapterTitle || ''}` : 'Not filed under a chapter'}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px',
+                                borderRadius: '8px', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap',
+                                background: !isUnfiledVocab(v) ? `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}1a` : 'transparent',
+                                color: !isUnfiledVocab(v) ? LEVEL_COLORS[workspaceLevel] || '#6b7280' : 'var(--text-muted)',
+                                border: !isUnfiledVocab(v) ? `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45` : '1px dashed var(--border)',
+                              }}>
+                              <BookMarked size={9} /> {!isUnfiledVocab(v) ? (chapterTitleById.get(v.chapterId) || v.chapterTitle || 'Chapter') : 'No chapter'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td data-label="Mastery" style={{ ...cellStyle, textAlign: 'center' }}>{masteryStars(v.mastery || 0)}</td>
                       <td data-label="Notes" style={{ ...cellStyle, color: 'var(--text-muted)', maxWidth: 120 }}>{v.notes || '—'}</td>
                       <td data-label="" style={{ ...cellStyle, textAlign: 'center' }}>
+                        {selectedChapterId && isUnfiledVocab(v) && (
+                          <button
+                            onClick={() => handleFileWordClick(v)}
+                            title={`File this word under "${selectedChapterTitle}"`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4, margin: '0 4px 6px 0',
+                              padding: '3px 8px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 700,
+                              cursor: 'pointer', background: `${C.purple}18`, border: `1px solid ${C.purple}55`, color: C.purple,
+                            }}>
+                            <BookMarked size={11} /> File here
+                          </button>
+                        )}
                         {vocabMenus.length > 0 && (
                           <>
                             <span title="Drag this row onto a menu header to move it" style={{ display: 'inline-flex', color: 'var(--text-muted)', opacity: 0.55, cursor: 'grab', verticalAlign: 'middle', marginRight: 4 }}>
