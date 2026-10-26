@@ -125,6 +125,16 @@ export default function BookArchive() {
   const [stopping, setStopping] = useState(false);
   const [uploadingPhotoIdx, setUploadingPhotoIdx] = useState(null);
 
+  // Withdraw current book + start a new one
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [showStartNew, setShowStartNew] = useState(false);
+  const [newBookName, setNewBookName] = useState('');
+  const [newAuthor, setNewAuthor] = useState('');
+  const [newPages, setNewPages] = useState('');
+  const [newBookErr, setNewBookErr] = useState('');
+  const [newBookSaving, setNewBookSaving] = useState(false);
+  const [newBookPlannedId, setNewBookPlannedId] = useState(null);
+
   // Start Reading modal state
   const [startTarget, setStartTarget] = useState(null);
   const [startPages, setStartPages] = useState('');
@@ -237,12 +247,66 @@ export default function BookArchive() {
     }
   };
 
-  const handleStopReading = async () => {
+  const handleWithdraw = async () => {
     setStopping(true);
     try {
-      await stopReadingBook();
+      const ok = await stopReadingBook();
+      setShowWithdrawConfirm(false);
+      if (ok) openStartNewModal();
     } finally {
       setStopping(false);
+    }
+  };
+
+  const openStartNewModal = () => {
+    setNewBookName('');
+    setNewAuthor('');
+    setNewPages('');
+    setNewBookErr('');
+    setNewBookPlannedId(null);
+    setShowStartNew(true);
+  };
+
+  const closeStartNewModal = () => {
+    setShowStartNew(false);
+    setNewBookName('');
+    setNewAuthor('');
+    setNewPages('');
+    setNewBookErr('');
+    setNewBookPlannedId(null);
+  };
+
+  const pickPlannedForNew = (book, bookId) => {
+    setNewBookName(book.bookName || '');
+    setNewAuthor(book.author || '');
+    setNewBookPlannedId(bookId);
+    setNewBookErr('');
+  };
+
+  const handleStartNewBook = async () => {
+    if (!newBookName.trim()) {
+      setNewBookErr('Please enter a book name');
+      return;
+    }
+    const pages = parseInt(newPages);
+    if (!pages || pages <= 0) {
+      setNewBookErr('Please enter a valid number of pages');
+      return;
+    }
+    setNewBookSaving(true);
+    setNewBookErr('');
+    try {
+      const picked = newBookPlannedId
+        ? plannedBooks?.find(b => (b.bookId || b._id) === newBookPlannedId)
+        : null;
+      await setCurrentBook(newBookName.trim(), pages, newAuthor.trim() || undefined, picked?.photoUrl || undefined);
+      if (newBookPlannedId) await removePlannedBook(newBookPlannedId);
+      closeStartNewModal();
+      navigate('/dashboard');
+    } catch (e) {
+      setNewBookErr(e.message || 'Failed to start reading');
+    } finally {
+      setNewBookSaving(false);
     }
   };
 
@@ -315,19 +379,17 @@ export default function BookArchive() {
           {currentBook?.isActive ? (
             <>
               <BookProgressCard book={currentBook} bookProgress={getBookProgress()} formatDate={formatDate} onFinishBook={() => {}} />
-              <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button
-                  onClick={handleStopReading}
-                  disabled={stopping}
+                  onClick={() => setShowWithdrawConfirm(true)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.4rem',
                     padding: '0.55rem 1.2rem', borderRadius: '10px', cursor: 'pointer',
                     background: 'transparent', border: '1px solid #dc2626',
                     color: '#dc2626', fontWeight: 600, fontSize: '0.85rem',
-                    opacity: stopping ? 0.6 : 1,
                   }}
                 >
-                  <StopCircle size={16} /> {stopping ? 'Stopping…' : 'Stop Reading'}
+                  <StopCircle size={16} /> Withdraw Book
                 </button>
               </div>
             </>
@@ -335,9 +397,21 @@ export default function BookArchive() {
             <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', marginTop: '0.5rem' }}>
               <BookMarked size={48} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
               <h3 style={{ margin: '0 0 0.5rem 0', opacity: 0.7 }}>No Books In Progress</h3>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+              <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
                 Add a planned book and click "Start Reading" to begin tracking your progress!
               </p>
+              <button
+                onClick={openStartNewModal}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.6rem 1.4rem', borderRadius: '10px', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #059669, #10b981)',
+                  border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                  boxShadow: '0 3px 10px rgba(5,150,105,0.3)',
+                }}
+              >
+                <Plus size={16} /> Start New Book
+              </button>
             </div>
           )}
         </div>
@@ -888,6 +962,200 @@ export default function BookArchive() {
                 }}
               >
                 {startSaving ? 'Starting…' : <><Play size={14} fill="currentColor" /> Start Reading</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Withdraw Confirmation Modal ── */}
+      {showWithdrawConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          padding: '1rem',
+        }} onClick={() => !stopping && setShowWithdrawConfirm(false)}>
+          <div className="glass-card" style={{
+            maxWidth: '400px', width: '100%', padding: '2rem',
+            borderRadius: '18px', textAlign: 'center', position: 'relative',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📤</div>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700 }}>
+              Withdraw this book?
+            </h3>
+            <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              <strong style={{ color: 'var(--accent-blue)' }}>{currentBook?.bookName}</strong> will be moved
+              to your archive as “Stopped reading”, and you can start a new book right after.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowWithdrawConfirm(false)}
+                disabled={stopping}
+                style={{
+                  padding: '0.55rem 1.25rem', borderRadius: '8px', border: '1px solid var(--border)',
+                  background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer',
+                  fontWeight: 600, fontSize: '0.9rem', flex: 1, maxWidth: 120,
+                  opacity: stopping ? 0.6 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWithdraw}
+                disabled={stopping}
+                style={{
+                  padding: '0.55rem 1.25rem', borderRadius: '8px', border: 'none',
+                  background: '#dc2626', color: '#fff', cursor: 'pointer',
+                  fontWeight: 600, fontSize: '0.9rem', flex: 1, maxWidth: 160,
+                  opacity: stopping ? 0.6 : 1,
+                }}
+              >
+                {stopping ? 'Withdrawing…' : 'Withdraw & Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Start New Book Modal ── */}
+      {showStartNew && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          padding: '1rem',
+        }} onClick={() => !newBookSaving && closeStartNewModal()}>
+          <div className="glass-card" style={{
+            maxWidth: '440px', width: '100%', padding: '2rem',
+            borderRadius: '18px', position: 'relative',
+          }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={closeStartNewModal}
+              style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+            ><X size={20} /></button>
+
+            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <BookMarked size={18} /> Start a New Book
+            </h3>
+            <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+              Enter a new book below, or pick one from your planned list.
+            </p>
+
+            {newBookErr && (
+              <div style={{
+                background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem',
+                color: '#ef4444', fontSize: '0.85rem',
+              }}>
+                {newBookErr}
+              </div>
+            )}
+
+            {plannedBooks && plannedBooks.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  From planned books
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.4rem' }}>
+                  {plannedBooks.map((book) => {
+                    const bookId = book.bookId || book._id;
+                    const active = newBookPlannedId === bookId;
+                    return (
+                      <button
+                        key={bookId}
+                        type="button"
+                        onClick={() => pickPlannedForNew(book, bookId)}
+                        style={{
+                          padding: '0.35rem 0.7rem', borderRadius: '8px', cursor: 'pointer',
+                          border: active ? '1px solid #8b5cf6' : '1px solid var(--border)',
+                          background: active ? 'rgba(139,92,246,0.15)' : 'var(--bg)',
+                          color: active ? '#8b5cf6' : 'var(--text-secondary)',
+                          fontWeight: active ? 700 : 500, fontSize: '0.8rem',
+                          maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {book.bookName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <div>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>Book Name *</label>
+                <input
+                  value={newBookName}
+                  onChange={e => { setNewBookName(e.target.value); setNewBookErr(''); }}
+                  placeholder="e.g. Deep Work"
+                  autoFocus
+                  style={{
+                    width: '100%', marginTop: '0.4rem', padding: '0.6rem 0.85rem',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.95rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>Author</label>
+                <input
+                  value={newAuthor}
+                  onChange={e => setNewAuthor(e.target.value)}
+                  placeholder="e.g. Cal Newport (optional)"
+                  style={{
+                    width: '100%', marginTop: '0.4rem', padding: '0.6rem 0.85rem',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.95rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>Number of Pages (total) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 300"
+                  value={newPages}
+                  onChange={e => { setNewPages(e.target.value); setNewBookErr(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && newBookName.trim() && newPages) handleStartNewBook(); }}
+                  style={{
+                    width: '100%', marginTop: '0.4rem', padding: '0.6rem 0.85rem',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.95rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+              <button
+                onClick={closeStartNewModal}
+                disabled={newBookSaving}
+                style={{
+                  padding: '0.55rem 1.2rem', borderRadius: '9px', cursor: 'pointer',
+                  background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.9rem',
+                  opacity: newBookSaving ? 0.6 : 1,
+                }}
+              >
+                Not Now
+              </button>
+              <button
+                onClick={handleStartNewBook}
+                disabled={newBookSaving || !newBookName.trim() || !newPages}
+                style={{
+                  padding: '0.55rem 1.4rem', borderRadius: '9px', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #059669, #10b981)',
+                  border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  opacity: (newBookSaving || !newBookName.trim() || !newPages) ? 0.6 : 1,
+                  boxShadow: '0 3px 10px rgba(5,150,105,0.3)',
+                }}
+              >
+                {newBookSaving ? 'Starting…' : <><Play size={14} fill="currentColor" /> Start Reading</>}
               </button>
             </div>
           </div>

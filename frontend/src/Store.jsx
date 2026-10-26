@@ -1823,11 +1823,20 @@ export const HabitProvider = ({ children }) => {
 
   const stopReadingBook = useCallback(async () => {
     try {
+      // Pages actually read before withdrawing, so archive stats stay meaningful
+      let finalPage = 0;
+      if (currentBook?.startDate) {
+        const allDates = Object.keys(logs).filter(d => d >= currentBook.startDate).sort();
+        allDates.forEach(dateStr => {
+          const page = parseInt(logs[dateStr]?.books?.page) || 0;
+          if (page > finalPage) finalPage = page;
+        });
+      }
       const res = await fetch(`${API_URL}/api/currentbook`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: false, stopped: true, finalPage: 0 }),
+        body: JSON.stringify({ isActive: false, stopped: true, finalPage }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -1839,12 +1848,15 @@ export const HabitProvider = ({ children }) => {
           setArchivedBooks(newArchives);
           db.saveArchives(newArchives);
         }
-        logHistory('book_stop', `Stopped reading "${currentBook?.bookName}"`);
+        logHistory('book_stop', `Withdrew "${currentBook?.bookName}" after ${finalPage} pages`);
+        return true;
       }
+      return false;
     } catch (e) {
       console.error('Error stopping book:', e);
+      return false;
     }
-  }, [API_URL, currentBook]);
+  }, [API_URL, currentBook, logs]);
 
   // ── History ────────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
