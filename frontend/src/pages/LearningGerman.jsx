@@ -2807,6 +2807,71 @@ const EXPRESSION_JSON_BATCH_EXAMPLE = JSON.stringify([
   { phrase: 'Entschuldigung', translation: 'Excuse me / Sorry', category: 'polite', favorite: true },
 ], null, 2);
 
+// ── Grammar JSON import ──────────────────────────────────────────────────────
+const GRAMMAR_JSON_EXAMPLE = JSON.stringify({
+  rule: 'Akkusativ nach Verben wie sehen, haben, kaufen',
+  explanation: 'Many German verbs take their <b>direct object in the accusative</b>. The article <i>der</i> becomes <i>den</i>, and <i>ein</i> becomes <i>einen</i>.',
+  examples: ['Ich sehe den Hund.', 'Er hat einen Bruder.', 'Wir kaufen das Brot.'],
+  category: 'Cases',
+  level: 'A1.1',
+  mastery: 2,
+  boxes: [{ type: 'info', content: 'Accusative = the object receiving the action.' }],
+}, null, 2);
+
+const GRAMMAR_JSON_BATCH_EXAMPLE = JSON.stringify([
+  { rule: 'Nominativ', explanation: 'The <b>subject</b> of a sentence stands in the nominative case.', examples: ['Der Mann liest.'], category: 'Cases', level: 'A1.1' },
+  { rule: 'Perfekt mit haben', explanation: 'Many verbs form the <b>Perfekt</b> with <i>haben</i> as a helping verb.', examples: ['Ich habe gegessen.'], category: 'Tenses', level: 'A1.2', mastery: 4 },
+], null, 2);
+
+// ── Dialogue JSON import ─────────────────────────────────────────────────────
+const DIALOGUE_JSON_EXAMPLE = JSON.stringify({
+  title: 'Im Café',
+  participants: [
+    { name: 'Anna', gender: 'female' },
+    { name: 'Ben', gender: 'male' },
+  ],
+  exchanges: [
+    { speaker: 'Anna', german: 'Guten Tag! Was möchten Sie trinken?', original: 'Good day! What would you like to drink?' },
+    { speaker: 'Ben', german: 'Ich möchte einen Kaffee, bitte.', original: 'I would like a coffee, please.' },
+    { speaker: 'Anna', german: 'Mit Milch und Zucker?', original: 'With milk and sugar?' },
+    { speaker: 'Ben', german: 'Mit Milch, aber ohne Zucker. Danke schön!', original: 'With milk, but without sugar. Thank you!' },
+  ],
+  boxes: [{ type: 'info', content: '"Ich möchte …" is the polite way to order.' }],
+}, null, 2);
+
+const DIALOGUE_JSON_BATCH_EXAMPLE = JSON.stringify([
+  {
+    title: 'Im Café',
+    participants: [{ name: 'Anna', gender: 'female' }, { name: 'Ben', gender: 'male' }],
+    exchanges: [
+      { speaker: 'Anna', german: 'Guten Tag!', original: 'Good day!' },
+      { speaker: 'Ben', german: 'Hallo! Einen Kaffee, bitte.', original: 'Hello! A coffee, please.' },
+    ],
+  },
+  {
+    title: 'Nach der Arbeit',
+    participants: [{ name: 'Clara', gender: 'female' }, { name: 'David', gender: 'male' }],
+    exchanges: [
+      { speaker: 'Clara', german: 'Bist du müde?', original: 'Are you tired?' },
+      { speaker: 'David', german: 'Ja, ein bisschen. Ich war den ganzen Tag im Büro.', original: 'Yes, a little. I was in the office all day.' },
+    ],
+  },
+], null, 2);
+
+// ── Memorization JSON import ─────────────────────────────────────────────────
+const MEMO_JSON_EXAMPLE = JSON.stringify({
+  title: 'Colors & Numbers',
+  germanContent: '<p><b>rot</b> · <b>blau</b> · <b>grün</b> · <b>gelb</b><br/><b>1</b> eins · <b>2</b> zwei · <b>3</b> drei</p>',
+  englishContent: '<p><b>red</b> · <b>blue</b> · <b>green</b> · <b>yellow</b><br/><b>1</b> one · <b>2</b> two · <b>3</b> three</p>',
+  memoFont: 'Georgia, serif',
+  boxes: [{ type: 'quote', content: 'Ein, zwei, drei — sag es laut nach mir!' }],
+}, null, 2);
+
+const MEMO_JSON_BATCH_EXAMPLE = JSON.stringify([
+  { title: 'Colors', germanContent: '<p>rot, blau, grün, gelb</p>', englishContent: '<p>red, blue, green, yellow</p>' },
+  { title: 'Days of the Week', germanContent: '<p>Montag, Dienstag, Mittwoch</p>', englishContent: '<p>Monday, Tuesday, Wednesday</p>', memoFont: 'Arial, sans-serif' },
+], null, 2);
+
 // Canonical category values (as used by the Expressions grouping) + aliases
 // accepted in JSON so imported data always lands in a visible group.
 const EXPRESSION_CATEGORIES = [
@@ -2887,6 +2952,327 @@ function parseExpressionJsonInput(raw) {
   });
 
   return { ok: errors.length === 0, errors, warnings, items };
+}
+
+// ── Shared JSON import (Grammar / Dialogues / Memorization) ──────────────────
+// Parses pasted JSON (a single object or an array of objects) and returns the
+// raw entries, each tagged with an "Item N:" prefix for error messages.
+function parseJsonInput(raw) {
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { return { ok: false, errors: [`JSON syntax error: ${e.message}`], warnings: [], entries: [] }; }
+
+  const list = Array.isArray(parsed) ? parsed : [parsed];
+  if (!list.length) return { ok: false, errors: ['JSON array is empty.'], warnings: [], entries: [] };
+
+  const errors = [], warnings = [], entries = [];
+  const multi = list.length > 1;
+  list.forEach((entry, i) => {
+    const at = multi ? `Item ${i + 1}: ` : '';
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      errors.push(`${at}must be a JSON object { ... }.`);
+      return;
+    }
+    entries.push({ entry, at });
+  });
+  return { ok: errors.length === 0, errors, warnings, entries };
+}
+
+// Normalizes the optional "boxes" array shared by every German record type.
+function normalizeJsonBoxes(entry, warnings, at) {
+  const boxes = [];
+  if (entry.boxes == null) return boxes;
+  if (!Array.isArray(entry.boxes)) { warnings.push(`${at}"boxes" must be an array — ignored.`); return boxes; }
+  entry.boxes.forEach((b, bi) => {
+    if (!b || typeof b !== 'object') { warnings.push(`${at}boxes[${bi}] ignored — must be an object.`); return; }
+    const rawType = String(b.type || '').trim().toLowerCase();
+    const type = ['info', 'warning', 'quote'].includes(rawType) ? rawType : 'info';
+    if (b.type && type !== rawType) warnings.push(`${at}boxes[${bi}] unknown type "${b.type}" — saved as "info".`);
+    const content = typeof b.content === 'string' ? b.content : (typeof b.text === 'string' ? b.text : '');
+    boxes.push({ type, content });
+  });
+  return boxes;
+}
+
+// Validates pasted JSON and returns grammar rules ready to be saved one by one.
+function parseGrammarJsonInput(raw, defaultLevel = 'A1.1') {
+  const base = parseJsonInput(raw);
+  const errors = [...base.errors], warnings = [...base.warnings], items = [];
+
+  base.entries.forEach(({ entry, at }) => {
+    const rule = typeof entry.rule === 'string' ? entry.rule.trim() : '';
+    const explanation = typeof entry.explanation === 'string' ? entry.explanation.trim() : '';
+    if (!rule) errors.push(`${at}"rule" is required (the rule / topic name).`);
+    if (!explanation) errors.push(`${at}"explanation" is required (what the rule says).`);
+
+    let examples = [];
+    if (entry.examples != null) {
+      if (typeof entry.examples === 'string') examples = entry.examples.split('\n').map(s => s.trim()).filter(Boolean);
+      else if (Array.isArray(entry.examples)) examples = entry.examples.map(s => String(s).trim()).filter(Boolean);
+      else warnings.push(`${at}"examples" must be a string or an array of strings — ignored.`);
+    }
+
+    const category = typeof entry.category === 'string' && entry.category.trim() ? entry.category.trim() : 'General';
+
+    let level = defaultLevel;
+    if (entry.level != null && entry.level !== '') {
+      const norm = normalizeLevel(String(entry.level).trim().toUpperCase()) || '';
+      if (ALL_LEVELS.includes(norm)) level = norm;
+      else warnings.push(`${at}unknown level "${entry.level}" — using "${defaultLevel}".`);
+    }
+
+    let mastery = 0;
+    if (entry.mastery != null) {
+      const n = Number(entry.mastery);
+      if (Number.isFinite(n)) mastery = Math.max(0, Math.min(5, Math.round(n)));
+      else warnings.push(`${at}"mastery" should be a number 0-5 — using 0.`);
+    }
+
+    const favorite = entry.favorite === true || entry.favorite === 'true';
+    if (entry.favorite != null && typeof entry.favorite !== 'boolean' && entry.favorite !== 'true' && entry.favorite !== 'false') {
+      warnings.push(`${at}"favorite" should be true or false — using false.`);
+    }
+
+    const boxes = normalizeJsonBoxes(entry, warnings, at);
+
+    if (rule && explanation) items.push({ rule, explanation, examples, category, level, mastery, favorite, boxes });
+  });
+
+  return { ok: errors.length === 0, errors, warnings, items };
+}
+
+// Validates pasted JSON and returns dialogues ready to be saved one by one.
+// Exchanges reference speakers either by "speakerIndex" (number) or by
+// "speaker" / "speakerName" (a participant name, case-insensitive).
+function parseDialogueJsonInput(raw) {
+  const base = parseJsonInput(raw);
+  const errors = [...base.errors], warnings = [...base.warnings], items = [];
+
+  base.entries.forEach(({ entry, at }) => {
+    const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+    if (!title) errors.push(`${at}"title" is required.`);
+
+    const participants = [];
+    if (!Array.isArray(entry.participants) || !entry.participants.length) {
+      errors.push(`${at}"participants" must be a non-empty array (at least 2 people).`);
+    } else {
+      entry.participants.forEach((p, pi) => {
+        if (typeof p === 'string') {
+          const name = p.trim();
+          if (name) participants.push({ name, gender: 'male', photoUrl: '' });
+          else warnings.push(`${at}participants[${pi}] is empty — skipped.`);
+          return;
+        }
+        if (!p || typeof p !== 'object') { warnings.push(`${at}participants[${pi}] ignored — must be a string or an object.`); return; }
+        const name = typeof p.name === 'string' ? p.name.trim() : '';
+        if (!name) { warnings.push(`${at}participants[${pi}] has no "name" — skipped.`); return; }
+        const rawGender = String(p.gender || '').trim().toLowerCase();
+        const gender = ['male', 'female', 'other'].includes(rawGender) ? rawGender : 'male';
+        if (p.gender && gender !== rawGender) warnings.push(`${at}participants[${pi}] unknown gender "${p.gender}" — using "male".`);
+        const photoUrl = typeof p.photoUrl === 'string' && !p.photoUrl.startsWith('blob:') ? p.photoUrl : '';
+        participants.push({ name, gender, photoUrl });
+      });
+      if (participants.length < 2) errors.push(`${at}at least 2 named participants are required (got ${participants.length}).`);
+      const seen = new Set();
+      participants.forEach((p, pi) => {
+        const key = p.name.toLowerCase();
+        if (seen.has(key)) warnings.push(`${at}duplicate participant name "${p.name}" (participants[${pi}]) — speakers may resolve ambiguously.`);
+        seen.add(key);
+      });
+    }
+
+    const exchanges = [];
+    if (!Array.isArray(entry.exchanges) || !entry.exchanges.length) {
+      errors.push(`${at}"exchanges" must be a non-empty array.`);
+    } else {
+      entry.exchanges.forEach((ex, ei) => {
+        if (!ex || typeof ex !== 'object') { warnings.push(`${at}exchanges[${ei}] ignored — must be an object.`); return; }
+        const german = typeof ex.german === 'string' ? ex.german.trim() : '';
+        const original = typeof ex.original === 'string' ? ex.original.trim() : '';
+        if (!german) { errors.push(`${at}exchanges[${ei}]."german" is required.`); return; }
+
+        let speakerIndex = -1;
+        const idx = Number(ex.speakerIndex);
+        if (ex.speakerIndex != null && Number.isInteger(idx)) {
+          speakerIndex = idx;
+          if (speakerIndex < 0 || speakerIndex >= participants.length) {
+            errors.push(`${at}exchanges[${ei}]."speakerIndex" ${speakerIndex} is out of range (0-${Math.max(0, participants.length - 1)}).`);
+            return;
+          }
+        } else {
+          const speakerName = typeof ex.speaker === 'string' ? ex.speaker.trim()
+            : typeof ex.speakerName === 'string' ? ex.speakerName.trim() : '';
+          if (!speakerName) {
+            errors.push(`${at}exchanges[${ei}] needs "speaker" (a participant name) or "speakerIndex".`);
+            return;
+          }
+          speakerIndex = participants.findIndex(p => p.name.toLowerCase() === speakerName.toLowerCase());
+          if (speakerIndex === -1) {
+            errors.push(`${at}exchanges[${ei}] speaker "${speakerName}" does not match any participant name.`);
+            return;
+          }
+        }
+        exchanges.push({ speakerIndex, german, original });
+      });
+    }
+
+    const boxes = normalizeJsonBoxes(entry, warnings, at);
+    if (title && participants.length >= 2 && exchanges.length) items.push({ title, participants, exchanges, boxes });
+  });
+
+  return { ok: errors.length === 0, errors, warnings, items };
+}
+
+// Validates pasted JSON and returns memorization paragraphs ready to be saved.
+function parseMemoJsonInput(raw) {
+  const base = parseJsonInput(raw);
+  const errors = [...base.errors], warnings = [...base.warnings], items = [];
+
+  base.entries.forEach(({ entry, at }) => {
+    const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+    if (!title) errors.push(`${at}"title" is required.`);
+
+    const germanContent = (typeof entry.germanContent === 'string' ? entry.germanContent
+      : typeof entry.content === 'string' ? entry.content : '').trim();
+    if (!germanContent) errors.push(`${at}"germanContent" is required (the German text to memorize).`);
+
+    const englishContent = typeof entry.englishContent === 'string' ? entry.englishContent.trim() : '';
+    const memoFont = typeof entry.memoFont === 'string' ? entry.memoFont.trim() : '';
+    if (entry.memoFont != null && typeof entry.memoFont !== 'string') warnings.push(`${at}"memoFont" must be a string — ignored.`);
+
+    const boxes = normalizeJsonBoxes(entry, warnings, at);
+
+    if (title && germanContent) items.push({ title, germanContent, englishContent, memoFont, boxes });
+  });
+
+  return { ok: errors.length === 0, errors, warnings, items };
+}
+
+function JsonImportButton({ open, onToggle }) {
+  return (
+    <button onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: `1px solid ${C.purple}60`, background: open ? C.purple : `${C.purple}15`, color: open ? '#fff' : C.purple, fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+      <Code size={14} /> {open ? 'Close JSON' : 'Add via JSON'}
+    </button>
+  );
+}
+
+// Inline editor used to paste a JSON object (or array of objects) and save
+// each parsed item through the section's existing add handler.
+function JsonImportPanel({ open, onClose, parse, onAdd, example, batchExample, placeholder, noun, accent = C.purple }) {
+  const [jsonInput, setJsonInput] = useState(example);
+  const [jsonSaving, setJsonSaving] = useState(false);
+  const [jsonError, setJsonError] = useState('');
+
+  const jsonValidation = useMemo(() => (open ? parse(jsonInput) : null), [open, jsonInput, parse]);
+
+  const handleJsonFormat = () => {
+    try { setJsonInput(JSON.stringify(JSON.parse(jsonInput), null, 2)); setJsonError(''); }
+    catch (e) { setJsonError(`Cannot format: ${e.message}`); }
+  };
+
+  const handleJsonSave = async () => {
+    const res = parse(jsonInput);
+    if (!res.ok || !res.items.length) return;
+    setJsonSaving(true);
+    setJsonError('');
+    let failed = 0;
+    for (const item of res.items) {
+      try {
+        await onAdd({ ...item, boxes: (item.boxes || []).map(b => ({ ...b, id: nextBoxId() })) });
+      } catch (_) { failed += 1; }
+    }
+    setJsonSaving(false);
+    if (failed > 0) {
+      setJsonError(`${failed} ${noun}${failed === 1 ? '' : 's'} could not be saved — try again.`);
+    } else {
+      setJsonInput(example);
+      setJsonError('');
+      onClose();
+    }
+  };
+
+  if (!open) return null;
+  const count = jsonValidation?.items?.length || 0;
+
+  return (
+    <div style={{ marginTop: '0.85rem', padding: '1rem', borderRadius: '12px', border: `1px solid ${accent}40`, background: `${accent}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: accent, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Code size={14} /> Paste a JSON object — or an array of objects — to add {noun}{count === 1 && count === 1 ? '' : 's'} in bulk
+        </span>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <button onClick={() => { setJsonInput(example); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${accent}40`, background: 'var(--bg-card)', color: accent, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+            Object example
+          </button>
+          {batchExample && (
+            <button onClick={() => { setJsonInput(batchExample); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${accent}40`, background: 'var(--bg-card)', color: accent, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+              Array example
+            </button>
+          )}
+          <button onClick={handleJsonFormat} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+            Format
+          </button>
+        </div>
+      </div>
+
+      <textarea
+        value={jsonInput}
+        onChange={e => { setJsonInput(e.target.value); setJsonError(''); }}
+        spellCheck={false}
+        rows={10}
+        placeholder={placeholder}
+        style={{
+          width: '100%', boxSizing: 'border-box', padding: '0.75rem',
+          borderRadius: '10px', border: `1px solid ${jsonValidation?.ok ? `${C.green}60` : `${C.red}45`}`,
+          background: 'var(--bg)', color: 'var(--text-primary)', resize: 'vertical',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          fontSize: '0.8rem', lineHeight: 1.5, outline: 'none',
+        }}
+      />
+
+      {jsonValidation?.warnings.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.gold}50`, background: `${C.gold}12`, color: C.gold, fontSize: '0.75rem' }}>
+          {jsonValidation.warnings.map((w, i) => <span key={i}>⚠ {w}</span>)}
+        </div>
+      )}
+
+      {jsonValidation?.ok ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.green}50`, background: `${C.green}12`, color: C.green, fontSize: '0.76rem', fontWeight: 700 }}>
+          <Check size={14} /> Valid JSON — {count} {noun}{count === 1 ? '' : 's'} parsed &amp; ready to add
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.red}50`, background: `${C.red}12`, color: C.red, fontSize: '0.75rem' }}>
+          <span style={{ fontWeight: 700 }}>Fix the following to enable saving:</span>
+          {jsonValidation?.errors.map((err, i) => <span key={i}>• {err}</span>)}
+        </div>
+      )}
+
+      {jsonError && (
+        <div style={{ padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.red}`, background: `${C.red}1f`, color: C.red, fontSize: '0.75rem', fontWeight: 600 }}>
+          {jsonError}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+        <button onClick={() => { onClose(); setJsonError(''); }} disabled={jsonSaving} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: jsonSaving ? 'not-allowed' : 'pointer' }}>
+          Cancel
+        </button>
+        <button
+          onClick={handleJsonSave}
+          disabled={!jsonValidation?.ok || jsonSaving}
+          style={{
+            padding: '0.5rem 1.1rem', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '0.8rem',
+            background: (!jsonValidation?.ok || jsonSaving) ? 'var(--bg)' : `linear-gradient(135deg, ${accent}, #6d28d9)`,
+            color: (!jsonValidation?.ok || jsonSaving) ? 'var(--text-muted)' : '#fff',
+            cursor: (!jsonValidation?.ok || jsonSaving) ? 'not-allowed' : 'pointer',
+            opacity: (!jsonValidation?.ok || jsonSaving) ? 0.6 : 1,
+          }}
+        >
+          {jsonSaving ? 'Saving…' : `Add ${count} ${noun}${count === 1 ? '' : 's'}`}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
@@ -5909,10 +6295,14 @@ export default function LearningGerman() {
   const [autoPhotoBusyId, setAutoPhotoBusyId] = useState(null);
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillMsg, setAutoFillMsg] = useState('');
+  const [confirmAutoFill, setConfirmAutoFill] = useState(false);
   const [confirmDeleteVocabId, setConfirmDeleteVocabId] = useState(null);
   const [confirmCleanUp, setConfirmCleanUp] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [cleanUpMsg, setCleanUpMsg] = useState('');
+  const [confirmVerbCleanUp, setConfirmVerbCleanUp] = useState(false);
+  const [verbCleaningUp, setVerbCleaningUp] = useState(false);
+  const [verbCleanUpMsg, setVerbCleanUpMsg] = useState('');
   const [confirmFileAll, setConfirmFileAll] = useState(false);
   const [fileAllBusy, setFileAllBusy] = useState(false);
   const [confirmDeleteGrammarId, setConfirmDeleteGrammarId] = useState(null);
@@ -6034,6 +6424,26 @@ export default function LearningGerman() {
     return filtered;
   }, [levelGrammar, matchesChapter]);
   const verbs     = useMemo(() => germanData.filter(r => r.type === 'verb' && matchesLevel(r) && matchesChapter(r)), [germanData, matchesLevel, matchesChapter]);
+
+  // ── Clean Up Verbs — repeated verbs inside the current scope ──────────────
+  // Two verbs count as repeats when their trimmed, lower-cased infinitive is
+  // identical. Scope = exactly what the Verbs table shows (active level,
+  // chapter-scoped when one is selected).
+  const verbDuplicateGroups = useMemo(() => {
+    const byKey = new Map();
+    for (const v of verbs) {
+      const key = String(v.infinitive || '').trim().toLowerCase();
+      if (!key) continue;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(v);
+    }
+    return [...byKey.values()].filter(g => g.length > 1);
+  }, [verbs]);
+  const verbDuplicateExtras = useMemo(
+    () => verbDuplicateGroups.reduce((n, g) => n + g.length - 1, 0),
+    [verbDuplicateGroups]
+  );
+
   const dialogues = useMemo(() => {
     const filtered = germanData.filter(r => r.type === 'dialogue' && matchesLevel(r) && matchesChapter(r));
     return [...filtered].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -6721,6 +7131,37 @@ export default function LearningGerman() {
     setTimeout(() => setCleanUpMsg(''), 6000);
   };
 
+  // ── Clean Up Verbs — delete repeated verbs, keep the best copy ────────────
+  // Which copy survives: the most complete one (favorite > past participle >
+  // examples > stem/ending overrides > remaining conjugations > category/boxes),
+  // oldest first on a tie.
+  const verbCopyScore = (v) =>
+    (v.favorite ? 4 : 0) + (v.pastParticiple ? 3 : 0) +
+    (v.examples?.length ? 2 : 0) + (v.stemEndingOverrides ? 2 : 0) +
+    (v.wir ? 1 : 0) + (v.ihr ? 1 : 0) + (v.Sie ? 1 : 0) +
+    (v.category && v.category !== 'General' ? 1 : 0) + (v.boxes?.length || 0);
+
+  const handleVerbCleanUpRun = async () => {
+    if (verbCleaningUp) return;
+    const toDelete = [];
+    for (const group of verbDuplicateGroups) {
+      const ranked = [...group].sort((a, b) =>
+        (verbCopyScore(b) - verbCopyScore(a)) ||
+        String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+      );
+      toDelete.push(...ranked.slice(1));
+    }
+    if (!toDelete.length) { setConfirmVerbCleanUp(false); return; }
+    setVerbCleaningUp(true);
+    for (const v of toDelete) {
+      try { await deleteGermanRecord(v.recordId); } catch (_) { /* store already reverts */ }
+    }
+    setVerbCleaningUp(false);
+    setConfirmVerbCleanUp(false);
+    setVerbCleanUpMsg(`Removed ${toDelete.length} repeated verb${toDelete.length === 1 ? '' : 's'} — one copy of each is kept.`);
+    setTimeout(() => setVerbCleanUpMsg(''), 6000);
+  };
+
   // ── Classify words into the active chapter ──
   // "File here" (one word) and "Move all into this chapter" (the whole
   // unfiled bucket) so every word ends up under the chapter it belongs to.
@@ -6827,7 +7268,7 @@ export default function LearningGerman() {
     }
   };
 
-  const handleAutoFillPhotos = async () => {
+  const openAutoFillConfirm = () => {
     if (autoFilling) return;
     const missing = allVocab.filter(v => !v.photoUrl).length;
     if (missing === 0) {
@@ -6835,7 +7276,18 @@ export default function LearningGerman() {
       setTimeout(() => setAutoFillMsg(''), 4000);
       return;
     }
-    if (!confirm(`Generate AI descriptive photos for ${missing} word${missing === 1 ? '' : 's'} missing a photo? This may take a while (each image is AI-generated).`)) return;
+    setConfirmAutoFill(true);
+  };
+
+  const handleAutoFillPhotos = async () => {
+    if (autoFilling) return;
+    const missing = allVocab.filter(v => !v.photoUrl).length;
+    setConfirmAutoFill(false);
+    if (missing === 0) {
+      setAutoFillMsg('Every vocabulary word already has a photo.');
+      setTimeout(() => setAutoFillMsg(''), 4000);
+      return;
+    }
     setAutoFilling(true);
     setAutoFillMsg(`Generating 0 of ${missing} photos…`);
     try {
@@ -7750,7 +8202,7 @@ export default function LearningGerman() {
             }}>
               <Star size={13} fill={favoritesOnly ? C.gold : 'none'} /> {favoritesOnly ? 'Favorites' : '★ Favorites'}
             </button>
-            <button onClick={handleAutoFillPhotos} disabled={autoFilling} title="Generate AI descriptive photos for every word missing one (stored in the database)" style={{
+            <button onClick={openAutoFillConfirm} disabled={autoFilling} title="Generate AI descriptive photos for every word missing one (stored in the database)" style={{
               display: 'flex', alignItems: 'center', gap: 4,
               padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: autoFilling ? 'wait' : 'pointer',
               background: `linear-gradient(135deg, ${C.purple}22, ${C.blue}22)`,
@@ -7789,6 +8241,44 @@ export default function LearningGerman() {
           {autoFillMsg && (
             <div style={{ fontSize: '0.78rem', color: C.purple, fontWeight: 600, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={13} /> {autoFillMsg}
+            </div>
+          )}
+          {confirmAutoFill && (
+            <div style={{
+              display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap',
+              padding: '0.8rem 1rem', marginBottom: '0.85rem',
+              background: `linear-gradient(135deg, ${C.purple}14, ${C.blue}10)`,
+              border: `1px solid ${C.purple}55`, borderRadius: 12,
+            }}>
+              <Sparkles size={16} style={{ color: C.purple, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35 }}>
+                  Generate AI descriptive photos for {allVocab.filter(v => !v.photoUrl).length} word{allVocab.filter(v => !v.photoUrl).length === 1 ? '' : 's'} missing a photo?
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  This may take a while (each image is AI-generated).
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                <button onClick={() => setConfirmAutoFill(false)} style={{
+                  padding: '0.45rem 0.9rem', borderRadius: 8, cursor: 'pointer',
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.75rem',
+                }}>
+                  Cancel
+                </button>
+                <button onClick={handleAutoFillPhotos} disabled={autoFilling} style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '0.45rem 0.9rem', borderRadius: 8, cursor: autoFilling ? 'wait' : 'pointer',
+                  background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+                  border: 'none', color: '#fff',
+                  fontWeight: 700, fontSize: '0.75rem',
+                  opacity: autoFilling ? 0.6 : 1,
+                }}>
+                  {autoFilling ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
+                  {autoFilling ? 'Generating…' : 'Generate'}
+                </button>
+              </div>
             </div>
           )}
           {cleanUpMsg && (
@@ -8264,7 +8754,35 @@ export default function LearningGerman() {
             }}>
               <Star size={13} fill={favoritesOnly ? C.gold : 'none'} /> {favoritesOnly ? 'Favorites' : '★ Favorites'}
             </button>
+            <button
+              onClick={() => setConfirmVerbCleanUp(true)}
+              title={verbDuplicateExtras > 0
+                ? `Delete ${verbDuplicateExtras} repeated verb cop${verbDuplicateExtras === 1 ? 'y' : 'ies'} in ${workspaceLevel}${selectedChapterTitle ? ` · ${selectedChapterTitle}` : ''} and keep one copy of each`
+                : 'No repeated verbs found in the current view'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '0.5rem 0.85rem', borderRadius: '8px', cursor: 'pointer',
+                background: verbDuplicateExtras > 0 ? `${C.red}15` : 'var(--bg-card)',
+                border: `1px solid ${verbDuplicateExtras > 0 ? `${C.red}60` : 'var(--border)'}`,
+                color: verbDuplicateExtras > 0 ? C.red : 'var(--text-muted)',
+                fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap',
+                opacity: verbCleaningUp ? 0.6 : 1,
+              }}
+            >
+              {verbCleaningUp ? <Loader2 size={13} className="spin" /> : <Eraser size={13} />}
+              Clean Up
+              {verbDuplicateExtras > 0 && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, background: `${C.red}25`, borderRadius: 10, padding: '1px 7px' }}>
+                  {verbDuplicateExtras}
+                </span>
+              )}
+            </button>
           </div>
+          {verbCleanUpMsg && (
+            <div style={{ fontSize: '0.78rem', color: C.green, fontWeight: 600, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Check size={13} /> {verbCleanUpMsg}
+            </div>
+          )}
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="responsive-table" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -8998,6 +9516,94 @@ export default function LearningGerman() {
                 {cleaningUp
                   ? 'Deleting…'
                   : `Delete ${vocabDuplicateExtras} repeated cop${vocabDuplicateExtras === 1 ? 'y' : 'ies'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Clean Up — confirm deleting repeated verbs ── */}
+      {confirmVerbCleanUp && (
+        <div
+          onClick={() => { if (!verbCleaningUp) setConfirmVerbCleanUp(false); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.62)', backdropFilter: 'blur(8px)', padding: '1rem' }}
+        >
+          <div onClick={e => e.stopPropagation()} className="glass-card" style={{
+            width: '100%', maxWidth: 540, maxHeight: '82vh', display: 'flex', flexDirection: 'column',
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
+            overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.9rem 1.1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                <Eraser size={17} style={{ color: C.red, flexShrink: 0 }} />
+                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Clean Up Verbs</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 9px', borderRadius: 20, whiteSpace: 'nowrap', background: `${LEVEL_COLORS[workspaceLevel] || '#6b7280'}1a`, border: `1px solid ${LEVEL_COLORS[workspaceLevel] || '#6b7280'}45`, color: LEVEL_COLORS[workspaceLevel] || '#6b7280' }}>
+                  {workspaceLevel}{selectedChapterTitle ? ` · ${selectedChapterTitle}` : ' · all chapters'}
+                </span>
+              </div>
+              <button onClick={() => { if (!verbCleaningUp) setConfirmVerbCleanUp(false); }} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6, display: 'flex', flexShrink: 0 }}>
+                <X size={17} />
+              </button>
+            </div>
+
+            <div className="evolvio-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {verbDuplicateExtras > 0 ? (
+                <>
+                  <div style={{ fontSize: '0.82rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
+                    <strong>{verbDuplicateGroups.length}</strong> repeated verb{verbDuplicateGroups.length === 1 ? '' : 's'} found —
+                    {' '}<strong style={{ color: C.red }}>{verbDuplicateExtras}</strong> extra cop{verbDuplicateExtras === 1 ? 'y' : 'ies'} will be deleted.
+                    The most complete copy of each verb is kept (favorite, past participle, examples, conjugations).
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {verbDuplicateGroups.map((g, i) => (
+                      <div key={`${g[0].recordId}-${i}`} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
+                        padding: '0.55rem 0.7rem', borderRadius: 10,
+                        background: `${C.red}0a`, border: `1px solid ${C.red}25`,
+                      }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: C.purple }}>{g[0].infinitive}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{g[0].meaning}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: 10, background: `${C.red}22`, color: C.red }}>
+                          ×{g.length} → keeps 1
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Check size={28} style={{ color: C.green }} />
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                    No repeated verbs found in {workspaceLevel}{selectedChapterTitle ? ` · ${selectedChapterTitle}` : ''} — your verbs are clean.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', padding: '0.85rem 1.1rem', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <button
+                onClick={() => setConfirmVerbCleanUp(false)}
+                disabled={verbCleaningUp}
+                style={{ padding: '0.55rem 1.1rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.82rem', cursor: verbCleaningUp ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVerbCleanUpRun}
+                disabled={verbCleaningUp || verbDuplicateExtras === 0}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0.55rem 1.2rem', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: '0.82rem',
+                  background: (verbCleaningUp || verbDuplicateExtras === 0) ? 'var(--bg)' : `linear-gradient(135deg, ${C.red}, #b91c1c)`,
+                  color: (verbCleaningUp || verbDuplicateExtras === 0) ? 'var(--text-muted)' : '#fff',
+                  cursor: (verbCleaningUp || verbDuplicateExtras === 0) ? 'not-allowed' : 'pointer',
+                  opacity: (verbCleaningUp || verbDuplicateExtras === 0) ? 0.6 : 1,
+                }}
+              >
+                {verbCleaningUp ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                {verbCleaningUp
+                  ? 'Deleting…'
+                  : `Delete ${verbDuplicateExtras} repeated cop${verbDuplicateExtras === 1 ? 'y' : 'ies'}`}
               </button>
             </div>
           </div>

@@ -2,16 +2,24 @@
  * GermanExercises.jsx — Knowledge Test tab of the German Learning section.
  * ─────────────────────────────────────────────────────────────────────────────
  * The user picks a chapter (or "All chapters" → the whole database is looped),
- * picks an exercise type and a length, then solves the generated test:
- *   • Articles        → der / die / das ?
- *   • Picture Round   → see the vocabulary photo, then write the Artikel, the
- *                       word, its feminine form and the plural
- *   • Conjugation     → pick the most suitable verb of the chapter, then write
- *                       its Präsens form for the shown pronoun
- *   • Gender          → feminine form of a masculine noun
- *   • Plural          → type the plural of the word
- *   • Possessive      → fill in mein / dein / sein … with the right ending
- *   • Numbers         → German numbers 0–999
+ * picks an exercise type and a length, then solves the generated test.
+ * Every part of the course is covered (see EXERCISE_TYPES in
+ * utils/germanExercises.js for the full list with hints):
+ *   • Mixed          → a slice of every available type
+ *   • Articles       → der / die / das ?
+ *   • Picture Round  → see the vocabulary photo, then write Artikel, word,
+ *                      feminine form and plural
+ *   • Translations   → vocabulary DE ⇄ EN, written and multiple choice
+ *   • Example gaps   → fill the gap inside the word's own example sentence
+ *   • Cases          → Akkusativ / Dativ / Genitiv articles & case pronouns
+ *   • Comparison     → Komparativ & Superlativ of the adjectives
+ *   • Conjugation    → pick the verb of the chapter & write its Präsens form
+ *   • Verb Tables    → Präsens form + Partizip II for verb & pronoun
+ *   • Grammar        → match rules ↔ examples, fill their gaps
+ *   • Expressions    → the Redemittel of the level ⇄ translation
+ *   • Idioms / Mistakes / Dialogues / Alphabet & Umlaute → the rest of the
+ *                      course content, plus Gender, Plural, Possessive and
+ *                      Numbers (0–999)
  * Every finished test is saved as an `exercise` record, which makes it show up
  * in the chapter's (or the full) PDF report.
  */
@@ -20,6 +28,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Target, Check, X, RotateCcw, Play, Trash2, Trophy, AlertTriangle,
   ChevronRight, PenLine, Hash, Loader2, Layers, BookOpen, Sparkles, Image, PenTool,
+  Languages, PencilLine, Pilcrow, Scale, Repeat, BookMarked, Quote, Lightbulb,
+  SpellCheck, MessageSquareQuote, BookA,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -31,20 +41,36 @@ import { germanImageUrl } from '../utils/germanImageUrl';
 const C = {
   gold: '#eab308', red: '#dc2626', blue: '#3b82f6', green: '#10b981',
   purple: '#8b5cf6', pink: '#ec4899', teal: '#14b8a6', orange: '#f97316', cyan: '#06b6d4', lime: '#84cc16',
+  sky: '#0ea5e9', emerald: '#059669', indigo: '#6366f1', violet: '#7c3aed', rose: '#f43f5e',
+  fuchsia: '#d946ef', amber: '#f59e0b', navy: '#1e40af', stone: '#78716c',
 };
 
 const TYPE_META = {
-  mixed:      { color: C.gold,   icon: Layers },
-  article:    { color: C.blue,   icon: BookOpen },
-  picture:    { color: C.cyan,   icon: Image },
-  gender:     { color: C.pink,   icon: Target },
-  plural:     { color: C.teal,   icon: PenLine },
-  conjugation: { color: C.lime,  icon: PenTool },
-  possessive: { color: C.purple, icon: Sparkles },
-  numbers:    { color: C.orange, icon: Hash },
+  mixed:       { color: C.gold,    icon: Layers },
+  article:     { color: C.blue,    icon: BookOpen },
+  picture:     { color: C.cyan,    icon: Image },
+  gender:      { color: C.pink,    icon: Target },
+  plural:      { color: C.teal,    icon: PenLine },
+  translation: { color: C.sky,     icon: Languages },
+  example:     { color: C.emerald, icon: PencilLine },
+  cases:       { color: C.indigo,  icon: Pilcrow },
+  comparison:  { color: C.violet,  icon: Scale },
+  possessive:  { color: C.purple,  icon: Sparkles },
+  conjugation: { color: C.lime,    icon: PenTool },
+  verbForm:    { color: C.rose,    icon: Repeat },
+  grammar:     { color: C.fuchsia, icon: BookMarked },
+  expression:  { color: C.green,   icon: Quote },
+  idiom:       { color: C.amber,   icon: Lightbulb },
+  mistake:     { color: C.red,     icon: SpellCheck },
+  dialogue:    { color: C.navy,    icon: MessageSquareQuote },
+  alphabet:    { color: C.stone,   icon: BookA },
+  numbers:     { color: C.orange,  icon: Hash },
 };
 
 const COUNT_OPTIONS = [5, 10, 15, 20];
+
+/** Every selectable type that can feed a mixed test ("mixed" itself excluded). */
+const MIXED_TYPE_KEYS = EXERCISE_TYPES.map((t) => t.value).filter((v) => v !== 'mixed');
 
 const cardStyle = {
   background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -122,10 +148,14 @@ export default function GermanExercises({
     return [...list].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
   }, [results, effectiveChapterId]);
 
+  // Every type of EXERCISE_TYPES (except "mixed" itself) can feed a mixed
+  // test — so the badge / start-button guard must sum them ALL up.
   const availableForType = type === 'mixed'
     ? Math.min(
-        available.article + available.gender + available.plural + available.possessive
-          + (includeNumbers ? available.numbers : 0),
+        MIXED_TYPE_KEYS.reduce(
+          (sum, key) => sum + (key === 'numbers' && !includeNumbers ? 0 : (available[key] || 0)),
+          0,
+        ),
         60,
       )
     : (available[type] || 0);
@@ -292,7 +322,7 @@ export default function GermanExercises({
           <div>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Knowledge Test — Übungen</h3>
             <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-              Test yourself on the vocabulary of your course. Every finished test is added to your PDF report.
+              Test yourself on your whole course — vocabulary, grammar, verbs, expressions, idioms, mistakes, dialogues &amp; more. Every finished test is added to your PDF report.
             </p>
           </div>
         </div>
@@ -395,7 +425,7 @@ export default function GermanExercises({
         </button>
         {availableForType === 0 && (
           <p style={{ margin: '0.6rem 0 0', fontSize: '0.72rem', color: C.red, textAlign: 'center' }}>
-            Not enough words in this scope for this exercise type. Pick another type or another chapter.
+            Not enough course content in this scope for this exercise type. Pick another type or another chapter.
           </p>
         )}
       </div>
@@ -601,6 +631,13 @@ export default function GermanExercises({
                 : (
                   <span>Leider falsch — the correct answer is <span style={{ color: 'var(--text-primary)' }}>{feedback.correct}</span></span>
                 )}
+              {/* meaning / explanation carried by the question (grammar rule,
+                  idiom meaning, why-the-mistake, EN translation, …) */}
+              {!feedback.parts && current.translation && String(current.translation) !== String(feedback.correct) && (
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: 3 }}>
+                  {current.translation}
+                </div>
+              )}
             </div>
             <button
               onClick={nextQuestion}

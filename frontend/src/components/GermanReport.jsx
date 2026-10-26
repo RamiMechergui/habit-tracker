@@ -44,7 +44,7 @@ import { withCircularAvatars } from "../utils/circularAvatar";
 import { EDITOR_IMAGE_BASE } from "../config";
 import { hasArabic, reshapeArabic } from "../utils/arabicHandler";
 import { splitVerbConjugation } from "../utils/germanVerbHelper";
-import { generateExercises, exerciseTypeLabel } from "../utils/germanExercises";
+import { generateExercises, exerciseTypeLabel, exerciseSourceRecords } from "../utils/germanExercises";
 import { downloadPdfDocument } from "../utils/mobilePdfDownloader";
 
 /* ═══════════════════════════════ PDF BUILDER ═══════════════════════════════ */
@@ -502,13 +502,23 @@ function storyBlocks(rows) {
 }
 
 // ── Knowledge-test exercises (Übungen) ──────────────────────────────────────
-// A worksheet auto-generated from the chapter's own vocabulary (or from the
-// whole database when no chapter is selected) plus the saved test results.
-const EXERCISE_COLORS = { article: "#1f4e79", gender: "#b0307a", plural: "#0f7d6a", possessive: "#6d28d9", numbers: "#b33700" };
+// A worksheet auto-generated from the chapter's own course content (vocabulary,
+// grammar, verbs, dialogues, expressions, idioms, mistakes — or from the whole
+// database when no chapter is selected) plus the saved test results.
+const EXERCISE_COLORS = {
+  mixed: "#9a7b00", article: "#1f4e79", picture: "#0e7490", gender: "#b0307a", plural: "#0f7d6a",
+  translation: "#0369a1", example: "#047857", cases: "#3730a3", comparison: "#5b21b6",
+  possessive: "#6d28d9", conjugation: "#a16207", verbForm: "#be123c", grammar: "#a21caf",
+  expression: "#15803d", idiom: "#b45309", mistake: "#b91c1c", dialogue: "#1e3a8a",
+  alphabet: "#57534e", numbers: "#b33700",
+};
 
 function exerciseWorksheetBlocks(questions) {
   if (!Array.isArray(questions) || !questions.length) return [];
   const body = [];
+  const answerText = q => (Array.isArray(q.parts) && q.parts.length
+    ? q.parts.map(p => `${p.label}: ${p.answer}`).join("  ·  ")
+    : String(q.answer ?? ""));
   questions.forEach((q, i) => {
     body.push({
       text: [
@@ -518,14 +528,23 @@ function exerciseWorksheetBlocks(questions) {
       ],
       margin: [0, 2.5, 0, 0],
     });
-    if (Array.isArray(q.options) && q.options.length) {
+    if (Array.isArray(q.parts) && q.parts.length) {
+      // Multi-part questions (picture round, conjugation): one line per step.
+      q.parts.forEach(p => {
+        if (Array.isArray(p.options) && p.options.length) {
+          body.push({ text: `   ${p.label}: ${p.options.map((o, j) => `${String.fromCharCode(97 + j)}) ${o}`).join("      ")}`, fontSize: 8, color: C.muted, margin: [16, 1, 0, 0] });
+        } else {
+          body.push({ text: `   ${p.label}: ______________________________________________`, fontSize: 8.5, color: C.line, margin: [16, 2, 0, 0] });
+        }
+      });
+    } else if (Array.isArray(q.options) && q.options.length) {
       body.push({ text: q.options.map((o, j) => ` ${String.fromCharCode(97 + j)}) ${o}`).join("      "), fontSize: 8, color: C.muted, margin: [16, 1, 0, 0] });
     } else {
       body.push({ text: "____________________________________", fontSize: 8.5, color: C.line, margin: [16, 3, 0, 0] });
     }
   });
   body.push({ text: "Answer key (Lösungsschlüssel)", bold: true, fontSize: 7.5, color: C.muted, margin: [0, 8, 0, 1] });
-  body.push({ text: questions.map((q, i) => `${i + 1}) ${q.answer}`).join("   ·   "), fontSize: 7.5, color: C.muted });
+  body.push({ text: questions.map((q, i) => `${i + 1}) ${answerText(q)}`).join("   ·   "), fontSize: 7.5, color: C.muted });
   return body;
 }
 
@@ -578,18 +597,27 @@ function exerciseResultBlocks(rows) {
 }
 
 /**
- * Practice worksheet generated from an (already scoped) set of records.
+ * Practice worksheet generated from an (already scoped) set of records — pass
+ * the whole course content of the scope (vocab + grammar + verbs + dialogues +
+ * expressions + idioms + mistakes), not just the vocabulary, so the worksheet
+ * really covers the course.
  * `includeNumbers` stays false for chapter worksheets, so every question on a
- * chapter's page is built from that chapter's own vocabulary only.
+ * chapter's page comes from that chapter's own content only, and `chapterId`
+ * keeps the course-wide alphabet out of chapter pages.
  */
-function exerciseSectionBlocks(records, seedKey, count = 10, includeNumbers = true) {
-  const generated = generateExercises({ records, type: "mixed", count, seed: seedKey, includeNumbers });
+function exerciseSectionBlocks(records, seedKey, count = 10, includeNumbers = true, chapterId = null) {
+  const source = exerciseSourceRecords(records);
+  const generated = generateExercises({ records: source, chapterId, type: "mixed", count, seed: seedKey, includeNumbers });
   if (!generated.questions.length) return [];
+  const others = source.length - source.filter(r => r.type === "vocab" || r.type === "unified-vocab").length;
   const focus = includeNumbers
-    ? "articles, feminine forms, plurals, possessive articles & numbers."
-    : "articles, feminine forms, plurals & possessive articles — every question comes from this chapter's vocabulary.";
+    ? "every part of the course: vocabulary, translations, grammar, verbs, expressions, idioms, mistakes, dialogues, the alphabet & numbers."
+    : "this chapter's own vocabulary, grammar, verbs, expressions, idioms, mistakes & dialogues — no number exercises.";
   return [
-    { text: `Auto-generated from ${generated.scopedWords} word${generated.scopedWords === 1 ? "" : "s"} — ${focus}`, fontSize: 7.5, color: C.muted, margin: [0, 0, 0, 5] },
+    {
+      text: `Auto-generated from ${generated.scopedWords} word${generated.scopedWords === 1 ? "" : "s"}${others ? ` + ${others} course records` : ""} — ${focus}`,
+      fontSize: 7.5, color: C.muted, margin: [0, 0, 0, 5],
+    },
     ...exerciseWorksheetBlocks(generated.questions),
   ];
 }
@@ -613,10 +641,12 @@ function chapterBlock(ch, buckets) {
   if (rel.note.length && rel.note[0].date) stack.push({ text: fmtDate(rel.note[0].date), fontSize: 8, color: C.muted, margin: [0, 0, 0, 6] });
   if (has("note")) stack.push(sectionLabel("Daily Notes"), ...noteBlocks(rel.note));
   if (has("vocab")) stack.push(sectionLabel("Vocabulary"), ...vocabMenuBlocks(rel.vocab, buckets.vocabMenus || []));
-  // Chapter's own practice exercises (generated from ITS vocabulary) + the
-  // test results the user solved for this chapter.
-  if (has("vocab")) {
-    const sheet = exerciseSectionBlocks(rel.vocab, `chapter-${key}-v2`, 10, false);
+  // Chapter's own practice exercises (generated from ALL of its course
+  // content: vocabulary, grammar, verbs, dialogues, expressions, idioms,
+  // mistakes) + the test results the user solved for this chapter.
+  const chapterContent = [rel.vocab, rel.grammar, rel.verb, rel.dialogue, rel.expression, rel.idiom, rel.mistake].flat();
+  if (chapterContent.length) {
+    const sheet = exerciseSectionBlocks(chapterContent, `chapter-${key}-v2`, 10, false, key);
     if (sheet.length) {
       stack.push(sectionLabel("Practice Exercises (Übungen)"));
       stack.push(...sheet);
@@ -722,7 +752,8 @@ export function buildChapterPdfDefinition(data, opts = {}) {
     if (expressionRows.length) { content.push(sectionLabel("Expressions")); content.push(...expressionList(expressionRows)); }
     if (idiomRows.length) { content.push(sectionLabel("Idioms")); content.push(...idiomBlocks(idiomRows)); }
     if (mistakeRows.length) { content.push(sectionLabel("Common Mistakes")); content.push(mistakeTable(mistakeRows)); }
-    const fallbackSheet = vocabRows.length ? exerciseSectionBlocks(vocabRows, "chapter-fallback-v2", 10, false) : [];
+    const fallbackContent = [vocabRows, grammarRows, verbRows, dialogueRows, expressionRows, idiomRows, mistakeRows].flat();
+    const fallbackSheet = fallbackContent.length ? exerciseSectionBlocks(fallbackContent, "chapter-fallback-v2", 10, false) : [];
     if (fallbackSheet.length) { content.push(sectionLabel("Practice Exercises (Übungen)")); content.push(...fallbackSheet); }
     const fallbackExercises = byType("exercise");
     if (fallbackExercises.length) { content.push(sectionLabel("Exercise Results")); content.push(...exerciseResultBlocks(fallbackExercises)); }
@@ -818,15 +849,15 @@ export function buildPdfDefinition(data, opts = {}) {
     content.push(...storyBlocks(storyRows));
   }
 
-  // Global knowledge test — loops the ENTIRE vocabulary database (every
-  // chapter plus the unchaptered words) so the full report always carries a
-  // complete practice test, whatever chapter structure the user has.
-  const allVocabRows = byType("vocab");
-  if (allVocabRows.length >= 5) {
-    const fullTest = exerciseSectionBlocks(allVocabRows, "full-report-v1", 15);
+  // Global knowledge test — loops the ENTIRE database (every chapter plus the
+  // unchaptered content) so the full report always carries a complete practice
+  // test covering the whole course, whatever chapter structure the user has.
+  const allContent = exerciseSourceRecords(data);
+  if (allContent.length >= 5) {
+    const fullTest = exerciseSectionBlocks(allContent, "full-report-v1", 15);
     if (fullTest.length) {
       content.push({ text: "Complete Knowledge Test", style: "h2", pageBreak: "before" });
-      content.push({ text: "A mixed practice test generated from your whole vocabulary database — articles (der / die / das), feminine forms, plurals, possessive articles and numbers.", color: C.muted, fontSize: 8.5, margin: [0, 2, 0, 8] });
+      content.push({ text: "A mixed practice test generated from your whole course — vocabulary & translations, articles (der / die / das), feminine forms, plurals, possessive articles, cases, comparative forms, verb tables, grammar rules, expressions, idioms, common mistakes, dialogues, the alphabet and numbers.", color: C.muted, fontSize: 8.5, margin: [0, 2, 0, 8] });
       content.push(...fullTest);
     }
   }
@@ -1276,21 +1307,30 @@ function VocabTables({ vocab, menus }) {
   );
 }
 // Practice worksheet preview — the same deterministic generator the PDF uses.
-function ExerciseWorksheetPreview({ vocab, seedKey, count = 8, includeNumbers = true }) {
+// `records` = the whole course content of the scope (vocab + grammar + verbs +
+// dialogues + expressions + idioms + mistakes); it is filtered down internally.
+function ExerciseWorksheetPreview({ records, seedKey, count = 8, includeNumbers = true, chapterId = null }) {
+  const source = useMemo(() => exerciseSourceRecords(records), [records]);
   const questions = useMemo(
-    () => generateExercises({ records: vocab, type: "mixed", count, seed: seedKey, includeNumbers }).questions,
-    [vocab, seedKey, count, includeNumbers]
+    () => generateExercises({ records: source, chapterId, type: "mixed", count, seed: seedKey, includeNumbers }).questions,
+    [source, chapterId, seedKey, count, includeNumbers]
   );
   if (!questions.length) return null;
+  const answerText = q => (Array.isArray(q.parts) && q.parts.length
+    ? q.parts.map(p => `${p.label}: ${p.answer}`).join(" · ")
+    : String(q.answer ?? ""));
+  const blanksText = q => (Array.isArray(q.parts) && q.parts.length
+    ? q.parts.map(p => `${p.label}: ${Array.isArray(p.options) && p.options.length ? p.options.map(o => `(${o})`).join(" ") : "________________"}`).join("   ")
+    : (Array.isArray(q.options) && q.options.length ? q.options.map(o => `(${o})`).join("  ") : "________________"));
   return (
     <div className="full" style={{ marginTop: 12 }}>
       <div className="gr-blk-title">Practice Exercises (Übungen)</div>
       <ol className="gr-exlist">
         {questions.map(q => (
           <li key={q.id}>
-            <span className="gr-q">{q.question}</span>
-            <span className="gr-opts">{Array.isArray(q.options) && q.options.length ? q.options.map(o => `(${o})`).join("  ") : "________________"}</span>
-            <span className="gr-key">{q.answer}</span>
+            <span className="gr-q">{q.prompt ? `${q.prompt} ` : ""}{q.question}</span>
+            <span className="gr-opts">{blanksText(q)}</span>
+            <span className="gr-key">{answerText(q)}</span>
           </li>
         ))}
       </ol>
@@ -1338,7 +1378,12 @@ function Chapter({ ch }) {
             <div className="full"><div className="gr-blk-title">Vocabulary</div>
               <VocabTables vocab={ch.vocab} menus={ch.vocabMenus || []} />
             </div>)}
-          {has("vocab") && <ExerciseWorksheetPreview vocab={ch.vocab} seedKey={`chapter-${ch.recordId}-v2`} includeNumbers={false} />}
+          <ExerciseWorksheetPreview
+            records={[ch.vocab || [], ch.grammar || [], ch.verb || [], ch.dialogue || [], ch.expression || [], ch.idiom || [], ch.mistake || []].flat()}
+            seedKey={`chapter-${ch.recordId}-v2`}
+            chapterId={ch.recordId}
+            includeNumbers={false}
+          />
           {has("exercise") && (
             <div className="full"><div className="gr-blk-title">Exercise Results</div>
               <ExerciseResultsPreview rows={ch.exercise} />
@@ -1423,7 +1468,11 @@ function Standalone({ data }) {
   const stories = unchaptered("story");
   const exercises = unchaptered("exercise");
   const allVocab = byType(data)("vocab");
-  if (!vocab.length && !notes.length && !memos.length && !dialogues.length && !stories.length && !exercises.length && allVocab.length < 5) return null;
+  // Every record the exercise generators can use — vocabulary, grammar, verbs,
+  // dialogues, expressions, idioms, mistakes and the alphabet.
+  const allSource = useMemo(() => exerciseSourceRecords(data), [data]);
+  const otherSource = Math.max(0, allSource.length - allVocab.length);
+  if (!vocab.length && !notes.length && !memos.length && !dialogues.length && !stories.length && !exercises.length && allSource.length < 5) return null;
   return (
     <>
       {vocab.length > 0 && (
@@ -1477,11 +1526,11 @@ function Standalone({ data }) {
           </div>
         </section>
       )}
-      {allVocab.length >= 5 && (
+      {allSource.length >= 5 && (
         <section className="gr-section" id="knowledge-test">
-          <div className="gr-sec-head"><div className="gr-tag">T</div><h2>Complete Knowledge Test <small>from all {allVocab.length} words</small></h2></div>
+          <div className="gr-sec-head"><div className="gr-tag">T</div><h2>Complete Knowledge Test <small>from all {allVocab.length} words{otherSource ? ` + ${otherSource} grammar/verb/dialogue records` : ""}</small></h2></div>
           <div className="gr-card">
-            <ExerciseWorksheetPreview vocab={allVocab} seedKey="full-report-v1" count={15} />
+            <ExerciseWorksheetPreview records={allSource} seedKey="full-report-v1" count={15} />
           </div>
         </section>
       )}
