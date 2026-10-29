@@ -1540,7 +1540,10 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
   const [dirty, setDirty] = useState(false);
   const [customCat, setCustomCat] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showJson, setShowJson] = useState(false);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
+
+  const jsonParse = useCallback((raw) => parseGrammarJsonInput(raw, defaultLevel), [defaultLevel]);
 
   useEffect(() => {
     if (editRecord) {
@@ -1559,11 +1562,13 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
     if (!form.rule.trim() || !form.explanation.trim()) return;
     const cat = customCat.trim() || form.category;
     const payload = { ...form, category: cat, examples: form.examples.split('\n').map(s => s.trim()).filter(Boolean), boxes };
-    if (editRecord) {
-      await onUpdate(editRecord.recordId, payload);
-    } else {
-      await onAdd(payload);
-    }
+    try {
+      if (editRecord) {
+        await onUpdate(editRecord.recordId, payload);
+      } else {
+        await onAdd(payload);
+      }
+    } catch (_) { return; }
     setForm({ rule: '', explanation: '', examples: '', category: 'General', level: defaultLevel, mastery: 0 });
     setBoxes([]);
     setCustomCat('');
@@ -1590,17 +1595,35 @@ function GrammarForm({ onAdd, onUpdate, editRecord, onCancelEdit, saving, isMobi
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <button onClick={() => { if (!open) { setOpen(true); if (onCancelEdit) onCancelEdit(); } else handleCancel(); }} style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem',
-        background: `linear-gradient(135deg, ${C.blue} 0%, ${C.purple} 100%)`,
-        color: '#fff', border: 'none', borderRadius: '10px',
-        padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
-        boxShadow: `0 4px 14px ${C.blue}40`,
-      }}>
-        {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
-        {editRecord ? 'Edit Rule' : 'Add Grammar Rule'}
-        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </button>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button onClick={() => { if (!open) { setOpen(true); setShowJson(false); if (onCancelEdit) onCancelEdit(); } else handleCancel(); }} style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: `linear-gradient(135deg, ${C.blue} 0%, ${C.purple} 100%)`,
+          color: '#fff', border: 'none', borderRadius: '10px',
+          padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+          boxShadow: `0 4px 14px ${C.blue}40`,
+        }}>
+          {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
+          {editRecord ? 'Edit Rule' : 'Add Grammar Rule'}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {!editRecord && (
+          <JsonImportButton open={showJson} onToggle={() => { setShowJson(!showJson); if (open) { setOpen(false); setDirty(false); setShowCancelConfirm(false); } }} />
+        )}
+      </div>
+      {showJson && !editRecord && (
+        <JsonImportPanel
+          open={showJson}
+          onClose={() => setShowJson(false)}
+          parse={jsonParse}
+          onAdd={(item) => onAdd(item)}
+          example={GRAMMAR_JSON_EXAMPLE}
+          batchExample={GRAMMAR_JSON_BATCH_EXAMPLE}
+          placeholder='Paste grammar JSON here… e.g. { "rule": "Akkusativ", "explanation": "…", "examples": ["…"], "category": "Cases", "level": "A1.1" }'
+          noun="rule"
+          accent={C.blue}
+        />
+      )}
       {open && (
         <form onSubmit={handleSubmit} style={{
           marginTop: '0.85rem', background: 'var(--bg-card)',
@@ -2090,6 +2113,7 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showJson, setShowJson] = useState(false);
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDirty(true); };
 
   useEffect(() => {
@@ -2116,11 +2140,13 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
       memoFont: form.memoFont,
       boxes,
     };
-    if (editRecord) {
-      await onUpdate(editRecord.recordId, payload);
-    } else {
-      await onAdd(payload);
-    }
+    try {
+      if (editRecord) {
+        await onUpdate(editRecord.recordId, payload);
+      } else {
+        await onAdd(payload);
+      }
+    } catch (_) { return; }
     setForm({ title: '', germanContent: '', englishContent: '', memoFont: '' });
     setBoxes([]);
     setDirty(false);
@@ -2142,17 +2168,34 @@ function MemoForm({ onAdd, onUpdate, editRecord, onCancelEdit, onUploadPhoto }) 
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <button onClick={() => { if (!open) setOpen(true); else handleCancel(); }} style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem',
-        background: `linear-gradient(135deg, ${C.green}, #059669)`,
-        color: '#fff', border: 'none', borderRadius: '10px',
-        padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
-        boxShadow: `0 4px 14px ${C.green}40`,
-      }}>
-        {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
-        {editRecord ? 'Edit Paragraph' : 'New Paragraph'}
-        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </button>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button onClick={() => { if (!open) { setOpen(true); setShowJson(false); } else handleCancel(); }} style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: `linear-gradient(135deg, ${C.green}, #059669)`,
+          color: '#fff', border: 'none', borderRadius: '10px',
+          padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem',
+          boxShadow: `0 4px 14px ${C.green}40`,
+        }}>
+          {editRecord ? <Edit3 size={16} /> : <Plus size={16} />}
+          {editRecord ? 'Edit Paragraph' : 'New Paragraph'}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {!editRecord && (
+          <JsonImportButton open={showJson} onToggle={() => { setShowJson(!showJson); if (open) { setOpen(false); setDirty(false); setShowCancelConfirm(false); } }} />
+        )}
+      </div>
+      {showJson && !editRecord && (
+        <JsonImportPanel
+          open={showJson}
+          onClose={() => setShowJson(false)}
+          parse={parseMemoJsonInput}
+          onAdd={(item) => onAdd(item)}
+          example={MEMO_JSON_EXAMPLE}
+          batchExample={MEMO_JSON_BATCH_EXAMPLE}
+          placeholder='Paste memo JSON here… e.g. { "title": "Colors", "germanContent": "<p>rot, blau</p>", "englishContent": "<p>red, blue</p>" }'
+          noun="paragraph"
+        />
+      )}
       {open && (
         <form onSubmit={handleSubmit} style={{
           marginTop: '0.85rem', background: 'var(--bg-card)',
@@ -3198,7 +3241,7 @@ function JsonImportPanel({ open, onClose, parse, onAdd, example, batchExample, p
     <div style={{ marginTop: '0.85rem', padding: '1rem', borderRadius: '12px', border: `1px solid ${accent}40`, background: `${accent}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '0.8rem', fontWeight: 700, color: accent, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Code size={14} /> Paste a JSON object — or an array of objects — to add {noun}{count === 1 && count === 1 ? '' : 's'} in bulk
+          <Code size={14} /> Paste a JSON object — or an array of objects — to add {noun}{count === 1 ? '' : 's'} in bulk
         </span>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <button onClick={() => { setJsonInput(example); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${accent}40`, background: 'var(--bg-card)', color: accent, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
@@ -3287,46 +3330,8 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
   const [editBoxes, setEditBoxes] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [showJson, setShowJson] = useState(false);
-  const [jsonInput, setJsonInput] = useState(EXPRESSION_JSON_EXAMPLE);
-  const [jsonSaving, setJsonSaving] = useState(false);
-  const [jsonError, setJsonError] = useState('');
 
   const categories = EXPRESSION_CATEGORIES;
-
-  const jsonValidation = useMemo(
-    () => (showJson ? parseExpressionJsonInput(jsonInput) : null),
-    [showJson, jsonInput]
-  );
-
-  const handleJsonFormat = () => {
-    try { setJsonInput(JSON.stringify(JSON.parse(jsonInput), null, 2)); setJsonError(''); }
-    catch (e) { setJsonError(`Cannot format: ${e.message}`); }
-  };
-
-  const handleJsonSave = async () => {
-    const res = parseExpressionJsonInput(jsonInput);
-    if (!res.ok || !res.items.length) return;
-    setJsonSaving(true);
-    setJsonError('');
-    let failed = 0;
-    for (const item of res.items) {
-      try {
-        await onAdd({
-          type: 'expression',
-          ...item,
-          boxes: item.boxes.map(b => ({ ...b, id: nextBoxId() })),
-        });
-      } catch (_) { failed += 1; }
-    }
-    setJsonSaving(false);
-    if (failed > 0) {
-      setJsonError(`${failed} expression${failed === 1 ? '' : 's'} could not be saved — try again.`);
-    } else {
-      setJsonInput(EXPRESSION_JSON_EXAMPLE);
-      setJsonError('');
-      setShowJson(false);
-    }
-  };
 
   const handleAdd = async () => {
     if (!phrase.trim() || !translation.trim()) return;
@@ -3455,9 +3460,7 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
           <Languages size={20} style={{ color: C.green }} /> Useful Expressions ({expressions.length})
         </h3>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button onClick={() => { setShowJson(!showJson); setShowAdd(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: `1px solid ${C.purple}60`, background: showJson ? C.purple : `${C.purple}15`, color: showJson ? '#fff' : C.purple, fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
-            <Code size={14} /> {showJson ? 'Close JSON' : 'Add via JSON'}
-          </button>
+          <JsonImportButton open={showJson} onToggle={() => { setShowJson(!showJson); setShowAdd(false); }} />
           <button onClick={() => { setShowAdd(!showAdd); setShowJson(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: `linear-gradient(135deg, ${C.green}, #059669)`, color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
             {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? 'Cancel' : 'Add Expression'}
           </button>
@@ -3481,81 +3484,16 @@ function ExpressionForm({ onAdd, onUpdate, onDelete, _isMobile, expressions }) {
       )}
 
       {showJson && (
-        <div style={{ padding: '1rem', borderRadius: '12px', border: `1px solid ${C.purple}40`, background: `${C.purple}08`, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.purple, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Code size={14} /> Paste a JSON object — or an array of objects — to add expressions in bulk
-            </span>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-              <button onClick={() => { setJsonInput(EXPRESSION_JSON_EXAMPLE); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.purple}40`, background: 'var(--bg-card)', color: C.purple, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
-                Object example
-              </button>
-              <button onClick={() => { setJsonInput(EXPRESSION_JSON_BATCH_EXAMPLE); setJsonError(''); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.purple}40`, background: 'var(--bg-card)', color: C.purple, fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
-                Array example
-              </button>
-              <button onClick={handleJsonFormat} style={{ padding: '0.3rem 0.65rem', borderRadius: '6px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
-                Format
-              </button>
-            </div>
-          </div>
-
-          <textarea
-            value={jsonInput}
-            onChange={e => { setJsonInput(e.target.value); setJsonError(''); }}
-            spellCheck={false}
-            rows={10}
-            placeholder='Paste expression JSON here… e.g. { "phrase": "Guten Morgen", "translation": "Good morning", "category": "greeting" }'
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '0.75rem',
-              borderRadius: '10px', border: `1px solid ${jsonValidation?.ok ? `${C.green}60` : `${C.red}45`}`,
-              background: 'var(--bg)', color: 'var(--text-primary)', resize: 'vertical',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: '0.8rem', lineHeight: 1.5, outline: 'none',
-            }}
-          />
-
-          {jsonValidation?.warnings.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.gold}50`, background: `${C.gold}12`, color: C.gold, fontSize: '0.75rem' }}>
-              {jsonValidation.warnings.map((w, i) => <span key={i}>⚠ {w}</span>)}
-            </div>
-          )}
-
-          {jsonValidation?.ok ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.green}50`, background: `${C.green}12`, color: C.green, fontSize: '0.76rem', fontWeight: 700 }}>
-              <Check size={14} /> Valid JSON — {jsonValidation.items.length} expression{jsonValidation.items.length === 1 ? '' : 's'} parsed &amp; ready to add
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.red}50`, background: `${C.red}12`, color: C.red, fontSize: '0.75rem' }}>
-              <span style={{ fontWeight: 700 }}>Fix the following to enable saving:</span>
-              {jsonValidation?.errors.map((err, i) => <span key={i}>• {err}</span>)}
-            </div>
-          )}
-
-          {jsonError && (
-            <div style={{ padding: '0.5rem 0.7rem', borderRadius: 8, border: `1px solid ${C.red}`, background: `${C.red}1f`, color: C.red, fontSize: '0.75rem', fontWeight: 600 }}>
-              {jsonError}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-            <button onClick={() => { setShowJson(false); setJsonError(''); }} disabled={jsonSaving} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: `1px solid ${C.border}`, background: 'var(--bg)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: jsonSaving ? 'not-allowed' : 'pointer' }}>
-              Cancel
-            </button>
-            <button
-              onClick={handleJsonSave}
-              disabled={!jsonValidation?.ok || jsonSaving}
-              style={{
-                padding: '0.5rem 1.1rem', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '0.8rem',
-                background: (!jsonValidation?.ok || jsonSaving) ? 'var(--bg)' : `linear-gradient(135deg, ${C.purple}, #6d28d9)`,
-                color: (!jsonValidation?.ok || jsonSaving) ? 'var(--text-muted)' : '#fff',
-                cursor: (!jsonValidation?.ok || jsonSaving) ? 'not-allowed' : 'pointer',
-                opacity: (!jsonValidation?.ok || jsonSaving) ? 0.6 : 1,
-              }}
-            >
-              {jsonSaving ? 'Saving…' : `Add ${jsonValidation?.ok ? jsonValidation.items.length : 0} Expression${jsonValidation?.items?.length === 1 ? '' : 's'}`}
-            </button>
-          </div>
-        </div>
+        <JsonImportPanel
+          open={showJson}
+          onClose={() => setShowJson(false)}
+          parse={parseExpressionJsonInput}
+          onAdd={(item) => onAdd({ type: 'expression', ...item })}
+          example={EXPRESSION_JSON_EXAMPLE}
+          batchExample={EXPRESSION_JSON_BATCH_EXAMPLE}
+          placeholder='Paste expression JSON here… e.g. { "phrase": "Guten Morgen", "translation": "Good morning", "category": "greeting" }'
+          noun="expression"
+        />
       )}
 
       {Object.keys(grouped).length === 0 && !showAdd && !showJson && (
@@ -6275,6 +6213,7 @@ export default function LearningGerman() {
   const [editVerb, setEditVerb] = useState(null);
   const [showVerbJsonModal, setShowVerbJsonModal] = useState(false);
   const [newDialogueOpen, setNewDialogueOpen] = useState(false);
+  const [showDialogueJson, setShowDialogueJson] = useState(false);
   const [editDialogue, setEditDialogue] = useState(null);
   const [expandedDialogues, setExpandedDialogues] = useState({});
   const [, setDialogueSaving] = useState(false);
@@ -7071,7 +7010,7 @@ export default function LearningGerman() {
 
   const handleAddGrammar = async (payload) => {
     setGrammarSaving(true);
-    try { await addGermanGrammar(withChapter(payload)); } catch (e) { setError(e.message); } finally { setGrammarSaving(false); }
+    try { await addGermanGrammar(withChapter(payload)); } catch (e) { setError(e.message); throw e; } finally { setGrammarSaving(false); }
   };
 
   const handleUpdateGrammar = async (recordId, payload) => {
@@ -7342,7 +7281,7 @@ export default function LearningGerman() {
   // ── Dialogue handlers ─────────────────────────────────────────────────────
   const handleAddDialogue = async (payload) => {
     setDialogueSaving(true);
-    try { const created = await addGermanDialogue({ ...withChapter(payload), level: workspaceLevel }); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); } finally { setDialogueSaving(false); }
+    try { const created = await addGermanDialogue({ ...withChapter(payload), level: workspaceLevel }); setNewDialogueOpen(false); return created; } catch (e) { setError(e.message); throw e; } finally { setDialogueSaving(false); }
   };
 
   const handleUpdateDialogue = async (recordId, payload) => {
@@ -7391,7 +7330,7 @@ export default function LearningGerman() {
   // ── Memo handlers ──────────────────────────────────────────────────────────
   const handleAddMemo = async (payload) => {
     setMemoSaving(true);
-    try { const created = await addGermanMemo({ ...withChapter(payload), level: workspaceLevel }); setEditMemo(null); return created; } catch (e) { setError(e.message); } finally { setMemoSaving(false); }
+    try { const created = await addGermanMemo({ ...withChapter(payload), level: workspaceLevel }); setEditMemo(null); return created; } catch (e) { setError(e.message); throw e; } finally { setMemoSaving(false); }
   };
 
   const handleUpdateMemo = async (recordId, payload) => {
@@ -8892,19 +8831,35 @@ export default function LearningGerman() {
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Dialogues <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8rem' }}>({dialogues.length})</span>
             </h3>
-            <button
-              onClick={() => setNewDialogueOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.4rem',
-                padding: '0.5rem 1rem', borderRadius: '10px', cursor: 'pointer',
-                background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
-                border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem',
-                boxShadow: `0 4px 12px ${C.blue}40`,
-              }}
-            >
-              <MessageSquare size={15} /> New Dialogue
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <JsonImportButton open={showDialogueJson} onToggle={() => { setShowDialogueJson(!showDialogueJson); setNewDialogueOpen(false); }} />
+              <button
+                onClick={() => { setNewDialogueOpen(true); setShowDialogueJson(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.5rem 1rem', borderRadius: '10px', cursor: 'pointer',
+                  background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+                  border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                  boxShadow: `0 4px 12px ${C.blue}40`,
+                }}
+              >
+                <MessageSquare size={15} /> New Dialogue
+              </button>
+            </div>
           </div>
+
+          {showDialogueJson && (
+            <JsonImportPanel
+              open={showDialogueJson}
+              onClose={() => setShowDialogueJson(false)}
+              parse={parseDialogueJsonInput}
+              onAdd={(item) => handleAddDialogue(item)}
+              example={DIALOGUE_JSON_EXAMPLE}
+              batchExample={DIALOGUE_JSON_BATCH_EXAMPLE}
+              placeholder='Paste dialogue JSON here… e.g. { "title": "Im Café", "participants": [{ "name": "Anna", "gender": "female" }, { "name": "Ben", "gender": "male" }], "exchanges": [{ "speaker": "Anna", "german": "Guten Tag!", "original": "Good day!" }] }'
+              noun="dialogue"
+            />
+          )}
 
           {newDialogueOpen && (
             <DialogueBuilder
@@ -8919,7 +8874,7 @@ export default function LearningGerman() {
             />
           )}
 
-          {dialogues.length === 0 && !newDialogueOpen && (
+          {dialogues.length === 0 && !newDialogueOpen && !showDialogueJson && (
             <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
               <MessageSquare size={40} color="var(--text-muted)" style={{ opacity: 0.4, marginBottom: 12 }} />
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>No dialogues yet. Create your first conversation!</p>
