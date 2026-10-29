@@ -516,9 +516,6 @@ const EXERCISE_COLORS = {
 function exerciseWorksheetBlocks(questions) {
   if (!Array.isArray(questions) || !questions.length) return [];
   const body = [];
-  const answerText = q => (Array.isArray(q.parts) && q.parts.length
-    ? q.parts.map(p => `${p.label}: ${p.answer}`).join("  ·  ")
-    : String(q.answer ?? ""));
   questions.forEach((q, i) => {
     body.push({
       text: [
@@ -543,9 +540,43 @@ function exerciseWorksheetBlocks(questions) {
       body.push({ text: "____________________________________", fontSize: 8.5, color: C.line, margin: [16, 3, 0, 0] });
     }
   });
-  body.push({ text: "Answer key (Lösungsschlüssel)", bold: true, fontSize: 7.5, color: C.muted, margin: [0, 8, 0, 1] });
-  body.push({ text: questions.map((q, i) => `${i + 1}) ${answerText(q)}`).join("   ·   "), fontSize: 7.5, color: C.muted });
   return body;
+}
+
+// Answers for one worksheet — rendered in the dedicated Solutions part at the
+// end of the report, two per line to keep the part compact.
+function exerciseAnswerBlocks(questions, label) {
+  if (!Array.isArray(questions) || !questions.length) return [];
+  const answerText = q => (Array.isArray(q.parts) && q.parts.length
+    ? q.parts.map(p => `${p.label}: ${p.answer}`).join("  ·  ")
+    : String(q.answer ?? ""));
+  const blocks = [];
+  if (label) blocks.push({ text: label, bold: true, fontSize: 9.5, color: C.ink, margin: [0, 8, 0, 3] });
+  const lines = questions.map((q, i) => `${i + 1}) ${answerText(q)}`);
+  for (let i = 0; i < lines.length; i += 2) {
+    blocks.push({
+      columns: [
+        { text: lines[i], fontSize: 8, color: C.ink },
+        { text: lines[i + 1] || "", fontSize: 8, color: C.ink },
+      ],
+      columnGap: 14,
+      margin: [0, 1, 0, 0],
+    });
+  }
+  return blocks;
+}
+
+// The "other part" of the report: every worksheet's answers collected per
+// chapter (and for the full-course test), rendered after all content.
+function solutionsSectionBlocks(entries) {
+  const list = (entries || []).filter(e => e && Array.isArray(e.questions) && e.questions.length);
+  if (!list.length) return [];
+  const blocks = [
+    { text: "Solutions (Lösungen)", style: "h2", pageBreak: "before" },
+    { text: "The answers for every practice worksheet in this report, in the same order as the questions.", color: C.muted, fontSize: 8.5, margin: [0, 2, 0, 4] },
+  ];
+  list.forEach(e => blocks.push(...exerciseAnswerBlocks(e.questions, e.label)));
+  return blocks;
 }
 
 function exerciseResultBlocks(rows) {
@@ -608,18 +639,21 @@ function exerciseResultBlocks(rows) {
 function exerciseSectionBlocks(records, seedKey, count = 10, includeNumbers = true, chapterId = null) {
   const source = exerciseSourceRecords(records);
   const generated = generateExercises({ records: source, chapterId, type: "mixed", count, seed: seedKey, includeNumbers });
-  if (!generated.questions.length) return [];
+  if (!generated.questions.length) return { blocks: [], questions: [] };
   const others = source.length - source.filter(r => r.type === "vocab" || r.type === "unified-vocab").length;
   const focus = includeNumbers
     ? "every part of the course: vocabulary, translations, grammar, verbs, expressions, idioms, mistakes, dialogues, the alphabet & numbers."
     : "this chapter's own vocabulary, grammar, verbs, expressions, idioms, mistakes & dialogues — no number exercises.";
-  return [
-    {
-      text: `Auto-generated from ${generated.scopedWords} word${generated.scopedWords === 1 ? "" : "s"}${others ? ` + ${others} course records` : ""} — ${focus}`,
-      fontSize: 7.5, color: C.muted, margin: [0, 0, 0, 5],
-    },
-    ...exerciseWorksheetBlocks(generated.questions),
-  ];
+  return {
+    blocks: [
+      {
+        text: `Auto-generated from ${generated.scopedWords} word${generated.scopedWords === 1 ? "" : "s"}${others ? ` + ${others} course records` : ""} — ${focus}`,
+        fontSize: 7.5, color: C.muted, margin: [0, 0, 0, 5],
+      },
+      ...exerciseWorksheetBlocks(generated.questions),
+    ],
+    questions: generated.questions,
+  };
 }
 
 function chapterBlock(ch, buckets) {
@@ -643,13 +677,17 @@ function chapterBlock(ch, buckets) {
   if (has("vocab")) stack.push(sectionLabel("Vocabulary"), ...vocabMenuBlocks(rel.vocab, buckets.vocabMenus || []));
   // Chapter's own practice exercises (generated from ALL of its course
   // content: vocabulary, grammar, verbs, dialogues, expressions, idioms,
-  // mistakes) + the test results the user solved for this chapter.
+  // mistakes) + the test results the user solved for this chapter. The
+  // questions stay on the chapter page; their answers move to the Solutions
+  // part at the end of the report.
+  let exerciseQuestions = [];
   const chapterContent = [rel.vocab, rel.grammar, rel.verb, rel.dialogue, rel.expression, rel.idiom, rel.mistake].flat();
   if (chapterContent.length) {
     const sheet = exerciseSectionBlocks(chapterContent, `chapter-${key}-v2`, 10, false, key);
-    if (sheet.length) {
+    if (sheet.blocks.length) {
       stack.push(sectionLabel("Practice Exercises (Übungen)"));
-      stack.push(...sheet);
+      stack.push(...sheet.blocks);
+      exerciseQuestions = sheet.questions;
     }
   }
   if (has("exercise")) stack.push(sectionLabel("Exercise Results"), ...exerciseResultBlocks(rel.exercise));
@@ -661,7 +699,7 @@ function chapterBlock(ch, buckets) {
   if (has("expression")) stack.push(sectionLabel("Expressions"), ...expressionList(rel.expression));
   if (has("idiom")) stack.push(sectionLabel("Idioms"), ...idiomBlocks(rel.idiom));
   if (has("mistake")) stack.push(sectionLabel("Common Mistakes"), mistakeTable(rel.mistake));
-  return { stack, pageBreak: "before" };
+  return { stack, pageBreak: "before", exerciseQuestions };
 }
 function alphabetBlock(rows) {
   const sorted = rows.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -722,14 +760,19 @@ export function buildChapterPdfDefinition(data, opts = {}) {
     subtitle2: ch?.level ? `Level: ${ch.level}` : undefined,
     today,
   }));
+  const solutions = [];
   if (ch) {
-    content.push(chapterBlock(ch, {
+    const blk = chapterBlock(ch, {
       note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"),
       verb: byType("verb"), memo: byType("memo"), dialogue: byType("dialogue"),
       story: byType("story"), expression: byType("expression"),
       idiom: byType("idiom"), mistake: byType("mistake"), exercise: byType("exercise"),
       vocabMenus: byType("vocab-folder"),
-    }));
+    });
+    content.push({ stack: blk.stack, pageBreak: blk.pageBreak });
+    if (blk.exerciseQuestions.length) {
+      solutions.push({ label: `${chapterTitle} — Practice Exercises (Übungen)`, questions: blk.exerciseQuestions });
+    }
   } else {
     // Fallback: no chapter record in data — render items directly.
     const noteRows = byType("note");
@@ -753,11 +796,13 @@ export function buildChapterPdfDefinition(data, opts = {}) {
     if (idiomRows.length) { content.push(sectionLabel("Idioms")); content.push(...idiomBlocks(idiomRows)); }
     if (mistakeRows.length) { content.push(sectionLabel("Common Mistakes")); content.push(mistakeTable(mistakeRows)); }
     const fallbackContent = [vocabRows, grammarRows, verbRows, dialogueRows, expressionRows, idiomRows, mistakeRows].flat();
-    const fallbackSheet = fallbackContent.length ? exerciseSectionBlocks(fallbackContent, "chapter-fallback-v2", 10, false) : [];
-    if (fallbackSheet.length) { content.push(sectionLabel("Practice Exercises (Übungen)")); content.push(...fallbackSheet); }
+    const fallbackSheet = fallbackContent.length ? exerciseSectionBlocks(fallbackContent, "chapter-fallback-v2", 10, false) : { blocks: [], questions: [] };
+    if (fallbackSheet.blocks.length) { content.push(sectionLabel("Practice Exercises (Übungen)")); content.push(...fallbackSheet.blocks); }
+    if (fallbackSheet.questions.length) solutions.push({ label: "Practice Exercises (Übungen)", questions: fallbackSheet.questions });
     const fallbackExercises = byType("exercise");
     if (fallbackExercises.length) { content.push(sectionLabel("Exercise Results")); content.push(...exerciseResultBlocks(fallbackExercises)); }
   }
+  content.push(...solutionsSectionBlocks(solutions));
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
@@ -813,11 +858,21 @@ export function buildPdfDefinition(data, opts = {}) {
   if (alphabetNote?.note) {
     content.push(alphabetNoteBlock({ title: alphabetNote.title || '', note: alphabetNote.note }));
   }
-  chapters.forEach(ch => content.push(chapterBlock(ch, {
-    note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
-    memo: byType("memo"), dialogue: byType("dialogue"), story: byType("story"), expression: byType("expression"),
-    idiom: byType("idiom"), mistake: byType("mistake"), exercise: byType("exercise"), vocabMenus: byType("vocab-folder"),
-  })));
+  const solutions = [];
+  chapters.forEach(ch => {
+    const blk = chapterBlock(ch, {
+      note: byType("note"), vocab: byType("vocab"), grammar: byType("grammar"), verb: byType("verb"),
+      memo: byType("memo"), dialogue: byType("dialogue"), story: byType("story"), expression: byType("expression"),
+      idiom: byType("idiom"), mistake: byType("mistake"), exercise: byType("exercise"), vocabMenus: byType("vocab-folder"),
+    });
+    content.push({ stack: blk.stack, pageBreak: blk.pageBreak });
+    if (blk.exerciseQuestions.length) {
+      solutions.push({
+        label: `${ch.title || "Chapter"}${ch.level ? ` (${ch.level})` : ""} — Practice Exercises (Übungen)`,
+        questions: blk.exerciseQuestions,
+      });
+    }
+  });
 
   // Standalone sections for records that are NOT attached to any chapter, so
   // dialogues, daily notes, stories and memorization always make it into the PDF even
@@ -855,10 +910,11 @@ export function buildPdfDefinition(data, opts = {}) {
   const allContent = exerciseSourceRecords(data);
   if (allContent.length >= 5) {
     const fullTest = exerciseSectionBlocks(allContent, "full-report-v1", 15);
-    if (fullTest.length) {
+    if (fullTest.blocks.length) {
       content.push({ text: "Complete Knowledge Test", style: "h2", pageBreak: "before" });
       content.push({ text: "A mixed practice test generated from your whole course — vocabulary & translations, articles (der / die / das), feminine forms, plurals, possessive articles, cases, comparative forms, verb tables, grammar rules, expressions, idioms, common mistakes, dialogues, the alphabet and numbers.", color: C.muted, fontSize: 8.5, margin: [0, 2, 0, 8] });
-      content.push(...fullTest);
+      content.push(...fullTest.blocks);
+      if (fullTest.questions.length) solutions.push({ label: "Complete Knowledge Test", questions: fullTest.questions });
     }
   }
 
@@ -868,6 +924,9 @@ export function buildPdfDefinition(data, opts = {}) {
     content.push({ text: "Exercise Results", style: "h2", pageBreak: "before" });
     content.push(...exerciseResultBlocks(globalExercises));
   }
+
+  // The Solutions part comes last: every worksheet's answers, per chapter.
+  content.push(...solutionsSectionBlocks(solutions));
 
   return {
     pageSize: "A4",
